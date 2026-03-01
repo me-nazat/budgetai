@@ -24,6 +24,15 @@ interface DashboardData {
     netWorth: number;
 }
 
+interface MarketNews {
+    id: number; title: string; source: string; time: string; sentiment: 'positive' | 'negative' | 'neutral';
+}
+
+interface CurrencyRates {
+    base_code: string;
+    rates: Record<string, number>;
+}
+
 const categoryIcons: Record<string, string> = {
     Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
     Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety',
@@ -44,16 +53,61 @@ export default function DashboardPage() {
     const chartRef = useRef(null);
     const { currency, fmt } = useCurrency();
 
+    const [selectedMonth, setSelectedMonth] = useState<string>(
+        `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+    );
+    const [selectedWeek, setSelectedWeek] = useState<string>('all');
+
+    // Generate last 12 months for the dropdown
+    const monthOptions = Array.from({ length: 12 }).map((_, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        return {
+            value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+            label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        };
+    });
+
+    const weekOptions = [
+        { value: 'all', label: 'Full Month' },
+        { value: '1', label: 'Week 1 (1st-7th)' },
+        { value: '2', label: 'Week 2 (8th-14th)' },
+        { value: '3', label: 'Week 3 (15th-21st)' },
+        { value: '4', label: 'Week 4 (22nd-End)' },
+    ];
+
+    // Extra Features State
+    const [activeTab, setActiveTab] = useState<'currency' | 'news' | 'calculator'>('currency');
+    const [marketNews, setMarketNews] = useState<MarketNews[]>([]);
+    const [exchangeRates, setExchangeRates] = useState<CurrencyRates | null>(null);
+    const [calcAmount, setCalcAmount] = useState<number>(500);
+    const [calcYears, setCalcYears] = useState<number>(10);
+    const [calcRate, setCalcRate] = useState<number>(7);
+
     useEffect(() => {
+        setLoading(true);
         Promise.all([
-            fetch('/api/dashboard').then(r => r.json()),
+            fetch(`/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`).then(r => r.json()),
             fetch('/api/auth/me').then(r => r.json()),
         ]).then(([dashData, userData]) => {
-            setData(dashData);
+            if (dashData.error) {
+                setData(null);
+            } else {
+                setData(dashData);
+            }
             if (userData?.user?.name) setUserName(userData.user.name);
             setLoading(false);
         }).catch(() => setLoading(false));
-    }, []);
+    }, [selectedMonth, selectedWeek]);
+
+    useEffect(() => {
+        // Fetch extra features data
+        fetch(`/api/market?type=news`).then(r => r.json()).then(d => setMarketNews(d.news || []));
+        fetch(`/api/market?type=rates&base=${currency}`).then(r => r.json()).then(d => {
+            // Check if it's the ER-API format or error
+            if (!d.error && d.rates) setExchangeRates(d);
+        });
+    }, [currency]);
 
     if (loading) {
         return (
@@ -116,12 +170,32 @@ export default function DashboardPage() {
                     <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                         {greeting()}{userName ? `, ${userName}` : ''} 👋
                     </h2>
-                    <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Here&apos;s what&apos;s happening with your money today.</p>
+                    <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Here&apos;s what&apos;s happening with your money.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg">
-                        <span className="material-symbols-outlined text-base">calendar_today</span>
-                        <span suppressHydrationWarning>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#30363d]">
+                        <span className="material-symbols-outlined text-base">calendar_month</span>
+                        <select
+                            value={selectedMonth}
+                            onChange={e => setSelectedMonth(e.target.value)}
+                            className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+                        >
+                            {monthOptions.map(m => (
+                                <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#30363d]">
+                        <span className="material-symbols-outlined text-base">view_week</span>
+                        <select
+                            value={selectedWeek}
+                            onChange={e => setSelectedWeek(e.target.value)}
+                            className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+                        >
+                            {weekOptions.map(w => (
+                                <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </header>
@@ -142,7 +216,7 @@ export default function DashboardPage() {
                                     <span className="material-symbols-outlined text-sm">{s.change >= 0 ? 'trending_up' : 'trending_down'}</span>
                                     {s.change >= 0 ? '+' : ''}{s.change.toFixed(1)}%
                                 </span>
-                                <span className="text-gray-400 dark:text-text-muted text-xs">vs last month</span>
+                                <span className="text-gray-400 dark:text-text-muted text-xs">vs prev period</span>
                             </div>
                         </div>
                     </div>
@@ -232,54 +306,162 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Recent Transactions */}
-            <div className="card-premium rounded-2xl overflow-hidden" style={{ animation: 'slideUp 0.5s ease-out 0.55s both' }}>
-                <div className="p-6 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
-                    <a href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
-                        View All <span className="material-symbols-outlined text-base">arrow_forward</span>
-                    </a>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider">
-                                <th className="px-6 py-3.5 font-semibold">Transaction</th>
-                                <th className="px-6 py-3.5 font-semibold">Category</th>
-                                <th className="px-6 py-3.5 font-semibold">Date</th>
-                                <th className="px-6 py-3.5 font-semibold text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
-                            {data.recentTransactions.length === 0 ? (
-                                <tr><td colSpan={4} className="px-6 py-12 text-center">
-                                    <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
-                                    <p className="text-gray-400 dark:text-text-muted">No transactions yet. Use AI Chat to start tracking!</p>
-                                </td></tr>
-                            ) : data.recentTransactions.map((t) => (
-                                <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover/50 transition-colors duration-200">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
-                                                <span className="material-symbols-outlined text-lg">{categoryIcons[t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()] || 'category'}</span>
-                                            </div>
-                                            <span className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-surface-hover text-gray-600 dark:text-text-muted">
-                                            {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-500 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                                    <td className={`px-6 py-4 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                        {t.type === 'expense' ? '-' : '+'}{fmt(t.amount)}
-                                    </td>
+            {/* Final Row: Recent Transactions & Financial Intelligence Hub */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
+
+                {/* Recent Transactions (Takes up 2 cols on large) */}
+                <div className="lg:col-span-2 card-premium rounded-2xl overflow-hidden" style={{ animation: 'slideUp 0.5s ease-out 0.55s both' }}>
+                    <div className="p-6 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
+                        <a href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
+                            View All <span className="material-symbols-outlined text-base">arrow_forward</span>
+                        </a>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider">
+                                    <th className="px-6 py-3.5 font-semibold">Transaction</th>
+                                    <th className="px-6 py-3.5 font-semibold">Category</th>
+                                    <th className="px-6 py-3.5 font-semibold">Date</th>
+                                    <th className="px-6 py-3.5 font-semibold text-right">Amount</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
+                                {data.recentTransactions.length === 0 ? (
+                                    <tr><td colSpan={4} className="px-6 py-12 text-center">
+                                        <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
+                                        <p className="text-gray-400 dark:text-text-muted">No transactions yet. Use AI Chat to start tracking!</p>
+                                    </td></tr>
+                                ) : data.recentTransactions.map((t) => (
+                                    <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover/50 transition-colors duration-200">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
+                                                    <span className="material-symbols-outlined text-lg">{categoryIcons[t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()] || 'category'}</span>
+                                                </div>
+                                                <span className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-surface-hover text-gray-600 dark:text-text-muted">
+                                                {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-500 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                        <td className={`px-6 py-4 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                            {t.type === 'expense' ? '-' : '+'}{fmt(t.amount)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                {/* Financial Intelligence Hub */}
+                <div className="card-premium rounded-2xl flex flex-col overflow-hidden" style={{ animation: 'slideUp 0.5s ease-out 0.65s both' }}>
+                    <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-violet-500/10 to-transparent">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span className="material-symbols-outlined text-violet-500">insights</span>
+                            Intelligence Hub
+                        </h3>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex bg-gray-50 dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] text-sm">
+                        <button onClick={() => setActiveTab('currency')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'currency' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Rates</button>
+                        <button onClick={() => setActiveTab('news')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'news' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>News</button>
+                        <button onClick={() => setActiveTab('calculator')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'calculator' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Growth</button>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="p-5 flex-1 bg-white dark:bg-surface-dark overflow-y-auto max-h-[350px]">
+                        {activeTab === 'currency' && (
+                            <div className="space-y-4 animate-fade-in">
+                                {!exchangeRates ? (
+                                    <p className="text-sm text-gray-500 text-center py-4">Loading rates...</p>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-gray-500 mb-3 font-medium">1 {currency} equals:</p>
+                                        <div className="space-y-3">
+                                            {['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => {
+                                                // If base is already one of these, skip or show USD instead
+                                                if (c === currency) return null;
+                                                const rate = exchangeRates.rates[c];
+                                                if (!rate) return null;
+                                                return (
+                                                    <div key={c} className="flex justify-between items-center group p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors border border-transparent hover:border-gray-100 dark:hover:border-[#30363d]">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#21262d] flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                                {c.slice(0, 2)}
+                                                            </div>
+                                                            <span className="font-semibold text-gray-900 dark:text-white">{c}</span>
+                                                        </div>
+                                                        <span className="font-mono text-gray-700 dark:text-gray-300 group-hover:text-violet-500 transition-colors">{rate.toFixed(4)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'news' && (
+                            <div className="space-y-4 animate-fade-in">
+                                {marketNews.length === 0 ? (
+                                    <p className="text-sm text-gray-500 text-center py-4">Loading news...</p>
+                                ) : (
+                                    marketNews.map(news => (
+                                        <a key={news.id} href="#" className="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-surface-hover border border-gray-100 dark:border-[#30363d] transition-all hover:scale-[1.02] hover:shadow-md">
+                                            <div className="flex justify-between items-start mb-1.5">
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${news.sentiment === 'positive' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                                        news.sentiment === 'negative' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
+                                                            'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
+                                                    }`}>
+                                                    {news.sentiment}
+                                                </span>
+                                                <span className="text-xs text-gray-400">{news.time}</span>
+                                            </div>
+                                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-violet-500 transition-colors">{news.title}</h4>
+                                            <p className="text-xs text-gray-500 font-medium">{news.source}</p>
+                                        </a>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'calculator' && (
+                            <div className="space-y-4 animate-fade-in flex flex-col h-full">
+                                <p className="text-xs text-gray-500 mb-2">See how monthly savings grow over time with compound interest.</p>
+
+                                <div className="space-y-3 flex-1">
+                                    <div>
+                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Monthly Save <span>{fmt(calcAmount)}</span></label>
+                                        <input type="range" min="50" max="5000" step="50" value={calcAmount} onChange={e => setCalcAmount(Number(e.target.value))} className="w-full accent-violet-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Years <span>{calcYears} yrs</span></label>
+                                        <input type="range" min="1" max="40" step="1" value={calcYears} onChange={e => setCalcYears(Number(e.target.value))} className="w-full accent-violet-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Est. Return <span>{calcRate}%</span></label>
+                                        <input type="range" min="1" max="15" step="0.5" value={calcRate} onChange={e => setCalcRate(Number(e.target.value))} className="w-full accent-violet-500" />
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 p-4 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-100 dark:border-violet-500/20 text-center">
+                                    <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1">Future Value</p>
+                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        {fmt(calcAmount * 12 * ((Math.pow(1 + calcRate / 100, calcYears) - 1) / (calcRate / 100)))}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
             </div>
 
             {/* Floating AI Button */}

@@ -18,7 +18,30 @@ const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertai
 export default function TransactionsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('month');
+
+    const [selectedMonth, setSelectedMonth] = useState<string>(
+        `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+    );
+    const [selectedWeek, setSelectedWeek] = useState<string>('all');
+
+    // Generate last 12 months for the dropdown
+    const monthOptions = Array.from({ length: 12 }).map((_, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        return {
+            value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+            label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        };
+    });
+
+    const weekOptions = [
+        { value: 'all', label: 'Full Month' },
+        { value: '1', label: 'Week 1 (1st-7th)' },
+        { value: '2', label: 'Week 2 (8th-14th)' },
+        { value: '3', label: 'Week 3 (15th-21st)' },
+        { value: '4', label: 'Week 4 (22nd-End)' },
+    ];
+
     const [typeFilter, setTypeFilter] = useState('all');
     const [sortField, setSortField] = useState('date');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -52,20 +75,40 @@ export default function TransactionsPage() {
         loadData();
     };
 
-    const getDateRange = () => {
-        const now = new Date();
-        let start = '';
-        if (filter === 'day') { start = now.toISOString().split('T')[0]; }
-        else if (filter === 'week') { const d = new Date(now); d.setDate(d.getDate() - 7); start = d.toISOString().split('T')[0]; }
-        else if (filter === 'month') { start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`; }
-        return start;
+    const getDateRanges = () => {
+        let currentYear, currentMonth;
+        if (selectedMonth && selectedMonth.match(/^\d{4}-\d{2}$/)) {
+            [currentYear, currentMonth] = selectedMonth.split('-').map(Number);
+        } else {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth() + 1;
+        }
+
+        let startDayCurrent = 1;
+        let endDayCurrent = new Date(currentYear, currentMonth, 0).getDate();
+
+        if (selectedWeek && selectedWeek !== 'all') {
+            const weekNum = parseInt(selectedWeek);
+            if (weekNum === 1) { startDayCurrent = 1; endDayCurrent = 7; }
+            else if (weekNum === 2) { startDayCurrent = 8; endDayCurrent = 14; }
+            else if (weekNum === 3) { startDayCurrent = 15; endDayCurrent = 21; }
+            else if (weekNum === 4) { startDayCurrent = 22; /* endDay is already last day of month */ }
+        }
+
+        const start = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(startDayCurrent).padStart(2, '0')}`;
+        const end = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(endDayCurrent).padStart(2, '0')}`;
+
+        return { start, end };
     };
 
     const loadData = () => {
         setLoading(true);
         const params = new URLSearchParams();
-        const start = getDateRange();
+        const { start, end } = getDateRanges();
+
         if (start) params.set('start', start);
+        if (end) params.set('end', end);
         if (typeFilter !== 'all') params.set('type', typeFilter);
         params.set('limit', '200');
 
@@ -76,7 +119,7 @@ export default function TransactionsPage() {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadData(); }, [filter, typeFilter]);
+    useEffect(() => { loadData(); }, [selectedMonth, selectedWeek, typeFilter]);
 
     const sorted = [...transactions].sort((a, b) => {
         const dir = sortDir === 'asc' ? 1 : -1;
@@ -113,6 +156,28 @@ export default function TransactionsPage() {
     const totalExpenses = sorted.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const totalEarnings = sorted.filter(t => t.type === 'earning').reduce((s, t) => s + t.amount, 0);
 
+    // Wealth Insights logic based purely on currently loaded/filtered table data
+    const expensesOnly = sorted.filter(t => t.type === 'expense');
+
+    // 1. Biggest Single Expense
+    let biggestExpense = null;
+    if (expensesOnly.length > 0) {
+        biggestExpense = expensesOnly.reduce((max, t) => t.amount > max.amount ? t : max, expensesOnly[0]);
+    }
+
+    // 2. Most Frequent Category
+    const categoryCounts: Record<string, number> = {};
+    expensesOnly.forEach(t => { categoryCounts[t.category] = (categoryCounts[t.category] || 0) + 1; });
+
+    let topCategory = null;
+    let topCategoryCount = 0;
+    Object.entries(categoryCounts).forEach(([cat, count]) => {
+        if (count > topCategoryCount) {
+            topCategoryCount = count;
+            topCategory = cat;
+        }
+    });
+
     return (
         <div className="p-4 lg:p-8 max-w-[1400px] mx-auto page-enter">
             {/* Success Toast */}
@@ -141,20 +206,39 @@ export default function TransactionsPage() {
             </header>
 
             {/* Summary Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-                <div className="card-premium p-4 rounded-xl stat-gradient-emerald">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+                <div className="card-premium p-4 rounded-xl stat-gradient-emerald lg:col-span-1">
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Earnings</p>
                     <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">{fmt(totalEarnings)}</p>
                 </div>
-                <div className="card-premium p-4 rounded-xl stat-gradient-orange">
+                <div className="card-premium p-4 rounded-xl stat-gradient-orange lg:col-span-1">
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Expenses</p>
                     <p className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-1">{fmt(totalExpenses)}</p>
                 </div>
-                <div className="card-premium p-4 rounded-xl stat-gradient-blue col-span-2 lg:col-span-1">
+                <div className="card-premium p-4 rounded-xl stat-gradient-blue col-span-2 lg:col-span-1 border-r border-transparent lg:border-gray-200 lg:dark:border-[#30363d]">
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Net</p>
                     <p className={`text-lg font-bold mt-1 ${totalEarnings - totalExpenses >= 0 ? 'text-primary' : 'text-rose-500'}`}>
                         {totalEarnings - totalExpenses >= 0 ? '+' : ''}{fmt(totalEarnings - totalExpenses)}
                     </p>
+                </div>
+
+                {/* Wealth Insights Widget */}
+                <div className="card-premium p-4 rounded-xl col-span-2 lg:col-span-2 flex gap-4 bg-gradient-to-r from-violet-500/5 to-fuchsia-500/5 items-center justify-around border-violet-100 dark:border-violet-500/10 border">
+                    <div className="flex flex-col items-center justify-center text-center w-1/2">
+                        <span className="material-symbols-outlined text-violet-500 text-sm mb-0.5">warning</span>
+                        <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Largest Expense</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 truncate w-full px-2" title={biggestExpense?.description || biggestExpense?.category || 'None'}>
+                            {biggestExpense ? `${fmt(biggestExpense.amount)} (${biggestExpense.description || biggestExpense.category})` : 'N/A'}
+                        </p>
+                    </div>
+                    <div className="w-px h-10 bg-gray-200 dark:bg-[#30363d]"></div>
+                    <div className="flex flex-col items-center justify-center text-center w-1/2">
+                        <span className="material-symbols-outlined text-fuchsia-500 text-sm mb-0.5">repeat</span>
+                        <p className="text-[10px] font-bold text-fuchsia-600 dark:text-fuchsia-400 uppercase tracking-wider">Frequent Category</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 truncate w-full px-2">
+                            {topCategory ? `${topCategory} (${topCategoryCount}x)` : 'N/A'}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -194,12 +278,32 @@ export default function TransactionsPage() {
             {/* Filters */}
             <div className="card-premium flex flex-wrap gap-3 mb-5 p-3 rounded-xl">
                 <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-[#30363d]">
-                    {['day', 'week', 'month', 'all'].map(f => (
-                        <button key={f} onClick={() => setFilter(f)}
-                            className={`px-3 py-1.5 rounded-lg font-semibold transition-all capitalize ${filter === f ? 'bg-primary text-white shadow-sm' : 'text-gray-500 dark:text-text-muted hover:text-gray-900 dark:hover:text-white'}`}>
-                            {f === 'all' ? 'All Time' : `This ${f.charAt(0).toUpperCase() + f.slice(1)}`}
-                        </button>
-                    ))}
+                    <div className="flex items-center gap-1.5 px-3 py-1.5">
+                        <span className="material-symbols-outlined text-[16px] text-gray-500">calendar_month</span>
+                        <select
+                            value={selectedMonth}
+                            onChange={e => setSelectedMonth(e.target.value)}
+                            className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-semibold cursor-pointer"
+                        >
+                            {monthOptions.map(m => (
+                                <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-[#30363d]">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5">
+                        <span className="material-symbols-outlined text-[16px] text-gray-500">view_week</span>
+                        <select
+                            value={selectedWeek}
+                            onChange={e => setSelectedWeek(e.target.value)}
+                            className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-semibold cursor-pointer"
+                        >
+                            {weekOptions.map(w => (
+                                <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
                 <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-[#30363d]">
                     {['all', 'expense', 'earning'].map(t => (
@@ -267,7 +371,7 @@ export default function TransactionsPage() {
                     <span>Showing {sorted.length} transaction{sorted.length !== 1 ? 's' : ''}</span>
                     <span className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-sm">filter_list</span>
-                        {filter === 'all' ? 'All Time' : `This ${filter.charAt(0).toUpperCase() + filter.slice(1)}`}
+                        {selectedWeek === 'all' ? selectedMonth : `${selectedMonth} (Week ${selectedWeek})`}
                     </span>
                 </div>
             </div>
