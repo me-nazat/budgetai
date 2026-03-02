@@ -180,7 +180,7 @@ async function callOpenRouter(prompt: string, userMessage: string, timeoutMs = 1
 }
 
 // ==========================================
-// MAIN: Gemini first (fastest), OpenRouter fallback
+// MAIN: Race Gemini and OpenRouter (fastest wins)
 // ==========================================
 export async function processMessage(
     userMessage: string,
@@ -198,26 +198,21 @@ export async function processMessage(
         .replace('{PROFILE}', profileStr)
         .replace('{TODAY}', today);
 
-    // Try Gemini first (direct API = fastest path)
     try {
-        return await callGemini(prompt, userMessage);
+        // Run both APIs simultaneously and return the first one to succeed
+        return await Promise.any([
+            callGemini(prompt, userMessage),
+            callOpenRouter(prompt, userMessage)
+        ]);
     } catch (err) {
-        console.error('Gemini failed, trying OpenRouter:', err instanceof Error ? err.message : err);
+        console.error('Both AI responses failed:', err);
+        return {
+            message: 'AI is temporarily unavailable. Please try again in a moment.',
+            financialData: [],
+            actions: [],
+            isReportRequest: false,
+        };
     }
-
-    // Fallback to OpenRouter
-    try {
-        return await callOpenRouter(prompt, userMessage);
-    } catch (err) {
-        console.error('OpenRouter also failed:', err instanceof Error ? err.message : err);
-    }
-
-    return {
-        message: 'AI is temporarily unavailable. Please try again in a moment.',
-        financialData: [],
-        actions: [],
-        isReportRequest: false,
-    };
 }
 
 export function buildContext(
