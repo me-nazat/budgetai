@@ -85,6 +85,7 @@ export default function DashboardPage() {
     const [calcRate, setCalcRate] = useState<number>(7);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoading(true);
         Promise.all([
             fetch(`/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`).then(r => r.json()),

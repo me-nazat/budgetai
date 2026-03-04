@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 
 // In-memory cache to avoid hitting external APIs too frequently
-let cachedRates: any = null;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+let cachedRates: Record<string, any> | null = null;
 let cachedRatesTime = 0;
 const RATES_CACHE_TTL = 3600 * 1000; // 1 hour
 
-let cachedNews: any = null;
+let cachedNews: Record<string, any>[] | null = null;
 let cachedNewsTime = 0;
 const NEWS_CACHE_TTL = 1800 * 1000; // 30 mins
 
