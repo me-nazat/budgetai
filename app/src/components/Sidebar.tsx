@@ -51,27 +51,10 @@ export default function Sidebar() {
 
     return (
         <>
-            {/* Mobile hamburger */}
-            <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-surface-dark-2 text-white border border-surface-border"
-            >
-                <span className="material-symbols-outlined">menu</span>
-            </button>
-
-            {/* Overlay */}
-            {!collapsed && (
-                <div
-                    className="lg:hidden fixed inset-0 bg-black/50 z-30"
-                    onClick={() => setCollapsed(true)}
-                />
-            )}
-
             <aside className={`
-        fixed left-0 top-0 z-40 h-screen w-64 flex flex-col justify-between
+        hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col justify-between
         bg-white dark:bg-[#0d1117] border-r border-gray-200 dark:border-[#30363d]
         transition-transform duration-300
-        ${collapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}
       `}>
                 <div className="flex flex-col h-full">
                     <div className="p-6 pb-2 shrink-0">

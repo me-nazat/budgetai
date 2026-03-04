@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
@@ -14,10 +14,21 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0A0A0A",
+};
+
 export const metadata: Metadata = {
   title: "Wealth AI — Smart Finance",
   description: "AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights.",
   keywords: "wealth AI, budget, savings, AI, finance, expense tracker, personal finance, net worth",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Wealth AI",
+  },
+  applicationName: "Wealth AI",
 };
 
 export default function RootLayout({

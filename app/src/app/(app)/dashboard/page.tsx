@@ -417,8 +417,8 @@ export default function DashboardPage() {
                                         <a key={news.id} href="#" className="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-surface-hover border border-gray-100 dark:border-[#30363d] transition-all hover:scale-[1.02] hover:shadow-md">
                                             <div className="flex justify-between items-start mb-1.5">
                                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${news.sentiment === 'positive' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
-                                                        news.sentiment === 'negative' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
-                                                            'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
+                                                    news.sentiment === 'negative' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
+                                                        'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
                                                     }`}>
                                                     {news.sentiment}
                                                 </span>
@@ -465,7 +465,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Floating AI Button */}
-            <a href="/chat" className="fixed bottom-8 right-8 bg-primary text-white rounded-2xl p-4 btn-primary-glow flex items-center gap-2 group z-50 animate-bounce-in shadow-lg">
+            <a href="/chat" className="hidden lg:flex fixed bottom-8 right-8 bg-primary text-white rounded-2xl p-4 btn-primary-glow items-center gap-2 group z-50 animate-bounce-in shadow-lg">
                 <span className="material-symbols-outlined text-2xl group-hover:rotate-12 transition-transform duration-300">smart_toy</span>
                 <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ease-in-out font-bold text-sm">Talk to AI</span>
             </a>

@@ -410,7 +410,7 @@ export default function ChatPage() {
     };
 
     return (
-        <div className="flex flex-col h-screen">
+        <div className="flex flex-col h-[calc(100dvh-64px)] lg:h-[100dvh]">
             {/* Header */}
             <div className="h-14 lg:h-16 border-b border-gray-200 dark:border-[#30363d] flex items-center justify-between px-4 lg:px-6 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-2.5">
