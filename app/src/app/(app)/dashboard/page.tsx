@@ -173,7 +173,7 @@ export default function DashboardPage() {
                     </h2>
                     <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Here&apos;s what&apos;s happening with your money.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#30363d]">
                         <span className="material-symbols-outlined text-base">calendar_month</span>
                         <select
@@ -322,10 +322,10 @@ export default function DashboardPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider">
-                                    <th className="px-6 py-3.5 font-semibold">Transaction</th>
-                                    <th className="px-6 py-3.5 font-semibold">Category</th>
-                                    <th className="px-6 py-3.5 font-semibold">Date</th>
-                                    <th className="px-6 py-3.5 font-semibold text-right">Amount</th>
+                                    <th className="px-4 lg:px-6 py-3.5 font-semibold">Transaction</th>
+                                    <th className="px-4 lg:px-6 py-3.5 font-semibold hidden md:table-cell">Category</th>
+                                    <th className="px-4 lg:px-6 py-3.5 font-semibold hidden sm:table-cell">Date</th>
+                                    <th className="px-4 lg:px-6 py-3.5 font-semibold text-right">Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
@@ -336,21 +336,21 @@ export default function DashboardPage() {
                                     </td></tr>
                                 ) : data.recentTransactions.map((t) => (
                                     <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover/50 transition-colors duration-200">
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 lg:px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
                                                     <span className="material-symbols-outlined text-lg">{categoryIcons[t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()] || 'category'}</span>
                                                 </div>
-                                                <span className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</span>
+                                                <span className="font-medium text-gray-900 dark:text-white truncate">{t.description || t.category}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 lg:px-6 py-4 hidden md:table-cell">
                                             <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-surface-hover text-gray-600 dark:text-text-muted">
                                                 {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-500 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                                        <td className={`px-6 py-4 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        <td className="px-4 lg:px-6 py-4 text-gray-500 dark:text-text-muted hidden sm:table-cell">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                        <td className={`px-4 lg:px-6 py-4 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                             {t.type === 'expense' ? '-' : '+'}{fmt(t.amount)}
                                         </td>
                                     </tr>
