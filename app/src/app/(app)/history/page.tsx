@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Session { session_id: string; latest_content: string; latest_time: string; message_count: number; }
 interface Message { id: number; role: string; content: string; mode: string; created_at: string; }
 
 export default function HistoryPage() {
+    const router = useRouter();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [selected, setSelected] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -97,6 +99,13 @@ export default function HistoryPage() {
                                 <h1 className="text-gray-900 dark:text-white text-lg font-bold">Conversation</h1>
                                 <p className="text-xs text-gray-400">{messages.length} Messages</p>
                             </div>
+                            <button
+                                onClick={() => router.push(`/chat?session_id=${selected}`)}
+                                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-medium transition-all shadow-sm shadow-primary/20"
+                            >
+                                Continue Chat
+                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                            </button>
                         </header>
                         <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
                             {messages.map(m => (

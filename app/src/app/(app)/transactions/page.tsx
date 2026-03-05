@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { mutate } from 'swr';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useTransactions, invalidateFinancialData } from '@/hooks/useApi';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { queueTransaction } from '@/lib/offlineDb';
+import { queueTransaction, deleteSyncedTransaction } from '@/lib/offlineDb';
 
 const categoryIcons: Record<string, string> = {
     Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
@@ -36,6 +37,11 @@ export default function TransactionsPage() {
     const [qaDesc, setQaDesc] = useState('');
     const [qaDate, setQaDate] = useState(new Date().toISOString().split('T')[0]);
     const [qaSubmitting, setQaSubmitting] = useState(false);
+
+    // Edit/Action state
+    const [actionMenuOpenId, setActionMenuOpenId] = useState<number | string | null>(null);
+    const [editingTx, setEditingTx] = useState<any>(null);
+    const [editSubmitting, setEditSubmitting] = useState(false);
 
     // Compute date ranges from month/week selection
     const dateRange = useMemo(() => {
@@ -85,6 +91,7 @@ export default function TransactionsPage() {
         setQaSubmitting(true);
 
         const payload = {
+            actionType: 'add' as const,
             type: qaType,
             amount: parsed,
             category: qaCategory,
@@ -99,7 +106,6 @@ export default function TransactionsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-            // Invalidate caches so SWR refetches
             invalidateFinancialData();
             setLastSubmitOffline(false);
         } else {
@@ -125,6 +131,131 @@ export default function TransactionsPage() {
         }
 
         setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+    };
+
+    const submitEdit = async () => {
+        const parsed = parseFloat(editingTx.amount);
+        if (!editingTx.amount || isNaN(parsed) || parsed <= 0 || !editingTx.category) return;
+        setEditSubmitting(true);
+
+        const payload = {
+            actionType: 'edit' as const,
+            id: editingTx.id,
+            type: editingTx.type,
+            amount: parsed,
+            category: editingTx.category,
+            description: editingTx.description || editingTx.category,
+            date: editingTx.date,
+        };
+
+        if (isOnline) {
+            // Online: PUT directly to API
+            await fetch('/api/transactions', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingTx.id,
+                    type: editingTx.type,
+                    amount: parsed,
+                    category: editingTx.category,
+                    description: editingTx.description || editingTx.category,
+                    date: editingTx.date,
+                }),
+            });
+            invalidateFinancialData();
+            setLastSubmitOffline(false);
+        } else {
+            // Offline: queue to IndexedDB + optimistic update
+            await queueTransaction(payload);
+            mutate(
+                swrKey,
+                (current: { transactions: any[]; total: number } | undefined) => {
+                    const updated = (current?.transactions || []).map(t =>
+                        t.id === editingTx.id ? { ...t, ...payload, pending: true } : t
+                    );
+                    return { transactions: updated, total: current?.total || 0 };
+                },
+                { revalidate: false }
+            );
+            setLastSubmitOffline(true);
+        }
+
+        setEditingTx(null); setEditSubmitting(false); setActionMenuOpenId(null);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+    };
+
+    const submitDelete = async (txId: number | string) => {
+        if (!confirm('Are you sure you want to delete this transaction?')) return;
+
+        const payload = { actionType: 'delete' as const, id: Number(txId) };
+
+        if (isOnline) {
+            await fetch('/api/transactions', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: txId }),
+            });
+            invalidateFinancialData();
+            setLastSubmitOffline(false);
+        } else {
+            await queueTransaction(payload);
+            mutate(
+                swrKey,
+                (current: { transactions: any[]; total: number } | undefined) => {
+                    const filtered = (current?.transactions || []).filter(t => t.id !== txId);
+                    return { transactions: filtered, total: Math.max(0, (current?.total || 1) - 1) };
+                },
+                { revalidate: false }
+            );
+            setLastSubmitOffline(true);
+        }
+        setActionMenuOpenId(null);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+    };
+
+    const submitDuplicate = async (tx: any) => {
+        const payload = {
+            actionType: 'add' as const,
+            type: tx.type,
+            amount: tx.amount,
+            category: tx.category,
+            description: tx.description,
+            date: new Date().toISOString().split('T')[0], // Use today for duplication
+        };
+
+        if (isOnline) {
+            await fetch('/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            invalidateFinancialData();
+            setLastSubmitOffline(false);
+        } else {
+            await queueTransaction(payload);
+            mutate(
+                swrKey,
+                (current: { transactions: any[]; total: number } | undefined) => {
+                    const optimistic = {
+                        id: Date.now(),
+                        ...payload,
+                        created_at: new Date().toISOString(),
+                        pending: true,
+                    };
+                    return {
+                        transactions: [optimistic, ...(current?.transactions || [])],
+                        total: (current?.total || 0) + 1,
+                    };
+                },
+                { revalidate: false }
+            );
+            setLastSubmitOffline(true);
+        }
+        setActionMenuOpenId(null);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
     };
@@ -374,12 +505,12 @@ export default function TransactionsPage() {
                                     <p className="text-gray-400 dark:text-text-muted text-sm">Loading transactions...</p>
                                 </td></tr>
                             ) : sorted.length === 0 ? (
-                                <tr><td colSpan={4} className="px-6 py-12 text-center">
+                                <tr><td colSpan={5} className="px-6 py-12 text-center">
                                     <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">search_off</span>
                                     <p className="text-gray-400 dark:text-text-muted">No transactions found for this period.</p>
                                 </td></tr>
                             ) : sorted.map((t, i) => (
-                                <tr key={t.id} className="hover:bg-gray-50/50 dark:hover:bg-surface-hover/30 transition-colors duration-200"
+                                <tr key={t.id} className="group hover:bg-gray-50/50 dark:hover:bg-surface-hover/30 transition-colors duration-200"
                                     style={{ animation: `slideUp 0.3s ease-out ${Math.min(i * 0.03, 0.3)}s both` }}>
                                     <td className="px-6 py-3.5">
                                         <div className="flex items-center gap-3">
@@ -405,6 +536,58 @@ export default function TransactionsPage() {
                                     <td className="px-6 py-3.5 text-gray-500 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                                     <td className={`px-6 py-3.5 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                         {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
+                                    </td>
+                                    <td className="px-6 py-3.5 text-right w-12">
+                                        <div className="relative inline-block text-left">
+                                            <button
+                                                onClick={() => setActionMenuOpenId(actionMenuOpenId === t.id ? null : t.id)}
+                                                className={`p-1.5 rounded-full transition-colors ${actionMenuOpenId === t.id ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-surface-dark text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}
+                                            >
+                                                <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {actionMenuOpenId === t.id && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpenId(null)}></div>
+                                                        <motion.div
+                                                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                            transition={{ duration: 0.15 }}
+                                                            className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-xl shadow-xl z-20 overflow-hidden"
+                                                        >
+                                                            <div className="flex flex-col py-1">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingTx({ ...t });
+                                                                        setActionMenuOpenId(null);
+                                                                    }}
+                                                                    className="px-3 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-200 transition-colors"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => submitDuplicate(t)}
+                                                                    className="px-3 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-200 transition-colors"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                                                                    Duplicate
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => submitDelete(t.id)}
+                                                                    className="px-3 py-2.5 text-sm text-left hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center gap-2 transition-colors"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                                    Delete
+                                                                </button>
+                                                            </div>
+                                                        </motion.div>
+                                                    </>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

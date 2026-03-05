@@ -13,7 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <CurrencySelector />
                 <OfflineBanner />
                 <SyncOnReconnect />
-                <main className="lg:ml-64 flex-1 pb-16 lg:pb-0 min-h-screen">
+                <main className="lg:ml-64 flex-1 pb-20 lg:pb-0 min-h-screen">
                     {children}
                 </main>
                 <MobileTabBar />

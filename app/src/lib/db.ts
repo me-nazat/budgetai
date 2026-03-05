@@ -42,7 +42,7 @@ function getClient(): Client {
   return client;
 }
 
-async function ensureInitialized(): Promise<void> {
+export async function ensureDbInitialized(): Promise<void> {
   if (initialized) return;
   const c = getClient();
 
@@ -158,20 +158,20 @@ function rowToObject(row: Record<string, unknown>): Record<string, unknown> {
 
 // Helper query functions (async)
 export async function queryAll<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
-  await ensureInitialized();
+  await ensureDbInitialized();
   const result = await getClient().execute({ sql, args: params as InValue[] });
   return result.rows.map(row => rowToObject(row as unknown as Record<string, unknown>) as T);
 }
 
 export async function queryOne<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T | undefined> {
-  await ensureInitialized();
+  await ensureDbInitialized();
   const result = await getClient().execute({ sql, args: params as InValue[] });
   if (result.rows.length === 0) return undefined;
   return rowToObject(result.rows[0] as unknown as Record<string, unknown>) as T;
 }
 
 export async function run(sql: string, params: unknown[] = []): Promise<{ rowsAffected: number; lastInsertRowid: number }> {
-  await ensureInitialized();
+  await ensureDbInitialized();
   const result = await getClient().execute({ sql, args: params as InValue[] });
   return {
     rowsAffected: result.rowsAffected,

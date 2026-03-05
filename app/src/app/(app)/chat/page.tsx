@@ -40,6 +40,33 @@ export default function ChatPage() {
     const sym = CURRENCIES[currency].symbol;
 
     useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const sid = searchParams.get('session_id');
+        if (sid) {
+            setSessionId(sid);
+            setLoading(true);
+            fetch(`/api/chat/messages?sessionId=${sid}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.messages && d.messages.length > 0) {
+                        setMessages(d.messages);
+                        const lastMsg = d.messages[d.messages.length - 1];
+                        if (lastMsg && lastMsg.mode) {
+                            setMode(lastMsg.mode === 'silent' ? 'silent' : 'chat');
+                        } else {
+                            setMode('chat');
+                        }
+                    }
+                })
+                .catch(err => console.error('Failed to load chat history:', err))
+                .finally(() => setLoading(false));
+
+            // Rewrite URL without reload to clean it up
+            window.history.replaceState({}, '', '/chat');
+        }
+    }, [setMode]);
+
+    useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
@@ -416,7 +443,7 @@ export default function ChatPage() {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100dvh-64px)] lg:h-[100dvh]">
+        <div className="flex flex-col h-[calc(100dvh-64px-80px)] lg:h-[100dvh]">
             {/* Header */}
             <div className="h-14 lg:h-16 border-b border-gray-200 dark:border-[#30363d] flex items-center justify-between px-4 lg:px-6 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-2.5">

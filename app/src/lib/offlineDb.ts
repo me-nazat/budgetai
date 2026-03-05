@@ -7,11 +7,13 @@ const STORE_NAME = 'pendingTransactions';
 interface PendingTransaction {
     id: string;
     payload: {
-        type: string;
-        amount: number;
-        category: string;
-        description: string;
-        date: string;
+        actionType?: 'add' | 'edit' | 'delete';
+        id?: number;
+        type?: string;
+        amount?: number;
+        category?: string;
+        description?: string;
+        date?: string;
     };
     createdAt: number;
     retryCount: number;
