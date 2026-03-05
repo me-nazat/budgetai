@@ -32,7 +32,7 @@ function getClient(): Client {
   if (!client) {
     const url = process.env.TURSO_DATABASE_URL;
     if (!url) {
-      throw new Error('TURSO_DATABASE_URL environment variable is not set. Please add it to your Vercel project settings.');
+      throw new Error('TURSO_DATABASE_URL environment variable is not set. Please add it to your environment variables.');
     }
     client = createClient({
       url,

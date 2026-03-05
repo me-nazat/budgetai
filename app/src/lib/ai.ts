@@ -149,7 +149,7 @@ async function callOpenRouter(prompt: string, userMessage: string, timeoutMs = 1
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
+                'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
             },
             body: JSON.stringify({
                 model: 'google/gemini-2.0-flash-001',
