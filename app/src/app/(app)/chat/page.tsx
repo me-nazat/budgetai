@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { invalidateFinancialData } from '@/hooks/useApi';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 
@@ -139,6 +140,11 @@ export default function ChatPage() {
                     }
                     return newMessages;
                 });
+
+                // Invalidate dashboard & transaction caches if data was mutated
+                if ((aiMsg.transactions && aiMsg.transactions.length > 0) || (aiMsg.actionResults && aiMsg.actionResults.length > 0)) {
+                    invalidateFinancialData();
+                }
             }
 
             // If report requested, generate downloads

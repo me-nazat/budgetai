@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
+import { useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
 import {
     Chart as ChartJS,
     CategoryScale, LinearScale, BarElement, LineElement, PointElement,
@@ -12,26 +13,11 @@ import { Bar, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
-interface DashboardData {
-    expenses: { current: number; change: number };
-    earnings: { current: number; change: number };
-    netSavings: number;
-    balance: number;
-    categorySpending: Array<{ category: string; total: number }>;
-    dailySpending: Array<{ date: string; expenses: number; earnings: number }>;
-    recentTransactions: Array<{ id: number; type: string; amount: number; category: string; description: string; date: string }>;
-    budgetAlerts: Array<{ category: string; limit: number; spent: number; percentage: number }>;
-    netWorth: number;
-}
-
-interface MarketNews {
-    id: number; title: string; source: string; time: string; sentiment: 'positive' | 'negative' | 'neutral';
-}
-
-interface CurrencyRates {
-    base_code: string;
-    rates: Record<string, number>;
-}
+const categoryColors: Record<string, string> = {
+    Food: '#f97316', Transport: '#8b5cf6', Housing: '#3b82f6', Utilities: '#eab308',
+    Entertainment: '#ec4899', Shopping: '#6366f1', Health: '#10b981', Education: '#06b6d4',
+    Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
+};
 
 const categoryIcons: Record<string, string> = {
     Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
@@ -40,16 +26,7 @@ const categoryIcons: Record<string, string> = {
     Freelance: 'work', Investment: 'trending_up', Other: 'category',
 };
 
-const categoryColors: Record<string, string> = {
-    Food: '#f97316', Transport: '#8b5cf6', Housing: '#3b82f6', Utilities: '#eab308',
-    Entertainment: '#ec4899', Shopping: '#6366f1', Health: '#10b981', Education: '#06b6d4',
-    Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
-};
-
 export default function DashboardPage() {
-    const [data, setData] = useState<DashboardData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [userName, setUserName] = useState('');
     const chartRef = useRef(null);
     const { currency, fmt } = useCurrency();
 
@@ -57,6 +34,18 @@ export default function DashboardPage() {
         `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
     );
     const [selectedWeek, setSelectedWeek] = useState<string>('all');
+
+    // SWR hooks — cached, stale-while-revalidate
+    const { data, isLoading, isValidating } = useDashboard(selectedMonth, selectedWeek);
+    const { user } = useUser();
+    const marketNews = useMarketNews();
+    const exchangeRates = useExchangeRates(currency);
+
+    // Intelligence Hub — default to 'news' tab (Task 2)
+    const [activeTab, setActiveTab] = useState<'currency' | 'news' | 'calculator'>('news');
+    const [calcAmount, setCalcAmount] = useState<number>(500);
+    const [calcYears, setCalcYears] = useState<number>(10);
+    const [calcRate, setCalcRate] = useState<number>(7);
 
     // Generate last 12 months for the dropdown
     const monthOptions = Array.from({ length: 12 }).map((_, i) => {
@@ -76,41 +65,8 @@ export default function DashboardPage() {
         { value: '4', label: 'Week 4 (22nd-End)' },
     ];
 
-    // Extra Features State
-    const [activeTab, setActiveTab] = useState<'currency' | 'news' | 'calculator'>('currency');
-    const [marketNews, setMarketNews] = useState<MarketNews[]>([]);
-    const [exchangeRates, setExchangeRates] = useState<CurrencyRates | null>(null);
-    const [calcAmount, setCalcAmount] = useState<number>(500);
-    const [calcYears, setCalcYears] = useState<number>(10);
-    const [calcRate, setCalcRate] = useState<number>(7);
-
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setLoading(true);
-        Promise.all([
-            fetch(`/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`).then(r => r.json()),
-            fetch('/api/auth/me').then(r => r.json()),
-        ]).then(([dashData, userData]) => {
-            if (dashData.error) {
-                setData(null);
-            } else {
-                setData(dashData);
-            }
-            if (userData?.user?.name) setUserName(userData.user.name);
-            setLoading(false);
-        }).catch(() => setLoading(false));
-    }, [selectedMonth, selectedWeek]);
-
-    useEffect(() => {
-        // Fetch extra features data
-        fetch(`/api/market?type=news`).then(r => r.json()).then(d => setMarketNews(d.news || []));
-        fetch(`/api/market?type=rates&base=${currency}`).then(r => r.json()).then(d => {
-            // Check if it's the ER-API format or error
-            if (!d.error && d.rates) setExchangeRates(d);
-        });
-    }, [currency]);
-
-    if (loading) {
+    // Only show full spinner on very first load (no cached data at all)
+    if (!data && isLoading) {
         return (
             <div className="flex items-center justify-center h-screen">
                 <div className="text-center">
@@ -123,6 +79,7 @@ export default function DashboardPage() {
 
     if (!data) return <div className="p-8 text-gray-500">Failed to load dashboard</div>;
 
+    const userName = user?.name || '';
     const sym = CURRENCIES[currency].symbol;
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
     const gridColor = isDark ? '#21262d' : '#e5e7eb';
@@ -165,6 +122,13 @@ export default function DashboardPage() {
 
     return (
         <div className="p-4 lg:p-8 max-w-[1600px] mx-auto page-enter">
+            {/* Subtle revalidation indicator — replaces full-screen spinner */}
+            {isValidating && (
+                <div className="fixed top-0 left-0 lg:left-64 right-0 z-50 h-0.5">
+                    <div className="h-full bg-primary/60 animate-pulse rounded-full" />
+                </div>
+            )}
+
             {/* Header */}
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>

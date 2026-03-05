@@ -7,15 +7,34 @@ export default function CurrencySelector() {
     const [show, setShow] = useState(false);
     const [selected, setSelected] = useState<CurrencyCode | null>(null);
     const [saving, setSaving] = useState(false);
+    const [checked, setChecked] = useState(false);
 
     useEffect(() => {
-        // Check if currency has been chosen before
+        // Check localStorage first (instant)
         const stored = localStorage.getItem('budget-ai-currency');
-        if (!stored) {
-            // No currency set — show the selector
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setShow(true);
+        if (stored) {
+            setChecked(true);
+            return; // Currency already chosen — don't show modal
         }
+
+        // No localStorage — check if server has a currency set (handles new device / cleared storage)
+        fetch('/api/auth/me')
+            .then(r => r.json())
+            .then(d => {
+                if (d.user?.currency && (d.user.currency === 'USD' || d.user.currency === 'BDT')) {
+                    // Server has currency — save to localStorage and skip modal
+                    localStorage.setItem('budget-ai-currency', d.user.currency);
+                } else {
+                    // Neither localStorage nor server has currency — show modal
+                    setShow(true);
+                }
+                setChecked(true);
+            })
+            .catch(() => {
+                // Network error: show the modal to be safe for first-time users
+                setShow(true);
+                setChecked(true);
+            });
     }, []);
 
     const handleSelect = async (code: CurrencyCode) => {
@@ -37,7 +56,8 @@ export default function CurrencySelector() {
         setShow(false);
     };
 
-    if (!show) return null;
+    // Don't render anything until we've checked both sources
+    if (!checked || !show) return null;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">

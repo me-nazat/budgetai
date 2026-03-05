@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { mutate } from 'swr';
 import { useCurrency } from '@/hooks/useCurrency';
-
-interface Transaction {
-    id: number; type: string; amount: number; category: string; description: string; date: string; created_at: string;
-}
+import { useTransactions, invalidateFinancialData } from '@/hooks/useApi';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { queueTransaction } from '@/lib/offlineDb';
 
 const categoryIcons: Record<string, string> = {
     Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
@@ -16,13 +16,118 @@ const categoryIcons: Record<string, string> = {
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
 
 export default function TransactionsPage() {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [loading, setLoading] = useState(true);
-
     const [selectedMonth, setSelectedMonth] = useState<string>(
         `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
     );
     const [selectedWeek, setSelectedWeek] = useState<string>('all');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [sortField, setSortField] = useState('date');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [lastSubmitOffline, setLastSubmitOffline] = useState(false);
+    const { fmt } = useCurrency();
+    const { isOnline } = useNetworkStatus();
+
+    // Quick Add state
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [qaType, setQaType] = useState<'expense' | 'earning'>('expense');
+    const [qaAmount, setQaAmount] = useState('');
+    const [qaCategory, setQaCategory] = useState('');
+    const [qaDesc, setQaDesc] = useState('');
+    const [qaDate, setQaDate] = useState(new Date().toISOString().split('T')[0]);
+    const [qaSubmitting, setQaSubmitting] = useState(false);
+
+    // Compute date ranges from month/week selection
+    const dateRange = useMemo(() => {
+        let currentYear: number, currentMonth: number;
+        if (selectedMonth && selectedMonth.match(/^\d{4}-\d{2}$/)) {
+            [currentYear, currentMonth] = selectedMonth.split('-').map(Number);
+        } else {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth() + 1;
+        }
+
+        let startDay = 1;
+        let endDay = new Date(currentYear, currentMonth, 0).getDate();
+
+        if (selectedWeek && selectedWeek !== 'all') {
+            const weekNum = parseInt(selectedWeek);
+            if (weekNum === 1) { startDay = 1; endDay = 7; }
+            else if (weekNum === 2) { startDay = 8; endDay = 14; }
+            else if (weekNum === 3) { startDay = 15; endDay = 21; }
+            else if (weekNum === 4) { startDay = 22; /* endDay is already last day of month */ }
+        }
+
+        const start = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+        const end = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+        return { start, end };
+    }, [selectedMonth, selectedWeek]);
+
+    // SWR hook — cached, stale-while-revalidate
+    const { transactions, isLoading, isValidating } = useTransactions(
+        dateRange.start, dateRange.end, typeFilter
+    );
+
+    // Build the SWR key to match what useTransactions generates
+    const swrKey = useMemo(() => {
+        const params = new URLSearchParams();
+        if (dateRange.start) params.set('start', dateRange.start);
+        if (dateRange.end) params.set('end', dateRange.end);
+        if (typeFilter !== 'all') params.set('type', typeFilter);
+        params.set('limit', '200');
+        return `/api/transactions?${params.toString()}`;
+    }, [dateRange.start, dateRange.end, typeFilter]);
+
+    const submitQuickAdd = async () => {
+        const parsed = parseFloat(qaAmount);
+        if (!qaAmount || isNaN(parsed) || parsed <= 0 || !qaCategory) return;
+        setQaSubmitting(true);
+
+        const payload = {
+            type: qaType,
+            amount: parsed,
+            category: qaCategory,
+            description: qaDesc || qaCategory,
+            date: qaDate,
+        };
+
+        if (isOnline) {
+            // Online: POST directly to API
+            await fetch('/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            // Invalidate caches so SWR refetches
+            invalidateFinancialData();
+            setLastSubmitOffline(false);
+        } else {
+            // Offline: queue to IndexedDB + optimistic SWR update
+            await queueTransaction(payload);
+            mutate(
+                swrKey,
+                (current: { transactions: any[]; total: number } | undefined) => {
+                    const optimistic = {
+                        id: Date.now(),
+                        ...payload,
+                        created_at: new Date().toISOString(),
+                        pending: true,
+                    };
+                    return {
+                        transactions: [optimistic, ...(current?.transactions || [])],
+                        total: (current?.total || 0) + 1,
+                    };
+                },
+                { revalidate: false }
+            );
+            setLastSubmitOffline(true);
+        }
+
+        setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+    };
 
     // Generate last 12 months for the dropdown
     const monthOptions = Array.from({ length: 12 }).map((_, i) => {
@@ -41,85 +146,6 @@ export default function TransactionsPage() {
         { value: '3', label: 'Week 3 (15th-21st)' },
         { value: '4', label: 'Week 4 (22nd-End)' },
     ];
-
-    const [typeFilter, setTypeFilter] = useState('all');
-    const [sortField, setSortField] = useState('date');
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-    const [showSuccess, setShowSuccess] = useState(false);
-    const { fmt } = useCurrency();
-
-    // Quick Add state
-    const [showQuickAdd, setShowQuickAdd] = useState(false);
-    const [qaType, setQaType] = useState<'expense' | 'earning'>('expense');
-    const [qaAmount, setQaAmount] = useState('');
-    const [qaCategory, setQaCategory] = useState('');
-    const [qaDesc, setQaDesc] = useState('');
-    const [qaDate, setQaDate] = useState('');
-    const [qaSubmitting, setQaSubmitting] = useState(false);
-
-    useEffect(() => {
-        setQaDate(new Date().toISOString().split('T')[0]);
-    }, []);
-
-    const submitQuickAdd = async () => {
-        const parsed = parseFloat(qaAmount);
-        if (!qaAmount || isNaN(parsed) || parsed <= 0 || !qaCategory) return;
-        setQaSubmitting(true);
-        await fetch('/api/transactions', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: qaType, amount: parsed, category: qaCategory, description: qaDesc || qaCategory, date: qaDate }),
-        });
-        setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
-        loadData();
-    };
-
-    const getDateRanges = () => {
-        let currentYear, currentMonth;
-        if (selectedMonth && selectedMonth.match(/^\d{4}-\d{2}$/)) {
-            [currentYear, currentMonth] = selectedMonth.split('-').map(Number);
-        } else {
-            const now = new Date();
-            currentYear = now.getFullYear();
-            currentMonth = now.getMonth() + 1;
-        }
-
-        let startDayCurrent = 1;
-        let endDayCurrent = new Date(currentYear, currentMonth, 0).getDate();
-
-        if (selectedWeek && selectedWeek !== 'all') {
-            const weekNum = parseInt(selectedWeek);
-            if (weekNum === 1) { startDayCurrent = 1; endDayCurrent = 7; }
-            else if (weekNum === 2) { startDayCurrent = 8; endDayCurrent = 14; }
-            else if (weekNum === 3) { startDayCurrent = 15; endDayCurrent = 21; }
-            else if (weekNum === 4) { startDayCurrent = 22; /* endDay is already last day of month */ }
-        }
-
-        const start = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(startDayCurrent).padStart(2, '0')}`;
-        const end = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(endDayCurrent).padStart(2, '0')}`;
-
-        return { start, end };
-    };
-
-    const loadData = () => {
-        setLoading(true);
-        const params = new URLSearchParams();
-        const { start, end } = getDateRanges();
-
-        if (start) params.set('start', start);
-        if (end) params.set('end', end);
-        if (typeFilter !== 'all') params.set('type', typeFilter);
-        params.set('limit', '200');
-
-        fetch(`/api/transactions?${params.toString()}`)
-            .then(r => r.json())
-            .then(d => { setTransactions(d.transactions || []); setLoading(false); })
-            .catch(() => setLoading(false));
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadData(); }, [selectedMonth, selectedWeek, typeFilter]);
 
     const sorted = [...transactions].sort((a, b) => {
         const dir = sortDir === 'asc' ? 1 : -1;
@@ -178,14 +204,24 @@ export default function TransactionsPage() {
         }
     });
 
+    // Show loading only on first ever load (no cached data)
+    const showFullLoading = !transactions.length && isLoading;
+
     return (
         <div className="p-4 lg:p-8 max-w-[1400px] mx-auto page-enter">
+            {/* Subtle revalidation indicator */}
+            {isValidating && (
+                <div className="fixed top-0 left-0 lg:left-64 right-0 z-50 h-0.5">
+                    <div className="h-full bg-primary/60 animate-pulse rounded-full" />
+                </div>
+            )}
+
             {/* Success Toast */}
             {showSuccess && (
                 <div className="fixed top-6 right-6 z-50 toast-enter">
-                    <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20">
-                        <span className="material-symbols-outlined text-lg">check_circle</span>
-                        <span className="text-sm font-semibold">Transaction saved!</span>
+                    <div className={`flex items-center gap-2 px-4 py-3 text-white rounded-xl shadow-lg ${lastSubmitOffline ? 'bg-amber-500 shadow-amber-500/20' : 'bg-emerald-500 shadow-emerald-500/20'}`}>
+                        <span className="material-symbols-outlined text-lg">{lastSubmitOffline ? 'schedule' : 'check_circle'}</span>
+                        <span className="text-sm font-semibold">{lastSubmitOffline ? 'Queued — will sync when online' : 'Transaction saved!'}</span>
                     </div>
                 </div>
             )}
@@ -332,7 +368,7 @@ export default function TransactionsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
-                            {loading ? (
+                            {showFullLoading ? (
                                 <tr><td colSpan={4} className="px-6 py-12 text-center">
                                     <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                                     <p className="text-gray-400 dark:text-text-muted text-sm">Loading transactions...</p>
@@ -350,7 +386,15 @@ export default function TransactionsPage() {
                                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
                                                 <span className="material-symbols-outlined text-lg">{categoryIcons[t.category] || 'category'}</span>
                                             </div>
-                                            <span className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</span>
+                                                {(t as any).pending && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                        Pending sync
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-3.5">

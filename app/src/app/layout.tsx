@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,6 +30,9 @@ export const metadata: Metadata = {
     title: "Wealth AI",
   },
   applicationName: "Wealth AI",
+  icons: {
+    apple: "/icon-192x192.png",
+  },
 };
 
 export default function RootLayout({
@@ -47,6 +51,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} font-[Inter,sans-serif] antialiased`}>
         <ThemeScript />
         {children}
+        <InstallPrompt />
       </body>
     </html>
   );
