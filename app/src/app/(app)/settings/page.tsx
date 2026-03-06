@@ -54,13 +54,19 @@ export default function SettingsPage() {
                MOBILE SETTINGS VIEW
                ═══════════════════════════════════════════════ */}
             <div className="lg:hidden">
-                {/* Profile Header */}
-                <div className="flex flex-col items-center text-center mb-6 pt-2">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-primary/30 mb-3">
-                        {name?.charAt(0)?.toUpperCase() || 'U'}
+                {/* Profile Header (Redesigned) */}
+                <div className="flex flex-col items-center text-center mb-8 pt-4 relative">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 dark:bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" />
+
+                    <div className="relative w-24 h-24 rounded-[2rem] bg-gradient-to-br from-primary via-blue-500 to-indigo-600 dark:from-primary/80 dark:to-indigo-500/80 flex items-center justify-center text-white text-4xl font-bold shadow-xl shadow-primary/20 mb-4 overflow-hidden border border-white/20">
+                        <div className="absolute inset-0 bg-white/20 rounded-full blur-xl animate-pulse" style={{ animationDuration: '3s' }} />
+                        <span className="relative z-10">{name?.charAt(0)?.toUpperCase() || 'U'}</span>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{name || 'User'}</h2>
-                    <p className="text-sm text-gray-500 dark:text-text-muted">{email}</p>
+
+                    <div className="bg-white/50 dark:bg-[#161b22]/50 backdrop-blur-md px-6 py-2 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{name || 'User'}</h2>
+                        <p className="text-sm font-medium text-gray-500 dark:text-text-muted">{email}</p>
+                    </div>
                 </div>
 
                 {/* Settings Groups */}
@@ -123,9 +129,9 @@ export default function SettingsPage() {
                                 </div>
                                 <button
                                     onClick={toggleTheme}
-                                    className={`relative w-12 h-6 rounded-full transition-all duration-300 ${isDark ? 'bg-primary' : 'bg-gray-300'}`}
+                                    className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${isDark ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
                                 >
-                                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${isDark ? 'translate-x-6' : 'translate-x-0'}`} />
+                                    <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-500 ease-spring ${isDark ? 'translate-x-7' : 'translate-x-0'}`} />
                                 </button>
                             </div>
                         </div>
@@ -151,9 +157,9 @@ export default function SettingsPage() {
                                     </div>
                                     <button
                                         onClick={() => item.setter(!item.value)}
-                                        className={`relative w-12 h-6 rounded-full transition-all duration-300 ${item.value ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                        className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${item.value ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
                                     >
-                                        <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${item.value ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-500 ease-spring ${item.value ? 'translate-x-7' : 'translate-x-0'}`} />
                                     </button>
                                 </div>
                             </div>

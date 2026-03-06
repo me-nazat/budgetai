@@ -146,37 +146,57 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Total Balance Card */}
-                <div className="card-premium rounded-2xl p-5 mb-4 bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5 dark:from-primary/10 dark:to-emerald-500/10">
-                    <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider mb-1">Total Balance</p>
-                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-4 number-appear">{fmt(data.balance)}</h3>
-                    <div className="flex gap-3">
-                        <div className="flex-1 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl px-3 py-2.5">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="material-symbols-outlined text-emerald-500 text-sm">trending_up</span>
-                                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Income</span>
+                {/* Total Balance Card (Redesigned) */}
+                <div className="relative rounded-[2rem] p-6 mb-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10">
+                    {/* Animated background layers */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" style={{ animationDuration: '4s' }} />
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3 animate-pulse" style={{ animationDuration: '5s', animationDirection: 'reverse' }} />
+
+                    {/* Glass Overlay */}
+                    <div className="absolute inset-0 bg-white/5 dark:bg-black/10 backdrop-blur-[2px]" />
+
+                    {/* Content */}
+                    <div className="relative z-10">
+                        <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Total Balance</p>
+                        <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear">{fmt(data.balance)}</h3>
+
+                        <div className="flex gap-3">
+                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <div className="w-5 h-5 rounded-full bg-emerald-400/20 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-emerald-300 text-[12px] font-bold">arrow_downward</span>
+                                    </div>
+                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Income</span>
+                                </div>
+                                <p className="text-base font-bold text-white">{fmt(data.earnings.current)}</p>
                             </div>
-                            <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{fmt(data.earnings.current)}</p>
-                        </div>
-                        <div className="flex-1 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-xl px-3 py-2.5">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="material-symbols-outlined text-rose-500 text-sm">trending_down</span>
-                                <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Expense</span>
+                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-white text-[12px] font-bold">arrow_upward</span>
+                                    </div>
+                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Expense</span>
+                                </div>
+                                <p className="text-base font-bold text-white">{fmt(data.expenses.current)}</p>
                             </div>
-                            <p className="text-base font-bold text-rose-600 dark:text-rose-400">{fmt(data.expenses.current)}</p>
                         </div>
                     </div>
                 </div>
 
-                {/* AI Insight Card */}
-                <div className="card-premium rounded-2xl p-4 mb-5 border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-500/5">
+                {/* AI Insight Card (Redesigned) */}
+                <div className="relative card-premium rounded-2xl p-5 mb-6 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgb(16,185,129)]" />
                     <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                        <div className="relative shrink-0 mt-0.5">
+                            <div className="absolute inset-0 bg-emerald-400 blur-md rounded-full animate-pulse opacity-50" style={{ animationDuration: '3s' }} />
+                            <div className="relative w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
+                                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl animate-bounce-in" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                            </div>
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">AI Insight</p>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5">AI Insight</p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
                                 {data.netSavings > 0
                                     ? `Great job! You've saved ${fmt(data.netSavings)} this period. Your savings rate is ${data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%.`
                                     : `Heads up — you're spending more than you earn this period. Consider reviewing your top expense categories.`}
@@ -185,30 +205,33 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Recent Transactions */}
-                <div className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
-                        <button onClick={() => { }} className="text-xs font-semibold text-primary dark:text-emerald-400">See All</button>
+                {/* Recent Transactions (Interactive Redesign) */}
+                <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
+                        <a href="/transactions" className="text-xs font-bold text-primary dark:text-emerald-400 hover:text-blue-600 transition-colors">See All</a>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         {data.recentTransactions.length === 0 ? (
-                            <div className="card-premium rounded-xl p-6 text-center">
-                                <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
-                                <p className="text-sm text-gray-400 dark:text-text-muted">No transactions yet</p>
+                            <div className="bg-gray-50 dark:bg-[#161b22] border border-gray-100 dark:border-[#30363d] rounded-2xl p-8 text-center shadow-inner">
+                                <div className="w-12 h-12 bg-gray-100 dark:bg-[#21262d] rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <span className="material-symbols-outlined text-2xl text-gray-400 dark:text-gray-500">receipt_long</span>
+                                </div>
+                                <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
                             </div>
                         ) : data.recentTransactions.slice(0, 6).map(t => (
-                            <div key={t.id} className="card-premium rounded-xl p-3.5 flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
-                                    <span className={`material-symbols-outlined text-lg ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                        {categoryIcons[t.category] || 'category'}
+                            <div key={t.id} className="relative overflow-hidden card-premium rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md cursor-pointer group">
+                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-gray-200 dark:via-[#30363d] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
+                                    <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        {categoryIcons[t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()] || 'category'}
                                     </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{t.description || t.category}</p>
-                                    <p className="text-xs text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                                    <p className="text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
+                                    <p className="text-xs font-medium text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                                 </div>
-                                <p className={`text-sm font-bold shrink-0 ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                <p className={`text-base font-bold shrink-0 ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
                                     {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
                                 </p>
                             </div>

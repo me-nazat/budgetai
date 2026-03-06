@@ -21,24 +21,28 @@ export default function MobileTabBar() {
 
     return (
         <>
-            <div className="lg:hidden fixed bottom-0 left-0 w-full z-50 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur-xl border-t border-gray-200/80 dark:border-[#30363d]/80" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-                <nav className="flex items-center justify-around h-16 px-2 relative">
+            <div className="lg:hidden fixed bottom-6 inset-x-4 z-50 rounded-[2rem] bg-white/80 dark:bg-[#161b22]/80 backdrop-blur-2xl border border-gray-200/50 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/40 transition-all duration-500 ease-out" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                <nav className="flex items-center justify-around h-[68px] px-2 relative">
                     {mobileNavItems.map((item) => {
                         const isQuickAdd = item.href === '__quick_add__';
                         const isActive = !isQuickAdd && (pathname === item.href || pathname?.startsWith(item.href + '/'));
 
                         if (isQuickAdd) {
                             return (
-                                <button
-                                    key="quick-add"
-                                    onClick={() => setShowQuickAdd(true)}
-                                    className="relative -mt-7 flex flex-col items-center justify-center group"
-                                    aria-label="Quick Add Transaction"
-                                >
-                                    <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40 transition-all duration-300 active:scale-90 group-hover:shadow-emerald-500/60 group-hover:scale-105">
-                                        <span className="material-symbols-outlined text-white text-3xl font-bold">add</span>
-                                    </div>
-                                </button>
+                                <div key="quick-add" className="relative -mt-10 flex flex-col items-center justify-center group pointer-events-auto">
+                                    <div className="absolute inset-x-0 bottom-0 h-10 w-16 mx-auto bg-transparent border-t-[10px] border-l-[10px] border-r-[10px] border-white/80 dark:border-[#161b22]/80 backdrop-blur-2xl rounded-t-[40px] rounded-b-none translate-y-4 opacity-0 pointer-events-none" />
+
+                                    <button
+                                        onClick={() => setShowQuickAdd(true)}
+                                        className="relative flex items-center justify-center z-10 transition-transform duration-300 ease-spring active:scale-90"
+                                        aria-label="Quick Add Transaction"
+                                    >
+                                        <div className="absolute inset-0 bg-emerald-500/30 rounded-full blur-xl animate-pulse" />
+                                        <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-[0_8px_30px_rgb(16,185,129,0.3)] transition-all duration-300 group-hover:shadow-[0_8px_40px_rgb(16,185,129,0.5)] group-hover:-translate-y-1 border border-white/20">
+                                            <span className="material-symbols-outlined text-white text-3xl font-bold">add</span>
+                                        </div>
+                                    </button>
+                                </div>
                             );
                         }
 
