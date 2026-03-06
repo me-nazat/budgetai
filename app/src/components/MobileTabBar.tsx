@@ -4,18 +4,20 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import QuickAddModal from './QuickAddModal';
+import MobileMenu from './MobileMenu';
 
 const mobileNavItems = [
     { href: '/dashboard', icon: 'home', label: 'Home' },
     { href: '/analytics', icon: 'bar_chart', label: 'Analytics' },
     { href: '__quick_add__', icon: 'add', label: 'Add' },
     { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
-    { href: '/settings', icon: 'settings', label: 'Settings' },
+    { href: '__menu__', icon: 'menu', label: 'Menu' },
 ];
 
 export default function MobileTabBar() {
     const pathname = usePathname();
     const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
 
     return (
         <>
@@ -36,6 +38,27 @@ export default function MobileTabBar() {
                                     <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40 transition-all duration-300 active:scale-90 group-hover:shadow-emerald-500/60 group-hover:scale-105">
                                         <span className="material-symbols-outlined text-white text-3xl font-bold">add</span>
                                     </div>
+                                </button>
+                            );
+                        }
+
+                        if (item.href === '__menu__') {
+                            return (
+                                <button
+                                    key="menu"
+                                    onClick={() => setShowMenu(true)}
+                                    className="flex flex-col items-center justify-center w-full h-full space-y-0.5 transition-all duration-300 relative text-gray-400 dark:text-gray-500 active:text-gray-600 dark:active:text-gray-300"
+                                    aria-label="Open Menu"
+                                >
+                                    <span
+                                        className="material-symbols-outlined text-[22px] transition-all duration-300"
+                                        style={{ fontVariationSettings: "'FILL' 0" }}
+                                    >
+                                        {item.icon}
+                                    </span>
+                                    <span className="text-[10px] font-semibold tracking-wide transition-all duration-300">
+                                        {item.label}
+                                    </span>
                                 </button>
                             );
                         }
@@ -68,6 +91,7 @@ export default function MobileTabBar() {
             </div>
 
             <QuickAddModal isOpen={showQuickAdd} onClose={() => setShowQuickAdd(false)} />
+            <MobileMenu isOpen={showMenu} onClose={() => setShowMenu(false)} />
         </>
     );
 }

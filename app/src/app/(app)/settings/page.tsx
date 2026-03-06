@@ -14,6 +14,7 @@ export default function SettingsPage() {
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsDark(document.documentElement.classList.contains('dark'));
         fetch('/api/settings').then(r => r.json()).then(d => {
             if (d.user) {
@@ -252,6 +253,25 @@ export default function SettingsPage() {
                     </p>
                 </div>
 
+                {/* Theme Toggle (Desktop) */}
+                <div className="card-premium rounded-2xl p-6 mb-6" style={{ animation: 'slideUp 0.5s ease-out 0.3s both' }}>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-amber-500">{isDark ? 'dark_mode' : 'light_mode'}</span>Appearance
+                    </h2>
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-[#30363d] hover:border-primary/30 transition-colors">
+                        <div>
+                            <h3 className="text-gray-900 dark:text-white font-bold text-sm">Dark Mode</h3>
+                            <p className="text-gray-500 dark:text-text-muted text-xs mt-1 font-medium">Toggle dark mode on or off</p>
+                        </div>
+                        <button
+                            onClick={toggleTheme}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 outline-none ${isDark ? 'bg-primary shadow-inner shadow-black/20' : 'bg-gray-300 dark:bg-gray-700 shadow-inner'}`}
+                        >
+                            <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${isDark ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+                </div>
+
                 {/* Notifications */}
                 <div className="card-premium rounded-2xl p-6 mb-8" style={{ animation: 'slideUp 0.5s ease-out 0.3s both' }}>
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
@@ -275,8 +295,15 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Save */}
-                <div className="flex justify-end" style={{ animation: 'slideUp 0.5s ease-out 0.4s both' }}>
+                {/* Action Buttons */}
+                <div className="flex justify-between items-center mt-6" style={{ animation: 'slideUp 0.5s ease-out 0.5s both' }}>
+                    <button
+                        onClick={handleSignOut}
+                        className="flex items-center gap-2 px-6 py-3 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg font-bold transition-all"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">logout</span> Sign Out
+                    </button>
+
                     <button onClick={save} disabled={saving}
                         className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-blue-600 text-white rounded-lg font-bold transition-all disabled:opacity-50 hover:-translate-y-0.5 shadow-md btn-primary-glow select-none">
                         {saved ? <><span className="material-symbols-outlined dropdown-anim">check_circle</span> Saved Successfully</> :
