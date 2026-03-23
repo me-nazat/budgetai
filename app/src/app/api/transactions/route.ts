@@ -84,3 +84,29 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
+export async function PUT(request: Request) {
+    try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const { id, type, amount, category, description, date } = await request.json();
+        if (!id || !type || !amount) {
+            return NextResponse.json({ error: 'ID, type, and amount are required' }, { status: 400 });
+        }
+
+        const result = await run(
+            'UPDATE transactions SET type = ?, amount = ?, category = ?, description = ?, date = ? WHERE id = ? AND user_id = ?',
+            [type, amount, category || 'Other', description || '', date || new Date().toISOString().split('T')[0], id, session.userId]
+        );
+
+        if (result.rowsAffected === 0) {
+            return NextResponse.json({ error: 'Transaction not found or unauthorized' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Transaction update error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}

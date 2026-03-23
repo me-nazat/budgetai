@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useTransactions, invalidateFinancialData } from '@/hooks/useApi';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction, deleteSyncedTransaction } from '@/lib/offlineDb';
+import { useRouter } from 'next/navigation';
 
 const categoryIcons: Record<string, string> = {
     Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
@@ -20,6 +22,7 @@ export default function TransactionsPage() {
     const [selectedMonth, setSelectedMonth] = useState<string>(
         `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
     );
+    const router = useRouter();
     const [selectedWeek, setSelectedWeek] = useState<string>('all');
     const [typeFilter, setTypeFilter] = useState('all');
     const [sortField, setSortField] = useState('date');
@@ -42,6 +45,13 @@ export default function TransactionsPage() {
     const [actionMenuOpenId, setActionMenuOpenId] = useState<number | string | null>(null);
     const [editingTx, setEditingTx] = useState<any>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
+    const [deletingTxId, setDeletingTxId] = useState<number | string | null>(null);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Global click-outside handler for the dropdown
     useEffect(() => {
@@ -116,40 +126,49 @@ export default function TransactionsPage() {
             date: qaDate,
         };
 
-        if (isOnline) {
-            // Online: POST directly to API
-            await fetch('/api/transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            invalidateFinancialData();
-            setLastSubmitOffline(false);
-        } else {
-            // Offline: queue to IndexedDB + optimistic SWR update
-            await queueTransaction(payload);
-            mutate(
-                swrKey,
-                (current: { transactions: any[]; total: number } | undefined) => {
-                    const optimistic = {
-                        id: Date.now(),
-                        ...payload,
-                        created_at: new Date().toISOString(),
-                        pending: true,
-                    };
-                    return {
-                        transactions: [optimistic, ...(current?.transactions || [])],
-                        total: (current?.total || 0) + 1,
-                    };
-                },
-                { revalidate: false }
-            );
-            setLastSubmitOffline(true);
-        }
+        try {
+            if (isOnline) {
+                // Online: POST directly to API
+                const res = await fetch('/api/transactions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) throw new Error('API add failed');
+                
+                invalidateFinancialData();
+                mutate(swrKey);
+                router.refresh();
+                setLastSubmitOffline(false);
+            } else {
+                // Offline: queue to IndexedDB + optimistic SWR update
+                await queueTransaction(payload);
+                mutate(
+                    swrKey,
+                    (current: { transactions: any[]; total: number } | undefined) => {
+                        const optimistic = {
+                            id: Date.now(),
+                            ...payload,
+                            created_at: new Date().toISOString(),
+                            pending: true,
+                        };
+                        return {
+                            transactions: [optimistic, ...(current?.transactions || [])],
+                            total: (current?.total || 0) + 1,
+                        };
+                    },
+                    { revalidate: false }
+                );
+                setLastSubmitOffline(true);
+            }
 
-        setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+            setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        } catch (error) {
+            console.error('Quick Add error:', error);
+            setQaSubmitting(false);
+        }
     };
 
     const submitEdit = async () => {
@@ -167,71 +186,90 @@ export default function TransactionsPage() {
             date: editingTx.date,
         };
 
-        if (isOnline) {
-            // Online: PUT directly to API
-            await fetch('/api/transactions', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: editingTx.id,
-                    type: editingTx.type,
-                    amount: parsed,
-                    category: editingTx.category,
-                    description: editingTx.description || editingTx.category,
-                    date: editingTx.date,
-                }),
-            });
-            invalidateFinancialData();
-            setLastSubmitOffline(false);
-        } else {
-            // Offline: queue to IndexedDB + optimistic update
-            await queueTransaction(payload);
-            mutate(
-                swrKey,
-                (current: { transactions: any[]; total: number } | undefined) => {
-                    const updated = (current?.transactions || []).map(t =>
-                        t.id === editingTx.id ? { ...t, ...payload, pending: true } : t
-                    );
-                    return { transactions: updated, total: current?.total || 0 };
-                },
-                { revalidate: false }
-            );
-            setLastSubmitOffline(true);
-        }
+        try {
+            if (isOnline) {
+                // Online: PUT directly to API
+                const res = await fetch('/api/transactions', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: editingTx.id,
+                        type: editingTx.type,
+                        amount: parsed,
+                        category: editingTx.category,
+                        description: editingTx.description || editingTx.category,
+                        date: editingTx.date,
+                    }),
+                });
+                if (!res.ok) throw new Error('API update failed');
+                
+                invalidateFinancialData();
+                mutate(swrKey);
+                router.refresh();
+                setLastSubmitOffline(false);
+            } else {
+                // Offline: queue to IndexedDB + optimistic update
+                await queueTransaction(payload);
+                mutate(
+                    swrKey,
+                    (current: { transactions: any[]; total: number } | undefined) => {
+                        const updated = (current?.transactions || []).map(t =>
+                            t.id === editingTx.id ? { ...t, ...payload, pending: true } : t
+                        );
+                        return { transactions: updated, total: current?.total || 0 };
+                    },
+                    { revalidate: false }
+                );
+                setLastSubmitOffline(true);
+            }
 
-        setEditingTx(null); setEditSubmitting(false); setActionMenuOpenId(null);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+            setEditingTx(null); setEditSubmitting(false); setActionMenuOpenId(null);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        } catch (error) {
+            console.error('Edit error:', error);
+            setEditSubmitting(false);
+        }
     };
 
-    const submitDelete = async (txId: number | string) => {
-        if (!confirm('Are you sure you want to delete this transaction?')) return;
+    const submitDelete = async () => {
+        if (!deletingTxId) return;
+        setDeleteSubmitting(true);
 
-        const payload = { actionType: 'delete' as const, id: Number(txId) };
+        const payload = { actionType: 'delete' as const, id: Number(deletingTxId) };
 
-        if (isOnline) {
-            await fetch('/api/transactions', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: txId }),
-            });
-            invalidateFinancialData();
-            setLastSubmitOffline(false);
-        } else {
-            await queueTransaction(payload);
-            mutate(
-                swrKey,
-                (current: { transactions: any[]; total: number } | undefined) => {
-                    const filtered = (current?.transactions || []).filter(t => t.id !== txId);
-                    return { transactions: filtered, total: Math.max(0, (current?.total || 1) - 1) };
-                },
-                { revalidate: false }
-            );
-            setLastSubmitOffline(true);
+        try {
+            if (isOnline) {
+                const res = await fetch(`/api/transactions?id=${deletingTxId}`, {
+                    method: 'DELETE',
+                });
+                if (!res.ok) throw new Error('API delete failed');
+
+                invalidateFinancialData();
+                mutate(swrKey);
+                router.refresh();
+                setLastSubmitOffline(false);
+            } else {
+                await queueTransaction(payload);
+                mutate(
+                    swrKey,
+                    (current: { transactions: any[]; total: number } | undefined) => {
+                        const filtered = (current?.transactions || []).filter(t => t.id !== deletingTxId);
+                        return { transactions: filtered, total: Math.max(0, (current?.total || 1) - 1) };
+                    },
+                    { revalidate: false }
+                );
+                setLastSubmitOffline(true);
+            }
+            setActionMenuOpenId(null);
+            setDeletingTxId(null);
+            setDeleteSubmitting(false);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        } catch (error) {
+            console.error('Delete error:', error);
+            setDeleteSubmitting(false);
         }
-        setActionMenuOpenId(null);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
     };
 
     const submitDuplicate = async (tx: any) => {
@@ -244,37 +282,45 @@ export default function TransactionsPage() {
             date: new Date().toISOString().split('T')[0], // Use today for duplication
         };
 
-        if (isOnline) {
-            await fetch('/api/transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            invalidateFinancialData();
-            setLastSubmitOffline(false);
-        } else {
-            await queueTransaction(payload);
-            mutate(
-                swrKey,
-                (current: { transactions: any[]; total: number } | undefined) => {
-                    const optimistic = {
-                        id: Date.now(),
-                        ...payload,
-                        created_at: new Date().toISOString(),
-                        pending: true,
-                    };
-                    return {
-                        transactions: [optimistic, ...(current?.transactions || [])],
-                        total: (current?.total || 0) + 1,
-                    };
-                },
-                { revalidate: false }
-            );
-            setLastSubmitOffline(true);
+        try {
+            if (isOnline) {
+                const res = await fetch('/api/transactions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) throw new Error('API duplicate failed');
+                
+                invalidateFinancialData();
+                mutate(swrKey);
+                router.refresh();
+                setLastSubmitOffline(false);
+            } else {
+                await queueTransaction(payload);
+                mutate(
+                    swrKey,
+                    (current: { transactions: any[]; total: number } | undefined) => {
+                        const optimistic = {
+                            id: Date.now(),
+                            ...payload,
+                            created_at: new Date().toISOString(),
+                            pending: true,
+                        };
+                        return {
+                            transactions: [optimistic, ...(current?.transactions || [])],
+                            total: (current?.total || 0) + 1,
+                        };
+                    },
+                    { revalidate: false }
+                );
+                setLastSubmitOffline(true);
+            }
+            setActionMenuOpenId(null);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        } catch (error) {
+            console.error('Duplicate error:', error);
         }
-        setActionMenuOpenId(null);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
     };
 
     // Generate last 12 months for the dropdown
@@ -591,7 +637,10 @@ export default function TransactionsPage() {
                                                                 Duplicate
                                                             </button>
                                                             <button
-                                                                onClick={() => submitDelete(t.id)}
+                                                                onClick={() => {
+                                                                    setDeletingTxId(t.id);
+                                                                    setActionMenuOpenId(null);
+                                                                }}
                                                                 className="px-4 py-3 text-sm text-left hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center gap-3 transition-colors w-full cursor-pointer"
                                                             >
                                                                 <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -617,10 +666,11 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
-            {/* Edit Modal */}
-            <AnimatePresence>
-                {editingTx && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            {/* Edit Modal / Portal */}
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {editingTx && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -689,7 +739,46 @@ export default function TransactionsPage() {
                         </motion.div>
                     </div>
                 )}
-            </AnimatePresence>
+                </AnimatePresence>,
+            document.body)}
+
+            {/* Delete Confirmation Modal / Portal */}
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {deletingTxId && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[#30363d]"
+                            >
+                                <div className="p-5 flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center mb-4">
+                                        <span className="material-symbols-outlined text-[32px]">delete_forever</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Delete Transaction?</h3>
+                                    <p className="text-gray-500 dark:text-text-muted text-sm mb-6">
+                                        This action cannot be undone. This transaction will be permanently removed from your history and net balance.
+                                    </p>
+                                    <div className="flex gap-3 w-full">
+                                        <button onClick={() => { setDeletingTxId(null); setDeleteSubmitting(false); }}
+                                            className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-surface-dark dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm transition-colors cursor-pointer">
+                                            Cancel
+                                        </button>
+                                        <button onClick={() => submitDelete()} disabled={deleteSubmitting}
+                                            className="flex-1 py-2.5 px-4 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/30 flex justify-center items-center disabled:opacity-40 active:scale-95 cursor-pointer">
+                                            {deleteSubmitting ? (
+                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            ) : 'Delete'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+            document.body)}
         </div>
     );
 }
