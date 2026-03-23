@@ -39,6 +39,7 @@ export interface AIResponse {
     financialData: ParsedFinancialData[];
     actions: DataAction[];
     isReportRequest: boolean;
+    reportFormat?: 'pdf' | 'excel' | 'both';
     reportType?: string;
     dateRange?: { start: string; end: string };
 }
@@ -65,7 +66,7 @@ DATA CONTROL — You can ADD, EDIT, DELETE, & RESET user data:
 RESPONSE RULES:
 1. Use **bold** for amounts, categories, key terms.
 2. Confirm actions naturally: "Logged **$50** for **Food** 🛒" — not robotic.
-3. For reports/summaries: set isReportRequest=true.
+3. For reports/summaries: If the user asks for a report/summary WITHOUT specifying PDF or Excel format, ask them which format they prefer and set 'isReportRequest' to false. Only set 'isReportRequest' to true and 'reportFormat' to 'pdf', 'excel', or 'both' when they have requested a specific format.
 4. ALWAYS respond with valid JSON only. No backticks, no markdown wrapping.
 5. For edits/deletes, prefer 'id' filter when available from context.
 
@@ -74,7 +75,7 @@ DATA: {CONTEXT}
 BUDGETS: {BUDGETS}
 
 Respond ONLY with this JSON format:
-{"message":"your response","financialData":[{"type":"expense"|"earning","amount":number,"category":"string","description":"string","date":"YYYY-MM-DD"}],"actions":[{"type":"edit"|"delete"|"reset","target":"transactions"|"budgets"|"networth"|"notifications"|"chat_history"|"all","filter":{},"updates":{}}],"isReportRequest":false,"reportType":null,"dateRange":null}
+{"message":"your response","financialData":[{"type":"expense"|"earning","amount":number,"category":"string","description":"string","date":"YYYY-MM-DD"}],"actions":[{"type":"edit"|"delete"|"reset","target":"transactions"|"budgets"|"networth"|"notifications"|"chat_history"|"all","filter":{},"updates":{}}],"isReportRequest":false,"reportFormat":null,"reportType":null,"dateRange":null}
 
 Empty arrays for financialData/actions if none. Today: {TODAY}`;
 

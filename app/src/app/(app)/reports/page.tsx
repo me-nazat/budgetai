@@ -187,7 +187,7 @@ export default function ReportsPage() {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     body: transactions.map((t: any) => {
                         const isExp = t.type === 'expense';
-                        return [t.date, isExp ? '▼ Expense' : '▲ Earning', t.category, t.description, `${isExp ? '−' : '+'} ${sym}${t.amount.toFixed(2)}`];
+                        return [t.date, isExp ? 'Expense' : 'Earning', t.category, t.description, `${isExp ? '-' : '+'} ${sym}${t.amount.toFixed(2)}`];
                     }),
                     theme: 'striped',
                     headStyles: { fillColor: [19, 109, 236], textColor: 255, fontStyle: 'bold', halign: 'center' },
@@ -223,9 +223,9 @@ export default function ReportsPage() {
                         const catNet = data.earnings - data.expenses;
                         return [
                             cat,
-                            data.expenses > 0 ? `− ${sym}${data.expenses.toFixed(2)}` : '—',
+                            data.expenses > 0 ? `- ${sym}${data.expenses.toFixed(2)}` : '—',
                             data.earnings > 0 ? `+ ${sym}${data.earnings.toFixed(2)}` : '—',
-                            `${catNet >= 0 ? '+' : '−'} ${sym}${Math.abs(catNet).toFixed(2)}`,
+                            `${catNet >= 0 ? '+' : '-'} ${sym}${Math.abs(catNet).toFixed(2)}`,
                         ];
                     }),
                     theme: 'grid',
@@ -257,12 +257,12 @@ export default function ReportsPage() {
 
                 doc.setFontSize(10);
                 doc.setTextColor(220, 38, 38);
-                doc.text(`▼ Total Expenses:  − ${sym}${totalExp.toFixed(2)}`, 20, y + 14);
+                doc.text(`Total Expenses:  - ${sym}${totalExp.toFixed(2)}`, 20, y + 14);
                 doc.setTextColor(22, 163, 74);
-                doc.text(`▲ Total Earnings:  + ${sym}${totalEarn.toFixed(2)}`, 20, y + 22);
+                doc.text(`Total Earnings:  + ${sym}${totalEarn.toFixed(2)}`, 20, y + 22);
                 doc.setTextColor(net >= 0 ? 22 : 220, net >= 0 ? 163 : 38, net >= 0 ? 74 : 38);
                 doc.setFontSize(11);
-                doc.text(`Net Balance:  ${net >= 0 ? '+' : '−'} ${sym}${Math.abs(net).toFixed(2)}`, 20, y + 30);
+                doc.text(`Net Balance:  ${net >= 0 ? '+' : '-'} ${sym}${Math.abs(net).toFixed(2)}`, 20, y + 30);
 
                 const pdfBlob = doc.output('blob');
                 const pdfUrl = URL.createObjectURL(pdfBlob);

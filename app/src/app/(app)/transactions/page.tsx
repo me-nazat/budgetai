@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -42,6 +42,23 @@ export default function TransactionsPage() {
     const [actionMenuOpenId, setActionMenuOpenId] = useState<number | string | null>(null);
     const [editingTx, setEditingTx] = useState<any>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
+
+    // Global click-outside handler for the dropdown
+    useEffect(() => {
+        if (actionMenuOpenId === null) return;
+        
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as Element;
+            // Close if we clicked outside the menu container
+            if (!target.closest('.action-menu-container')) {
+                setActionMenuOpenId(null);
+            }
+        };
+
+        // Use mousedown to act before click events can fire inappropriately
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [actionMenuOpenId]);
 
     // Compute date ranges from month/week selection
     const dateRange = useMemo(() => {
@@ -483,8 +500,8 @@ export default function TransactionsPage() {
             </div>
 
             {/* Table */}
-            <div className="card-premium rounded-2xl overflow-hidden" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
-                <div className="overflow-x-auto">
+            <div className="card-premium rounded-2xl" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+                <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-[#30363d]">
@@ -510,7 +527,7 @@ export default function TransactionsPage() {
                                     <p className="text-gray-400 dark:text-text-muted">No transactions found for this period.</p>
                                 </td></tr>
                             ) : sorted.map((t, i) => (
-                                <tr key={t.id} className="group hover:bg-gray-50/50 dark:hover:bg-surface-hover/30 transition-colors duration-200"
+                                <tr key={t.id} className={`group hover:bg-gray-50/50 dark:hover:bg-surface-hover/30 transition-colors duration-200 ${actionMenuOpenId === t.id ? 'relative z-50' : 'relative z-0'}`}
                                     style={{ animation: `slideUp 0.3s ease-out ${Math.min(i * 0.03, 0.3)}s both` }}>
                                     <td className="px-6 py-3.5">
                                         <div className="flex items-center gap-3">
@@ -538,7 +555,7 @@ export default function TransactionsPage() {
                                         {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
                                     </td>
                                     <td className="px-6 py-3.5 text-right w-12">
-                                        <div className="relative inline-block text-left">
+                                        <div className="relative inline-block text-left action-menu-container">
                                             <button
                                                 onClick={() => setActionMenuOpenId(actionMenuOpenId === t.id ? null : t.id)}
                                                 className={`p-1.5 rounded-full transition-colors ${actionMenuOpenId === t.id ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-surface-dark text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}
@@ -548,43 +565,40 @@ export default function TransactionsPage() {
 
                                             <AnimatePresence>
                                                 {actionMenuOpenId === t.id && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpenId(null)}></div>
-                                                        <motion.div
-                                                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                            transition={{ duration: 0.15 }}
-                                                            className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-xl shadow-xl z-20 overflow-hidden"
-                                                        >
-                                                            <div className="flex flex-col py-1">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setEditingTx({ ...t });
-                                                                        setActionMenuOpenId(null);
-                                                                    }}
-                                                                    className="px-3 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-200 transition-colors"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                                    Edit
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => submitDuplicate(t)}
-                                                                    className="px-3 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-200 transition-colors"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                                                                    Duplicate
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => submitDelete(t.id)}
-                                                                    className="px-3 py-2.5 text-sm text-left hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center gap-2 transition-colors"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                                                                    Delete
-                                                                </button>
-                                                            </div>
-                                                        </motion.div>
-                                                    </>
+                                                    <motion.div
+                                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                        transition={{ duration: 0.15 }}
+                                                        className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl z-[9999] overflow-hidden"
+                                                    >
+                                                        <div className="flex flex-col py-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingTx({ ...t });
+                                                                    setActionMenuOpenId(null);
+                                                                }}
+                                                                className="px-4 py-3 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors w-full cursor-pointer"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => submitDuplicate(t)}
+                                                                className="px-4 py-3 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors w-full cursor-pointer"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                                                                Duplicate
+                                                            </button>
+                                                            <button
+                                                                onClick={() => submitDelete(t.id)}
+                                                                className="px-4 py-3 text-sm text-left hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center gap-3 transition-colors w-full cursor-pointer"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
                                                 )}
                                             </AnimatePresence>
                                         </div>
@@ -602,6 +616,80 @@ export default function TransactionsPage() {
                     </span>
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            <AnimatePresence>
+                {editingTx && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[#30363d]"
+                        >
+                            <div className="p-5 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">edit</span>
+                                    Edit Transaction
+                                </h3>
+                                <button onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                            <form onSubmit={e => { e.preventDefault(); submitEdit(); }} className="p-5 space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Type</label>
+                                        <select value={editingTx.type} onChange={e => setEditingTx({...editingTx, type: e.target.value})}
+                                            className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
+                                            <option value="expense">Expense</option>
+                                            <option value="earning">Earning</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Amount</label>
+                                        <input type="number" step="0.01" value={editingTx.amount} onChange={e => setEditingTx({...editingTx, amount: e.target.value})}
+                                            className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Category</label>
+                                    <select value={editingTx.category} onChange={e => setEditingTx({...editingTx, category: e.target.value})}
+                                        className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
+                                        <option value="">Select Category</option>
+                                        {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Date</label>
+                                        <input type="date" value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''} onChange={e => setEditingTx({...editingTx, date: e.target.value})}
+                                            className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Description</label>
+                                    <input type="text" value={editingTx.description || ''} onChange={e => setEditingTx({...editingTx, description: e.target.value})}
+                                        placeholder="Optional description"
+                                        className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
+                                </div>
+                                <div className="pt-2 flex gap-3">
+                                    <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }}
+                                        className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-surface-dark dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm transition-colors cursor-pointer">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" disabled={editSubmitting || !editingTx.amount || !editingTx.category || isNaN(parseFloat(editingTx.amount)) || parseFloat(editingTx.amount) <= 0}
+                                        className="flex-1 py-2.5 px-4 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-all btn-primary-glow flex justify-center items-center disabled:opacity-40 active:scale-95 cursor-pointer">
+                                        {editSubmitting ? (
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        ) : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

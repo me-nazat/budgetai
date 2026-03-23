@@ -383,6 +383,7 @@ export async function POST(request: Request) {
             transactions: storedTransactions,
             actionResults,
             isReportRequest: aiResponse.isReportRequest,
+            reportFormat: aiResponse.reportFormat,
             reportType: aiResponse.reportType,
             dateRange: aiResponse.dateRange,
             sessionId: chatSessionId,

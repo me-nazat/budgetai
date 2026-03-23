@@ -176,7 +176,7 @@ export default function ChatPage() {
 
             // If report requested, generate downloads
             if (data.isReportRequest) {
-                await generateReportFiles(data.dateRange);
+                await generateReportFiles(data.dateRange, data.reportFormat);
             }
         } catch {
             setMessages(prev => [...prev, { role: 'system', content: '⚠️ Error: Could not reach AI. Please try again.' }]);
@@ -186,7 +186,7 @@ export default function ChatPage() {
         }
     };
 
-    const generateReportFiles = async (dateRange?: { start: string; end: string }) => {
+    const generateReportFiles = async (dateRange?: { start: string; end: string }, format: string = 'both') => {
         try {
             const params = new URLSearchParams();
             if (dateRange?.start) params.set('start', dateRange.start);
@@ -213,150 +213,158 @@ export default function ChatPage() {
             const catBreakdown = Object.entries(catMap).sort((a, b) => (b[1].expenses + b[1].earnings) - (a[1].expenses + a[1].earnings));
 
             // ==================== EXCEL ====================
-            const ExcelJS = await import('exceljs');
-            const wb = new ExcelJS.Workbook();
-            wb.creator = 'Wealth AI';
+            if (format === 'excel' || format === 'both') {
+                const ExcelJS = await import('exceljs');
+                const wb = new ExcelJS.Workbook();
+                wb.creator = 'Wealth AI';
 
-            const ws = wb.addWorksheet('Transactions');
-            const titleRow = ws.addRow(['Wealth AI — Financial Report']);
-            titleRow.font = { bold: true, size: 16, color: { argb: 'FF136DEC' } };
-            ws.mergeCells('A1:F1');
-            const subRow = ws.addRow([`Generated: ${new Date().toLocaleString()}`]);
-            subRow.font = { italic: true, size: 10, color: { argb: 'FF888888' } };
-            ws.mergeCells('A2:F2');
-            ws.addRow([]);
+                const ws = wb.addWorksheet('Transactions');
+                const titleRow = ws.addRow(['Wealth AI — Financial Report']);
+                titleRow.font = { bold: true, size: 16, color: { argb: 'FF136DEC' } };
+                ws.mergeCells('A1:F1');
+                const subRow = ws.addRow([`Generated: ${new Date().toLocaleString()}`]);
+                subRow.font = { italic: true, size: 10, color: { argb: 'FF888888' } };
+                ws.mergeCells('A2:F2');
+                ws.addRow([]);
 
-            ws.columns = [{ width: 14 }, { width: 10 }, { width: 16 }, { width: 35 }, { width: 18 }, { width: 5 }];
-            const headerRow = ws.addRow(['Date', 'Type', 'Category', 'Description', 'Amount', '']);
-            headerRow.eachCell((cell, colNum) => {
-                if (colNum <= 5) {
-                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF136DEC' } };
-                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                }
-            });
-            headerRow.height = 28;
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            transactions.forEach((t: any) => {
-                const isExp = t.type === 'expense';
-                const row = ws.addRow([t.date, isExp ? '▼ Expense' : '▲ Earning', t.category, t.description, `${isExp ? '−' : '+'} ${sym}${t.amount.toFixed(2)}`]);
-                row.eachCell((cell, colNum) => {
-                    if (colNum <= 5) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isExp ? 'FFFEF2F2' : 'FFF0FDF4' } };
-                    if (colNum === 2) cell.font = { color: { argb: isExp ? 'FFEF4444' : 'FF22C55E' }, bold: true };
-                    if (colNum === 5) { cell.font = { bold: true, color: { argb: isExp ? 'FFDC2626' : 'FF16A34A' } }; cell.alignment = { horizontal: 'right' }; }
+                ws.columns = [{ width: 14 }, { width: 10 }, { width: 16 }, { width: 35 }, { width: 18 }, { width: 5 }];
+                const headerRow = ws.addRow(['Date', 'Type', 'Category', 'Description', 'Amount', '']);
+                headerRow.eachCell((cell, colNum) => {
+                    if (colNum <= 5) {
+                        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF136DEC' } };
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    }
                 });
-            });
+                headerRow.height = 28;
 
-            ws.addRow([]);
-            const sumH = ws.addRow(['', '', '', 'SUMMARY', '', '']);
-            sumH.getCell(4).font = { bold: true, size: 12, color: { argb: 'FF136DEC' } };
-            const expR = ws.addRow(['', '', '', 'Total Expenses', `− ${sym}${totalExpenses.toFixed(2)}`]);
-            expR.getCell(5).font = { bold: true, color: { argb: 'FFDC2626' } }; expR.getCell(5).alignment = { horizontal: 'right' }; expR.getCell(4).font = { bold: true };
-            const earR = ws.addRow(['', '', '', 'Total Earnings', `+ ${sym}${totalEarnings.toFixed(2)}`]);
-            earR.getCell(5).font = { bold: true, color: { argb: 'FF16A34A' } }; earR.getCell(5).alignment = { horizontal: 'right' }; earR.getCell(4).font = { bold: true };
-            const netR = ws.addRow(['', '', '', 'Net Balance', `${net >= 0 ? '+' : '−'} ${sym}${Math.abs(net).toFixed(2)}`]);
-            netR.getCell(4).font = { bold: true, size: 12 };
-            netR.getCell(5).font = { bold: true, size: 12, color: { argb: net >= 0 ? 'FF16A34A' : 'FFDC2626' } };
-            netR.getCell(5).alignment = { horizontal: 'right' };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                transactions.forEach((t: any) => {
+                    const isExp = t.type === 'expense';
+                    const row = ws.addRow([t.date, isExp ? '▼ Expense' : '▲ Earning', t.category, t.description, `${isExp ? '−' : '+'} ${sym}${t.amount.toFixed(2)}`]);
+                    row.eachCell((cell, colNum) => {
+                        if (colNum <= 5) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isExp ? 'FFFEF2F2' : 'FFF0FDF4' } };
+                        if (colNum === 2) cell.font = { color: { argb: isExp ? 'FFEF4444' : 'FF22C55E' }, bold: true };
+                        if (colNum === 5) { cell.font = { bold: true, color: { argb: isExp ? 'FFDC2626' : 'FF16A34A' } }; cell.alignment = { horizontal: 'right' }; }
+                    });
+                });
 
-            const ws2 = wb.addWorksheet('Category Breakdown');
-            ws2.columns = [{ width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }];
-            const catT = ws2.addRow(['Spending by Category']); catT.font = { bold: true, size: 14, color: { argb: 'FF136DEC' } }; ws2.mergeCells('A1:D1');
-            ws2.addRow([]);
-            const catH = ws2.addRow(['Category', 'Expenses', 'Earnings', 'Net']);
-            catH.eachCell(cell => { cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF136DEC' } }; cell.alignment = { horizontal: 'center' }; });
-            catBreakdown.forEach(([cat, data]) => {
-                const cn = data.earnings - data.expenses;
-                const row = ws2.addRow([cat, data.expenses > 0 ? `− ${sym}${data.expenses.toFixed(2)}` : '—', data.earnings > 0 ? `+ ${sym}${data.earnings.toFixed(2)}` : '—', `${cn >= 0 ? '+' : '−'} ${sym}${Math.abs(cn).toFixed(2)}`]);
-                row.getCell(2).font = { color: { argb: 'FFDC2626' } }; row.getCell(3).font = { color: { argb: 'FF16A34A' } };
-                row.getCell(4).font = { bold: true, color: { argb: cn >= 0 ? 'FF16A34A' : 'FFDC2626' } };
-            });
+                ws.addRow([]);
+                const sumH = ws.addRow(['', '', '', 'SUMMARY', '', '']);
+                sumH.getCell(4).font = { bold: true, size: 12, color: { argb: 'FF136DEC' } };
+                const expR = ws.addRow(['', '', '', 'Total Expenses', `− ${sym}${totalExpenses.toFixed(2)}`]);
+                expR.getCell(5).font = { bold: true, color: { argb: 'FFDC2626' } }; expR.getCell(5).alignment = { horizontal: 'right' }; expR.getCell(4).font = { bold: true };
+                const earR = ws.addRow(['', '', '', 'Total Earnings', `+ ${sym}${totalEarnings.toFixed(2)}`]);
+                earR.getCell(5).font = { bold: true, color: { argb: 'FF16A34A' } }; earR.getCell(5).alignment = { horizontal: 'right' }; earR.getCell(4).font = { bold: true };
+                const netR = ws.addRow(['', '', '', 'Net Balance', `${net >= 0 ? '+' : '−'} ${sym}${Math.abs(net).toFixed(2)}`]);
+                netR.getCell(4).font = { bold: true, size: 12 };
+                netR.getCell(5).font = { bold: true, size: 12, color: { argb: net >= 0 ? 'FF16A34A' : 'FFDC2626' } };
+                netR.getCell(5).alignment = { horizontal: 'right' };
 
-            const buffer = await wb.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url;
-            a.download = `Financial_Report_${new Date().toISOString().split('T')[0]}.xlsx`; a.click(); URL.revokeObjectURL(url);
+                const ws2 = wb.addWorksheet('Category Breakdown');
+                ws2.columns = [{ width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }];
+                const catT = ws2.addRow(['Spending by Category']); catT.font = { bold: true, size: 14, color: { argb: 'FF136DEC' } }; ws2.mergeCells('A1:D1');
+                ws2.addRow([]);
+                const catH = ws2.addRow(['Category', 'Expenses', 'Earnings', 'Net']);
+                catH.eachCell(cell => { cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF136DEC' } }; cell.alignment = { horizontal: 'center' }; });
+                catBreakdown.forEach(([cat, data]) => {
+                    const cn = data.earnings - data.expenses;
+                    const row = ws2.addRow([cat, data.expenses > 0 ? `− ${sym}${data.expenses.toFixed(2)}` : '—', data.earnings > 0 ? `+ ${sym}${data.earnings.toFixed(2)}` : '—', `${cn >= 0 ? '+' : '−'} ${sym}${Math.abs(cn).toFixed(2)}`]);
+                    row.getCell(2).font = { color: { argb: 'FFDC2626' } }; row.getCell(3).font = { color: { argb: 'FF16A34A' } };
+                    row.getCell(4).font = { bold: true, color: { argb: cn >= 0 ? 'FF16A34A' : 'FFDC2626' } };
+                });
+
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url;
+                a.download = `Financial_Report_${new Date().toISOString().split('T')[0]}.xlsx`; a.click(); URL.revokeObjectURL(url);
+            }
 
             // ==================== PDF ====================
-            const { default: jsPDF } = await import('jspdf');
-            const { default: autoTable } = await import('jspdf-autotable');
-            const doc = new jsPDF();
+            if (format === 'pdf' || format === 'both') {
+                const { default: jsPDF } = await import('jspdf');
+                const { default: autoTable } = await import('jspdf-autotable');
+                const doc = new jsPDF();
 
-            doc.setFillColor(19, 109, 236); doc.rect(0, 0, 210, 32, 'F');
-            doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text('Wealth AI', 14, 16);
-            doc.setFontSize(10); doc.text(`Financial Report  •  Generated: ${new Date().toLocaleString()}`, 14, 25);
-            doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.text(`Period: ${dateRange?.start || 'All'} to ${dateRange?.end || 'Now'}`, 14, 40);
+                doc.setFillColor(19, 109, 236); doc.rect(0, 0, 210, 32, 'F');
+                doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text('Wealth AI', 14, 16);
+                doc.setFontSize(10); doc.text(`Financial Report  •  Generated: ${new Date().toLocaleString()}`, 14, 25);
+                doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.text(`Period: ${dateRange?.start || 'All'} to ${dateRange?.end || 'Now'}`, 14, 40);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            autoTable(doc as any, {
-                startY: 46,
-                head: [['Date', 'Type', 'Category', 'Description', 'Amount']],
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                body: transactions.map((t: any) => {
-                    const isExp = t.type === 'expense';
-                    return [t.date, isExp ? '▼ Expense' : '▲ Earning', t.category, t.description, `${isExp ? '−' : '+'} ${sym}${t.amount.toFixed(2)}`];
-                }),
-                theme: 'striped',
-                headStyles: { fillColor: [19, 109, 236], textColor: 255, fontStyle: 'bold', halign: 'center' },
-                columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } },
+                autoTable(doc as any, {
+                    startY: 46,
+                    head: [['Date', 'Type', 'Category', 'Description', 'Amount']],
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    body: transactions.map((t: any) => {
+                        const isExp = t.type === 'expense';
+                        return [t.date, isExp ? 'Expense' : 'Earning', t.category, t.description, `${isExp ? '-' : '+'} ${sym}${t.amount.toFixed(2)}`];
+                    }),
+                    theme: 'striped',
+                    headStyles: { fillColor: [19, 109, 236], textColor: 255, fontStyle: 'bold', halign: 'center' },
+                    columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } },
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    didParseCell: (data: any) => {
+                        if (data.section === 'body') {
+                            const rd = data.row.raw as string[]; const isExp = rd[1]?.includes('Expense');
+                            if (data.column.index === 1) data.cell.styles.textColor = isExp ? [220, 38, 38] : [22, 163, 74];
+                            if (data.column.index === 4) data.cell.styles.textColor = isExp ? [220, 38, 38] : [22, 163, 74];
+                        }
+                    },
+                    styles: { fontSize: 9, cellPadding: 4 }, alternateRowStyles: { fillColor: [248, 250, 252] },
+                });
+
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                didParseCell: (data: any) => {
-                    if (data.section === 'body') {
-                        const rd = data.row.raw as string[]; const isExp = rd[1]?.includes('Expense');
-                        if (data.column.index === 1) data.cell.styles.textColor = isExp ? [220, 38, 38] : [22, 163, 74];
-                        if (data.column.index === 4) data.cell.styles.textColor = isExp ? [220, 38, 38] : [22, 163, 74];
-                    }
-                },
-                styles: { fontSize: 9, cellPadding: 4 }, alternateRowStyles: { fillColor: [248, 250, 252] },
-            });
+                let y = (doc as any).lastAutoTable?.finalY || 100; y += 10;
+                doc.setTextColor(19, 109, 236); doc.setFontSize(13); doc.text('Category Breakdown', 14, y); y += 4;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let y = (doc as any).lastAutoTable?.finalY || 100; y += 10;
-            doc.setTextColor(19, 109, 236); doc.setFontSize(13); doc.text('Category Breakdown', 14, y); y += 4;
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            autoTable(doc as any, {
-                startY: y,
-                head: [['Category', 'Expenses', 'Earnings', 'Net']],
-                body: catBreakdown.map(([cat, data]) => {
-                    const cn = data.earnings - data.expenses;
-                    return [cat, data.expenses > 0 ? `− ${sym}${data.expenses.toFixed(2)}` : '—', data.earnings > 0 ? `+ ${sym}${data.earnings.toFixed(2)}` : '—', `${cn >= 0 ? '+' : '−'} ${sym}${Math.abs(cn).toFixed(2)}`];
-                }),
-                theme: 'grid',
-                headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold', halign: 'center' },
-                columnStyles: { 1: { textColor: [220, 38, 38] }, 2: { textColor: [22, 163, 74] }, 3: { halign: 'right', fontStyle: 'bold' } },
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                didParseCell: (data: any) => {
-                    if (data.section === 'body' && data.column.index === 3) {
-                        data.cell.styles.textColor = String(data.cell.raw).startsWith('+') ? [22, 163, 74] : [220, 38, 38];
-                    }
-                },
-                styles: { fontSize: 9, cellPadding: 3 },
-            });
+                autoTable(doc as any, {
+                    startY: y,
+                    head: [['Category', 'Expenses', 'Earnings', 'Net']],
+                    body: catBreakdown.map(([cat, data]) => {
+                        const cn = data.earnings - data.expenses;
+                        return [cat, data.expenses > 0 ? `- ${sym}${data.expenses.toFixed(2)}` : '—', data.earnings > 0 ? `+ ${sym}${data.earnings.toFixed(2)}` : '—', `${cn >= 0 ? '+' : '-'} ${sym}${Math.abs(cn).toFixed(2)}`];
+                    }),
+                    theme: 'grid',
+                    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold', halign: 'center' },
+                    columnStyles: { 1: { textColor: [220, 38, 38] }, 2: { textColor: [22, 163, 74] }, 3: { halign: 'right', fontStyle: 'bold' } },
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    didParseCell: (data: any) => {
+                        if (data.section === 'body' && data.column.index === 3) {
+                            data.cell.styles.textColor = String(data.cell.raw).startsWith('+') ? [22, 163, 74] : [220, 38, 38];
+                        }
+                    },
+                    styles: { fontSize: 9, cellPadding: 3 },
+                });
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            y = (doc as any).lastAutoTable?.finalY || y + 40; y += 12;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                y = (doc as any).lastAutoTable?.finalY || y + 40; y += 12;
 
-            doc.setFillColor(248, 250, 252); doc.roundedRect(14, y - 4, 182, 38, 3, 3, 'F');
-            doc.setDrawColor(19, 109, 236); doc.roundedRect(14, y - 4, 182, 38, 3, 3, 'S');
-            doc.setFontSize(12); doc.setTextColor(30, 41, 59); doc.text('Summary', 20, y + 4);
-            doc.setFontSize(10); doc.setTextColor(220, 38, 38); doc.text(`▼ Total Expenses:  − ${sym}${totalExpenses.toFixed(2)}`, 20, y + 14);
-            doc.setTextColor(22, 163, 74); doc.text(`▲ Total Earnings:  + ${sym}${totalEarnings.toFixed(2)}`, 20, y + 22);
-            doc.setTextColor(net >= 0 ? 22 : 220, net >= 0 ? 163 : 38, net >= 0 ? 74 : 38);
-            doc.setFontSize(11); doc.text(`Net Balance:  ${net >= 0 ? '+' : '−'} ${sym}${Math.abs(net).toFixed(2)}`, 20, y + 30);
+                doc.setFillColor(248, 250, 252); doc.roundedRect(14, y - 4, 182, 38, 3, 3, 'F');
+                doc.setDrawColor(19, 109, 236); doc.roundedRect(14, y - 4, 182, 38, 3, 3, 'S');
+                doc.setFontSize(12); doc.setTextColor(30, 41, 59); doc.text('Summary', 20, y + 4);
+                doc.setFontSize(10); doc.setTextColor(220, 38, 38); doc.text(`Total Expenses:  - ${sym}${totalExpenses.toFixed(2)}`, 20, y + 14);
+                doc.setTextColor(22, 163, 74); doc.text(`Total Earnings:  + ${sym}${totalEarnings.toFixed(2)}`, 20, y + 22);
+                doc.setTextColor(net >= 0 ? 22 : 220, net >= 0 ? 163 : 38, net >= 0 ? 74 : 38);
+                doc.setFontSize(11); doc.text(`Net Balance:  ${net >= 0 ? '+' : '-'} ${sym}${Math.abs(net).toFixed(2)}`, 20, y + 30);
 
-            const pdfBlob = doc.output('blob');
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            const pdfA = document.createElement('a');
-            pdfA.href = pdfUrl;
-            pdfA.download = `Financial_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-            pdfA.click();
-            URL.revokeObjectURL(pdfUrl);
+                const pdfBlob = doc.output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                const pdfA = document.createElement('a');
+                pdfA.href = pdfUrl;
+                pdfA.download = `Financial_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+                pdfA.click();
+                URL.revokeObjectURL(pdfUrl);
+            }
+
+            let downloadedFormatName = 'Both PDF and Excel files have';
+            if (format === 'pdf') downloadedFormatName = 'The PDF file has';
+            if (format === 'excel') downloadedFormatName = 'The Excel file has';
 
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: '📊 Report generated! Both PDF and Excel files have been downloaded.',
+                content: `📊 Report generated! ${downloadedFormatName} been downloaded.`,
                 isReportRequest: true,
             }]);
         } catch (err) {
