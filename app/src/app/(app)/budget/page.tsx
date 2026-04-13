@@ -5,9 +5,9 @@ import { useCurrency } from '@/hooks/useCurrency';
 
 interface Budget { id: number; category: string; monthly_limit: number; spent: number; }
 
-const categories = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Other'];
-const catIcons: Record<string, string> = { Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt', Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety', Education: 'school', Business: 'business_center', Other: 'category' };
-const catColors: Record<string, string> = { Food: 'orange', Transport: 'purple', Housing: 'blue', Utilities: 'yellow', Entertainment: 'pink', Shopping: 'indigo', Health: 'emerald', Education: 'cyan', Business: 'sky', Other: 'gray' };
+const STANDARD_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Other'];
+const DB_ICONS: Record<string, string> = { Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt', Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety', Education: 'school', Business: 'business_center', Other: 'category' };
+const DB_COLORS: Record<string, string> = { Food: 'orange', Transport: 'purple', Housing: 'blue', Utilities: 'yellow', Entertainment: 'pink', Shopping: 'indigo', Health: 'emerald', Education: 'cyan', Business: 'sky', Other: 'gray' };
 
 export default function BudgetPage() {
     const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -16,19 +16,59 @@ export default function BudgetPage() {
     const [newCat, setNewCat] = useState('Food');
     const [newLimit, setNewLimit] = useState('');
     const { fmt } = useCurrency();
+    
+    const [customCategories, setCustomCategories] = useState<{name: string, icon: string, color: string}[]>([]);
 
-    const load = () => {
-        fetch('/api/budgets').then(r => r.json()).then(d => { setBudgets(d.budgets || []); setLoading(false); }).catch(() => setLoading(false));
+    const loadData = async () => {
+        try {
+            // Load custom categories first so we can merge UI maps
+            const catRes = await fetch('/api/categories?type=expense');
+            const catData = await catRes.json();
+            if (catData.categories) {
+                setCustomCategories(catData.categories);
+            }
+
+            const budRes = await fetch('/api/budgets');
+            const budData = await budRes.json();
+            setBudgets(budData.budgets || []);
+            setLoading(false);
+        } catch {
+            setLoading(false);
+        }
     };
 
-    useEffect(load, []);
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const mergedCategories = [...STANDARD_CATEGORIES, ...customCategories.map(c => c.name)];
+    
+    // Fallback getter functions for dynamic merges
+    const getIcon = (catName: string) => {
+        if (DB_ICONS[catName]) return DB_ICONS[catName];
+        const custom = customCategories.find(c => c.name === catName);
+        return custom ? custom.icon : 'category';
+    };
+
+    const getColor = (catName: string) => {
+        if (DB_COLORS[catName]) return DB_COLORS[catName];
+        const custom = customCategories.find(c => c.name === catName);
+        return custom ? custom.color : 'gray';
+    };
+
+    // Auto-select first available category
+    useEffect(() => {
+        const available = mergedCategories.filter(c => !budgets.find(b => b.category === c));
+        if (available.length > 0 && budgets.find(b => b.category === newCat)) {
+            setNewCat(available[0]);
+        }
+    }, [budgets, customCategories, newCat, mergedCategories]);
 
     const addBudget = async () => {
         if (!newLimit) return;
         await fetch('/api/budgets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: newCat, monthly_limit: parseFloat(newLimit) }) });
-        setNewLimit(''); setShowAdd(false); load();
+        setNewLimit(''); setShowAdd(false); loadData();
     };
-
 
     const totalBudget = budgets.reduce((s, b) => s + b.monthly_limit, 0);
     const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
@@ -71,7 +111,7 @@ export default function BudgetPage() {
                     <div className="flex flex-wrap gap-4 items-center">
                         <select value={newCat} onChange={(e) => setNewCat(e.target.value)}
                             className="px-4 py-2 rounded-lg border border-gray-300 dark:border-[#30363d] bg-white/50 dark:bg-surface-dark/50 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary min-w-[200px]">
-                            {categories.filter(c => !budgets.find(b => b.category === c)).map(c => <option key={c}>{c}</option>)}
+                            {mergedCategories.filter(c => !budgets.find(b => b.category === c)).map(c => <option key={c}>{c}</option>)}
                         </select>
                         <input type="number" placeholder="Monthly limit" value={newLimit} onChange={(e) => setNewLimit(e.target.value)}
                             className="px-4 py-2 rounded-lg border border-gray-300 dark:border-[#30363d] bg-white/50 dark:bg-surface-dark/50 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary w-40" />
@@ -102,12 +142,15 @@ export default function BudgetPage() {
                                 {budgets.map((b, i) => {
                                     const pct = b.monthly_limit > 0 ? (b.spent / b.monthly_limit) * 100 : 0;
                                     const color = pct >= 100 ? 'red' : pct >= 80 ? 'orange' : 'primary';
+                                    const catColor = getColor(b.category);
+                                    const catIcon = getIcon(b.category);
+                                    
                                     return (
                                         <tr key={b.id} className="hover:bg-gray-50/80 dark:hover:bg-[#111418]/80 transition-colors group animate-fade-in" style={{ animationDelay: `${Math.min(i * 0.05, 0.5)}s` }}>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-4">
-                                                    <div className={`w-10 h-10 flex items-center justify-center rounded-xl bg-${catColors[b.category] || 'gray'}-50 dark:bg-${catColors[b.category] || 'gray'}-500/10 text-${catColors[b.category] || 'gray'}-600 dark:text-${catColors[b.category] || 'gray'}-400 group-hover:scale-110 transition-transform duration-300`}>
-                                                        <span className="material-symbols-outlined text-[20px]">{catIcons[b.category] || 'category'}</span>
+                                                    <div className={`w-10 h-10 flex items-center justify-center rounded-xl bg-${catColor}-50 dark:bg-${catColor}-500/10 text-${catColor}-600 dark:text-${catColor}-400 group-hover:scale-110 transition-transform duration-300`}>
+                                                        <span className="material-symbols-outlined text-[20px]">{catIcon}</span>
                                                     </div>
                                                     <span className="text-gray-900 dark:text-white font-bold">{b.category}</span>
                                                 </div>

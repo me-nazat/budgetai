@@ -130,6 +130,17 @@ export async function ensureDbInitialized(): Promise<void> {
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )`,
+    `CREATE TABLE IF NOT EXISTS custom_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('expense', 'earning')),
+      icon TEXT DEFAULT 'category',
+      color TEXT DEFAULT 'gray',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, name, type)
+    )`,
     `CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(user_id, date)`,
     `CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id)`,
@@ -138,6 +149,7 @@ export async function ensureDbInitialized(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read)`,
     `CREATE INDEX IF NOT EXISTS idx_savings_goals_user ON savings_goals(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_transactions(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_custom_categories_user ON custom_categories(user_id)`,
   ], 'write');
 
   initialized = true;
