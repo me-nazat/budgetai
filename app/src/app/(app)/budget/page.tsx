@@ -14,6 +14,8 @@ export default function BudgetPage() {
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
     const [newCat, setNewCat] = useState('Food');
+    const [isAddingCustom, setIsAddingCustom] = useState(false);
+    const [newCustomCatName, setNewCustomCatName] = useState('');
     const [newLimit, setNewLimit] = useState('');
     const { fmt } = useCurrency();
     
@@ -66,8 +68,22 @@ export default function BudgetPage() {
 
     const addBudget = async () => {
         if (!newLimit) return;
-        await fetch('/api/budgets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: newCat, monthly_limit: parseFloat(newLimit) }) });
-        setNewLimit(''); setShowAdd(false); loadData();
+        
+        let targetCategory = newCat;
+        if (isAddingCustom && newCustomCatName) {
+            targetCategory = newCustomCatName;
+            // Optionally persist the new custom category back to the server.
+            try {
+                await fetch('/api/categories', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: targetCategory, type: 'expense', icon: 'category', color: 'gray' })
+                });
+            } catch (e) {}
+        }
+        
+        await fetch('/api/budgets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: targetCategory, monthly_limit: parseFloat(newLimit) }) });
+        setNewLimit(''); setShowAdd(false); setIsAddingCustom(false); setNewCustomCatName(''); loadData();
     };
 
     const totalBudget = budgets.reduce((s, b) => s + b.monthly_limit, 0);
@@ -109,10 +125,42 @@ export default function BudgetPage() {
                 <div className="card-premium rounded-xl p-6 mb-6 animate-slide-up">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Add Budget Category</h3>
                     <div className="flex flex-wrap gap-4 items-center">
-                        <select value={newCat} onChange={(e) => setNewCat(e.target.value)}
-                            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-[#30363d] bg-white/50 dark:bg-surface-dark/50 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary min-w-[200px]">
-                            {mergedCategories.filter(c => !budgets.find(b => b.category === c)).map(c => <option key={c}>{c}</option>)}
-                        </select>
+                        {isAddingCustom ? (
+                            <div className="flex items-center gap-2 px-2 py-1 rounded-lg border border-gray-300 dark:border-[#30363d] bg-white dark:bg-surface-dark focus-within:border-primary focus-within:ring-1 focus-within:ring-primary min-w-[200px]">
+                                <input 
+                                    type="text" 
+                                    placeholder="Enter Category Name" 
+                                    value={newCustomCatName} 
+                                    onChange={e => setNewCustomCatName(e.target.value)} 
+                                    className="bg-transparent border-none outline-none text-gray-900 dark:text-white text-sm w-full"
+                                    autoFocus
+                                />
+                                <button type="button" onClick={() => { setIsAddingCustom(false); setNewCustomCatName(''); }} className="text-gray-400 hover:text-rose-500">
+                                    <span className="material-symbols-outlined text-[16px]">close</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <select value={newCat} onChange={(e) => {
+                                if (e.target.value === '___ADD_CUSTOM___') {
+                                    setIsAddingCustom(true);
+                                    setNewCat('');
+                                } else {
+                                    setNewCat(e.target.value);
+                                }
+                            }}
+                                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-[#30363d] bg-white/50 dark:bg-surface-dark/50 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary min-w-[200px]">
+                                <option value="" disabled>Select a Category...</option>
+                                <optgroup label="Standard Categories">
+                                    {STANDARD_CATEGORIES.filter(c => !budgets.find(b => b.category === c)).map(c => <option key={c} value={c}>{c}</option>)}
+                                </optgroup>
+                                {customCategories.length > 0 && (
+                                    <optgroup label="Custom Categories">
+                                        {customCategories.filter(c => !budgets.find(b => b.category === c.name)).map(c => <option key={`cc-${c.id}`} value={c.name}>{c.name}</option>)}
+                                    </optgroup>
+                                )}
+                                <option value="___ADD_CUSTOM___" className="text-primary font-bold">+ Add Custom Category</option>
+                            </select>
+                        )}
                         <input type="number" placeholder="Monthly limit" value={newLimit} onChange={(e) => setNewLimit(e.target.value)}
                             className="px-4 py-2 rounded-lg border border-gray-300 dark:border-[#30363d] bg-white/50 dark:bg-surface-dark/50 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary w-40" />
                         <button onClick={addBudget} disabled={!newLimit} className="px-6 py-2 bg-primary text-white rounded-lg font-bold transition-all hover:-translate-y-0.5 btn-primary-glow cursor-pointer disabled:opacity-50 disabled:hover:translate-y-0">Save Budget</button>

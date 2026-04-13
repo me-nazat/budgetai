@@ -9,6 +9,7 @@ import { useTransactions, invalidateFinancialData } from '@/hooks/useApi';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction, deleteSyncedTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
+import { useCustomCategories } from '@/hooks/useCustomCategories';
 
 const categoryIcons: Record<string, string> = {
     Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
@@ -40,6 +41,11 @@ export default function TransactionsPage() {
     const [qaDesc, setQaDesc] = useState('');
     const [qaDate, setQaDate] = useState(new Date().toISOString().split('T')[0]);
     const [qaSubmitting, setQaSubmitting] = useState(false);
+
+    // Custom Category Add State (Desktop Inline)
+    const [qaAddingCustomCategory, setQaAddingCustomCategory] = useState(false);
+    const [qaCustomCategoryName, setQaCustomCategoryName] = useState('');
+    const { categories: customCategories, mutate: mutateCategories } = useCustomCategories('all');
 
     // Edit/Action state
     const [actionMenuOpenId, setActionMenuOpenId] = useState<number | string | null>(null);
@@ -127,6 +133,17 @@ export default function TransactionsPage() {
         };
 
         try {
+            if (qaAddingCustomCategory && qaCustomCategoryName) {
+                try {
+                    await fetch('/api/categories', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: qaCustomCategoryName, type: qaType, icon: 'category', color: 'gray' })
+                    });
+                    mutateCategories(); // Refresh the list
+                } catch (e) {}
+            }
+
             if (isOnline) {
                 // Online: POST directly to API
                 const res = await fetch('/api/transactions', {
@@ -163,11 +180,22 @@ export default function TransactionsPage() {
             }
 
             setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
+            setQaAddingCustomCategory(false); setQaCustomCategoryName('');
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
         } catch (error) {
             console.error('Quick Add error:', error);
             setQaSubmitting(false);
+        }
+    };
+
+    const handleCustomCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_CUSTOM') {
+            setQaAddingCustomCategory(true);
+            setQaCategory('');
+        } else {
+            setQaCategory(e.target.value);
+            setQaAddingCustomCategory(false);
         }
     };
 
@@ -486,11 +514,38 @@ export default function TransactionsPage() {
                         </select>
                         <input type="number" step="0.01" placeholder="Amount" value={qaAmount} onChange={e => setQaAmount(e.target.value)}
                             className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
-                        <select value={qaCategory} onChange={e => setQaCategory(e.target.value)}
-                            className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
-                            <option value="">Category</option>
-                            {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        
+                        {qaAddingCustomCategory ? (
+                            <div className="flex items-center gap-2 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 p-1">
+                                <input
+                                    type="text"
+                                    placeholder="New Category"
+                                    value={qaCustomCategoryName}
+                                    onChange={e => {
+                                        setQaCustomCategoryName(e.target.value);
+                                        setQaCategory(e.target.value);
+                                    }}
+                                    className="p-1.5 w-full bg-transparent text-gray-900 dark:text-white outline-none text-sm"
+                                    autoFocus
+                                />
+                                <button type="button" onClick={() => { setQaAddingCustomCategory(false); setQaCustomCategoryName(''); setQaCategory(''); }} className="p-1 text-gray-400 hover:text-rose-500 transition-colors">
+                                    <span className="material-symbols-outlined text-[16px]">close</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <select value={qaCategory} onChange={handleCustomCategoryChange}
+                                className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
+                                <option value="">Category</option>
+                                {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                <optgroup label="Custom Categories">
+                                    {customCategories.filter(c => c.type === qaType).map(c => (
+                                        <option key={`cc-${c.id}`} value={c.name}>{c.name}</option>
+                                    ))}
+                                </optgroup>
+                                <option value="ADD_CUSTOM" className="text-primary font-bold">+ Add Custom Category</option>
+                            </select>
+                        )}
+
                         <input type="date" value={qaDate} onChange={e => setQaDate(e.target.value)}
                             className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
                         <input type="text" placeholder="Description" value={qaDesc} onChange={e => setQaDesc(e.target.value)}
@@ -578,7 +633,9 @@ export default function TransactionsPage() {
                                     <td className="px-6 py-3.5">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
-                                                <span className="material-symbols-outlined text-lg">{categoryIcons[t.category] || 'category'}</span>
+                                                <span className="material-symbols-outlined text-lg">
+                                                    {categoryIcons[t.category] || customCategories.find(c => c.name === t.category)?.icon || 'category'}
+                                                </span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</span>
@@ -708,6 +765,11 @@ export default function TransactionsPage() {
                                         className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
                                         <option value="">Select Category</option>
                                         {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                        <optgroup label="Custom Categories">
+                                            {customCategories.filter(c => c.type === editingTx.type).map(c => (
+                                                <option key={`cc-e-${c.id}`} value={c.name}>{c.name}</option>
+                                            ))}
+                                        </optgroup>
                                     </select>
                                 </div>
                                 <div className="grid grid-cols-1 gap-3">
