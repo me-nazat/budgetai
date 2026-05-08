@@ -4,16 +4,14 @@ import { useState, useEffect } from 'react';
 import { CurrencyCode, formatCurrency } from '@/lib/currency';
 
 export function useCurrency() {
-    const [currency, setCurrencyState] = useState<CurrencyCode>('USD');
+    const [currency, setCurrencyState] = useState<CurrencyCode>(() => {
+        if (typeof window === 'undefined') return 'USD';
+        const stored = localStorage.getItem('budget-ai-currency');
+        return stored === 'USD' || stored === 'BDT' ? stored : 'USD';
+    });
 
     useEffect(() => {
-        // Try localStorage first for instant load
-        const stored = localStorage.getItem('budget-ai-currency') as CurrencyCode | null;
-        if (stored === 'USD' || stored === 'BDT') {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setCurrencyState(stored);
-        }
-        // Then fetch the server value to be sure
+        // Fetch the server value to be sure
         fetch('/api/auth/me')
             .then(r => r.json())
             .then(d => {

@@ -22,15 +22,19 @@ export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const [user, setUser] = useState<{ name: string; email: string } | null>(null);
-    const [isDark, setIsDark] = useState(true);
+    const [isDark, setIsDark] = useState(() => {
+        if (typeof window === 'undefined') return true;
+
+        const theme = localStorage.getItem('budget-ai-theme');
+        const isPublic =
+            window.location.pathname === '/' ||
+            window.location.pathname.startsWith('/login') ||
+            window.location.pathname.startsWith('/register');
+
+        return theme === 'dark' || (!theme && !isPublic);
+    });
 
     useEffect(() => {
-        const theme = localStorage.getItem('budget-ai-theme');
-        // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-        const isPublic = window.location.pathname === '/' || window.location.pathname.startsWith('/login') || window.location.pathname.startsWith('/register');
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setIsDark(theme === 'dark' || (!theme && !isPublic));
-
         fetch('/api/auth/me').then(r => r.json()).then(d => {
             if (d.user) setUser(d.user);
         }).catch(() => { });

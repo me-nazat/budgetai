@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useTransactions, invalidateFinancialData } from '@/hooks/useApi';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { queueTransaction, deleteSyncedTransaction } from '@/lib/offlineDb';
+import { queueTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 
@@ -18,6 +18,26 @@ const categoryIcons: Record<string, string> = {
     Freelance: 'work', Investment: 'trending_up', Other: 'category',
 };
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
+
+interface TransactionRecord {
+    id: number | string;
+    type: 'expense' | 'earning' | string;
+    amount: number;
+    category: string;
+    description?: string;
+    date: string;
+    created_at?: string;
+    pending?: boolean;
+}
+
+interface EditableTransaction extends Omit<TransactionRecord, 'amount'> {
+    amount: number | string;
+}
+
+interface TransactionsCache {
+    transactions: TransactionRecord[];
+    total: number;
+}
 
 export default function TransactionsPage() {
     const [selectedMonth, setSelectedMonth] = useState<string>(
@@ -49,7 +69,7 @@ export default function TransactionsPage() {
 
     // Edit/Action state
     const [actionMenuOpenId, setActionMenuOpenId] = useState<number | string | null>(null);
-    const [editingTx, setEditingTx] = useState<any>(null);
+    const [editingTx, setEditingTx] = useState<EditableTransaction | null>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [deletingTxId, setDeletingTxId] = useState<number | string | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -141,7 +161,7 @@ export default function TransactionsPage() {
                         body: JSON.stringify({ name: qaCustomCategoryName, type: qaType, icon: 'category', color: 'gray' })
                     });
                     mutateCategories(); // Refresh the list
-                } catch (e) {}
+                } catch {}
             }
 
             if (isOnline) {
@@ -162,7 +182,7 @@ export default function TransactionsPage() {
                 await queueTransaction(payload);
                 mutate(
                     swrKey,
-                    (current: { transactions: any[]; total: number } | undefined) => {
+                    (current: TransactionsCache | undefined) => {
                         const optimistic = {
                             id: Date.now(),
                             ...payload,
@@ -200,7 +220,9 @@ export default function TransactionsPage() {
     };
 
     const submitEdit = async () => {
-        const parsed = parseFloat(editingTx.amount);
+        if (!editingTx) return;
+
+        const parsed = parseFloat(String(editingTx.amount));
         if (!editingTx.amount || isNaN(parsed) || parsed <= 0 || !editingTx.category) return;
         setEditSubmitting(true);
 
@@ -240,7 +262,7 @@ export default function TransactionsPage() {
                 await queueTransaction(payload);
                 mutate(
                     swrKey,
-                    (current: { transactions: any[]; total: number } | undefined) => {
+                    (current: TransactionsCache | undefined) => {
                         const updated = (current?.transactions || []).map(t =>
                             t.id === editingTx.id ? { ...t, ...payload, pending: true } : t
                         );
@@ -281,7 +303,7 @@ export default function TransactionsPage() {
                 await queueTransaction(payload);
                 mutate(
                     swrKey,
-                    (current: { transactions: any[]; total: number } | undefined) => {
+                    (current: TransactionsCache | undefined) => {
                         const filtered = (current?.transactions || []).filter(t => t.id !== deletingTxId);
                         return { transactions: filtered, total: Math.max(0, (current?.total || 1) - 1) };
                     },
@@ -300,7 +322,7 @@ export default function TransactionsPage() {
         }
     };
 
-    const submitDuplicate = async (tx: any) => {
+    const submitDuplicate = async (tx: TransactionRecord) => {
         const payload = {
             actionType: 'add' as const,
             type: tx.type,
@@ -327,7 +349,7 @@ export default function TransactionsPage() {
                 await queueTransaction(payload);
                 mutate(
                     swrKey,
-                    (current: { transactions: any[]; total: number } | undefined) => {
+                    (current: TransactionsCache | undefined) => {
                         const optimistic = {
                             id: Date.now(),
                             ...payload,
@@ -369,7 +391,8 @@ export default function TransactionsPage() {
         { value: '4', label: 'Week 4 (22nd-End)' },
     ];
 
-    const sorted = [...transactions].sort((a, b) => {
+    const transactionRows = transactions as TransactionRecord[];
+    const sorted = [...transactionRows].sort((a, b) => {
         const dir = sortDir === 'asc' ? 1 : -1;
         if (sortField === 'date') return (a.date > b.date ? 1 : -1) * dir;
         if (sortField === 'amount') return (a.amount - b.amount) * dir;
@@ -614,11 +637,12 @@ export default function TransactionsPage() {
                                         </span>
                                     </th>
                                 ))}
+                                <th className="px-6 py-3.5 font-semibold text-right w-12">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
                             {showFullLoading ? (
-                                <tr><td colSpan={4} className="px-6 py-12 text-center">
+                                <tr><td colSpan={5} className="px-6 py-12 text-center">
                                     <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                                     <p className="text-gray-400 dark:text-text-muted text-sm">Loading transactions...</p>
                                 </td></tr>
@@ -639,7 +663,7 @@ export default function TransactionsPage() {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</span>
-                                                {(t as any).pending && (
+                                                {t.pending && (
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                                                         Pending sync
@@ -790,7 +814,7 @@ export default function TransactionsPage() {
                                         className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-surface-dark dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm transition-colors cursor-pointer">
                                         Cancel
                                     </button>
-                                    <button type="submit" disabled={editSubmitting || !editingTx.amount || !editingTx.category || isNaN(parseFloat(editingTx.amount)) || parseFloat(editingTx.amount) <= 0}
+                                    <button type="submit" disabled={editSubmitting || !editingTx.amount || !editingTx.category || isNaN(parseFloat(String(editingTx.amount))) || parseFloat(String(editingTx.amount)) <= 0}
                                         className="flex-1 py-2.5 px-4 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-all btn-primary-glow flex justify-center items-center disabled:opacity-40 active:scale-95 cursor-pointer">
                                         {editSubmitting ? (
                                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -7,15 +7,14 @@ export default function CurrencySelector() {
     const [show, setShow] = useState(false);
     const [selected, setSelected] = useState<CurrencyCode | null>(null);
     const [saving, setSaving] = useState(false);
-    const [checked, setChecked] = useState(false);
+    const [checked, setChecked] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return Boolean(localStorage.getItem('budget-ai-currency'));
+    });
 
     useEffect(() => {
-        // Check localStorage first (instant)
         const stored = localStorage.getItem('budget-ai-currency');
-        if (stored) {
-            setChecked(true);
-            return; // Currency already chosen — don't show modal
-        }
+        if (stored) return;
 
         // No localStorage — check if server has a currency set (handles new device / cleared storage)
         fetch('/api/auth/me')

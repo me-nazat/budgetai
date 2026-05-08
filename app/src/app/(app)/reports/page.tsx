@@ -30,7 +30,6 @@ export default function ReportsPage() {
             const net = totalEarn - totalExp;
 
             // Build category breakdown
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const catMap: Record<string, { expenses: number; earnings: number }> = {};
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             transactions.forEach((t: any) => {

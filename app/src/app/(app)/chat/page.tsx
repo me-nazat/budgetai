@@ -202,7 +202,6 @@ export default function ChatPage() {
             const totalEarnings = transactions.filter((t: any) => t.type === 'earning').reduce((s: number, t: { amount: number }) => s + t.amount, 0);
             const net = totalEarnings - totalExpenses;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const catMap: Record<string, { expenses: number; earnings: number }> = {};
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             transactions.forEach((t: any) => {

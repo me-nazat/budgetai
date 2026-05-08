@@ -25,7 +25,10 @@ export function useSyncOnReconnect() {
                     return;
                 }
 
-                const payloads = pending.map((p) => p.payload);
+                const payloads = pending.map((record) => ({
+                    id: record.id,
+                    payload: record.payload,
+                }));
 
                 const res = await fetch('/api/transactions/batch-sync', {
                     method: 'POST',

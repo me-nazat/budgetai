@@ -48,6 +48,13 @@
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    background: #f8f9fb;
+    text-rendering: optimizeLegibility;
+  }
+
+  :where(.dark) body {
+    background: #0d1117;
   }
 
   /* Custom scrollbar — Dark */
@@ -78,13 +85,29 @@
     background: #a0a8b4;
   }
 
-  /* Smooth transitions on ALL interactive elements */
+  /* Smooth transitions on interactive elements without animating layout-heavy properties. */
   button,
   a,
   input,
   select,
   textarea {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 
   /* Selection color */
@@ -106,24 +129,38 @@
     -webkit-backdrop-filter: blur(12px);
   }
 
+  .app-surface {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 249, 251, 1) 42%),
+      #f8f9fb;
+  }
+
+  :where(.dark) .app-surface {
+    background:
+      linear-gradient(180deg, rgba(17, 24, 39, 0.36) 0%, rgba(13, 17, 23, 1) 48%),
+      #0d1117;
+  }
+
   /* PREMIUM CARD — the universal card component */
   .card-premium {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    background: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.86);
     border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.05);
+    transition-property: border-color, box-shadow, background-color, transform;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   :where(.dark) .card-premium {
-    background: rgba(22, 27, 34, 0.75);
+    background: rgba(22, 27, 34, 0.82);
     border: 1px solid rgba(240, 246, 252, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 18px 40px rgba(0, 0, 0, 0.16);
   }
 
   .card-premium:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: 0 8px 25px -8px rgba(19, 109, 236, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
     border-color: rgba(19, 109, 236, 0.15);
   }
@@ -846,5 +883,16 @@
 @media (hover: none) {
   .card-premium:hover {
     transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

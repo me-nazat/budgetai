@@ -8,7 +8,7 @@ interface PendingTransaction {
     id: string;
     payload: {
         actionType?: 'add' | 'edit' | 'delete';
-        id?: number;
+        id?: number | string;
         type?: string;
         amount?: number;
         category?: string;

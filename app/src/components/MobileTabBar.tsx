@@ -21,7 +21,10 @@ export default function MobileTabBar() {
 
     return (
         <>
-            <div className="lg:hidden fixed bottom-6 inset-x-4 z-50 rounded-[2rem] bg-white/80 dark:bg-[#161b22]/80 backdrop-blur-2xl border border-gray-200/50 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/40 transition-all duration-500 ease-out" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <div
+                className="lg:hidden fixed inset-x-4 z-50 rounded-[2rem] bg-white/85 dark:bg-[#161b22]/85 backdrop-blur-2xl border border-gray-200/60 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/40 transition-all duration-300 ease-out"
+                style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
                 <nav className="flex items-center justify-around h-[68px] px-2 relative">
                     {mobileNavItems.map((item) => {
                         const isQuickAdd = item.href === '__quick_add__';

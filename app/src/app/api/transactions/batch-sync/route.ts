@@ -4,15 +4,31 @@ import { run, ensureDbInitialized, queryOne } from '@/lib/db';
 
 interface TransactionPayload {
     id?: string; // Client-side ID for tracking
-    payload: {
+    payload?: {
         actionType?: 'add' | 'edit' | 'delete';
-        id?: string; // Server-side ID for existing transactions
-        type: string;
-        amount: number;
-        category: string;
-        description: string;
-        date: string;
+        id?: number | string; // Server-side ID for existing transactions
+        type?: string;
+        amount?: number | string;
+        category?: string;
+        description?: string;
+        date?: string;
     };
+}
+
+interface ValidTransactionPayload extends TransactionPayload {
+    id: string;
+    payload: NonNullable<TransactionPayload['payload']>;
+}
+
+interface ProcessedTransaction {
+    actionType: 'add' | 'edit' | 'delete';
+    txId: number | string | null;
+    type: string;
+    amount: number;
+    category: string;
+    description: string;
+    date: string;
+    client_txn_id: string;
 }
 
 export async function POST(request: Request) {
@@ -38,12 +54,28 @@ export async function POST(request: Request) {
         const today = new Date().toISOString().split('T')[0];
 
         // Validate each payload and filter out invalid ones
-        const validTransactions = transactions.filter(tx => {
+        const validTransactions = transactions.filter((tx): tx is ValidTransactionPayload => {
             if (!tx.id) { // Client-side ID is mandatory for tracking
                 failedIds.push('unknown_client_id'); // Or handle as appropriate
                 return false;
             }
-            if (!tx.payload || !tx.payload.type || !tx.payload.amount) {
+
+            if (!tx.payload) {
+                failedIds.push(tx.id);
+                return false;
+            }
+
+            const actionType = tx.payload.actionType || 'add';
+            if (actionType === 'delete') {
+                if (!tx.payload.id) {
+                    failedIds.push(tx.id);
+                    return false;
+                }
+                return true;
+            }
+
+            const amount = parseFloat(String(tx.payload.amount ?? ''));
+            if (!tx.payload.type || !tx.payload.category || !Number.isFinite(amount) || amount <= 0) {
                 failedIds.push(tx.id);
                 return false;
             }
@@ -52,11 +84,11 @@ export async function POST(request: Request) {
 
         // Process all valid transactions in an extended database transaction
         // First we extract them
-        const toProcess = validTransactions.map((tx: any) => ({
+        const toProcess: ProcessedTransaction[] = validTransactions.map(tx => ({
             actionType: tx.payload.actionType || 'add',
             txId: tx.payload.id || null, // Might be null for 'add'
             type: tx.payload.type || '',
-            amount: parseFloat(tx.payload.amount) || 0,
+            amount: parseFloat(String(tx.payload.amount ?? '')) || 0,
             category: tx.payload.category || '',
             description: tx.payload.description || '',
             date: tx.payload.date || today,
@@ -88,7 +120,7 @@ export async function POST(request: Request) {
                     if (tx.txId) {
                         try {
                             const sets = [];
-                            const params: any[] = [];
+                            const params: unknown[] = [];
 
                             if (tx.type) { sets.push('type = ?'); params.push(tx.type); }
                             if (tx.amount > 0) { sets.push('amount = ?'); params.push(tx.amount); }
@@ -114,7 +146,7 @@ export async function POST(request: Request) {
                 } else {
                     // Default is 'add'
                     try {
-                        const result = await run(
+                        await run(
                             'INSERT INTO transactions (user_id, type, amount, category, description, date) VALUES (?, ?, ?, ?, ?, ?)',
                             [session.userId, tx.type, tx.amount, tx.category, tx.description, tx.date]
                         );
@@ -152,10 +184,11 @@ export async function POST(request: Request) {
                     }
                 }
             }
-        } catch (dbError: any) {
+        } catch (dbError) {
+            const message = dbError instanceof Error ? dbError.message : String(dbError);
             console.error('Database initialization or transaction error:', dbError);
             return NextResponse.json(
-                { error: 'Database operation failed', details: dbError.message || String(dbError) },
+                { error: 'Database operation failed', details: message },
                 { status: 500 }
             );
         }

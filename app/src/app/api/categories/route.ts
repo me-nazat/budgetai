@@ -45,8 +45,9 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ id: result.lastInsertRowid, success: true });
-    } catch (error: any) {
-        if (error?.message?.includes('UNIQUE constraint failed')) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : '';
+        if (message.includes('UNIQUE constraint failed')) {
             return NextResponse.json({ error: 'Category already exists' }, { status: 400 });
         }
         console.error('Custom categories POST error:', error);

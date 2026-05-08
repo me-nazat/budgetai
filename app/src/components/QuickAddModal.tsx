@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import { invalidateFinancialData } from '@/hooks/useApi';
@@ -30,6 +30,21 @@ const CATEGORIES_INCOME = [
 
 const CUSTOM_ICONS = ['emoji_objects', 'flight_takeoff', 'pets', 'fitness_center', 'sports_esports', 'palette', 'camera_alt', 'auto_stories', 'rocket_launch', 'local_cafe', 'celebration', 'diamond'];
 const CUSTOM_COLORS = ['rose', 'orange', 'amber', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'fuchsia', 'pink'];
+const CUSTOM_COLOR_STYLES: Record<string, { bg: string; text: string; selected: string }> = {
+    rose: { bg: 'bg-rose-500', text: 'text-rose-500', selected: 'bg-rose-500 text-white shadow-sm' },
+    orange: { bg: 'bg-orange-500', text: 'text-orange-500', selected: 'bg-orange-500 text-white shadow-sm' },
+    amber: { bg: 'bg-amber-500', text: 'text-amber-500', selected: 'bg-amber-500 text-white shadow-sm' },
+    emerald: { bg: 'bg-emerald-500', text: 'text-emerald-500', selected: 'bg-emerald-500 text-white shadow-sm' },
+    teal: { bg: 'bg-teal-500', text: 'text-teal-500', selected: 'bg-teal-500 text-white shadow-sm' },
+    cyan: { bg: 'bg-cyan-500', text: 'text-cyan-500', selected: 'bg-cyan-500 text-white shadow-sm' },
+    sky: { bg: 'bg-sky-500', text: 'text-sky-500', selected: 'bg-sky-500 text-white shadow-sm' },
+    blue: { bg: 'bg-blue-500', text: 'text-blue-500', selected: 'bg-blue-500 text-white shadow-sm' },
+    indigo: { bg: 'bg-indigo-500', text: 'text-indigo-500', selected: 'bg-indigo-500 text-white shadow-sm' },
+    violet: { bg: 'bg-violet-500', text: 'text-violet-500', selected: 'bg-violet-500 text-white shadow-sm' },
+    fuchsia: { bg: 'bg-fuchsia-500', text: 'text-fuchsia-500', selected: 'bg-fuchsia-500 text-white shadow-sm' },
+    pink: { bg: 'bg-pink-500', text: 'text-pink-500', selected: 'bg-pink-500 text-white shadow-sm' },
+    gray: { bg: 'bg-gray-500', text: 'text-gray-500', selected: 'bg-gray-500 text-white shadow-sm' },
+};
 
 interface CustomCategory {
     id: number;
@@ -39,10 +54,20 @@ interface CustomCategory {
     color: string;
 }
 
+interface CategoryOption {
+    label: string;
+    icon: string;
+    color?: string;
+    isCustom?: boolean;
+    id?: number;
+}
+
 interface QuickAddModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
+
+const getColorStyle = (color?: string) => CUSTOM_COLOR_STYLES[color || ''] || CUSTOM_COLOR_STYLES.gray;
 
 export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [type, setType] = useState<'expense' | 'earning'>('expense');
@@ -64,7 +89,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const sym = CURRENCIES[currency].symbol;
     const { isOnline } = useNetworkStatus();
 
-    const fetchCustomCategories = async () => {
+    const fetchCustomCategories = useCallback(async () => {
         try {
             const res = await fetch(`/api/categories?type=${type}`);
             const data = await res.json();
@@ -72,16 +97,16 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         } catch (e) {
             console.error('Failed to fetch custom categories', e);
         }
-    };
+    }, [type]);
 
     useEffect(() => {
         if (isOpen) {
             fetchCustomCategories();
         }
-    }, [isOpen, type]);
+    }, [fetchCustomCategories, isOpen]);
 
     const standardCategories = type === 'expense' ? CATEGORIES_EXPENSE : CATEGORIES_INCOME;
-    const allCategories = [
+    const allCategories: CategoryOption[] = useMemo(() => [
         ...standardCategories,
         ...customCategories.map(c => ({
             label: c.name,
@@ -90,7 +115,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
             isCustom: true,
             id: c.id
         }))
-    ];
+    ], [customCategories, standardCategories]);
 
     const resetForm = () => {
         setAmount('');
@@ -266,7 +291,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                         // Dynamic color styling for custom categories ONLY when selected
                                         let selectedBg = type === 'expense' ? 'bg-rose-500 text-white shadow-sm' : 'bg-emerald-500 text-white shadow-sm';
                                         if (isSelected && cat.color) {
-                                            selectedBg = `bg-${cat.color}-500 text-white shadow-sm`;
+                                            selectedBg = getColorStyle(cat.color).selected;
                                         }
 
                                         return (
@@ -278,12 +303,12 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                                         : 'bg-gray-100 dark:bg-[#0d1117] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#30363d]'
                                                         }`}
                                                 >
-                                                    <span className={`material-symbols-outlined text-[16px] ${!isSelected && cat.color ? `text-${cat.color}-500` : ''}`}>
+                                                    <span className={`material-symbols-outlined text-[16px] ${!isSelected && cat.color ? getColorStyle(cat.color).text : ''}`}>
                                                         {cat.icon}
                                                     </span>
                                                     {cat.label}
                                                 </button>
-                                                {cat.isCustom && (
+                                                {cat.isCustom && cat.id !== undefined && (
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); deleteCustomCategory(cat.id!, cat.label); }}
                                                         className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full hidden group-hover/cat:flex items-center justify-center text-[10px] shadow"
@@ -371,7 +396,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                         <button
                                             key={color}
                                             onClick={() => setCustomColor(color)}
-                                            className={`w-8 h-8 rounded-full bg-${color}-500 flex items-center justify-center transition-all ${
+                                            className={`w-8 h-8 rounded-full ${getColorStyle(color).bg} flex items-center justify-center transition-all ${
                                                 customColor === color ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#161b22] ring-gray-900 dark:ring-white scale-110' : 'hover:scale-110'
                                             }`}
                                         >
@@ -390,7 +415,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                             onClick={() => setCustomIcon(icon)}
                                             className={`aspect-square rounded-xl flex items-center justify-center text-xl transition-all ${
                                                 customIcon === icon 
-                                                ? `bg-${customColor}-500 text-white shadow-md scale-110` 
+                                                ? `${getColorStyle(customColor).bg} text-white shadow-md scale-110`
                                                 : 'bg-gray-100 dark:bg-[#0d1117] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800'
                                             }`}
                                         >

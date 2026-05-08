@@ -23,7 +23,7 @@
  * ============================================
  */
 
-import { createClient, type Client, type InArgs, type InValue } from '@libsql/client';
+import { createClient, type Client, type InValue } from '@libsql/client';
 
 let client: Client | null = null;
 let initialized = false;
