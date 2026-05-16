@@ -6,45 +6,19 @@ import { CURRENCIES } from '@/lib/currency';
 import { invalidateFinancialData } from '@/hooks/useApi';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction } from '@/lib/offlineDb';
+import {
+    CATEGORIES_EXPENSE, CATEGORIES_INCOME,
+    CUSTOM_COLORS, CUSTOM_COLOR_STYLES,
+    getColorStyle, resolveIcon, resolveColor,
+} from '@/lib/categoryUtils';
 
-const CATEGORIES_EXPENSE = [
-    { label: 'Food', icon: 'restaurant' },
-    { label: 'Transport', icon: 'directions_car' },
-    { label: 'Entertainment', icon: 'theater_comedy' },
-    { label: 'Shopping', icon: 'checkroom' },
-    { label: 'Bills', icon: 'receipt' },
-    { label: 'Health', icon: 'health_and_safety' },
-    { label: 'Education', icon: 'school' },
-    { label: 'Housing', icon: 'home' },
-    { label: 'Other', icon: 'category' },
+const CUSTOM_ICONS = [
+    'emoji_objects', 'flight_takeoff', 'pets', 'fitness_center', 'sports_esports',
+    'palette', 'camera_alt', 'auto_stories', 'rocket_launch', 'local_cafe',
+    'celebration', 'diamond', 'local_bar', 'fastfood', 'local_taxi',
+    'pedal_bike', 'music_note', 'sports_soccer', 'volunteer_activism',
+    'child_care', 'medication', 'devices', 'savings', 'currency_bitcoin',
 ];
-
-const CATEGORIES_INCOME = [
-    { label: 'Salary', icon: 'payments' },
-    { label: 'Freelance', icon: 'work' },
-    { label: 'Investment', icon: 'trending_up' },
-    { label: 'Business', icon: 'business_center' },
-    { label: 'Savings', icon: 'savings' },
-    { label: 'Other', icon: 'category' },
-];
-
-const CUSTOM_ICONS = ['emoji_objects', 'flight_takeoff', 'pets', 'fitness_center', 'sports_esports', 'palette', 'camera_alt', 'auto_stories', 'rocket_launch', 'local_cafe', 'celebration', 'diamond'];
-const CUSTOM_COLORS = ['rose', 'orange', 'amber', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'fuchsia', 'pink'];
-const CUSTOM_COLOR_STYLES: Record<string, { bg: string; text: string; selected: string }> = {
-    rose: { bg: 'bg-rose-500', text: 'text-rose-500', selected: 'bg-rose-500 text-white shadow-sm' },
-    orange: { bg: 'bg-orange-500', text: 'text-orange-500', selected: 'bg-orange-500 text-white shadow-sm' },
-    amber: { bg: 'bg-amber-500', text: 'text-amber-500', selected: 'bg-amber-500 text-white shadow-sm' },
-    emerald: { bg: 'bg-emerald-500', text: 'text-emerald-500', selected: 'bg-emerald-500 text-white shadow-sm' },
-    teal: { bg: 'bg-teal-500', text: 'text-teal-500', selected: 'bg-teal-500 text-white shadow-sm' },
-    cyan: { bg: 'bg-cyan-500', text: 'text-cyan-500', selected: 'bg-cyan-500 text-white shadow-sm' },
-    sky: { bg: 'bg-sky-500', text: 'text-sky-500', selected: 'bg-sky-500 text-white shadow-sm' },
-    blue: { bg: 'bg-blue-500', text: 'text-blue-500', selected: 'bg-blue-500 text-white shadow-sm' },
-    indigo: { bg: 'bg-indigo-500', text: 'text-indigo-500', selected: 'bg-indigo-500 text-white shadow-sm' },
-    violet: { bg: 'bg-violet-500', text: 'text-violet-500', selected: 'bg-violet-500 text-white shadow-sm' },
-    fuchsia: { bg: 'bg-fuchsia-500', text: 'text-fuchsia-500', selected: 'bg-fuchsia-500 text-white shadow-sm' },
-    pink: { bg: 'bg-pink-500', text: 'text-pink-500', selected: 'bg-pink-500 text-white shadow-sm' },
-    gray: { bg: 'bg-gray-500', text: 'text-gray-500', selected: 'bg-gray-500 text-white shadow-sm' },
-};
 
 interface CustomCategory {
     id: number;
@@ -67,8 +41,6 @@ interface QuickAddModalProps {
     onClose: () => void;
 }
 
-const getColorStyle = (color?: string) => CUSTOM_COLOR_STYLES[color || ''] || CUSTOM_COLOR_STYLES.gray;
-
 export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [type, setType] = useState<'expense' | 'earning'>('expense');
     const [amount, setAmount] = useState('');
@@ -84,6 +56,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [customName, setCustomName] = useState('');
     const [customIcon, setCustomIcon] = useState(CUSTOM_ICONS[0]);
     const [customColor, setCustomColor] = useState(CUSTOM_COLORS[0]);
+    const [showRecentCustom, setShowRecentCustom] = useState(false);
 
     const { currency } = useCurrency();
     const sym = CURRENCIES[currency].symbol;
@@ -105,6 +78,16 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         }
     }, [fetchCustomCategories, isOpen]);
 
+    // Smart auto-resolve: update icon & color as user types custom category name
+    useEffect(() => {
+        if (customName.trim()) {
+            const suggestedIcon = resolveIcon(customName);
+            const suggestedColor = resolveColor(customName);
+            setCustomIcon(suggestedIcon);
+            setCustomColor(suggestedColor);
+        }
+    }, [customName]);
+
     const standardCategories = type === 'expense' ? CATEGORIES_EXPENSE : CATEGORIES_INCOME;
     const allCategories: CategoryOption[] = useMemo(() => [
         ...standardCategories,
@@ -124,6 +107,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         setDate(new Date().toISOString().split('T')[0]);
         setType('expense');
         setIsCreatingCustom(false);
+        setShowRecentCustom(false);
     };
 
     const handleClose = () => {
@@ -135,7 +119,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         if (!customName) return;
         setSubmitting(true);
         try {
-            await fetch('/api/categories', {
+            const res = await fetch('/api/categories', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -145,15 +129,36 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                     color: customColor
                 })
             });
-            await fetchCustomCategories();
-            setCategory(customName);
-            setIsCreatingCustom(false);
-            setCustomName('');
+            const data = await res.json();
+            if (res.ok) {
+                await fetchCustomCategories();
+                setCategory(customName);
+                setIsCreatingCustom(false);
+                setCustomName('');
+            } else if (data.error === 'Category already exists') {
+                // Category exists — just select it
+                setCategory(customName);
+                setIsCreatingCustom(false);
+                setCustomName('');
+            }
         } catch (e) {
             console.error(e);
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleCustomButtonClick = () => {
+        if (customCategories.length > 0) {
+            setShowRecentCustom(true);
+        } else {
+            setIsCreatingCustom(true);
+        }
+    };
+
+    const handleSelectRecentCustom = (catName: string) => {
+        setCategory(catName);
+        setShowRecentCustom(false);
     };
 
     const handleSave = async () => {
@@ -229,24 +234,72 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                            {isCreatingCustom ? 'New Custom Category' : 'Add Transaction'}
+                            {isCreatingCustom ? 'New Custom Category' : showRecentCustom ? 'Custom Categories' : 'Add Transaction'}
                         </h2>
                         <button
-                            onClick={() => isCreatingCustom ? setIsCreatingCustom(false) : handleClose()}
+                            onClick={() => {
+                                if (isCreatingCustom) { setIsCreatingCustom(false); }
+                                else if (showRecentCustom) { setShowRecentCustom(false); }
+                                else { handleClose(); }
+                            }}
                             className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
                         >
                             <span className="material-symbols-outlined text-lg text-gray-500 dark:text-gray-400">
-                                {isCreatingCustom ? 'arrow_back' : 'close'}
+                                {isCreatingCustom || showRecentCustom ? 'arrow_back' : 'close'}
                             </span>
                         </button>
                     </div>
 
-                    {!isCreatingCustom ? (
+                    {/* ─── Recent Custom Categories Picker ─── */}
+                    {showRecentCustom && !isCreatingCustom ? (
+                        <div className="animate-fade-in">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+                                Select a saved custom category or create new
+                            </p>
+                            <div className="flex flex-wrap gap-2.5 mb-6">
+                                {customCategories.map(cat => {
+                                    const isSelected = category === cat.name;
+                                    const colorStyle = getColorStyle(cat.color);
+                                    return (
+                                        <div key={cat.id} className="relative group/cat">
+                                            <button
+                                                onClick={() => handleSelectRecentCustom(cat.name)}
+                                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${isSelected
+                                                    ? colorStyle.selected
+                                                    : 'bg-gray-100 dark:bg-[#0d1117] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#30363d] hover:border-gray-300 dark:hover:border-gray-500'
+                                                    }`}
+                                            >
+                                                <span className={`material-symbols-outlined text-[18px] ${!isSelected ? colorStyle.text : ''}`}>
+                                                    {cat.icon}
+                                                </span>
+                                                {cat.name}
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); deleteCustomCategory(cat.id, cat.name); }}
+                                                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full hidden group-hover/cat:flex items-center justify-center text-[10px] shadow"
+                                            >
+                                                <span className="material-symbols-outlined text-[12px]">close</span>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Create New Button */}
+                            <button
+                                onClick={() => setIsCreatingCustom(true)}
+                                className="w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-lg">add</span>
+                                Create New Custom Category
+                            </button>
+                        </div>
+                    ) : !isCreatingCustom ? (
                         <>
                             {/* Type Toggle */}
                             <div className="flex bg-gray-100 dark:bg-[#0d1117] rounded-xl p-1 mb-6">
                                 <button
-                                    onClick={() => { setType('expense'); setCategory(''); setIsCreatingCustom(false); }}
+                                    onClick={() => { setType('expense'); setCategory(''); setIsCreatingCustom(false); setShowRecentCustom(false); }}
                                     className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === 'expense'
                                         ? 'bg-rose-500 text-white shadow-sm'
                                         : 'text-gray-500 dark:text-gray-400'
@@ -255,7 +308,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                     Expense
                                 </button>
                                 <button
-                                    onClick={() => { setType('earning'); setCategory(''); setIsCreatingCustom(false); }}
+                                    onClick={() => { setType('earning'); setCategory(''); setIsCreatingCustom(false); setShowRecentCustom(false); }}
                                     className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === 'earning'
                                         ? 'bg-emerald-500 text-white shadow-sm'
                                         : 'text-gray-500 dark:text-gray-400'
@@ -320,12 +373,18 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                         );
                                     })}
                                     
+                                    {/* Custom Category Button */}
                                     <button
-                                        onClick={() => setIsCreatingCustom(true)}
+                                        onClick={handleCustomButtonClick}
                                         className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
                                     >
                                         <span className="material-symbols-outlined text-[16px]">add</span>
                                         Custom
+                                        {customCategories.length > 0 && (
+                                            <span className="ml-0.5 w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">
+                                                {customCategories.length}
+                                            </span>
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -377,16 +436,32 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                     ) : (
                         <div className="animate-fade-in">
                             {/* Create Custom Category Form */}
+
+                            {/* Category Name with Live Icon Preview */}
                             <div className="mb-6">
                                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Category Name</label>
-                                <input
-                                    type="text"
-                                    value={customName}
-                                    onChange={e => setCustomName(e.target.value)}
-                                    placeholder="e.g. Crypto, Pets, Coffee"
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
-                                    autoFocus
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={customName}
+                                        onChange={e => setCustomName(e.target.value)}
+                                        placeholder="e.g. Coffee, Gym, Pets, Crypto"
+                                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                                        autoFocus
+                                    />
+                                    {/* Live Icon Preview */}
+                                    <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${customName.trim() ? getColorStyle(customColor).bg : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                        <span className="material-symbols-outlined text-white text-[16px]">
+                                            {customName.trim() ? customIcon : 'edit'}
+                                        </span>
+                                    </div>
+                                </div>
+                                {customName.trim() && (
+                                    <p className="mt-2 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-[14px] text-emerald-500">auto_awesome</span>
+                                        Auto-matched icon: <span className="font-semibold text-gray-600 dark:text-gray-300">{customIcon}</span>
+                                    </p>
+                                )}
                             </div>
 
                             <div className="mb-6">
@@ -407,7 +482,10 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                             </div>
 
                             <div className="mb-6">
-                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Icon</label>
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                                    Icon
+                                    <span className="ml-2 text-[10px] font-normal normal-case text-gray-400">(auto-suggested, or pick your own)</span>
+                                </label>
                                 <div className="grid grid-cols-6 gap-3">
                                     {CUSTOM_ICONS.map(icon => (
                                         <button
@@ -424,6 +502,22 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Live Preview Card */}
+                            {customName.trim() && (
+                                <div className="mb-6 p-4 rounded-xl bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-[#30363d]">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Preview</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getColorStyle(customColor).bg}`}>
+                                            <span className="material-symbols-outlined text-white text-xl">{customIcon}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white">{customName}</p>
+                                            <p className="text-[10px] text-gray-400 uppercase tracking-wider">{type === 'expense' ? 'Expense' : 'Income'} Category</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <button
                                 onClick={handleSaveCustomCategory}

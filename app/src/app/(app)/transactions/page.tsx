@@ -10,13 +10,9 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
+import { STANDARD_CATEGORY_ICONS, getCategoryIcon, getColorStyle, resolveIcon, resolveColor } from '@/lib/categoryUtils';
 
-const categoryIcons: Record<string, string> = {
-    Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
-    Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety',
-    Education: 'school', Business: 'business_center', Savings: 'savings', Salary: 'payments',
-    Freelance: 'work', Investment: 'trending_up', Other: 'category',
-};
+const categoryIcons = STANDARD_CATEGORY_ICONS;
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
 
 interface TransactionRecord {
@@ -155,10 +151,12 @@ export default function TransactionsPage() {
         try {
             if (qaAddingCustomCategory && qaCustomCategoryName) {
                 try {
+                    const smartIcon = resolveIcon(qaCustomCategoryName);
+                    const smartColor = resolveColor(qaCustomCategoryName);
                     await fetch('/api/categories', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: qaCustomCategoryName, type: qaType, icon: 'category', color: 'gray' })
+                        body: JSON.stringify({ name: qaCustomCategoryName, type: qaType, icon: smartIcon, color: smartColor })
                     });
                     mutateCategories(); // Refresh the list
                 } catch {}
@@ -540,9 +538,14 @@ export default function TransactionsPage() {
                         
                         {qaAddingCustomCategory ? (
                             <div className="flex items-center gap-2 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 p-1">
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ml-1 transition-all ${qaCustomCategoryName.trim() ? getColorStyle(resolveColor(qaCustomCategoryName)).bg : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                    <span className="material-symbols-outlined text-white text-[14px]">
+                                        {qaCustomCategoryName.trim() ? resolveIcon(qaCustomCategoryName) : 'edit'}
+                                    </span>
+                                </div>
                                 <input
                                     type="text"
-                                    placeholder="New Category"
+                                    placeholder="e.g. Coffee, Gym, Crypto"
                                     value={qaCustomCategoryName}
                                     onChange={e => {
                                         setQaCustomCategoryName(e.target.value);
@@ -658,7 +661,7 @@ export default function TransactionsPage() {
                                         <div className="flex items-center gap-3">
                                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
                                                 <span className="material-symbols-outlined text-lg">
-                                                    {categoryIcons[t.category] || customCategories.find(c => c.name === t.category)?.icon || 'category'}
+                                                    {getCategoryIcon(t.category, customCategories)}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">

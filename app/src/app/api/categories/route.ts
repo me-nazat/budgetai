@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { queryAll, run } from '@/lib/db';
+import { resolveIcon, resolveColor } from '@/lib/categoryUtils';
 
 export async function GET(request: Request) {
     try {
@@ -39,12 +40,21 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
         }
 
+        // Smart defaults: auto-resolve icon & color from category name if not provided
+        const resolvedIcon = (icon && icon !== 'category') ? icon : resolveIcon(name);
+        const resolvedColor = (color && color !== 'gray') ? color : resolveColor(name);
+
         const result = await run(
             'INSERT INTO custom_categories (user_id, name, type, icon, color) VALUES (?, ?, ?, ?, ?)',
-            [session.userId, name, type, icon || 'category', color || 'gray']
+            [session.userId, name, type, resolvedIcon, resolvedColor]
         );
 
-        return NextResponse.json({ id: result.lastInsertRowid, success: true });
+        return NextResponse.json({ 
+            id: result.lastInsertRowid, 
+            icon: resolvedIcon,
+            color: resolvedColor,
+            success: true 
+        });
     } catch (error) {
         const message = error instanceof Error ? error.message : '';
         if (message.includes('UNIQUE constraint failed')) {

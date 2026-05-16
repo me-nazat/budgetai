@@ -10,14 +10,12 @@ import {
     Title, Tooltip, Legend, Filler, ArcElement,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import { useCustomCategories } from '@/hooks/useCustomCategories';
+import { getCategoryIcon, getCategoryHex, CATEGORY_HEX_COLORS } from '@/lib/categoryUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
-const categoryColors: Record<string, string> = {
-    Food: '#f97316', Transport: '#8b5cf6', Housing: '#3b82f6', Utilities: '#eab308',
-    Entertainment: '#ec4899', Shopping: '#6366f1', Health: '#10b981', Education: '#06b6d4',
-    Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
-};
+const categoryColors = CATEGORY_HEX_COLORS;
 
 const categoryIcons: Record<string, string> = {
     Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
@@ -40,6 +38,7 @@ export default function DashboardPage() {
     const { user } = useUser();
     const marketNews = useMarketNews();
     const exchangeRates = useExchangeRates(currency);
+    const { categories: customCats } = useCustomCategories('all');
 
     // Intelligence Hub — default to 'news' tab (Task 2)
     const [activeTab, setActiveTab] = useState<'currency' | 'news' | 'calculator'>('news');
@@ -99,7 +98,7 @@ export default function DashboardPage() {
             data: data.categorySpending.map(c => c.total),
             backgroundColor: data.categorySpending.map(c => {
                 const cat = c.category.charAt(0).toUpperCase() + c.category.slice(1).toLowerCase();
-                return categoryColors[cat] || '#6b7280';
+                return getCategoryHex(cat, customCats);
             }),
             borderWidth: 0,
             spacing: 2,
@@ -224,7 +223,7 @@ export default function DashboardPage() {
                                 <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-gray-200 dark:via-[#30363d] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
                                     <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                        {categoryIcons[t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()] || 'category'}
+                                        {getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}
                                     </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -418,7 +417,7 @@ export default function DashboardPage() {
                                             <td className="px-4 lg:px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
-                                                        <span className="material-symbols-outlined text-lg">{categoryIcons[t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()] || 'category'}</span>
+                                                        <span className="material-symbols-outlined text-lg">{getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}</span>
                                                     </div>
                                                     <span className="font-medium text-gray-900 dark:text-white truncate">{t.description || t.category}</span>
                                                 </div>

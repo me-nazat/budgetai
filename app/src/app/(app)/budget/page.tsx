@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
+import { resolveIcon, resolveColor } from '@/lib/categoryUtils';
 
 interface Budget { id: number; category: string; monthly_limit: number; spent: number; }
 interface CustomBudgetCategory { id?: number; name: string; icon: string; color: string; }
@@ -107,10 +108,12 @@ export default function BudgetPage() {
             targetCategory = newCustomCatName;
             // Optionally persist the new custom category back to the server.
             try {
+                const smartIcon = resolveIcon(targetCategory);
+                const smartColor = resolveColor(targetCategory);
                 await fetch('/api/categories', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: targetCategory, type: 'expense', icon: 'category', color: 'gray' })
+                    body: JSON.stringify({ name: targetCategory, type: 'expense', icon: smartIcon, color: smartColor })
                 });
             } catch {}
         }
