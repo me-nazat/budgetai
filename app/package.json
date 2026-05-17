@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
-    "postbuild": "node scripts/ensure-vercel-manifest.mjs && cp -r .next ../ || true",
+    "postbuild": "node scripts/ensure-vercel-manifest.mjs || true",
     "start": "next start",
     "lint": "eslint"
   },
