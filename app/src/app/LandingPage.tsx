@@ -302,7 +302,7 @@ function DashboardMockup() {
             </div>
 
             {/* Floating cards */}
-            <div className="absolute -bottom-4 -left-4 lp-glass-card p-4 rounded-xl border-l-4 border-primary dark:border-lp-cyan lp-float-delayed z-20 hidden sm:block">
+            <div className="absolute -bottom-8 -left-12 lp-glass-card p-4 rounded-xl border-l-4 border-primary dark:border-lp-cyan lp-float-delayed z-30 hidden sm:block shadow-2xl">
                 <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-primary/10 dark:bg-lp-cyan/20 flex items-center justify-center text-primary dark:text-lp-cyan">
                         <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
@@ -314,7 +314,7 @@ function DashboardMockup() {
                 </div>
             </div>
 
-            <div className="absolute -top-2 -right-4 lp-glass-card px-4 py-3 rounded-xl lp-float z-20 hidden sm:block">
+            <div className="absolute -top-6 -right-8 lp-glass-card px-4 py-3 rounded-xl lp-float z-30 hidden sm:block shadow-2xl">
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-sm text-emerald-500">trending_up</span>
                     <span className="text-xs font-bold text-emerald-500">+12.5%</span>
