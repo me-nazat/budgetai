@@ -41,6 +41,7 @@ export default function TransactionsPage() {
     const router = useRouter();
     const [selectedWeek, setSelectedWeek] = useState<string>('all');
     const [typeFilter, setTypeFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [sortField, setSortField] = useState('date');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [showSuccess, setShowSuccess] = useState(false);
@@ -415,7 +416,9 @@ export default function TransactionsPage() {
     ];
 
     const transactionRows = transactions as TransactionRecord[];
-    const sorted = [...transactionRows].sort((a, b) => {
+    const sorted = [...transactionRows]
+        .filter(t => !searchQuery || (t.description || '').toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => {
         const dir = sortDir === 'asc' ? 1 : -1;
         if (sortField === 'date') return (a.date > b.date ? 1 : -1) * dir;
         if (sortField === 'amount') return (a.amount - b.amount) * dir;
@@ -807,6 +810,18 @@ export default function TransactionsPage() {
                             {t === 'all' ? 'All' : t + 's'}
                         </button>
                     ))}
+                </div>
+                <div className="ml-auto w-full lg:w-auto">
+                    <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                        <input 
+                            type="text" 
+                            placeholder="Search description or category..." 
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full lg:w-64 pl-10 pr-4 py-2 text-sm bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-gray-900 dark:text-white"
+                        />
+                    </div>
                 </div>
             </div>
 
