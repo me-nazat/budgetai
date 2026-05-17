@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import InstallPrompt from "@/components/pwa/InstallPrompt";
 
 import "material-symbols/outlined.css";
 
@@ -25,16 +24,6 @@ export const metadata: Metadata = {
   title: "Wealth AI — Smart Finance",
   description: "AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights.",
   keywords: "wealth AI, budget, savings, AI, finance, expense tracker, personal finance, net worth",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Wealth AI",
-  },
-  applicationName: "Wealth AI",
-  icons: {
-    apple: "/icon-192x192.png",
-  },
 };
 
 export default function RootLayout({
@@ -47,7 +36,6 @@ export default function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} font-[Inter,sans-serif] antialiased`}>
         <ThemeScript />
         {children}
-        <InstallPrompt />
       </body>
     </html>
   );
