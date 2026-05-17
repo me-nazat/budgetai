@@ -11,16 +11,18 @@ export default function AppRouteTransition() {
     const pathname = usePathname();
     const firstPath = useRef(pathname);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const frameRef = useRef<number | null>(null);
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
         if (firstPath.current === pathname) return;
 
-        setVisible(true);
+        frameRef.current = requestAnimationFrame(() => setVisible(true));
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => setVisible(false), 400);
 
         return () => {
+            if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
     }, [pathname]);

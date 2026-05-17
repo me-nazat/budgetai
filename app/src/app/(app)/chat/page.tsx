@@ -12,14 +12,34 @@ interface ActionResult {
     detail: string;
 }
 
+interface PendingActions {
+    financialData: Array<{ type: string; amount: number; category: string; description: string; date: string }>;
+    actions: Array<Record<string, unknown>>;
+}
+
+interface AttachmentSummary {
+    name: string;
+    summary: string;
+    confidence?: string;
+}
+
+interface Session {
+    session_id: string;
+    latest_content: string;
+    latest_time: string;
+    message_count: number;
+}
+
 interface Message {
     id?: number;
     role: 'user' | 'assistant' | 'system';
     content: string;
     mode?: string;
     created_at?: string;
-    transactions?: Array<{ type: string; amount: number; category: string; description: string; date: string }>;
+    transactions?: Array<{ id?: number; type: string; amount: number; category: string; description: string; date: string }>;
     actionResults?: ActionResult[];
+    pendingActions?: PendingActions | null;
+    attachmentSummaries?: AttachmentSummary[];
     isReportRequest?: boolean;
     isTyping?: boolean;
 }
@@ -33,8 +53,15 @@ export default function ChatPage() {
     const [showFinanceToast, setShowFinanceToast] = useState(false);
     const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
     const [sessionId, setSessionId] = useState<string>(`session_${Date.now()}`);
+    const [attachments, setAttachments] = useState<File[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const [historySessions, setHistorySessions] = useState<Session[]>([]);
+    const [historySearch, setHistorySearch] = useState('');
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [confirmingIdx, setConfirmingIdx] = useState<number | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const { currency, fmtRaw } = useCurrency();
     const sym = CURRENCIES[currency].symbol;
@@ -103,6 +130,47 @@ export default function ChatPage() {
         });
     }, []);
 
+    const loadHistorySessions = useCallback(async () => {
+        setHistoryLoading(true);
+        try {
+            const res = await fetch('/api/chat/history');
+            const data = await res.json();
+            setHistorySessions(data.sessions || []);
+        } finally {
+            setHistoryLoading(false);
+        }
+    }, []);
+
+    const openHistory = useCallback(() => {
+        setShowHistory(true);
+        void loadHistorySessions();
+    }, [loadHistorySessions]);
+
+    const loadSession = useCallback(async (sid: string) => {
+        setSessionId(sid);
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/chat/messages?sessionId=${sid}`);
+            const data = await res.json();
+            setMessages(data.messages || []);
+            const lastMsg = data.messages?.[data.messages.length - 1];
+            if (lastMsg?.mode) setMode(lastMsg.mode === 'silent' ? 'silent' : 'chat');
+            setShowHistory(false);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files || []).slice(0, 5);
+        setAttachments(prev => [...prev, ...files].slice(0, 5));
+        event.target.value = '';
+    }, []);
+
+    const removeAttachment = useCallback((index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    }, []);
+
     // Typewriter effect for AI responses — faster and smoother
     const typeMessage = useCallback((fullContent: string, msgIndex: number) => {
         let i = 0;
@@ -127,20 +195,33 @@ export default function ChatPage() {
 
     const handleSend = async () => {
         const msg = input.trim();
-        if (!msg || loading) return;
+        if ((!msg && attachments.length === 0) || loading) return;
+        const outgoingAttachments = attachments;
         setInput('');
+        setAttachments([]);
         if (inputRef.current) inputRef.current.style.height = 'auto';
         setLoading(true);
 
-        const userMsg: Message = { role: 'user', content: msg, mode, created_at: new Date().toISOString() };
+        const attachmentLabel = outgoingAttachments.length > 0 ? `\n\nAttachments: ${outgoingAttachments.map(file => file.name).join(', ')}` : '';
+        const userMsg: Message = { role: 'user', content: `${msg || 'Analyze these attachments.'}${attachmentLabel}`, mode, created_at: new Date().toISOString() };
         setMessages(prev => [...prev, userMsg]);
 
         try {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: msg, mode, sessionId }),
-            });
+            let res: Response;
+            if (outgoingAttachments.length > 0) {
+                const form = new FormData();
+                form.set('message', msg);
+                form.set('mode', mode);
+                form.set('sessionId', sessionId);
+                outgoingAttachments.forEach(file => form.append('attachments', file));
+                res = await fetch('/api/chat', { method: 'POST', body: form });
+            } else {
+                res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg, mode, sessionId }),
+                });
+            }
             const data = await res.json();
 
             if (data.sessionId) setSessionId(data.sessionId);
@@ -152,8 +233,10 @@ export default function ChatPage() {
                 created_at: new Date().toISOString(),
                 transactions: data.transactions,
                 actionResults: data.actionResults,
+                pendingActions: data.pendingActions,
+                attachmentSummaries: data.attachmentSummaries,
                 isReportRequest: data.isReportRequest,
-                isTyping: mode === 'chat',
+                isTyping: mode === 'chat' && !data.pendingActions,
             };
 
             const fullContent = data.message || '';
@@ -183,6 +266,40 @@ export default function ChatPage() {
         } finally {
             setLoading(false);
             inputRef.current?.focus();
+        }
+    };
+
+    const confirmPendingActions = async (idx: number, pending: PendingActions | null | undefined) => {
+        if (!pending || confirmingIdx !== null) return;
+        setConfirmingIdx(idx);
+        try {
+            const res = await fetch('/api/chat/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId,
+                    mode,
+                    financialData: pending.financialData,
+                    actions: pending.actions,
+                }),
+            });
+            const data = await res.json();
+            setMessages(prev => [
+                ...prev.map((message, i) => i === idx ? { ...message, pendingActions: null } : message),
+                {
+                    role: 'system',
+                    content: data.message || 'Confirmed.',
+                    mode,
+                    created_at: new Date().toISOString(),
+                    transactions: data.transactions,
+                    actionResults: data.actionResults,
+                },
+            ]);
+            invalidateFinancialData();
+        } catch {
+            setMessages(prev => [...prev, { role: 'system', content: 'Could not confirm those attachment actions. Please try again.' }]);
+        } finally {
+            setConfirmingIdx(null);
         }
     };
 
@@ -381,7 +498,12 @@ export default function ChatPage() {
     const clearChat = () => {
         setMessages([]);
         setSessionId(`session_${Date.now()}`);
+        setAttachments([]);
     };
+
+    const filteredHistorySessions = historySessions.filter(session =>
+        !historySearch || session.latest_content?.toLowerCase().includes(historySearch.toLowerCase())
+    );
 
     // Enhanced markdown-like rendering for AI messages
     const renderContent = (text: string) => {
@@ -466,6 +588,14 @@ export default function ChatPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 lg:gap-3">
+                    <button
+                        onClick={openHistory}
+                        className="hidden sm:flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 hover:border-primary hover:text-primary dark:border-[#30363d] dark:bg-surface-dark dark:text-text-muted"
+                        title="Chat history"
+                    >
+                        <span className="material-symbols-outlined text-[17px]">history</span>
+                        History
+                    </button>
                     {/* Mode Toggle */}
                     <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl border border-gray-200 dark:border-[#30363d] flex text-xs">
                         <button
@@ -506,6 +636,57 @@ export default function ChatPage() {
                         <span className="material-symbols-outlined text-lg">construction</span>
                         <span className="text-sm font-semibold">Finance Mode is under development — coming soon!</span>
                     </div>
+                </div>
+            )}
+
+            {showHistory && (
+                <div className="fixed inset-0 z-[80] flex justify-end bg-slate-950/45 backdrop-blur-sm">
+                    <button className="flex-1 cursor-default" aria-label="Close history" onClick={() => setShowHistory(false)} />
+                    <aside className="h-full w-full max-w-md border-l border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-[#0d1117]">
+                        <div className="border-b border-gray-200 p-4 dark:border-[#30363d]">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="text-lg font-black text-gray-900 dark:text-white">Chat History</h2>
+                                    <p className="text-xs text-gray-500 dark:text-text-muted">Open a previous session inside this chat board.</p>
+                                </div>
+                                <button onClick={() => setShowHistory(false)} className="grid h-9 w-9 place-items-center rounded-full bg-gray-100 text-gray-500 hover:text-gray-900 dark:bg-white/10 dark:text-gray-300">
+                                    <span className="material-symbols-outlined text-[18px]">close</span>
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <span className="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-gray-400">search</span>
+                                <input
+                                    value={historySearch}
+                                    onChange={event => setHistorySearch(event.target.value)}
+                                    placeholder="Search conversations..."
+                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-900 outline-none focus:border-primary dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                />
+                            </div>
+                        </div>
+                        <div className="h-[calc(100%-112px)] overflow-y-auto p-3">
+                            {historyLoading ? (
+                                <div className="p-8 text-center text-sm text-gray-400">Loading history...</div>
+                            ) : filteredHistorySessions.length === 0 ? (
+                                <div className="p-8 text-center text-sm text-gray-400">No conversations found.</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {filteredHistorySessions.map(session => (
+                                        <button
+                                            key={session.session_id}
+                                            onClick={() => void loadSession(session.session_id)}
+                                            className={`w-full rounded-2xl border p-4 text-left transition-all hover:border-primary/40 hover:bg-primary/5 ${session.session_id === sessionId ? 'border-primary/40 bg-primary/10' : 'border-gray-200 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.04]'}`}
+                                        >
+                                            <div className="mb-2 flex items-center justify-between gap-3">
+                                                <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{session.latest_content?.slice(0, 46) || 'Conversation'}</p>
+                                                <span className="text-[10px] font-semibold text-gray-400">{new Date(session.latest_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 dark:text-text-muted">{session.message_count} message{session.message_count === 1 ? '' : 's'} - {new Date(session.latest_time).toLocaleDateString()}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </aside>
                 </div>
             )}
 
@@ -624,6 +805,65 @@ export default function ChatPage() {
                                 </div>
                             )}
 
+                            {msg.attachmentSummaries && msg.attachmentSummaries.length > 0 && (
+                                <div className="mt-2 space-y-1.5 w-full">
+                                    {msg.attachmentSummaries.map((summary, j) => (
+                                        <div key={`${summary.name}-${j}`} className="rounded-xl border border-violet-200 bg-violet-50/80 px-3 py-2.5 text-xs text-violet-800 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200">
+                                            <div className="mb-1 flex items-center gap-2 font-bold">
+                                                <span className="material-symbols-outlined text-[15px]">attach_file</span>
+                                                <span className="truncate">{summary.name}</span>
+                                                {summary.confidence && <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-[10px] uppercase tracking-wide dark:bg-white/10">{summary.confidence}</span>}
+                                            </div>
+                                            <p className="leading-relaxed">{summary.summary}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {msg.pendingActions && ((msg.pendingActions.financialData?.length || 0) > 0 || (msg.pendingActions.actions?.length || 0) > 0) && (
+                                <div className="mt-3 w-full rounded-2xl border border-primary/20 bg-primary/5 p-4 dark:bg-primary/10">
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-black text-gray-900 dark:text-white">Review before saving</p>
+                                            <p className="text-xs text-gray-500 dark:text-text-muted">Attachment results are extract-only until you confirm.</p>
+                                        </div>
+                                        <span className="material-symbols-outlined rounded-xl bg-primary/10 p-2 text-primary">rule</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {msg.pendingActions.financialData?.map((item, j) => (
+                                            <div key={`${item.description}-${j}`} className="flex items-center gap-2 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/5">
+                                                <span className={`material-symbols-outlined text-[16px] ${item.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>{item.type === 'expense' ? 'remove' : 'add'}</span>
+                                                <span className={`font-black ${item.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>{item.type === 'expense' ? '-' : '+'}{fmtRaw(item.amount)}</span>
+                                                <span className="font-semibold text-gray-600 dark:text-gray-300">{item.category}</span>
+                                                <span className="min-w-0 truncate text-gray-400">{item.description}</span>
+                                                <span className="ml-auto text-gray-400">{item.date}</span>
+                                            </div>
+                                        ))}
+                                        {(msg.pendingActions.actions?.length || 0) > 0 && (
+                                            <div className="rounded-xl bg-white/75 px-3 py-2 text-xs font-semibold text-gray-500 dark:bg-white/5 dark:text-gray-300">
+                                                {msg.pendingActions.actions.length} data action{msg.pendingActions.actions.length === 1 ? '' : 's'} proposed.
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="mt-4 flex gap-2">
+                                        <button
+                                            onClick={() => void confirmPendingActions(i, msg.pendingActions)}
+                                            disabled={confirmingIdx !== null}
+                                            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                                        >
+                                            <span className="material-symbols-outlined text-[15px]">check</span>
+                                            {confirmingIdx === i ? 'Saving...' : 'Confirm & Save'}
+                                        </button>
+                                        <button
+                                            onClick={() => setMessages(prev => prev.map((message, idx) => idx === i ? { ...message, pendingActions: null } : message))}
+                                            className="rounded-xl px-4 py-2 text-xs font-bold text-gray-500 hover:text-rose-500"
+                                        >
+                                            Dismiss
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Show action results (edit/delete/reset) */}
                             {msg.actionResults && msg.actionResults.length > 0 && (
                                 <div className="mt-2 space-y-1.5 w-full">
@@ -684,20 +924,48 @@ export default function ChatPage() {
                     <button onClick={() => setInput('📈 I earned 5000 from freelance')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all border border-emerald-200 dark:border-emerald-500/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">add</span>Earning</button>
                     <button onClick={() => setInput('Generate a full report for this month')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-all border border-violet-200 dark:border-violet-500/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">summarize</span>Report</button>
                 </div>
+                {attachments.length > 0 && (
+                    <div className="mb-3 flex max-w-3xl mx-auto flex-wrap gap-2">
+                        {attachments.map((file, index) => (
+                            <div key={`${file.name}-${index}`} className="flex max-w-full items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary dark:bg-primary/10">
+                                <span className="material-symbols-outlined text-[15px]">{file.type.startsWith('image/') ? 'image' : 'attach_file'}</span>
+                                <span className="max-w-[180px] truncate">{file.name}</span>
+                                <button onClick={() => removeAttachment(index)} className="grid h-5 w-5 place-items-center rounded-full hover:bg-primary/10" aria-label="Remove attachment">
+                                    <span className="material-symbols-outlined text-[13px]">close</span>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
                 <div className="relative card-premium rounded-2xl focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all max-w-3xl mx-auto">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        accept="image/*,.txt,.md,.csv,.json,.pdf"
+                        onChange={handleFileSelect}
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute left-2 bottom-1.5 grid h-9 w-9 place-items-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-primary dark:hover:bg-white/10"
+                        title="Attach document or photo"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                    </button>
                     <textarea
                         ref={inputRef}
                         value={input}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
-                        className="w-full bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-0 resize-none py-3.5 px-4 pr-14 max-h-32 outline-none text-sm"
-                        placeholder={mode === 'chat' ? 'Ask anything — finances, general questions, or just chat...' : 'Enter data to store silently...'}
+                        className="w-full bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-0 resize-none py-3.5 pl-14 pr-14 max-h-32 outline-none text-sm"
+                        placeholder={mode === 'chat' ? 'Ask anything, or attach a receipt/photo/document...' : 'Enter data to store silently, or attach data to review...'}
                         rows={1}
                     />
                     <div className="absolute right-2 bottom-1.5">
                         <button
                             onClick={handleSend}
-                            disabled={loading || !input.trim()}
+                            disabled={loading || (!input.trim() && attachments.length === 0)}
                             className="w-9 h-9 flex items-center justify-center bg-primary hover:bg-primary-hover text-white rounded-xl transition-all shadow-sm disabled:opacity-40 disabled:hover:bg-primary hover:shadow-md active:scale-95"
                         >
                             <span className="material-symbols-outlined text-[18px]">send</span>

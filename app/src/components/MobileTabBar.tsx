@@ -8,7 +8,7 @@ import MobileMenu from './MobileMenu';
 
 const mobileNavItems = [
     { href: '/dashboard', icon: 'home', label: 'Home' },
-    { href: '/analytics', icon: 'bar_chart', label: 'Analytics' },
+    { href: '/overview', icon: 'analytics', label: 'Overview' },
     { href: '__quick_add__', icon: 'add', label: 'Add' },
     { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
     { href: '__menu__', icon: 'menu', label: 'Menu' },

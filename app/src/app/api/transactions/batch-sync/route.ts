@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { run, ensureDbInitialized, queryOne } from '@/lib/db';
+import { run, ensureDbInitialized } from '@/lib/db';
+import { maybeCreateBudgetAlert } from '@/lib/alerts';
 
 interface TransactionPayload {
     id?: string; // Client-side ID for tracking
@@ -159,30 +160,14 @@ export async function POST(request: Request) {
                             [session.userId, tx.type, tx.amount, tx.category, tx.description, tx.date]
                         );
 
-                        // Budget updates for additions
                         if (tx.type === 'expense') {
-                            const txMonth = new Date(tx.date).getMonth() + 1;
-                            const txYear = new Date(tx.date).getFullYear();
-                            const budget = await queryOne<{ monthly_limit: number; id: number }>(
-                                'SELECT id, monthly_limit FROM budgets WHERE user_id = ? AND LOWER(category) = LOWER(?) AND month = ? AND year = ?',
-                                [session.userId, tx.category, txMonth, txYear]
-                            );
-
-                            if (budget) {
-                                const spent = await queryOne<{ total: number }>(
-                                    'SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND LOWER(category) = LOWER(?) AND type = ? AND strftime("%Y-%m", date) = ?',
-                                    [session.userId, tx.category, 'expense', `${txYear}-${String(txMonth).padStart(2, '0')}`]
-                                );
-
-                                const currentSpent = spent?.total || 0;
-                                // Simplified notification logic for batch sync to avoid blocking
-                                if (currentSpent > budget.monthly_limit) {
-                                    await run(
-                                        'INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
-                                        [session.userId, 'danger', `Over Budget: ${tx.category}`, `You've exceeded your $${budget.monthly_limit} budget for ${tx.category}.`]
-                                    );
-                                }
-                            }
+                            await maybeCreateBudgetAlert({
+                                userId: session.userId,
+                                type: tx.type,
+                                amount: tx.amount,
+                                category: tx.category,
+                                date: tx.date,
+                            });
                         }
 
                         processedIds.push(tx.client_txn_id);

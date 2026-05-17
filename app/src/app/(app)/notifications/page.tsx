@@ -29,6 +29,17 @@ export default function NotificationsPage() {
         load();
     };
 
+    const remove = async (id: number) => {
+        await fetch('/api/notifications', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+        load();
+    };
+
+    const clearAll = async () => {
+        if (!confirm('Clear all alerts?')) return;
+        await fetch('/api/notifications', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clearAll: true }) });
+        load();
+    };
+
     const typeConfig: Record<string, { icon: string; border: string; text: string }> = {
         danger: { icon: 'error', border: 'border-l-red-500', text: 'text-red-500' },
         warning: { icon: 'warning', border: 'border-l-orange-500', text: 'text-orange-500' },
@@ -43,11 +54,18 @@ export default function NotificationsPage() {
                     <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Notifications</h1>
                     <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Stay updated on your budget alerts</p>
                 </div>
-                {unreadCount > 0 && (
-                    <button onClick={markAllRead} className="px-4 py-2.5 text-primary text-sm font-bold bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">done_all</span> Mark all read
-                    </button>
-                )}
+                <div className="flex flex-wrap gap-2">
+                    {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="px-4 py-2.5 text-primary text-sm font-bold bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[18px]">done_all</span> Mark all read
+                        </button>
+                    )}
+                    {notifications.length > 0 && (
+                        <button onClick={clearAll} className="px-4 py-2.5 text-rose-600 text-sm font-bold bg-rose-500/10 hover:bg-rose-500/20 rounded-lg transition-colors flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[18px]">delete_sweep</span> Clear
+                        </button>
+                    )}
+                </div>
             </div>
 
             {unreadCount > 0 && (
@@ -84,6 +102,13 @@ export default function NotificationsPage() {
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="text-gray-800 dark:text-white text-sm font-bold">{n.title}</h3>
                                             {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+                                            <button
+                                                onClick={(event) => { event.stopPropagation(); remove(n.id); }}
+                                                className="ml-auto grid h-8 w-8 place-items-center rounded-lg text-gray-400 opacity-0 transition-all hover:bg-rose-500/10 hover:text-rose-500 group-hover:opacity-100"
+                                                aria-label="Delete alert"
+                                            >
+                                                <span className="material-symbols-outlined text-[17px]">delete</span>
+                                            </button>
                                         </div>
                                         <p className="text-gray-500 dark:text-gray-400 text-sm">{n.message}</p>
                                         <span className="text-gray-400 text-xs mt-2 block font-medium flex items-center gap-1">

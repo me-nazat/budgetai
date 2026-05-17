@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { queryAll, queryOne, run } from '@/lib/db';
+import { maybeCreateBudgetAlert } from '@/lib/alerts';
 
 /**
  * POST /api/chat/save — Save AI-processed data from client-side Puter.js AI
@@ -150,26 +151,14 @@ export async function POST(request: Request) {
             );
             storedTransactions.push({ id: result.lastInsertRowid, ...entry, date: entry.date || today });
 
-            // Budget alerts
             if (entry.type === 'expense') {
-                const budget = await queryOne<{ monthly_limit: number; category: string }>(
-                    'SELECT monthly_limit, category FROM budgets WHERE user_id = ? AND LOWER(category) = LOWER(?) AND month = ? AND year = ?',
-                    [session.userId, entry.category, currentMonth, currentYear]
-                );
-                if (budget) {
-                    const spent = (await queryAll<{ amount: number }>(
-                        'SELECT amount FROM transactions WHERE user_id = ? AND type = ? AND LOWER(category) = LOWER(?) AND date >= ?',
-                        [session.userId, 'expense', budget.category, `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`]
-                    )).reduce((s, t) => s + t.amount, 0);
-                    const pct = (spent / budget.monthly_limit) * 100;
-                    if (pct >= 100) {
-                        await run('INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
-                            [session.userId, 'danger', `Over Budget: ${entry.category}`, `You've exceeded your budget for ${entry.category}.`]);
-                    } else if (pct >= 80) {
-                        await run('INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
-                            [session.userId, 'warning', `Budget Warning: ${entry.category}`, `You've used ${pct.toFixed(0)}% of your budget for ${entry.category}.`]);
-                    }
-                }
+                await maybeCreateBudgetAlert({
+                    userId: session.userId,
+                    type: entry.type,
+                    amount: entry.amount,
+                    category: entry.category,
+                    date: entry.date || today,
+                });
             }
         }
 

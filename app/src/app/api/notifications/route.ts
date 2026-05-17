@@ -37,3 +37,24 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
+export async function DELETE(request: Request) {
+    try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const body = await request.json().catch(() => ({}));
+        if (body.clearAll) {
+            await run('DELETE FROM notifications WHERE user_id = ?', [session.userId]);
+        } else if (body.id) {
+            await run('DELETE FROM notifications WHERE id = ? AND user_id = ?', [body.id, session.userId]);
+        } else {
+            return NextResponse.json({ error: 'id or clearAll required' }, { status: 400 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Notification delete error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}

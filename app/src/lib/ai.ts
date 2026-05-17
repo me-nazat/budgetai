@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+function getGenAI() {
+    return new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+}
 
 export interface ParsedFinancialData {
     type: 'expense' | 'earning';
@@ -8,6 +10,14 @@ export interface ParsedFinancialData {
     category: string;
     description: string;
     date: string;
+}
+
+export interface AttachmentInput {
+    name: string;
+    mimeType: string;
+    data?: string;
+    extractedText?: string;
+    size?: number;
 }
 
 export interface DataAction {
@@ -42,6 +52,7 @@ export interface AIResponse {
     reportFormat?: 'pdf' | 'excel' | 'both';
     reportType?: string;
     dateRange?: { start: string; end: string };
+    attachmentSummaries?: Array<{ name: string; summary: string; confidence?: string }>;
 }
 
 // ==========================================
@@ -52,7 +63,7 @@ const SYSTEM_PROMPT = `You are "Wealth AI" — a brilliant, ultra-fast personal 
 PERSONALITY:
 • Razor-sharp & instant. Zero tolerance for errors or vague answers.
 • Professional yet warm — like a trusted private banker who genuinely cares. Use max 1-2 emojis per response.
-• Concise by default: **bold** key numbers, use bullet lists. Keep responses under 120 words unless detail is requested.
+• Adaptive detail: keep quick logging confirmations concise, but give long, structured, beautiful responses for analysis, planning, reports, uploaded documents/photos, and broad money questions.
 • Proactively insightful: spot spending patterns, budget risks, savings opportunities — mention them naturally.
 • For general questions (science, math, tech, history, health, cooking, etc.): answer confidently using your training knowledge. NEVER say "I can only help with finances."
 
@@ -69,13 +80,14 @@ RESPONSE RULES:
 3. For reports/summaries: If the user asks for a report/summary WITHOUT specifying PDF or Excel format, ask them which format they prefer and set 'isReportRequest' to false. Only set 'isReportRequest' to true and 'reportFormat' to 'pdf', 'excel', or 'both' when they have requested a specific format.
 4. ALWAYS respond with valid JSON only. No backticks, no markdown wrapping.
 5. For edits/deletes, prefer 'id' filter when available from context.
+6. For uploaded files/photos: extract financial facts, summarize what you understood, and place any proposed transactions in financialData. The app will ask the user to confirm before saving uploaded-file results.
 
 USER: {PROFILE}
 DATA: {CONTEXT}
 BUDGETS: {BUDGETS}
 
 Respond ONLY with this JSON format:
-{"message":"your response","financialData":[{"type":"expense"|"earning","amount":number,"category":"string","description":"string","date":"YYYY-MM-DD"}],"actions":[{"type":"edit"|"delete"|"reset","target":"transactions"|"budgets"|"networth"|"notifications"|"chat_history"|"all","filter":{},"updates":{}}],"isReportRequest":false,"reportFormat":null,"reportType":null,"dateRange":null}
+{"message":"your response","financialData":[{"type":"expense"|"earning","amount":number,"category":"string","description":"string","date":"YYYY-MM-DD"}],"actions":[{"type":"edit"|"delete"|"reset","target":"transactions"|"budgets"|"networth"|"notifications"|"chat_history"|"all","filter":{},"updates":{}}],"isReportRequest":false,"reportFormat":null,"reportType":null,"dateRange":null,"attachmentSummaries":[{"name":"string","summary":"string","confidence":"high|medium|low"}]}
 
 Empty arrays for financialData/actions if none. Today: {TODAY}`;
 
@@ -105,7 +117,7 @@ async function callGemini(prompt: string, userMessage: string, timeoutMs = 10000
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-            const model = genAI.getGenerativeModel({ model: modelName });
+            const model = getGenAI().getGenerativeModel({ model: modelName });
             const chat = model.startChat({
                 history: [
                     { role: 'user', parts: [{ text: prompt }] },
@@ -132,6 +144,66 @@ async function callGemini(prompt: string, userMessage: string, timeoutMs = 10000
         }
     }
     throw new Error('All Gemini models exhausted');
+}
+
+async function callGeminiWithAttachments(
+    prompt: string,
+    userMessage: string,
+    attachments: AttachmentInput[],
+    timeoutMs = 20000
+): Promise<AIResponse> {
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+    const attachmentText = attachments
+        .filter(a => a.extractedText)
+        .map(a => `FILE: ${a.name} (${a.mimeType})\n${a.extractedText}`)
+        .join('\n\n');
+
+    for (const modelName of models) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            const model = getGenAI().getGenerativeModel({ model: modelName });
+            const parts = [
+                { text: `${prompt}\n\nUser request: ${userMessage}\n\nAttachment extracted text:\n${attachmentText || 'No text extraction available.'}\n\nAnalyze the attachments and return proposed actions only as JSON.` },
+                ...attachments
+                    .filter(a => a.data && (a.mimeType.startsWith('image/') || a.mimeType === 'application/pdf'))
+                    .map(a => ({
+                        inlineData: {
+                            data: a.data!,
+                            mimeType: a.mimeType,
+                        },
+                    })),
+            ];
+
+            const result = await Promise.race([
+                model.generateContent(parts),
+                new Promise<never>((_, reject) => {
+                    controller.signal.addEventListener('abort', () => reject(new Error('Timeout')));
+                }),
+            ]);
+
+            clearTimeout(timeout);
+            return parseAIJSON(result.response.text().trim());
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            const isRate = msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
+            const isTimeout = msg.includes('Timeout') || msg.includes('abort');
+            console.error(`Gemini attachment [${modelName}] error:`, msg.slice(0, 150));
+            if (isRate || isTimeout) continue;
+        }
+    }
+
+    return {
+        message: 'I could not fully read the attachment. Please paste the key details or try a clearer file.',
+        financialData: [],
+        actions: [],
+        isReportRequest: false,
+        attachmentSummaries: attachments.map(a => ({
+            name: a.name,
+            summary: a.extractedText ? 'Text was extracted, but AI analysis was temporarily unavailable.' : 'No readable text was extracted.',
+            confidence: 'low',
+        })),
+    };
 }
 
 // ==========================================
@@ -188,7 +260,8 @@ export async function processMessage(
     context: string,
     budgets: string,
     today: string,
-    userProfile?: { name?: string; currency?: string }
+    userProfile?: { name?: string; currency?: string },
+    attachments: AttachmentInput[] = [],
 ): Promise<AIResponse> {
     const profileStr = userProfile?.name
         ? `Name: ${userProfile.name}, Currency: ${userProfile.currency || 'USD'}`
@@ -200,6 +273,10 @@ export async function processMessage(
         .replace('{TODAY}', today);
 
     try {
+        if (attachments.length > 0) {
+            return await callGeminiWithAttachments(prompt, userMessage, attachments);
+        }
+
         // Run both APIs simultaneously and return the first one to succeed
         return await Promise.any([
             callGemini(prompt, userMessage),

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { queryAll, queryOne, run } from '@/lib/db';
+import { maybeCreateBudgetAlert } from '@/lib/alerts';
 import { isStandardCategory, resolveColor, resolveIcon } from '@/lib/categoryUtils';
 import {
     isValidAmount, isValidType, isValidDate,
@@ -114,6 +115,14 @@ export async function POST(request: Request) {
             [session.userId, type, amount, categoryName, description, date]
         );
 
+        await maybeCreateBudgetAlert({
+            userId: session.userId,
+            type,
+            amount,
+            category: categoryName,
+            date,
+        });
+
         return NextResponse.json({ id: result.lastInsertRowid });
     } catch (error) {
         console.error('Transaction create error:', error);
@@ -179,6 +188,14 @@ export async function PUT(request: Request) {
         if (result.rowsAffected === 0) {
             return NextResponse.json({ error: 'Transaction not found or unauthorized' }, { status: 404 });
         }
+
+        await maybeCreateBudgetAlert({
+            userId: session.userId,
+            type,
+            amount,
+            category: categoryName,
+            date,
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {
