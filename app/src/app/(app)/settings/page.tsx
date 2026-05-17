@@ -43,6 +43,8 @@ export default function SettingsPage() {
     }, []);
 
     const handleSignOut = async () => {
+        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+        localStorage.removeItem('wealth-ai-swr-cache-v1');
         document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         window.location.href = '/login';
     };
@@ -321,4 +323,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-

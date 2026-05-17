@@ -49,6 +49,14 @@ export async function POST(request: Request) {
             );
         }
 
+        // Limit batch size to prevent abuse
+        if (transactions.length > 100) {
+            return NextResponse.json(
+                { error: 'Maximum 100 transactions per batch' },
+                { status: 400 }
+            );
+        }
+
         const processedIds: string[] = [];
         const failedIds: string[] = [];
         const today = new Date().toISOString().split('T')[0];
@@ -185,10 +193,9 @@ export async function POST(request: Request) {
                 }
             }
         } catch (dbError) {
-            const message = dbError instanceof Error ? dbError.message : String(dbError);
             console.error('Database initialization or transaction error:', dbError);
             return NextResponse.json(
-                { error: 'Database operation failed', details: message },
+                { error: 'Database operation failed' },
                 { status: 500 }
             );
         }

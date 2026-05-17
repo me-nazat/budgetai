@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { queryOne, run } from '@/lib/db';
+import { sanitizeName, isValidCurrency } from '@/lib/validation';
 
 export async function GET() {
     try {
@@ -21,10 +22,21 @@ export async function PUT(request: Request) {
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const { name, currency, notify_budget, notify_overspend } = await request.json();
+        const body = await request.json();
+
+        const name = body.name !== undefined ? sanitizeName(body.name) : null;
+        const currency = body.currency !== undefined ? (typeof body.currency === 'string' ? body.currency.toUpperCase().trim() : null) : null;
+        const notify_budget = body.notify_budget !== undefined ? (body.notify_budget ? 1 : 0) : null;
+        const notify_overspend = body.notify_overspend !== undefined ? (body.notify_overspend ? 1 : 0) : null;
+
+        // Validate currency if provided
+        if (currency && !isValidCurrency(currency)) {
+            return NextResponse.json({ error: 'Invalid currency code' }, { status: 400 });
+        }
+
         await run(
             'UPDATE users SET name = COALESCE(?, name), currency = COALESCE(?, currency), notify_budget = COALESCE(?, notify_budget), notify_overspend = COALESCE(?, notify_overspend) WHERE id = ?',
-            [name ?? null, currency ?? null, notify_budget !== undefined ? (notify_budget ? 1 : 0) : null, notify_overspend !== undefined ? (notify_overspend ? 1 : 0) : null, session.userId]
+            [name, currency, notify_budget, notify_overspend, session.userId]
         );
         return NextResponse.json({ success: true });
     } catch (error) {

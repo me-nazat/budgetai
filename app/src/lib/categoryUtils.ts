@@ -233,22 +233,63 @@ export const COLOR_NAME_TO_HEX: Record<string, string> = {
   gray: '#6b7280',
 };
 
+export const CUSTOM_CATEGORY_ICONS = [
+  'restaurant', 'local_cafe', 'fastfood', 'cake', 'local_bar', 'shopping_bag',
+  'checkroom', 'redeem', 'diamond', 'spa', 'directions_car', 'local_taxi',
+  'directions_bus', 'flight_takeoff', 'pedal_bike', 'home', 'chair', 'bolt',
+  'water_drop', 'wifi', 'smartphone', 'receipt', 'shield', 'fitness_center',
+  'health_and_safety', 'medication', 'school', 'auto_stories', 'music_note',
+  'theater_comedy', 'sports_esports', 'palette', 'camera_alt', 'celebration',
+  'devices', 'computer', 'cloud', 'smart_toy', 'currency_bitcoin', 'trending_up',
+  'account_balance', 'credit_card', 'savings', 'payments', 'work',
+  'business_center', 'monetization_on', 'currency_exchange', 'volunteer_activism',
+  'wallet', 'emergency', 'gavel', 'category',
+];
+
+export function normalizeCategoryName(categoryName: string): string {
+  return categoryName.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function toTitleCase(categoryName: string): string {
+  return categoryName
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '')
+    .join(' ');
+}
+
+export function isStandardCategory(categoryName: string): boolean {
+  const normalized = toTitleCase(categoryName);
+  return Boolean(STANDARD_CATEGORY_ICONS[normalized] || STANDARD_CATEGORY_ICONS[categoryName]);
+}
+
+export function getIconCandidates(categoryName: string, limit = 40): string[] {
+  const smartIcon = resolveIcon(categoryName);
+  const unique = [smartIcon, ...CUSTOM_CATEGORY_ICONS].filter((icon, index, icons) => icons.indexOf(icon) === index);
+  return unique.slice(0, limit);
+}
+
 /** Get hex color for any category (standard or custom) */
 export function getCategoryHex(categoryName: string, customCategories?: { name: string; color: string }[]): string {
+  const normalized = toTitleCase(categoryName);
+  if (CATEGORY_HEX_COLORS[normalized]) return CATEGORY_HEX_COLORS[normalized];
   if (CATEGORY_HEX_COLORS[categoryName]) return CATEGORY_HEX_COLORS[categoryName];
-  const custom = customCategories?.find(c => c.name === categoryName);
+  const categoryKey = normalizeCategoryName(categoryName);
+  const custom = customCategories?.find(c => normalizeCategoryName(c.name) === categoryKey);
   if (custom) return COLOR_NAME_TO_HEX[custom.color] || '#6b7280';
-  return '#6b7280';
+  return COLOR_NAME_TO_HEX[resolveColor(categoryName)] || '#6b7280';
 }
 
 /** Get icon for any category (standard or custom) */
 export function getCategoryIcon(categoryName: string, customCategories?: { name: string; icon: string }[]): string {
-  const normalized = categoryName.charAt(0).toUpperCase() + categoryName.slice(1).toLowerCase();
+  const normalized = toTitleCase(categoryName);
   if (STANDARD_CATEGORY_ICONS[normalized]) return STANDARD_CATEGORY_ICONS[normalized];
   if (STANDARD_CATEGORY_ICONS[categoryName]) return STANDARD_CATEGORY_ICONS[categoryName];
-  const custom = customCategories?.find(c => c.name === categoryName);
+  const categoryKey = normalizeCategoryName(categoryName);
+  const custom = customCategories?.find(c => normalizeCategoryName(c.name) === categoryKey);
   if (custom) return custom.icon;
-  return 'category';
+  return resolveIcon(categoryName);
 }
 
 // ─── Custom Category Style Helpers ─────────────────────────────────────

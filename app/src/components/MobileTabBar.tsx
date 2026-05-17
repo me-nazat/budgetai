@@ -22,26 +22,25 @@ export default function MobileTabBar() {
     return (
         <>
             <div
-                className="lg:hidden fixed inset-x-4 z-50 rounded-[2rem] bg-white/85 dark:bg-[#161b22]/85 backdrop-blur-2xl border border-gray-200/60 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/40 transition-all duration-300 ease-out"
-                style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+                className="lg:hidden fixed inset-x-3 z-50 rounded-[1.75rem] border border-white/70 bg-white/78 shadow-2xl shadow-slate-900/16 backdrop-blur-2xl transition-all duration-300 ease-out dark:border-white/10 dark:bg-[#10151d]/82 dark:shadow-black/45"
+                style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
             >
-                <nav className="flex items-center justify-around h-[68px] px-2 relative">
+                <div className="pointer-events-none absolute inset-x-8 -top-px h-px bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent" />
+                <nav className="relative flex h-[72px] items-center justify-around px-2">
                     {mobileNavItems.map((item) => {
                         const isQuickAdd = item.href === '__quick_add__';
                         const isActive = !isQuickAdd && (pathname === item.href || pathname?.startsWith(item.href + '/'));
 
                         if (isQuickAdd) {
                             return (
-                                <div key="quick-add" className="relative -mt-10 flex flex-col items-center justify-center group pointer-events-auto">
-                                    <div className="absolute inset-x-0 bottom-0 h-10 w-16 mx-auto bg-transparent border-t-[10px] border-l-[10px] border-r-[10px] border-white/80 dark:border-[#161b22]/80 backdrop-blur-2xl rounded-t-[40px] rounded-b-none translate-y-4 opacity-0 pointer-events-none" />
-
+                                <div key="quick-add" className="pointer-events-auto relative -mt-10 flex flex-col items-center justify-center group">
                                     <button
                                         onClick={() => setShowQuickAdd(true)}
-                                        className="relative flex items-center justify-center z-10 transition-transform duration-300 ease-spring active:scale-90"
+                                        className="relative z-10 flex items-center justify-center transition-transform duration-300 active:scale-90"
                                         aria-label="Quick Add Transaction"
                                     >
-                                        <div className="absolute inset-0 bg-emerald-500/30 rounded-full blur-xl animate-pulse" />
-                                        <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-[0_8px_30px_rgb(16,185,129,0.3)] transition-all duration-300 group-hover:shadow-[0_8px_40px_rgb(16,185,129,0.5)] group-hover:-translate-y-1 border border-white/20">
+                                        <div className="absolute inset-0 rounded-3xl bg-emerald-500/30 blur-xl animate-pulse" />
+                                        <div className="grid h-[60px] w-[60px] place-items-center rounded-3xl border border-white/30 bg-gradient-to-tr from-emerald-600 via-emerald-500 to-cyan-400 shadow-[0_14px_34px_rgb(16,185,129,0.34)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_42px_rgb(16,185,129,0.48)]">
                                             <span className="material-symbols-outlined text-white text-3xl font-bold">add</span>
                                         </div>
                                     </button>
@@ -54,7 +53,7 @@ export default function MobileTabBar() {
                                 <button
                                     key="menu"
                                     onClick={() => setShowMenu(true)}
-                                    className="flex flex-col items-center justify-center w-full h-full space-y-0.5 transition-all duration-300 relative text-gray-400 dark:text-gray-500 active:text-gray-600 dark:active:text-gray-300"
+                                    className="relative flex h-full w-full flex-col items-center justify-center gap-1 rounded-2xl text-gray-400 transition-all duration-300 active:bg-gray-100 active:text-gray-700 dark:text-gray-500 dark:active:bg-white/10 dark:active:text-gray-300"
                                     aria-label="Open Menu"
                                 >
                                     <span
@@ -74,23 +73,23 @@ export default function MobileTabBar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 transition-all duration-300 relative ${isActive
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : 'text-gray-400 dark:text-gray-500 active:text-gray-600 dark:active:text-gray-300'
+                                className={`relative flex h-full w-full flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-300 ${isActive
+                                    ? 'text-emerald-600 dark:text-emerald-300'
+                                    : 'text-gray-400 active:bg-gray-100 active:text-gray-700 dark:text-gray-500 dark:active:bg-white/10 dark:active:text-gray-300'
                                     }`}
                             >
+                                {isActive && (
+                                    <div className="absolute inset-x-2 top-2 bottom-2 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/10" />
+                                )}
                                 <span
-                                    className={`material-symbols-outlined text-[22px] transition-all duration-300 ${isActive ? 'scale-110' : ''}`}
+                                    className={`material-symbols-outlined relative z-10 text-[22px] transition-all duration-300 ${isActive ? 'scale-110' : ''}`}
                                     style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
                                 >
                                     {item.icon}
                                 </span>
-                                <span className={`text-[10px] font-semibold tracking-wide transition-all duration-300 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
+                                <span className={`relative z-10 text-[10px] font-semibold tracking-wide transition-all duration-300 ${isActive ? 'text-emerald-600 dark:text-emerald-300' : ''}`}>
                                     {item.label}
                                 </span>
-                                {isActive && (
-                                    <div className="absolute -top-0.5 w-6 h-1 bg-emerald-500 rounded-b-full" />
-                                )}
                             </Link>
                         );
                     })}

@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
-import { useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
+import { invalidateFinancialData, useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
 import {
     Chart as ChartJS,
     CategoryScale, LinearScale, BarElement, LineElement, PointElement,
@@ -11,22 +15,72 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
-import { getCategoryIcon, getCategoryHex, CATEGORY_HEX_COLORS } from '@/lib/categoryUtils';
+import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
-const categoryColors = CATEGORY_HEX_COLORS;
+interface DashboardTransaction {
+    id: number;
+    type: string;
+    amount: number;
+    category: string;
+    description: string;
+    date: string;
+}
 
-const categoryIcons: Record<string, string> = {
-    Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
-    Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety',
-    Education: 'school', Business: 'business_center', Savings: 'savings', Salary: 'payments',
-    Freelance: 'work', Investment: 'trending_up', Other: 'category',
-};
+interface EditableDashboardTransaction extends Omit<DashboardTransaction, 'amount'> {
+    amount: number | string;
+}
+
+function DashboardSkeleton() {
+    return (
+        <div className="p-4 lg:p-8 max-w-[1600px] mx-auto page-enter">
+            <div className="mb-8 flex items-center justify-between gap-4">
+                <div className="space-y-3">
+                    <div className="h-5 w-56 rounded-full shimmer-skeleton" />
+                    <div className="h-3 w-72 max-w-full rounded-full shimmer-skeleton" />
+                </div>
+                <div className="hidden h-10 w-52 rounded-xl shimmer-skeleton sm:block" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[0, 1, 2, 3].map(item => (
+                    <div key={item} className="skeleton-panel p-5">
+                        <div className="mb-6 h-10 w-10 rounded-xl shimmer-skeleton" />
+                        <div className="h-3 w-24 rounded-full shimmer-skeleton" />
+                        <div className="mt-3 h-7 w-36 rounded-full shimmer-skeleton" />
+                    </div>
+                ))}
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <div className="skeleton-panel h-[360px] lg:col-span-2" />
+                <div className="skeleton-panel h-[360px]" />
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <div className="skeleton-panel h-[340px] lg:col-span-2" />
+                <div className="skeleton-panel h-[340px]" />
+            </div>
+        </div>
+    );
+}
+
+function HubSkeleton({ rows = 4 }: { rows?: number }) {
+    return (
+        <div className="space-y-3">
+            {Array.from({ length: rows }).map((_, index) => (
+                <div key={index} className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="mb-3 h-3 w-24 rounded-full shimmer-skeleton" />
+                    <div className="h-3 w-full rounded-full shimmer-skeleton" />
+                    <div className="mt-2 h-2.5 w-2/3 rounded-full shimmer-skeleton" />
+                </div>
+            ))}
+        </div>
+    );
+}
 
 export default function DashboardPage() {
     const chartRef = useRef(null);
     const { currency, fmt } = useCurrency();
+    const router = useRouter();
 
     const [selectedMonth, setSelectedMonth] = useState<string>(
         `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
@@ -39,12 +93,37 @@ export default function DashboardPage() {
     const marketNews = useMarketNews();
     const exchangeRates = useExchangeRates(currency);
     const { categories: customCats } = useCustomCategories('all');
+    const [actionMenuOpenId, setActionMenuOpenId] = useState<number | null>(null);
+    const [editingTx, setEditingTx] = useState<EditableDashboardTransaction | null>(null);
+    const [editSubmitting, setEditSubmitting] = useState(false);
+    const [deletingTxId, setDeletingTxId] = useState<number | null>(null);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     // Intelligence Hub — default to 'news' tab (Task 2)
     const [activeTab, setActiveTab] = useState<'currency' | 'news' | 'calculator'>('news');
     const [calcAmount, setCalcAmount] = useState<number>(500);
     const [calcYears, setCalcYears] = useState<number>(10);
     const [calcRate, setCalcRate] = useState<number>(7);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (actionMenuOpenId === null) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Element;
+            if (!target.closest('.dashboard-action-menu')) {
+                setActionMenuOpenId(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [actionMenuOpenId]);
 
     // Generate last 12 months for the dropdown
     const monthOptions = Array.from({ length: 12 }).map((_, i) => {
@@ -66,14 +145,7 @@ export default function DashboardPage() {
 
     // Only show full spinner on very first load (no cached data at all)
     if (!data && isLoading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-gray-400 dark:text-text-muted animate-fade-in">Loading your finances...</p>
-                </div>
-            </div>
-        );
+        return <DashboardSkeleton />;
     }
 
     if (!data) return <div className="p-8 text-gray-500">Failed to load dashboard</div>;
@@ -119,8 +191,155 @@ export default function DashboardPage() {
         return 'Good evening';
     };
 
+    const dashboardCategoryOptions = editingTx?.type === 'earning' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
+
+    const finishMutation = async () => {
+        await invalidateFinancialData();
+        router.refresh();
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2500);
+    };
+
+    const submitDashboardEdit = async () => {
+        if (!editingTx) return;
+
+        const parsed = parseFloat(String(editingTx.amount));
+        if (!editingTx.amount || isNaN(parsed) || parsed <= 0 || !editingTx.category) return;
+        setEditSubmitting(true);
+
+        try {
+            const response = await fetch('/api/transactions', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingTx.id,
+                    type: editingTx.type,
+                    amount: parsed,
+                    category: editingTx.category,
+                    description: editingTx.description || editingTx.category,
+                    date: editingTx.date,
+                }),
+            });
+
+            if (!response.ok) throw new Error('Dashboard transaction update failed');
+
+            setEditingTx(null);
+            await finishMutation();
+        } catch (error) {
+            console.error('Dashboard edit error:', error);
+        } finally {
+            setEditSubmitting(false);
+        }
+    };
+
+    const submitDashboardDuplicate = async (tx: DashboardTransaction) => {
+        try {
+            const response = await fetch('/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: tx.type,
+                    amount: tx.amount,
+                    category: tx.category,
+                    description: tx.description || tx.category,
+                    date: new Date().toISOString().split('T')[0],
+                }),
+            });
+
+            if (!response.ok) throw new Error('Dashboard transaction duplicate failed');
+
+            setActionMenuOpenId(null);
+            await finishMutation();
+        } catch (error) {
+            console.error('Dashboard duplicate error:', error);
+        }
+    };
+
+    const submitDashboardDelete = async () => {
+        if (!deletingTxId) return;
+        setDeleteSubmitting(true);
+
+        try {
+            const response = await fetch(`/api/transactions?id=${deletingTxId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Dashboard transaction delete failed');
+
+            setDeletingTxId(null);
+            setActionMenuOpenId(null);
+            await finishMutation();
+        } catch (error) {
+            console.error('Dashboard delete error:', error);
+        } finally {
+            setDeleteSubmitting(false);
+        }
+    };
+
+    const renderActionMenu = (tx: DashboardTransaction) => (
+        <div className="relative inline-block text-left dashboard-action-menu">
+            <button
+                onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setActionMenuOpenId(actionMenuOpenId === tx.id ? null : tx.id);
+                }}
+                aria-label="Transaction actions"
+                className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${actionMenuOpenId === tx.id ? 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-surface-hover dark:hover:text-gray-200'}`}
+            >
+                <span className="material-symbols-outlined text-[20px]">more_vert</span>
+            </button>
+
+            <AnimatePresence>
+                {actionMenuOpenId === tx.id && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.96, y: -8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full z-[80] mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-800"
+                    >
+                        <button
+                            onClick={() => {
+                                setEditingTx({ ...tx });
+                                setActionMenuOpenId(null);
+                            }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                            Edit
+                        </button>
+                        <button
+                            onClick={() => submitDashboardDuplicate(tx)}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                            Duplicate
+                        </button>
+                        <button
+                            onClick={() => {
+                                setDeletingTxId(tx.id);
+                                setActionMenuOpenId(null);
+                            }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                            Delete
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+
     return (
         <div className="p-4 lg:p-8 max-w-[1600px] mx-auto page-enter">
+            {showSuccess && (
+                <div className="fixed right-6 top-6 z-[90] toast-enter">
+                    <div className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-white shadow-lg shadow-emerald-500/20">
+                        <span className="material-symbols-outlined text-lg">check_circle</span>
+                        <span className="text-sm font-semibold">Transaction updated</span>
+                    </div>
+                </div>
+            )}
+
             {/* Subtle revalidation indicator — replaces full-screen spinner */}
             {isValidating && (
                 <div className="fixed top-0 left-0 lg:left-64 right-0 z-50 h-0.5">
@@ -143,6 +362,33 @@ export default function DashboardPage() {
                     <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold text-base shadow-lg shadow-primary/25">
                         {userName ? userName.charAt(0).toUpperCase() : 'U'}
                     </div>
+                </div>
+
+                <div className="mb-5 grid grid-cols-2 gap-2">
+                    <label className="flex items-center gap-2 rounded-2xl border border-gray-200/70 bg-white/80 px-3 py-2.5 text-xs font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-[17px] text-primary">calendar_month</span>
+                        <select
+                            value={selectedMonth}
+                            onChange={e => setSelectedMonth(e.target.value)}
+                            className="min-w-0 flex-1 bg-transparent text-xs font-bold outline-none"
+                        >
+                            {monthOptions.map(m => (
+                                <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="flex items-center gap-2 rounded-2xl border border-gray-200/70 bg-white/80 px-3 py-2.5 text-xs font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-[17px] text-primary">view_week</span>
+                        <select
+                            value={selectedWeek}
+                            onChange={e => setSelectedWeek(e.target.value)}
+                            className="min-w-0 flex-1 bg-transparent text-xs font-bold outline-none"
+                        >
+                            {weekOptions.map(w => (
+                                <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label}</option>
+                            ))}
+                        </select>
+                    </label>
                 </div>
 
                 {/* Total Balance Card (Redesigned) */}
@@ -208,7 +454,10 @@ export default function DashboardPage() {
                 <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
-                        <a href="/transactions" className="text-xs font-bold text-primary dark:text-emerald-400 hover:text-blue-600 transition-colors">See All</a>
+                        <Link href="/transactions" className="inline-flex items-center gap-1 text-xs font-bold text-primary transition-colors hover:text-blue-600 dark:text-emerald-400">
+                            All transactions
+                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                        </Link>
                     </div>
                     <div className="space-y-3">
                         {data.recentTransactions.length === 0 ? (
@@ -219,7 +468,7 @@ export default function DashboardPage() {
                                 <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
                             </div>
                         ) : data.recentTransactions.slice(0, 6).map(t => (
-                            <div key={t.id} className="relative overflow-hidden card-premium rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md cursor-pointer group">
+                            <div key={t.id} className="relative overflow-visible card-premium rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md cursor-pointer group">
                                 <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-gray-200 dark:via-[#30363d] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
                                     <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
@@ -230,9 +479,12 @@ export default function DashboardPage() {
                                     <p className="text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
                                     <p className="text-xs font-medium text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                                 </div>
-                                <p className={`text-base font-bold shrink-0 ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
-                                    {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
-                                </p>
+                                <div className="ml-auto flex shrink-0 items-center gap-1">
+                                    <p className={`text-base font-bold ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
+                                        {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
+                                    </p>
+                                    {renderActionMenu(t)}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -389,14 +641,14 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
 
                     {/* Recent Transactions (Takes up 2 cols on large) */}
-                    <div className="lg:col-span-2 card-premium rounded-2xl overflow-hidden" style={{ animation: 'slideUp 0.5s ease-out 0.55s both' }}>
+                    <div className="lg:col-span-2 card-premium rounded-2xl overflow-visible" style={{ animation: 'slideUp 0.5s ease-out 0.55s both' }}>
                         <div className="p-6 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
-                            <a href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
-                                View All <span className="material-symbols-outlined text-base">arrow_forward</span>
-                            </a>
+                            <Link href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
+                                All transactions <span className="material-symbols-outlined text-base">arrow_forward</span>
+                            </Link>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-visible">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider">
@@ -404,11 +656,12 @@ export default function DashboardPage() {
                                         <th className="px-4 lg:px-6 py-3.5 font-semibold hidden md:table-cell">Category</th>
                                         <th className="px-4 lg:px-6 py-3.5 font-semibold hidden sm:table-cell">Date</th>
                                         <th className="px-4 lg:px-6 py-3.5 font-semibold text-right">Amount</th>
+                                        <th className="px-4 lg:px-6 py-3.5 font-semibold text-right w-12">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
                                     {data.recentTransactions.length === 0 ? (
-                                        <tr><td colSpan={4} className="px-6 py-12 text-center">
+                                        <tr><td colSpan={5} className="px-6 py-12 text-center">
                                             <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
                                             <p className="text-gray-400 dark:text-text-muted">No transactions yet. Use AI Chat to start tracking!</p>
                                         </td></tr>
@@ -430,6 +683,9 @@ export default function DashboardPage() {
                                             <td className="px-4 lg:px-6 py-4 text-gray-500 dark:text-text-muted hidden sm:table-cell">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                                             <td className={`px-4 lg:px-6 py-4 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                                 {t.type === 'expense' ? '-' : '+'}{fmt(t.amount)}
+                                            </td>
+                                            <td className="px-4 lg:px-6 py-4 text-right">
+                                                {renderActionMenu(t)}
                                             </td>
                                         </tr>
                                     ))}
@@ -456,10 +712,18 @@ export default function DashboardPage() {
 
                         {/* Tab Content */}
                         <div className="p-5 flex-1 bg-white dark:bg-surface-dark overflow-y-auto max-h-[350px]">
+                            <AnimatePresence mode="wait">
                             {activeTab === 'currency' && (
-                                <div className="space-y-4 animate-fade-in">
+                                <motion.div
+                                    key="currency"
+                                    initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
+                                    animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                                    exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
+                                    transition={{ duration: 0.22 }}
+                                    className="space-y-4"
+                                >
                                     {!exchangeRates ? (
-                                        <p className="text-sm text-gray-500 text-center py-4">Loading rates...</p>
+                                        <HubSkeleton rows={5} />
                                     ) : (
                                         <>
                                             <p className="text-xs text-gray-500 mb-3 font-medium">1 {currency} equals:</p>
@@ -484,13 +748,20 @@ export default function DashboardPage() {
                                             </div>
                                         </>
                                     )}
-                                </div>
+                                </motion.div>
                             )}
 
                             {activeTab === 'news' && (
-                                <div className="space-y-4 animate-fade-in">
+                                <motion.div
+                                    key="news"
+                                    initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
+                                    animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                                    exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
+                                    transition={{ duration: 0.22 }}
+                                    className="space-y-4"
+                                >
                                     {marketNews.length === 0 ? (
-                                        <p className="text-sm text-gray-500 text-center py-4">Loading news...</p>
+                                        <HubSkeleton rows={4} />
                                     ) : (
                                         marketNews.map(news => (
                                             <a key={news.id} href="#" className="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-surface-hover border border-gray-100 dark:border-[#30363d] transition-all hover:scale-[1.02] hover:shadow-md">
@@ -508,11 +779,18 @@ export default function DashboardPage() {
                                             </a>
                                         ))
                                     )}
-                                </div>
+                                </motion.div>
                             )}
 
                             {activeTab === 'calculator' && (
-                                <div className="space-y-4 animate-fade-in flex flex-col h-full">
+                                <motion.div
+                                    key="calculator"
+                                    initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
+                                    animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                                    exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
+                                    transition={{ duration: 0.22 }}
+                                    className="space-y-4 flex flex-col h-full"
+                                >
                                     <p className="text-xs text-gray-500 mb-2">See how monthly savings grow over time with compound interest.</p>
 
                                     <div className="space-y-3 flex-1">
@@ -536,8 +814,9 @@ export default function DashboardPage() {
                                             {fmt(calcAmount * 12 * ((Math.pow(1 + calcRate / 100, calcYears) - 1) / (calcRate / 100)))}
                                         </p>
                                     </div>
-                                </div>
+                                </motion.div>
                             )}
+                            </AnimatePresence>
                         </div>
                     </div>
 
@@ -550,6 +829,138 @@ export default function DashboardPage() {
                 </a>
             </div>
             {/* End Desktop View */}
+
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {editingTx && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.96, y: 18 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.96, y: 18 }}
+                                className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-zinc-900"
+                            >
+                                <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50/70 p-5 dark:border-[#30363d] dark:bg-white/5">
+                                    <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
+                                        <span className="material-symbols-outlined text-primary">edit</span>
+                                        Edit Transaction
+                                    </h3>
+                                    <button onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="grid h-8 w-8 place-items-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-gray-200">
+                                        <span className="material-symbols-outlined text-lg">close</span>
+                                    </button>
+                                </div>
+                                <form onSubmit={(event) => { event.preventDefault(); submitDashboardEdit(); }} className="space-y-4 p-5">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Type</label>
+                                            <select
+                                                value={editingTx.type}
+                                                onChange={(event) => setEditingTx({ ...editingTx, type: event.target.value, category: '' })}
+                                                className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                            >
+                                                <option value="expense">Expense</option>
+                                                <option value="earning">Earning</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Amount</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editingTx.amount}
+                                                onChange={(event) => setEditingTx({ ...editingTx, amount: event.target.value })}
+                                                className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Category</label>
+                                        <select
+                                            value={editingTx.category}
+                                            onChange={(event) => setEditingTx({ ...editingTx, category: event.target.value })}
+                                            className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                        >
+                                            <option value="">Select category</option>
+                                            {dashboardCategoryOptions.map(category => (
+                                                <option key={category.label} value={category.label}>{category.label}</option>
+                                            ))}
+                                            <optgroup label="Custom Categories">
+                                                {customCats.filter(category => category.type === editingTx.type).map(category => (
+                                                    <option key={category.id} value={category.name}>{category.name}</option>
+                                                ))}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Date</label>
+                                        <input
+                                            type="date"
+                                            value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''}
+                                            onChange={(event) => setEditingTx({ ...editingTx, date: event.target.value })}
+                                            className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Description</label>
+                                        <input
+                                            type="text"
+                                            value={editingTx.description || ''}
+                                            onChange={(event) => setEditingTx({ ...editingTx, description: event.target.value })}
+                                            placeholder="Optional description"
+                                            className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                        />
+                                    </div>
+                                    <div className="flex gap-3 pt-2">
+                                        <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="flex-1 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-surface-dark dark:text-gray-300 dark:hover:bg-white/10">
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={editSubmitting || !editingTx.amount || !editingTx.category || isNaN(parseFloat(String(editingTx.amount))) || parseFloat(String(editingTx.amount)) <= 0}
+                                            className="flex flex-1 items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white btn-primary-glow disabled:opacity-40"
+                                        >
+                                            {editSubmitting ? <span className="h-5 w-20 rounded-full shimmer-skeleton" /> : 'Save Changes'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {deletingTxId && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.96, y: 18 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.96, y: 18 }}
+                                className="w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-zinc-900"
+                            >
+                                <div className="p-5 text-center">
+                                    <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-500/10">
+                                        <span className="material-symbols-outlined text-[32px]">delete_forever</span>
+                                    </div>
+                                    <h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">Delete Transaction?</h3>
+                                    <p className="mb-6 text-sm text-gray-500 dark:text-text-muted">This transaction will be removed from your history and balance.</p>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => { setDeletingTxId(null); setDeleteSubmitting(false); }} className="flex-1 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-surface-dark dark:text-gray-300 dark:hover:bg-white/10">
+                                            Cancel
+                                        </button>
+                                        <button onClick={submitDashboardDelete} disabled={deleteSubmitting} className="flex flex-1 items-center justify-center rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-rose-500/25 hover:bg-rose-600 disabled:opacity-40">
+                                            {deleteSubmitting ? <span className="h-5 w-16 rounded-full bg-white/30 shimmer-skeleton" /> : 'Delete'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </div>
     );
 }

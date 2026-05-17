@@ -2,11 +2,25 @@ import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
+// Reject weak or default secrets in production
+const rawSecret = process.env.JWT_SECRET;
+if (!rawSecret || rawSecret === 'budget-savings-ai-default-secret') {
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error(
+            'CRITICAL: JWT_SECRET is missing or using the insecure default. ' +
+            'Set a strong, unique JWT_SECRET environment variable before deploying.'
+        );
+    }
+    console.warn('[auth] WARNING: Using default JWT secret. Set JWT_SECRET env var for production.');
+}
+
 const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'budget-savings-ai-default-secret'
+    rawSecret || 'budget-savings-ai-default-secret-dev-only'
 );
 
 const COOKIE_NAME = 'budget-ai-token';
+const TOKEN_EXPIRY = '24h';
+const COOKIE_MAX_AGE = 60 * 60 * 24; // 24 hours (matches token)
 
 export async function hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 12);
@@ -19,15 +33,19 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 export async function createToken(userId: number, email: string): Promise<string> {
     return new SignJWT({ userId, email })
         .setProtectedHeader({ alg: 'HS256' })
-        .setExpirationTime('7d')
+        .setExpirationTime(TOKEN_EXPIRY)
         .setIssuedAt()
+        .setNotBefore('0s')
         .sign(JWT_SECRET);
 }
 
 export async function verifyToken(token: string): Promise<{ userId: number; email: string } | null> {
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
-        return { userId: payload.userId as number, email: payload.email as string };
+        const userId = payload.userId;
+        const email = payload.email;
+        if (typeof userId !== 'number' || typeof email !== 'string') return null;
+        return { userId, email };
     } catch {
         return null;
     }
@@ -46,7 +64,7 @@ export async function setSessionCookie(token: string) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: COOKIE_MAX_AGE,
         path: '/',
     });
 }

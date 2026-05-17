@@ -5,14 +5,13 @@ import { createPortal } from 'react-dom';
 import { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
+import { CURRENCIES } from '@/lib/currency';
 import { useTransactions, invalidateFinancialData } from '@/hooks/useApi';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
-import { STANDARD_CATEGORY_ICONS, getCategoryIcon, getColorStyle, resolveIcon, resolveColor } from '@/lib/categoryUtils';
-
-const categoryIcons = STANDARD_CATEGORY_ICONS;
+import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor } from '@/lib/categoryUtils';
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
 
 interface TransactionRecord {
@@ -46,7 +45,8 @@ export default function TransactionsPage() {
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastSubmitOffline, setLastSubmitOffline] = useState(false);
-    const { fmt } = useCurrency();
+    const { currency, fmt } = useCurrency();
+    const sym = CURRENCIES[currency].symbol;
     const { isOnline } = useNetworkStatus();
 
     // Quick Add state
@@ -61,6 +61,9 @@ export default function TransactionsPage() {
     // Custom Category Add State (Desktop Inline)
     const [qaAddingCustomCategory, setQaAddingCustomCategory] = useState(false);
     const [qaCustomCategoryName, setQaCustomCategoryName] = useState('');
+    const [qaCustomIcon, setQaCustomIcon] = useState(CUSTOM_CATEGORY_ICONS[0]);
+    const [qaCustomColor, setQaCustomColor] = useState(CUSTOM_COLORS[0]);
+    const [qaIconOptions, setQaIconOptions] = useState(CUSTOM_CATEGORY_ICONS.slice(0, 40));
     const { categories: customCategories, mutate: mutateCategories } = useCustomCategories('all');
 
     // Edit/Action state
@@ -74,6 +77,22 @@ export default function TransactionsPage() {
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (!qaAddingCustomCategory) return;
+
+        const name = qaCustomCategoryName.trim();
+        if (!name) {
+            setQaCustomIcon(CUSTOM_CATEGORY_ICONS[0]);
+            setQaCustomColor(CUSTOM_COLORS[0]);
+            setQaIconOptions(CUSTOM_CATEGORY_ICONS.slice(0, 40));
+            return;
+        }
+
+        setQaCustomIcon(resolveIcon(name));
+        setQaCustomColor(resolveColor(name));
+        setQaIconOptions(getIconCandidates(name));
+    }, [qaAddingCustomCategory, qaCustomCategoryName]);
 
     // Global click-outside handler for the dropdown
     useEffect(() => {
@@ -136,27 +155,26 @@ export default function TransactionsPage() {
 
     const submitQuickAdd = async () => {
         const parsed = parseFloat(qaAmount);
-        if (!qaAmount || isNaN(parsed) || parsed <= 0 || !qaCategory) return;
+        const categoryName = (qaAddingCustomCategory ? qaCustomCategoryName : qaCategory).trim().replace(/\s+/g, ' ');
+        if (!qaAmount || isNaN(parsed) || parsed <= 0 || !categoryName) return;
         setQaSubmitting(true);
 
         const payload = {
             actionType: 'add' as const,
             type: qaType,
             amount: parsed,
-            category: qaCategory,
-            description: qaDesc || qaCategory,
+            category: categoryName,
+            description: qaDesc || categoryName,
             date: qaDate,
         };
 
         try {
-            if (qaAddingCustomCategory && qaCustomCategoryName) {
+            if (qaAddingCustomCategory && categoryName) {
                 try {
-                    const smartIcon = resolveIcon(qaCustomCategoryName);
-                    const smartColor = resolveColor(qaCustomCategoryName);
                     await fetch('/api/categories', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: qaCustomCategoryName, type: qaType, icon: smartIcon, color: smartColor })
+                        body: JSON.stringify({ name: categoryName, type: qaType, icon: qaCustomIcon, color: qaCustomColor })
                     });
                     mutateCategories(); // Refresh the list
                 } catch {}
@@ -199,6 +217,7 @@ export default function TransactionsPage() {
 
             setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
             setQaAddingCustomCategory(false); setQaCustomCategoryName('');
+            setQaCustomIcon(CUSTOM_CATEGORY_ICONS[0]); setQaCustomColor(CUSTOM_COLORS[0]); setQaIconOptions(CUSTOM_CATEGORY_ICONS.slice(0, 40));
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
         } catch (error) {
@@ -215,6 +234,12 @@ export default function TransactionsPage() {
             setQaCategory(e.target.value);
             setQaAddingCustomCategory(false);
         }
+    };
+
+    const generateInlineIconOptions = () => {
+        const candidates = getIconCandidates(qaCustomCategoryName || qaCategory || qaType);
+        setQaIconOptions(candidates);
+        setQaCustomIcon(candidates[0]);
     };
 
     const submitEdit = async () => {
@@ -447,6 +472,10 @@ export default function TransactionsPage() {
         }
     });
 
+    const quickCategoriesForType = qaType === 'earning'
+        ? ['Salary', 'Freelance', 'Investment', 'Business', 'Savings', 'Other']
+        : ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Other'];
+
     // Show loading only on first ever load (no cached data)
     const showFullLoading = !transactions.length && isLoading;
 
@@ -523,65 +552,220 @@ export default function TransactionsPage() {
 
             {/* Quick Add Form */}
             {showQuickAdd && (
-                <form onSubmit={e => { e.preventDefault(); submitQuickAdd(); }} className="card-premium p-5 rounded-2xl mb-5 animate-slide-up">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">add_circle</span>Quick Add Transaction
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
-                        <select value={qaType} onChange={e => setQaType(e.target.value as 'expense' | 'earning')}
-                            className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
-                            <option value="expense">Expense</option>
-                            <option value="earning">Earning</option>
-                        </select>
-                        <input type="number" step="0.01" placeholder="Amount" value={qaAmount} onChange={e => setQaAmount(e.target.value)}
-                            className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
-                        
-                        {qaAddingCustomCategory ? (
-                            <div className="flex items-center gap-2 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 p-1">
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ml-1 transition-all ${qaCustomCategoryName.trim() ? getColorStyle(resolveColor(qaCustomCategoryName)).bg : 'bg-gray-200 dark:bg-gray-700'}`}>
-                                    <span className="material-symbols-outlined text-white text-[14px]">
-                                        {qaCustomCategoryName.trim() ? resolveIcon(qaCustomCategoryName) : 'edit'}
-                                    </span>
+                <form onSubmit={e => { e.preventDefault(); submitQuickAdd(); }} className="card-premium mb-5 overflow-hidden rounded-2xl animate-slide-up">
+                    <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
+                        <div className={`relative p-5 lg:p-6 ${qaType === 'expense' ? 'stat-gradient-orange' : 'stat-gradient-emerald'}`}>
+                            <div className="mb-5 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-text-muted">New transaction</p>
+                                    <h3 className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{qaType === 'expense' ? 'Record Expense' : 'Record Earning'}</h3>
                                 </div>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Coffee, Gym, Crypto"
-                                    value={qaCustomCategoryName}
-                                    onChange={e => {
-                                        setQaCustomCategoryName(e.target.value);
-                                        setQaCategory(e.target.value);
-                                    }}
-                                    className="p-1.5 w-full bg-transparent text-gray-900 dark:text-white outline-none text-sm"
-                                    autoFocus
-                                />
-                                <button type="button" onClick={() => { setQaAddingCustomCategory(false); setQaCustomCategoryName(''); setQaCategory(''); }} className="p-1 text-gray-400 hover:text-rose-500 transition-colors">
-                                    <span className="material-symbols-outlined text-[16px]">close</span>
-                                </button>
+                                <div className={`grid h-12 w-12 place-items-center rounded-2xl ${qaType === 'expense' ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                    <span className="material-symbols-outlined text-2xl">{qaType === 'expense' ? 'shopping_cart' : 'payments'}</span>
+                                </div>
                             </div>
-                        ) : (
-                            <select value={qaCategory} onChange={handleCustomCategoryChange}
-                                className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
-                                <option value="">Category</option>
-                                {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                <optgroup label="Custom Categories">
-                                    {customCategories.filter(c => c.type === qaType).map(c => (
-                                        <option key={`cc-${c.id}`} value={c.name}>{c.name}</option>
-                                    ))}
-                                </optgroup>
-                                <option value="ADD_CUSTOM" className="text-primary font-bold">+ Add Custom Category</option>
-                            </select>
-                        )}
 
-                        <input type="date" value={qaDate} onChange={e => setQaDate(e.target.value)}
-                            className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
-                        <input type="text" placeholder="Description" value={qaDesc} onChange={e => setQaDesc(e.target.value)}
-                            className="p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
-                        <button type="submit" disabled={qaSubmitting || !qaAmount || !qaCategory || isNaN(parseFloat(qaAmount)) || parseFloat(qaAmount) <= 0}
-                            className="bg-primary text-white rounded-xl p-2.5 font-bold hover:bg-primary-hover transition-all btn-primary-glow flex justify-center items-center min-h-[42px] disabled:opacity-40 active:scale-95">
-                            {qaSubmitting ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : 'Save'}
-                        </button>
+                            <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-white/70 p-1 dark:bg-black/20">
+                                {(['expense', 'earning'] as const).map(type => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => { setQaType(type); setQaCategory(''); setQaAddingCustomCategory(false); }}
+                                        className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${qaType === type ? (type === 'expense' ? 'bg-rose-500 text-white shadow-sm' : 'bg-emerald-500 text-white shadow-sm') : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">{type === 'expense' ? 'arrow_upward' : 'arrow_downward'}</span>
+                                        {type === 'expense' ? 'Expense' : 'Earning'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Amount</label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400 dark:text-gray-500">{sym}</span>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={qaAmount}
+                                    onChange={e => setQaAmount(e.target.value)}
+                                    className="w-full rounded-2xl border border-gray-200 bg-white/85 py-4 pl-12 pr-4 text-4xl font-black tracking-tight text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Date</label>
+                                    <input
+                                        type="date"
+                                        value={qaDate}
+                                        onChange={e => setQaDate(e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Description</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Optional"
+                                        value={qaDesc}
+                                        onChange={e => setQaDesc(e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-5 lg:p-6">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-text-muted">Category</p>
+                                    <p className="mt-1 text-sm text-gray-500 dark:text-text-muted">{qaAddingCustomCategory ? 'Custom style' : 'Select a group'}</p>
+                                </div>
+                                {qaAddingCustomCategory && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setQaAddingCustomCategory(false); setQaCustomCategoryName(''); setQaCategory(''); }}
+                                        className="grid h-9 w-9 place-items-center rounded-full bg-gray-100 text-gray-500 hover:text-rose-500 dark:bg-surface-dark"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">close</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {!qaAddingCustomCategory ? (
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap gap-2">
+                                        {quickCategoriesForType.map(category => {
+                                            const selected = qaCategory === category;
+                                            return (
+                                                <button
+                                                    key={category}
+                                                    type="button"
+                                                    onClick={() => { setQaCategory(category); setQaAddingCustomCategory(false); }}
+                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? 'border-primary bg-primary text-white shadow-sm' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-gray-400 dark:hover:text-white'}`}
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">{getCategoryIcon(category, customCategories)}</span>
+                                                    {category}
+                                                </button>
+                                            );
+                                        })}
+                                        {customCategories.filter(category => category.type === qaType).map(category => {
+                                            const selected = qaCategory.toLowerCase() === category.name.toLowerCase();
+                                            return (
+                                                <button
+                                                    key={category.id}
+                                                    type="button"
+                                                    onClick={() => setQaCategory(category.name)}
+                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? getColorStyle(category.color).selected : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-gray-400 dark:hover:text-white'}`}
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">{category.icon}</span>
+                                                    {category.name}
+                                                </button>
+                                            );
+                                        })}
+                                        <button
+                                            type="button"
+                                            onClick={() => { setQaAddingCustomCategory(true); setQaCategory(''); }}
+                                            className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-bold text-primary hover:bg-primary/20"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">add</span>
+                                            Custom
+                                        </button>
+                                    </div>
+
+                                    <select value={qaCategory} onChange={handleCustomCategoryChange} className="sr-only" aria-label="Category fallback selector">
+                                        <option value="">Category</option>
+                                        {QUICK_CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                                        <optgroup label="Custom Categories">
+                                            {customCategories.filter(category => category.type === qaType).map(category => (
+                                                <option key={`cc-${category.id}`} value={category.name}>{category.name}</option>
+                                            ))}
+                                        </optgroup>
+                                        <option value="ADD_CUSTOM">Add Custom Category</option>
+                                    </select>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-[#30363d] dark:bg-[#0d1117]/70">
+                                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Custom category name</label>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${qaCustomCategoryName.trim() ? getColorStyle(qaCustomColor).bg : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                                <span className="material-symbols-outlined text-xl text-white">{qaCustomCategoryName.trim() ? qaCustomIcon : 'edit'}</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Coffee, Gym, Crypto"
+                                                value={qaCustomCategoryName}
+                                                onChange={e => {
+                                                    setQaCustomCategoryName(e.target.value);
+                                                    setQaCategory(e.target.value);
+                                                }}
+                                                className="w-full bg-transparent text-base font-semibold text-gray-900 outline-none placeholder:text-gray-400 dark:text-white"
+                                                autoFocus
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="mb-2 flex items-center justify-between gap-3">
+                                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Icon</label>
+                                            <button
+                                                type="button"
+                                                onClick={generateInlineIconOptions}
+                                                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20"
+                                            >
+                                                <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
+                                                Generate icon
+                                            </button>
+                                        </div>
+                                        <div className="grid max-h-40 grid-cols-8 gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white/50 p-2 dark:border-[#30363d] dark:bg-[#0d1117]/50 sm:grid-cols-10">
+                                            {qaIconOptions.map(icon => (
+                                                <button
+                                                    key={icon}
+                                                    type="button"
+                                                    onClick={() => setQaCustomIcon(icon)}
+                                                    className={`aspect-square rounded-xl text-lg transition-all ${qaCustomIcon === icon ? `${getColorStyle(qaCustomColor).bg} text-white shadow-md scale-105` : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-surface-dark dark:text-gray-400 dark:hover:bg-surface-hover'}`}
+                                                >
+                                                    <span className="material-symbols-outlined">{icon}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Color</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {CUSTOM_COLORS.map(color => (
+                                                <button
+                                                    key={color}
+                                                    type="button"
+                                                    onClick={() => setQaCustomColor(color)}
+                                                    className={`h-8 w-8 rounded-full ${getColorStyle(color).bg} ${qaCustomColor === color ? 'ring-2 ring-gray-900 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-[#161b22]' : 'hover:scale-105'}`}
+                                                    aria-label={`${color} category color`}
+                                                >
+                                                    {qaCustomColor === color && <span className="material-symbols-outlined text-[16px] text-white">check</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={qaSubmitting || !qaAmount || !(qaAddingCustomCategory ? qaCustomCategoryName.trim() : qaCategory) || isNaN(parseFloat(qaAmount)) || parseFloat(qaAmount) <= 0}
+                                className={`mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-base font-bold text-white shadow-lg disabled:opacity-40 active:scale-[0.98] ${qaType === 'expense' ? 'bg-rose-500 shadow-rose-500/20 hover:bg-rose-600' : 'bg-emerald-500 shadow-emerald-500/20 hover:bg-emerald-600'}`}
+                            >
+                                {qaSubmitting ? (
+                                    <span className="h-5 w-24 rounded-full bg-white/30 shimmer-skeleton" />
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-xl">check_circle</span>
+                                        Save {qaType === 'expense' ? 'Expense' : 'Earning'}
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </form>
             )}
@@ -626,8 +810,118 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
+            {/* Mobile Transaction Cards */}
+            <div className="md:hidden space-y-3 mb-5" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+                {showFullLoading ? (
+                    Array.from({ length: 6 }).map((_, index) => (
+                        <div key={`mobile-tx-skeleton-${index}`} className="skeleton-panel p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-11 w-11 rounded-2xl shimmer-skeleton" />
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <div className="h-3 w-36 rounded-full shimmer-skeleton" />
+                                    <div className="h-2.5 w-24 rounded-full shimmer-skeleton" />
+                                </div>
+                                <div className="h-3 w-16 rounded-full shimmer-skeleton" />
+                            </div>
+                        </div>
+                    ))
+                ) : sorted.length === 0 ? (
+                    <div className="card-premium rounded-3xl p-8 text-center">
+                        <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gray-100 dark:bg-surface-dark">
+                            <span className="material-symbols-outlined text-3xl text-gray-400 dark:text-gray-500">search_off</span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-500 dark:text-text-muted">No transactions found for this period.</p>
+                    </div>
+                ) : sorted.map((t, i) => (
+                    <div
+                        key={t.id}
+                        className={`relative overflow-visible rounded-3xl border border-gray-200/70 bg-white/88 p-4 shadow-sm backdrop-blur-xl transition-all active:scale-[0.985] dark:border-white/10 dark:bg-[#161b22]/82 ${actionMenuOpenId === t.id ? 'z-50' : 'z-0'}`}
+                        style={{ animation: `slideUp 0.3s ease-out ${Math.min(i * 0.03, 0.3)}s both` }}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl shadow-sm ${t.type === 'expense' ? 'bg-rose-50 text-rose-500 dark:bg-rose-500/10' : 'bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10'}`}>
+                                <span className="material-symbols-outlined text-[22px]">
+                                    {getCategoryIcon(t.category, customCategories)}
+                                </span>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{t.description || t.category}</p>
+                                    {t.pending && (
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                            Sync
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="mt-1 flex items-center gap-2 text-[11px] font-medium text-gray-400 dark:text-text-muted">
+                                    <span className="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-surface-hover">{t.category}</span>
+                                    <span>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-1">
+                                <p className={`text-sm font-black ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                    {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
+                                </p>
+                                <div className="relative inline-block text-left action-menu-container">
+                                    <button
+                                        onClick={() => setActionMenuOpenId(actionMenuOpenId === t.id ? null : t.id)}
+                                        className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${actionMenuOpenId === t.id ? 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-400 active:bg-gray-100 dark:text-gray-500 dark:active:bg-surface-hover'}`}
+                                        aria-label="Transaction actions"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {actionMenuOpenId === t.id && (
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="absolute right-0 top-full z-[9999] mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-800"
+                                            >
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingTx({ ...t });
+                                                        setActionMenuOpenId(null);
+                                                    }}
+                                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => submitDuplicate(t)}
+                                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                                                    Duplicate
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setDeletingTxId(t.id);
+                                                        setActionMenuOpenId(null);
+                                                    }}
+                                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                    Delete
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             {/* Table */}
-            <div className="card-premium rounded-2xl" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+            <div className="card-premium hidden rounded-2xl md:block" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -645,10 +939,23 @@ export default function TransactionsPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
                             {showFullLoading ? (
-                                <tr><td colSpan={5} className="px-6 py-12 text-center">
-                                    <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                                    <p className="text-gray-400 dark:text-text-muted text-sm">Loading transactions...</p>
-                                </td></tr>
+                                Array.from({ length: 7 }).map((_, index) => (
+                                    <tr key={`tx-skeleton-${index}`}>
+                                        <td className="px-6 py-3.5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-9 w-9 rounded-xl shimmer-skeleton" />
+                                                <div className="space-y-2">
+                                                    <div className="h-3 w-40 rounded-full shimmer-skeleton" />
+                                                    <div className="h-2.5 w-24 rounded-full shimmer-skeleton" />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3.5"><div className="h-7 w-24 rounded-md shimmer-skeleton" /></td>
+                                        <td className="px-6 py-3.5"><div className="h-3 w-28 rounded-full shimmer-skeleton" /></td>
+                                        <td className="px-6 py-3.5"><div className="ml-auto h-3 w-20 rounded-full shimmer-skeleton" /></td>
+                                        <td className="px-6 py-3.5"><div className="ml-auto h-8 w-8 rounded-full shimmer-skeleton" /></td>
+                                    </tr>
+                                ))
                             ) : sorted.length === 0 ? (
                                 <tr><td colSpan={5} className="px-6 py-12 text-center">
                                     <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">search_off</span>

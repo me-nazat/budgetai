@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import { verifyPassword, createToken, setSessionCookie } from '@/lib/auth';
+import { checkRateLimit, getClientIP } from '@/lib/validation';
 
 export async function POST(request: Request) {
     try {
-        const { email, password } = await request.json();
+        // Rate limit: 5 login attempts per 15 min per IP
+        const ip = getClientIP(request);
+        const rl = checkRateLimit(`login:${ip}`, 5, 15 * 60 * 1000);
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: 'Too many login attempts. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+            );
+        }
+
+        const body = await request.json();
+        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+        const password = typeof body.password === 'string' ? body.password : '';
 
         if (!email || !password) {
             return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });

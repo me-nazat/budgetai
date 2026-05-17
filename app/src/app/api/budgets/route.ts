@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { queryAll, run } from '@/lib/db';
+import { isValidAmount, sanitizeCategory } from '@/lib/validation';
 
 export async function GET(request: Request) {
     try {
@@ -10,6 +11,14 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1));
         const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()));
+
+        // Validate month/year ranges
+        if (!Number.isFinite(month) || month < 1 || month > 12) {
+            return NextResponse.json({ error: 'Invalid month (1-12)' }, { status: 400 });
+        }
+        if (!Number.isFinite(year) || year < 2000 || year > 2100) {
+            return NextResponse.json({ error: 'Invalid year (2000-2100)' }, { status: 400 });
+        }
 
         const budgets = await queryAll<{ id: number; category: string; monthly_limit: number }>(
             'SELECT id, category, monthly_limit FROM budgets WHERE user_id = ? AND month = ? AND year = ?',
@@ -44,13 +53,23 @@ export async function POST(request: Request) {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { category, monthly_limit, month, year } = await request.json();
-        if (!category || !monthly_limit) {
-            return NextResponse.json({ error: 'Category and limit required' }, { status: 400 });
+        const body = await request.json();
+        const category = sanitizeCategory(body.category);
+        const monthly_limit = typeof body.monthly_limit === 'string' ? parseFloat(body.monthly_limit) : body.monthly_limit;
+
+        if (!category || category === 'Other') {
+            return NextResponse.json({ error: 'Category is required' }, { status: 400 });
+        }
+        if (!isValidAmount(monthly_limit)) {
+            return NextResponse.json({ error: 'Valid budget limit required (positive number)' }, { status: 400 });
         }
 
-        const m = month || new Date().getMonth() + 1;
-        const y = year || new Date().getFullYear();
+        const m = body.month || new Date().getMonth() + 1;
+        const y = body.year || new Date().getFullYear();
+
+        if (typeof m !== 'number' || m < 1 || m > 12 || typeof y !== 'number' || y < 2000 || y > 2100) {
+            return NextResponse.json({ error: 'Invalid month or year' }, { status: 400 });
+        }
 
         await run(
             `INSERT INTO budgets (user_id, category, monthly_limit, month, year) 
@@ -75,7 +94,12 @@ export async function DELETE(request: Request) {
         const id = searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-        await run('DELETE FROM budgets WHERE id = ? AND user_id = ?', [id, session.userId]);
+        const numId = parseInt(id, 10);
+        if (!Number.isFinite(numId) || numId < 1) {
+            return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+        }
+
+        await run('DELETE FROM budgets WHERE id = ? AND user_id = ?', [numId, session.userId]);
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Budget delete error:', error);

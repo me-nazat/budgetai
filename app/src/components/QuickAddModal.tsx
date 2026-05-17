@@ -8,17 +8,10 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction } from '@/lib/offlineDb';
 import {
     CATEGORIES_EXPENSE, CATEGORIES_INCOME,
-    CUSTOM_COLORS, CUSTOM_COLOR_STYLES,
-    getColorStyle, resolveIcon, resolveColor,
+    CUSTOM_COLORS,
+    CUSTOM_CATEGORY_ICONS,
+    getColorStyle, getIconCandidates, resolveIcon, resolveColor,
 } from '@/lib/categoryUtils';
-
-const CUSTOM_ICONS = [
-    'emoji_objects', 'flight_takeoff', 'pets', 'fitness_center', 'sports_esports',
-    'palette', 'camera_alt', 'auto_stories', 'rocket_launch', 'local_cafe',
-    'celebration', 'diamond', 'local_bar', 'fastfood', 'local_taxi',
-    'pedal_bike', 'music_note', 'sports_soccer', 'volunteer_activism',
-    'child_care', 'medication', 'devices', 'savings', 'currency_bitcoin',
-];
 
 interface CustomCategory {
     id: number;
@@ -54,8 +47,9 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
     const [isCreatingCustom, setIsCreatingCustom] = useState(false);
     const [customName, setCustomName] = useState('');
-    const [customIcon, setCustomIcon] = useState(CUSTOM_ICONS[0]);
+    const [customIcon, setCustomIcon] = useState(CUSTOM_CATEGORY_ICONS[0]);
     const [customColor, setCustomColor] = useState(CUSTOM_COLORS[0]);
+    const [generatedIcons, setGeneratedIcons] = useState(CUSTOM_CATEGORY_ICONS.slice(0, 40));
     const [showRecentCustom, setShowRecentCustom] = useState(false);
 
     const { currency } = useCurrency();
@@ -85,6 +79,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
             const suggestedColor = resolveColor(customName);
             setCustomIcon(suggestedIcon);
             setCustomColor(suggestedColor);
+            setGeneratedIcons(getIconCandidates(customName));
         }
     }, [customName]);
 
@@ -116,14 +111,15 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     };
 
     const handleSaveCustomCategory = async () => {
-        if (!customName) return;
+        const trimmedName = customName.trim().replace(/\s+/g, ' ');
+        if (!trimmedName) return;
         setSubmitting(true);
         try {
             const res = await fetch('/api/categories', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: customName,
+                    name: trimmedName,
                     type,
                     icon: customIcon,
                     color: customColor
@@ -132,12 +128,17 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
             const data = await res.json();
             if (res.ok) {
                 await fetchCustomCategories();
-                setCategory(customName);
+                setCategory(data.name || trimmedName);
                 setIsCreatingCustom(false);
                 setCustomName('');
             } else if (data.error === 'Category already exists') {
-                // Category exists — just select it
-                setCategory(customName);
+                await fetch('/api/categories', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: trimmedName, type, icon: customIcon, color: customColor })
+                });
+                await fetchCustomCategories();
+                setCategory(trimmedName);
                 setIsCreatingCustom(false);
                 setCustomName('');
             }
@@ -154,6 +155,12 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         } else {
             setIsCreatingCustom(true);
         }
+    };
+
+    const generateIconOptions = () => {
+        const candidates = getIconCandidates(customName || category || type);
+        setGeneratedIcons(candidates);
+        setCustomIcon(candidates[0]);
     };
 
     const handleSelectRecentCustom = (catName: string) => {
@@ -482,12 +489,22 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                             </div>
 
                             <div className="mb-6">
-                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                                    Icon
-                                    <span className="ml-2 text-[10px] font-normal normal-case text-gray-400">(auto-suggested, or pick your own)</span>
-                                </label>
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Icon
+                                        <span className="ml-2 text-[10px] font-normal normal-case text-gray-400">(40 choices)</span>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={generateIconOptions}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20"
+                                    >
+                                        <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
+                                        Generate icon
+                                    </button>
+                                </div>
                                 <div className="grid grid-cols-6 gap-3">
-                                    {CUSTOM_ICONS.map(icon => (
+                                    {generatedIcons.map(icon => (
                                         <button
                                             key={icon}
                                             onClick={() => setCustomIcon(icon)}

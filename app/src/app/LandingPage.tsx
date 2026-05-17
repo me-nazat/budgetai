@@ -64,6 +64,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {/* ─── MAIN ─── */}
             <main className="flex-1 relative z-10">
                 <HeroSection onNavigate={(path) => router.push(path)} />
+                <ProcessFlowSection />
                 <PartnerLogos />
                 <FeaturesSection />
                 <DataVizSection />
@@ -321,6 +322,99 @@ function DashboardMockup() {
                 </div>
             </div>
         </div>
+    );
+}
+
+/* ═══════════════════════════════════════════════
+   PROCESS FLOW SECTION
+   ═══════════════════════════════════════════════ */
+function ProcessFlowSection() {
+    const steps = [
+        { icon: 'chat', title: 'Tell Wealth AI', copy: 'Add "coffee 6 dollars" or ask a finance question in natural language.' },
+        { icon: 'auto_awesome', title: 'AI Categorizes', copy: 'The entry is cleaned, dated, matched to a smart category, and styled with an icon.' },
+        { icon: 'query_stats', title: 'Dashboard Updates', copy: 'Balances, charts, recent transactions, and trends refresh around the new data.' },
+        { icon: 'notifications_active', title: 'Insights Surface', copy: 'Budget alerts and savings guidance appear when your numbers need attention.' },
+    ];
+
+    return (
+        <section className="relative py-10 sm:py-14">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="lp-animate rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
+                    <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+                        <div>
+                            <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-primary dark:text-lp-cyan">How Wealth AI works</p>
+                            <h2 className="max-w-xl text-3xl font-medium leading-tight text-gray-900 dark:text-white sm:text-4xl" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                                From one sentence to a living financial picture.
+                            </h2>
+                            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                {steps.map((step, index) => (
+                                    <div key={step.title} className="lp-flow-card rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/[0.04]" style={{ animationDelay: `${index * 0.18}s` }}>
+                                        <div className="mb-3 flex items-center gap-3">
+                                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary dark:bg-lp-cyan/10 dark:text-lp-cyan">
+                                                <span className="material-symbols-outlined text-[21px]">{step.icon}</span>
+                                            </div>
+                                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">{step.title}</h3>
+                                        </div>
+                                        <p className="text-sm leading-relaxed text-gray-500 dark:text-slate-400">{step.copy}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gray-950 p-5 text-white shadow-2xl shadow-slate-900/20 dark:border-white/10">
+                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lp-cyan/70 to-transparent" />
+                            <div className="mb-5 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-3 w-3 rounded-full bg-rose-400" />
+                                    <div className="h-3 w-3 rounded-full bg-amber-400" />
+                                    <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                                </div>
+                                <div className="rounded-full border border-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-cyan-200">Live finance engine</div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="lp-input-pulse rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                                    <div className="mb-3 flex items-center gap-2 text-sm text-slate-300">
+                                        <span className="material-symbols-outlined text-[18px] text-cyan-300">keyboard</span>
+                                        <span>Lunch with client 28 today</span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-white/10">
+                                        <div className="lp-scan-line h-full rounded-full bg-cyan-300" />
+                                    </div>
+                                </div>
+
+                                {[
+                                    ['restaurant', 'Expense', 'Food', '$28.00'],
+                                    ['event_available', 'Date', 'Today', 'Ready'],
+                                    ['donut_large', 'Report', 'Spending trend', '+1 entry'],
+                                ].map(([icon, label, detail, value], index) => (
+                                    <div key={label} className="lp-flow-row flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3" style={{ animationDelay: `${0.35 + index * 0.16}s` }}>
+                                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-300/10 text-cyan-200">
+                                            <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xs uppercase tracking-wider text-slate-500">{label}</p>
+                                            <p className="truncate text-sm font-bold text-white">{detail}</p>
+                                        </div>
+                                        <p className="text-sm font-bold text-cyan-200">{value}</p>
+                                    </div>
+                                ))}
+
+                                <div className="lp-insight-ticket rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                                    <div className="flex items-start gap-3">
+                                        <span className="material-symbols-outlined text-emerald-300">auto_awesome</span>
+                                        <div>
+                                            <p className="text-sm font-bold text-emerald-100">Budget insight ready</p>
+                                            <p className="mt-1 text-xs leading-relaxed text-emerald-100/70">Dining is 72% of this month&apos;s limit after the new entry.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     );
 }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { isValidCurrency } from '@/lib/validation';
 
 // In-memory cache to avoid hitting external APIs too frequently
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -20,23 +21,38 @@ export async function GET(request: Request) {
         const type = searchParams.get('type');
 
         if (type === 'rates') {
-            const base = searchParams.get('base') || 'USD';
+            const base = (searchParams.get('base') || 'USD').toUpperCase();
 
-            // Return cached rates if valid (and base hasn't fundamentally changed if we cache the whole object)
-            // For simplicity, we just fetch from free api.
+            // Validate currency code to prevent SSRF
+            if (!isValidCurrency(base)) {
+                return NextResponse.json({ error: 'Invalid currency code' }, { status: 400 });
+            }
+
+            // Return cached rates if valid
             if (cachedRates && (Date.now() - cachedRatesTime < RATES_CACHE_TTL) && cachedRates.base_code === base) {
                 return NextResponse.json(cachedRates);
             }
 
-            // Using standard free unauthenticated ExchangeRate-API endpoint
-            const res = await fetch(`https://open.er-api.com/v6/latest/${base}`);
-            if (!res.ok) throw new Error('Failed to fetch rates');
-            const data = await res.json();
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
 
-            cachedRates = data;
-            cachedRatesTime = Date.now();
+            try {
+                const res = await fetch(`https://open.er-api.com/v6/latest/${encodeURIComponent(base)}`, {
+                    signal: controller.signal,
+                });
+                clearTimeout(timeout);
 
-            return NextResponse.json(data);
+                if (!res.ok) throw new Error('Failed to fetch rates');
+                const data = await res.json();
+
+                cachedRates = data;
+                cachedRatesTime = Date.now();
+
+                return NextResponse.json(data);
+            } catch (fetchErr) {
+                clearTimeout(timeout);
+                throw fetchErr;
+            }
         }
 
         if (type === 'news') {
@@ -44,15 +60,6 @@ export async function GET(request: Request) {
                 return NextResponse.json({ news: cachedNews });
             }
 
-            // Instead of parsing raw RSS which requires heavy xml packages on edge, 
-            // We'll use a public aggregated API or scrape a known JSON endpoint if available.
-            // For the sake of this feature without requiring API keys, we'll simulate a 
-            // very reliable set of aggregated generic market news or use a free public JSON feed.
-            // Since most reliable finance news APIs require auth, we'll use a widely available 
-            // free endpoint (like spaceflightnews, or just mock realistic live-looking data).
-
-            // MOCK DATA for "Finance News" since public unregulated JSON feeds for Finance are rare/unstable
-            // In a real prod environment, you'd insert a NewsAPI or Finnhub key here.
             const headlines = [
                 { id: 1, title: "Global Markets Rally as Tech Stocks Surge", source: "Financial Times", time: "2h ago", sentiment: "positive" },
                 { id: 2, title: "Federal Reserve Hints at Possible Rate Cuts Later This Year", source: "Reuters", time: "4h ago", sentiment: "neutral" },

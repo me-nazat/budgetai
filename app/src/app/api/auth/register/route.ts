@@ -1,17 +1,35 @@
 import { NextResponse } from 'next/server';
 import { queryOne, run } from '@/lib/db';
 import { hashPassword, createToken, setSessionCookie } from '@/lib/auth';
+import { isValidEmail, isValidPassword, sanitizeName, checkRateLimit, getClientIP } from '@/lib/validation';
 
 export async function POST(request: Request) {
     try {
-        const { name, email, password } = await request.json();
-
-        if (!name || !email || !password) {
-            return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
+        // Rate limit: 5 registrations per 15 min per IP
+        const ip = getClientIP(request);
+        const rl = checkRateLimit(`register:${ip}`, 5, 15 * 60 * 1000);
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: 'Too many registration attempts. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+            );
         }
 
-        if (password.length < 6) {
-            return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+        const body = await request.json();
+        const name = sanitizeName(body.name);
+        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+        const password = typeof body.password === 'string' ? body.password : '';
+
+        if (!name) {
+            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+        }
+
+        if (!isValidEmail(email)) {
+            return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
+        }
+
+        if (!isValidPassword(password)) {
+            return NextResponse.json({ error: 'Password must be 6-128 characters' }, { status: 400 });
         }
 
         const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email]);

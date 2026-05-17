@@ -34,37 +34,48 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/50 z-50 lg:hidden backdrop-blur-sm transition-opacity"
+                className="fixed inset-0 bg-slate-950/55 z-50 lg:hidden backdrop-blur-md transition-opacity"
                 onClick={onClose}
             />
 
             {/* Menu Drawer */}
             <div className={`
-                fixed bottom-0 left-0 w-full bg-white dark:bg-[#0d1117] z-50 lg:hidden
-                rounded-t-3xl shadow-2xl transition-transform duration-300 transform
+                fixed bottom-0 left-0 w-full z-50 lg:hidden overflow-hidden
+                rounded-t-[2rem] border-t border-white/70 bg-white/92 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl
+                transition-transform duration-300 transform dark:border-white/10 dark:bg-[#0d1117]/94 dark:shadow-black/55
                 ${isOpen ? 'translate-y-0' : 'translate-y-full'}
                 flex flex-col max-h-[85vh]
             `} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
                 {/* Drag Handle */}
-                <div className="w-full h-1.5 flex justify-center py-4 shrink-0" onClick={onClose}>
-                    <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
+                <div className="w-full flex justify-center py-3 shrink-0" onClick={onClose}>
+                    <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />
                 </div>
 
                 {/* Header */}
-                <div className="px-6 pb-4 border-b border-gray-100 dark:border-[#30363d] shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
-                            <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={40} height={40} className="object-cover" />
-                        </div>
-                        <div className="flex flex-col">
-                            <h2 className="text-gray-900 dark:text-white text-lg font-bold leading-none">Wealth AI</h2>
-                            <p className="text-gray-500 dark:text-text-secondary text-xs">Menu</p>
+                <div className="px-5 pb-4 shrink-0">
+                    <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-4 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-primary/30 dark:border-white/10 dark:from-white/8 dark:to-white/3">
+                        <div className="relative flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center overflow-hidden shrink-0 dark:bg-white/10">
+                                <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={48} height={48} className="object-cover" />
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                                <h2 className="truncate text-gray-900 dark:text-white text-lg font-bold leading-none">{user?.name || 'Wealth AI'}</h2>
+                                <p className="truncate text-gray-500 dark:text-text-secondary text-xs mt-1">{user?.email || 'Smart Finance'}</p>
+                            </div>
+                            <button
+                                onClick={onClose}
+                                aria-label="Close menu"
+                                className="grid h-9 w-9 place-items-center rounded-full bg-gray-100 text-gray-500 active:scale-95 dark:bg-white/10 dark:text-gray-300"
+                            >
+                                <span className="material-symbols-outlined text-[19px]">close</span>
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Navigation Links */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto px-5 pb-4 custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-2.5">
                     {menuItems.map((item) => {
                         const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                         return (
@@ -72,48 +83,39 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                                 key={item.href}
                                 href={item.href}
                                 onClick={onClose}
-                                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 ${isActive
-                                    ? 'bg-primary/10 text-primary font-bold'
-                                    : 'text-gray-600 dark:text-text-secondary active:bg-gray-100 dark:active:bg-[#21262d]'
+                                className={`relative overflow-hidden rounded-2xl border p-3.5 transition-all duration-300 ${isActive
+                                    ? 'border-primary/20 bg-primary/10 text-primary font-bold shadow-sm'
+                                    : 'border-gray-200 bg-gray-50/80 text-gray-600 active:bg-gray-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-text-secondary dark:active:bg-[#21262d]'
                                     }`}
                             >
-                                <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
-                                    {item.icon}
-                                </span>
-                                <span className="text-sm font-medium">
-                                    {item.label}
-                                </span>
+                                {isActive && <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-primary" />}
+                                <div className="relative flex items-center gap-3">
+                                    <span className={`material-symbols-outlined grid h-9 w-9 place-items-center rounded-xl text-[21px] ${isActive ? 'bg-primary text-white' : 'bg-white text-gray-500 dark:bg-white/10 dark:text-gray-300'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                                        {item.icon}
+                                    </span>
+                                    <span className="min-w-0 truncate text-sm font-semibold">
+                                        {item.label}
+                                    </span>
+                                </div>
                             </Link>
                         );
                     })}
+                    </div>
                 </div>
 
                 {/* Footer / Settings */}
-                <div className="p-4 border-t border-gray-100 dark:border-[#30363d] shrink-0 bg-gray-50/50 dark:bg-[#0d1117]">
+                <div className="p-4 border-t border-gray-100 dark:border-[#30363d] shrink-0 bg-gray-50/70 dark:bg-[#0d1117]/80">
                     <Link
                         href="/settings"
                         onClick={onClose}
-                        className="flex items-center gap-4 px-4 py-3 rounded-2xl text-gray-600 dark:text-text-secondary active:bg-gray-200 dark:active:bg-[#21262d] transition-colors mb-2"
+                        className="flex items-center gap-4 px-4 py-3 rounded-2xl text-gray-600 dark:text-text-secondary active:bg-gray-200 dark:active:bg-[#21262d] transition-colors"
                     >
                         <span className="material-symbols-outlined text-[22px]">settings</span>
                         <div className="flex-1">
                             <span className="text-sm font-medium">Settings & Preferences</span>
                         </div>
+                        <span className="material-symbols-outlined text-[18px] text-gray-400">chevron_right</span>
                     </Link>
-
-                    {user && (
-                        <div className="flex items-center gap-3 px-4 py-2 mt-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-purple-600 p-[2px]">
-                                <div className="w-full h-full rounded-full bg-white dark:bg-[#0d1117] flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-sm text-gray-400">person</span>
-                                </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
-                                <p className="text-xs text-gray-500 dark:text-text-secondary truncate">{user.email}</p>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </>
