@@ -12,8 +12,5 @@ if (existsSync(routesManifest) && !existsSync(deterministicRoutesManifest)) {
   console.log('[postbuild] Created routes-manifest-deterministic.json');
 }
 
-// Step 2: Copy .next to parent directory for Vercel (repo root != app root)
-if (existsSync(nextDir) && process.env.VERCEL) {
-  cpSync(nextDir, parentNextDir, { recursive: true });
-  console.log('[postbuild] Copied .next to parent directory for Vercel');
-}
+// Note: We no longer copy .next to the parent directory.
+// You must set "Root Directory" to "app" in your Vercel Project Settings.
