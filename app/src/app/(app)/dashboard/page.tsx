@@ -536,7 +536,7 @@ export default function DashboardPage() {
                     {stats.map((s, i) => (
                         <div key={i} className={`card-premium ${s.gradient} p-5 lg:p-6 rounded-2xl relative overflow-hidden group`}
                             style={{ animationDelay: `${i * 0.08}s`, animation: `slideUp 0.5s ease-out ${i * 0.08}s both` }}>
-                            <div className="absolute -right-3 -top-3 opacity-[0.06] group-hover:opacity-[0.12] transition-all duration-500 group-hover:scale-110 group-hover:rotate-12">
+                            <div className="absolute -right-3 -top-3 z-0 pointer-events-none opacity-5 group-hover:opacity-10 transition-all duration-500 group-hover:scale-110 group-hover:rotate-12">
                                 <span className={`material-symbols-outlined text-7xl ${s.color}`}>{s.icon}</span>
                             </div>
                             <div className="flex flex-col gap-1 relative z-10">
