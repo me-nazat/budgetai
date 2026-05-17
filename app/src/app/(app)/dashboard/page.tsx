@@ -833,93 +833,99 @@ export default function DashboardPage() {
             {mounted && createPortal(
                 <AnimatePresence>
                     {editingTx && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[6px]" onClick={() => { setEditingTx(null); setEditSubmitting(false); }}>
                             <motion.div
-                                initial={{ opacity: 0, scale: 0.96, y: 18 }}
+                                initial={{ opacity: 0, scale: 0.96, y: 12 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.96, y: 18 }}
-                                className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-zinc-900"
+                                exit={{ opacity: 0, scale: 0.96, y: 12 }}
+                                transition={{ duration: 0.2 }}
+                                className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]"
+                                onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50/70 p-5 dark:border-[#30363d] dark:bg-white/5">
-                                    <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
-                                        <span className="material-symbols-outlined text-primary">edit</span>
+                                <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#30363d] px-5 py-4">
+                                    <h3 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
+                                        <span className="material-symbols-outlined text-primary text-xl">edit</span>
                                         Edit Transaction
                                     </h3>
-                                    <button onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="grid h-8 w-8 place-items-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-gray-200">
-                                        <span className="material-symbols-outlined text-lg">close</span>
+                                    <button onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/10">
+                                        <span className="material-symbols-outlined text-xl">close</span>
                                     </button>
                                 </div>
-                                <form onSubmit={(event) => { event.preventDefault(); submitDashboardEdit(); }} className="space-y-4 p-5">
+                                <form onSubmit={(event) => { event.preventDefault(); submitDashboardEdit(); }} className="space-y-3 px-5 py-4">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Type</label>
+                                            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Type</label>
                                             <select
                                                 value={editingTx.type}
                                                 onChange={(event) => setEditingTx({ ...editingTx, type: event.target.value, category: '' })}
-                                                className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
                                             >
                                                 <option value="expense">Expense</option>
                                                 <option value="earning">Earning</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Amount</label>
+                                            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Amount</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 value={editingTx.amount}
                                                 onChange={(event) => setEditingTx({ ...editingTx, amount: event.target.value })}
-                                                className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Category</label>
+                                            <select
+                                                value={editingTx.category}
+                                                onChange={(event) => setEditingTx({ ...editingTx, category: event.target.value })}
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
+                                            >
+                                                <option value="">Select</option>
+                                                {dashboardCategoryOptions.map(category => (
+                                                    <option key={category.label} value={category.label}>{category.label}</option>
+                                                ))}
+                                                {customCats.filter(category => category.type === editingTx.type).length > 0 && (
+                                                    <optgroup label="Custom">
+                                                        {customCats.filter(category => category.type === editingTx.type).map(category => (
+                                                            <option key={category.id} value={category.name}>{category.name}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Date</label>
+                                            <input
+                                                type="date"
+                                                value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''}
+                                                onChange={(event) => setEditingTx({ ...editingTx, date: event.target.value })}
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Category</label>
-                                        <select
-                                            value={editingTx.category}
-                                            onChange={(event) => setEditingTx({ ...editingTx, category: event.target.value })}
-                                            className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
-                                        >
-                                            <option value="">Select category</option>
-                                            {dashboardCategoryOptions.map(category => (
-                                                <option key={category.label} value={category.label}>{category.label}</option>
-                                            ))}
-                                            <optgroup label="Custom Categories">
-                                                {customCats.filter(category => category.type === editingTx.type).map(category => (
-                                                    <option key={category.id} value={category.name}>{category.name}</option>
-                                                ))}
-                                            </optgroup>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Date</label>
-                                        <input
-                                            type="date"
-                                            value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''}
-                                            onChange={(event) => setEditingTx({ ...editingTx, date: event.target.value })}
-                                            className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Description</label>
+                                        <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Description</label>
                                         <input
                                             type="text"
                                             value={editingTx.description || ''}
                                             onChange={(event) => setEditingTx({ ...editingTx, description: event.target.value })}
                                             placeholder="Optional description"
-                                            className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-surface-dark dark:text-white"
+                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
                                         />
                                     </div>
-                                    <div className="flex gap-3 pt-2">
-                                        <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="flex-1 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-surface-dark dark:text-gray-300 dark:hover:bg-white/10">
+                                    <div className="flex gap-3 pt-1">
+                                        <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-[#21262d] dark:text-gray-300 dark:hover:bg-[#30363d] transition-colors">
                                             Cancel
                                         </button>
                                         <button
                                             type="submit"
                                             disabled={editSubmitting || !editingTx.amount || !editingTx.category || isNaN(parseFloat(String(editingTx.amount))) || parseFloat(String(editingTx.amount)) <= 0}
-                                            className="flex flex-1 items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white btn-primary-glow disabled:opacity-40"
+                                            className="flex flex-1 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover transition-all disabled:opacity-40 active:scale-[0.98]"
                                         >
-                                            {editSubmitting ? <span className="h-5 w-20 rounded-full shimmer-skeleton" /> : 'Save Changes'}
+                                            {editSubmitting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Save Changes'}
                                         </button>
                                     </div>
                                 </form>

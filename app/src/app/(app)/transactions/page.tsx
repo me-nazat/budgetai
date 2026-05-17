@@ -155,7 +155,7 @@ export default function TransactionsPage() {
 
     const submitQuickAdd = async () => {
         const parsed = parseFloat(qaAmount);
-        const categoryName = (qaAddingCustomCategory ? qaCustomCategoryName : qaCategory).trim().replace(/\s+/g, ' ');
+        const categoryName = (qaAddingCustomCategory ? qaCustomCategoryName.trim().replace(/\s+/g, ' ') : qaCategory.trim().replace(/\s+/g, ' '));
         if (!qaAmount || isNaN(parsed) || parsed <= 0 || !categoryName) return;
         setQaSubmitting(true);
 
@@ -1061,73 +1061,77 @@ export default function TransactionsPage() {
             {mounted && createPortal(
                 <AnimatePresence>
                     {editingTx && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[6px]" onClick={() => { setEditingTx(null); setEditSubmitting(false); }}>
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.96, y: 12 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[#30363d]"
+                            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+                            transition={{ duration: 0.2 }}
+                            className="w-full max-w-[420px] bg-white dark:bg-[#161b22] rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[#30363d]"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="p-5 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary">edit</span>
+                            <div className="px-5 py-4 border-b border-gray-100 dark:border-[#30363d] flex justify-between items-center">
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary text-xl">edit</span>
                                     Edit Transaction
                                 </h3>
-                                <button onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                                    <span className="material-symbols-outlined">close</span>
+                                <button onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/10">
+                                    <span className="material-symbols-outlined text-xl">close</span>
                                 </button>
                             </div>
-                            <form onSubmit={e => { e.preventDefault(); submitEdit(); }} className="p-5 space-y-4">
+                            <form onSubmit={e => { e.preventDefault(); submitEdit(); }} className="px-5 py-4 space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Type</label>
+                                        <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Type</label>
                                         <select value={editingTx.type} onChange={e => setEditingTx({...editingTx, type: e.target.value})}
-                                            className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
                                             <option value="expense">Expense</option>
                                             <option value="earning">Earning</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Amount</label>
+                                        <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Amount</label>
                                         <input type="number" step="0.01" value={editingTx.amount} onChange={e => setEditingTx({...editingTx, amount: e.target.value})}
-                                            className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Category</label>
-                                    <select value={editingTx.category} onChange={e => setEditingTx({...editingTx, category: e.target.value})}
-                                        className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm">
-                                        <option value="">Select Category</option>
-                                        {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                        <optgroup label="Custom Categories">
-                                            {customCategories.filter(c => c.type === editingTx.type).map(c => (
-                                                <option key={`cc-e-${c.id}`} value={c.name}>{c.name}</option>
-                                            ))}
-                                        </optgroup>
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-1 gap-3">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Date</label>
+                                        <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Category</label>
+                                        <select value={editingTx.category} onChange={e => setEditingTx({...editingTx, category: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
+                                            <option value="">Select</option>
+                                            {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                            {customCategories.filter(c => c.type === editingTx.type).length > 0 && (
+                                                <optgroup label="Custom">
+                                                    {customCategories.filter(c => c.type === editingTx.type).map(c => (
+                                                        <option key={`cc-e-${c.id}`} value={c.name}>{c.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Date</label>
                                         <input type="date" value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''} onChange={e => setEditingTx({...editingTx, date: e.target.value})}
-                                            className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-500 dark:text-text-muted mb-1.5 uppercase tracking-wider">Description</label>
+                                    <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Description</label>
                                     <input type="text" value={editingTx.description || ''} onChange={e => setEditingTx({...editingTx, description: e.target.value})}
                                         placeholder="Optional description"
-                                        className="w-full p-2.5 border border-gray-200 dark:border-[#30363d] rounded-xl bg-white dark:bg-surface-dark text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm" />
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                 </div>
-                                <div className="pt-2 flex gap-3">
+                                <div className="pt-1 flex gap-3">
                                     <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }}
-                                        className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-surface-dark dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm transition-colors cursor-pointer">
+                                        className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-gray-700 dark:text-gray-300 rounded-lg font-semibold text-sm transition-colors cursor-pointer">
                                         Cancel
                                     </button>
                                     <button type="submit" disabled={editSubmitting || !editingTx.amount || !editingTx.category || isNaN(parseFloat(String(editingTx.amount))) || parseFloat(String(editingTx.amount)) <= 0}
-                                        className="flex-1 py-2.5 px-4 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-all btn-primary-glow flex justify-center items-center disabled:opacity-40 active:scale-95 cursor-pointer">
+                                        className="flex-1 py-2 px-4 bg-primary text-white rounded-lg font-bold hover:bg-primary-hover transition-all flex justify-center items-center disabled:opacity-40 active:scale-[0.98] cursor-pointer text-sm">
                                         {editSubmitting ? (
-                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                         ) : 'Save Changes'}
                                     </button>
                                 </div>
