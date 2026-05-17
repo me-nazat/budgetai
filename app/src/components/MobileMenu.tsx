@@ -7,12 +7,12 @@ import Image from 'next/image';
 
 const menuItems = [
     { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
-    { href: '/overview', icon: 'analytics', label: 'Overview' },
-    { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
     { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
     { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
     { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
+    { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
     { href: '/reports', icon: 'bar_chart', label: 'Reports' },
+    { href: '/overview', icon: 'analytics', label: 'Overview' },
     { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
     { href: '/recurring', icon: 'repeat', label: 'Recurring' },
     { href: '/notifications', icon: 'notifications', label: 'Alerts' },
