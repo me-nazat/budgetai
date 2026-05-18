@@ -12,6 +12,7 @@ import { queueTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor } from '@/lib/categoryUtils';
+import TransactionAttachmentsSection from '@/components/TransactionAttachmentsSection';
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
 
 interface TransactionRecord {
@@ -1138,6 +1139,7 @@ export default function TransactionsPage() {
                                         placeholder="Optional description"
                                         className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                 </div>
+                                <TransactionAttachmentsSection transactionId={Number(editingTx.id)} transactionDescription={editingTx.description || editingTx.category} />
                                 <div className="pt-1 flex gap-3">
                                     <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }}
                                         className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-gray-700 dark:text-gray-300 rounded-lg font-semibold text-sm transition-colors cursor-pointer">

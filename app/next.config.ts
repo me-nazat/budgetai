@@ -7,7 +7,7 @@ const securityHeaders = [
     },
     {
         key: 'X-Frame-Options',
-        value: 'DENY',
+        value: 'SAMEORIGIN',
     },
     {
         key: 'X-XSS-Protection',
@@ -33,8 +33,9 @@ const securityHeaders = [
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob:",
-            "connect-src 'self' https://open.er-api.com https://generativelanguage.googleapis.com https://openrouter.ai https://js.puter.com https://api.puter.com",
-            "frame-ancestors 'none'",
+            "connect-src 'self' https://open.er-api.com https://generativelanguage.googleapis.com https://openrouter.ai https://js.puter.com https://api.puter.com https://www.googleapis.com",
+            "frame-src 'self' blob:",
+            "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",
         ].join('; '),
