@@ -62,6 +62,8 @@ function extractGoogleApiMessage(error: unknown) {
 
 function toFriendlyError(error: unknown) {
   const msg = extractGoogleApiMessage(error) ?? 'Unable to reach Google Drive right now.';
+  console.error('[Google Drive Error]', msg, error);
+  
   if (msg.includes('Google Drive API has not been used') || msg.includes('drive.googleapis.com'))
     return new Error('Google Drive API is disabled. Enable drive.googleapis.com in Google Cloud Console.');
   if (msg.includes('Service Usage API has not been used'))
