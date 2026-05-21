@@ -10,7 +10,7 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
 /**
@@ -24,7 +24,7 @@ interface PageTransitionProps {
 /**
  * Animation variants for page transitions.
  */
-const pageVariants = {
+const pageVariants: Variants = {
   initial: {
     opacity: 0,
     y: 8,

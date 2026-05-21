@@ -32,8 +32,8 @@ export class NotificationService {
         type: n.type,
         title: n.title,
         message: n.message,
-        read: n.read,
-        createdAt: n.createdAt,
+        read: n.read ?? 0,
+        createdAt: n.createdAt ?? undefined,
       })),
       unreadCount,
     };

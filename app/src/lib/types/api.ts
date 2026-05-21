@@ -246,7 +246,7 @@ export function validateInput<T>(schema: ZodType<T>, data: unknown): T {
 function formatZodErrors(
   zodError: ZodError
 ): Array<{ field: string; message: string }> {
-  return zodError.errors.map((err) => ({
+  return zodError.issues.map((err: any) => ({
     field: err.path.join('.') || 'body',
     message: err.message,
   }));

@@ -121,7 +121,7 @@ export class DashboardService {
         category: t.category,
         description: t.description || '',
         date: t.date,
-        createdAt: t.createdAt,
+        createdAt: t.createdAt ?? undefined,
       })),
       budgetAlerts,
       netWorth: latestNetWorth?.amount ?? 0,

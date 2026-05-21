@@ -32,7 +32,7 @@ export class GoalService {
       progress: g.targetAmount > 0
         ? Math.min(100, Math.round((g.savedAmount / g.targetAmount) * 100))
         : 0,
-      createdAt: g.createdAt,
+      createdAt: g.createdAt ?? undefined,
     }));
   }
 
@@ -75,7 +75,7 @@ export class GoalService {
       savedAmount: goal.savedAmount,
       deadline: goal.deadline,
       progress: 0,
-      createdAt: goal.createdAt,
+      createdAt: goal.createdAt ?? undefined,
     };
   }
 
@@ -129,7 +129,7 @@ export class GoalService {
       progress: updated.targetAmount > 0
         ? Math.min(100, Math.round((updated.savedAmount / updated.targetAmount) * 100))
         : 0,
-      createdAt: updated.createdAt,
+      createdAt: updated.createdAt ?? undefined,
     };
   }
 

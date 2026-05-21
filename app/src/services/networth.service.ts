@@ -27,7 +27,7 @@ export class NetWorthService {
       id: r.id,
       amount: r.amount,
       note: r.note || '',
-      createdAt: r.createdAt,
+      createdAt: r.createdAt ?? undefined,
     }));
   }
 
@@ -65,7 +65,7 @@ export class NetWorthService {
       id: record.id,
       amount: record.amount,
       note: record.note || '',
-      createdAt: record.createdAt,
+      createdAt: record.createdAt ?? undefined,
     };
   }
 

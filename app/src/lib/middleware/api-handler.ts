@@ -136,13 +136,14 @@ export function apiHandler(
 
       // ── Zod Validation Errors ──
       if (error instanceof ZodError) {
-        const fieldErrors = error.errors.map((e) => ({
+        const zodErr = error as ZodError<any>;
+        const fieldErrors = zodErr.issues.map((e: any) => ({
           field: e.path.join('.') || 'body',
           message: e.message,
         }));
         console.warn(
           `[api] ${method} ${path} → 400 VALIDATION (${duration}ms):`,
-          fieldErrors.map((e) => `${e.field}: ${e.message}`).join(', ')
+          fieldErrors.map((e: any) => `${e.field}: ${e.message}`).join(', ')
         );
         return apiError(
           new ValidationError(

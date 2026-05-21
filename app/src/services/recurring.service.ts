@@ -32,8 +32,8 @@ export class RecurringService {
       category: r.category,
       frequency: r.frequency,
       nextDate: r.nextDate,
-      active: r.active,
-      createdAt: r.createdAt,
+      active: r.active ?? 1,
+      createdAt: r.createdAt ?? undefined,
     }));
   }
 
@@ -79,8 +79,8 @@ export class RecurringService {
       category: record.category,
       frequency: record.frequency,
       nextDate: record.nextDate,
-      active: record.active,
-      createdAt: record.createdAt,
+      active: record.active ?? 1,
+      createdAt: record.createdAt ?? undefined,
     };
   }
 
@@ -137,8 +137,8 @@ export class RecurringService {
       category: result.category,
       frequency: result.frequency,
       nextDate: result.nextDate,
-      active: result.active,
-      createdAt: result.createdAt,
+      active: result.active ?? 1,
+      createdAt: result.createdAt ?? undefined,
     };
   }
 

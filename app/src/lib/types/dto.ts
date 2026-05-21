@@ -54,8 +54,8 @@ export const amountSchema = z
   );
 
 /** Transaction type enum. */
-export const transactionTypeSchema = z.enum(['expense', 'earning'], {
-  errorMap: () => ({ message: 'Type must be "expense" or "earning"' }),
+export const transactionTypeSchema = z.enum(['expense', 'earning'] as const, {
+  message: 'Type must be "expense" or "earning"',
 });
 
 /** Date string in YYYY-MM-DD format with validation. */
@@ -90,8 +90,8 @@ export const descriptionSchema = z
   .default('');
 
 /** Recurrence frequency enum. */
-export const frequencySchema = z.enum(['weekly', 'monthly', 'yearly'], {
-  errorMap: () => ({ message: 'Frequency must be "weekly", "monthly", or "yearly"' }),
+export const frequencySchema = z.enum(['weekly', 'monthly', 'yearly'] as const, {
+  message: 'Frequency must be "weekly", "monthly", or "yearly"',
 });
 
 /** Pagination limit with bounds clamping. */
