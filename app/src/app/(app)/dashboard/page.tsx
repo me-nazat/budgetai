@@ -791,7 +791,7 @@ export default function DashboardPage() {
                                             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Type</label>
                                             <select
                                                 value={editingTx.type}
-                                                onChange={(event) => setEditingTx({ ...editingTx, type: event.target.value, category: '' })}
+                                                onChange={(event) => setEditingTx({ ...editingTx, type: event.target.value as "expense" | "earning", category: '' })}
                                                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
                                             >
                                                 <option value="expense">Expense</option>
