@@ -12,6 +12,7 @@ import {
     CUSTOM_CATEGORY_ICONS,
     getColorStyle, getIconCandidates, resolveIcon, resolveColor,
 } from '@/lib/categoryUtils';
+import { MAX_ATTACHMENT_FILES } from '@/lib/transaction-attachments';
 
 interface CustomCategory {
     id: number;
@@ -42,6 +43,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [submitting, setSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [attachments, setAttachments] = useState<File[]>([]);
     
     // Custom Categories State
     const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -101,6 +103,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         setDescription('');
         setDate(new Date().toISOString().split('T')[0]);
         setType('expense');
+        setAttachments([]);
         setIsCreatingCustom(false);
         setShowRecentCustom(false);
     };
@@ -168,6 +171,21 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         setShowRecentCustom(false);
     };
 
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+        const newFiles = Array.from(e.target.files);
+        if (attachments.length + newFiles.length > MAX_ATTACHMENT_FILES) {
+            alert(`You can attach up to ${MAX_ATTACHMENT_FILES} files.`);
+            return;
+        }
+        setAttachments(prev => [...prev, ...newFiles]);
+        e.target.value = ''; // Reset input
+    };
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleSave = async () => {
         const parsed = parseFloat(amount);
         if (!amount || isNaN(parsed) || parsed <= 0 || !category) return;
@@ -184,11 +202,24 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
 
         try {
             if (isOnline) {
-                await fetch('/api/transactions', {
+                const res = await fetch('/api/transactions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                 });
+                
+                const data = await res.json();
+                
+                if (data.id && attachments.length > 0) {
+                    const form = new FormData();
+                    attachments.forEach(file => form.append('attachments', file));
+                    await fetch(`/api/transactions/${data.id}/attachments`, {
+                        method: 'POST',
+                        body: form
+                    });
+                }
+                
+                // Fire and forget cache invalidation
                 invalidateFinancialData();
             } else {
                 await queueTransaction(payload);
@@ -198,7 +229,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
             setTimeout(() => {
                 setShowSuccess(false);
                 handleClose();
-            }, 1200);
+            }, 300); // Drastically reduced for faster UX
         } catch {
             alert('Failed to save. Please try again.');
         } finally {
@@ -417,6 +448,44 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                     placeholder="e.g. Lunch with friends"
                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
                                 />
+                            </div>
+
+                            {/* Attachments */}
+                            <div className="mb-8">
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Attachments</label>
+                                    <span className="text-xs text-gray-400">{attachments.length}/{MAX_ATTACHMENT_FILES}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {attachments.map((file, index) => (
+                                        <div key={index} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700">
+                                            <span className="material-symbols-outlined text-gray-500 text-[16px]">
+                                                {file.type.startsWith('image/') ? 'image' : 'description'}
+                                            </span>
+                                            <span className="text-gray-700 dark:text-gray-300 max-w-[120px] truncate">{file.name}</span>
+                                            <button 
+                                                onClick={() => removeAttachment(index)}
+                                                className="ml-1 text-gray-400 hover:text-red-500 flex items-center justify-center"
+                                            >
+                                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    
+                                    {attachments.length < MAX_ATTACHMENT_FILES && (
+                                        <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20">
+                                            <span className="material-symbols-outlined text-[16px]">attach_file</span>
+                                            Attach File
+                                            <input 
+                                                type="file" 
+                                                multiple 
+                                                className="hidden" 
+                                                onChange={handleFileSelect}
+                                                accept="image/*,application/pdf"
+                                            />
+                                        </label>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Save Button */}

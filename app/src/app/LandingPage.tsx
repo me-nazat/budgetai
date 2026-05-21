@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion, useScroll, useTransform, Variants } from 'framer-motion';
+import { motion, useScroll, useTransform, Variants, useMotionValue, useSpring, useMotionTemplate } from 'framer-motion';
 
 /* ──────────────────────────────────────────────
    Theme Toggle Helper
@@ -232,14 +232,70 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
 }
 
 function DashboardMockup() {
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+
+    const mouseXSpring = useSpring(x, { stiffness: 300, damping: 20 });
+    const mouseYSpring = useSpring(y, { stiffness: 300, damping: 20 });
+
+    const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["10deg", "-10deg"]);
+    const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-10deg", "10deg"]);
+    const rotateXSecondary = useTransform(mouseYSpring, [-0.5, 0.5], ["5deg", "-5deg"]);
+    const rotateYSecondary = useTransform(mouseXSpring, [-0.5, 0.5], ["-5deg", "5deg"]);
+    const rotateXTertiary = useTransform(mouseYSpring, [-0.5, 0.5], ["15deg", "-15deg"]);
+    const rotateYTertiary = useTransform(mouseXSpring, [-0.5, 0.5], ["-15deg", "15deg"]);
+    
+    // Mouse Glow inside card
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+
+    function handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        
+        // 3D rotation logic
+        const width = rect.width;
+        const height = rect.height;
+        const mouseXLocal = e.clientX - rect.left;
+        const mouseYLocal = e.clientY - rect.top;
+        const xPct = mouseXLocal / width - 0.5;
+        const yPct = mouseYLocal / height - 0.5;
+        x.set(xPct);
+        y.set(yPct);
+        
+        // Glow logic
+        mouseX.set(e.clientX - rect.left);
+        mouseY.set(e.clientY - rect.top);
+    }
+
+    function handleMouseLeave() {
+        x.set(0);
+        y.set(0);
+        mouseX.set(-1000); // Hide glow when leaving
+        mouseY.set(-1000);
+    }
+
     return (
-        <div className="relative w-full max-w-[580px] mx-auto group">
+        <div className="relative w-full max-w-[580px] mx-auto group perspective-[1200px]"
+             onMouseMove={handleMouseMove}
+             onMouseLeave={handleMouseLeave}>
             {/* Main card */}
             <motion.div 
-                whileHover={{ rotateY: -2, rotateX: 2, scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="rounded-3xl bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border shadow-2xl overflow-hidden"
+                style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+                className="relative rounded-3xl bg-gray-50/90 dark:bg-surface-dark/90 backdrop-blur-xl border border-gray-200/50 dark:border-surface-border/50 shadow-2xl overflow-hidden"
             >
+                {/* Glow effect */}
+                <motion.div
+                    className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 transition duration-300 group-hover:opacity-100"
+                    style={{
+                        background: useMotionTemplate`
+                            radial-gradient(
+                                600px circle at ${mouseX}px ${mouseY}px,
+                                rgba(19, 109, 236, 0.1),
+                                transparent 40%
+                            )
+                        `,
+                    }}
+                />
                 {/* Top bar */}
                 <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 dark:border-white/5">
                     <div className="h-3 w-3 rounded-full bg-red-400" />
@@ -321,35 +377,42 @@ function DashboardMockup() {
                 </div>
             </motion.div>
 
-            {/* Floating cards */}
-            <motion.div 
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.8, type: "spring", stiffness: 200 }}
-                className="absolute -bottom-8 -left-12 lp-glass-card p-4 rounded-xl border-l-4 border-primary dark:border-lp-cyan lp-float-delayed z-30 hidden sm:block shadow-2xl"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 dark:bg-lp-cyan/20 flex items-center justify-center text-primary dark:text-lp-cyan">
-                        <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+            <div className="grid grid-cols-2 gap-4 mt-6" style={{ transform: "translateZ(30px)" }}>
+                {/* Floating Card 1 */}
+                <motion.div 
+                    style={{ rotateX: rotateXSecondary, rotateY: rotateYSecondary, transformStyle: "preserve-3d" }}
+                    className="p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-100 dark:border-white/5 shadow-xl"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 dark:bg-lp-cyan/20 flex items-center justify-center text-primary dark:text-lp-cyan">
+                            <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-gray-400 dark:text-slate-400 uppercase tracking-wider font-medium">AI Insight</p>
+                            <p className="text-xs font-bold text-gray-900 dark:text-white">Spending goal reached</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[10px] text-gray-400 dark:text-slate-400 uppercase tracking-wider font-medium">AI Insight</p>
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">Spending goal reached</p>
-                    </div>
-                </div>
-            </motion.div>
+                </motion.div>
 
+                {/* Floating Card 2 */}
+                <motion.div 
+                    style={{ rotateX: rotateXSecondary, rotateY: rotateYSecondary, transformStyle: "preserve-3d" }}
+                    className="p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-100 dark:border-white/5 shadow-xl"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm text-emerald-500">trending_up</span>
+                        <span className="text-xs font-bold text-emerald-500">+12.5%</span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500">this month</span>
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Floating Card 3 (Tertiary depth) */}
             <motion.div 
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1, type: "spring", stiffness: 200 }}
-                className="absolute -top-6 -right-8 lp-glass-card px-4 py-3 rounded-xl lp-float z-30 hidden sm:block shadow-2xl"
+                style={{ rotateX: rotateXTertiary, rotateY: rotateYTertiary, transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
+                className="absolute -right-8 -bottom-8 lg:-right-16 lg:bottom-12 w-64 rounded-2xl bg-white/90 dark:bg-[#161b22]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 shadow-2xl hidden md:block"
             >
-                <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm text-emerald-500">trending_up</span>
-                    <span className="text-xs font-bold text-emerald-500">+12.5%</span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500">this month</span>
-                </div>
+                <p className="text-sm text-gray-500 dark:text-slate-400">Product Designer and Manager, Bangladesh</p>
             </motion.div>
         </div>
     );
