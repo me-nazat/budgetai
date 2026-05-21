@@ -18,7 +18,7 @@ const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertai
 
 interface TransactionRecord {
     id: number | string;
-    type: 'expense' | 'earning' | string;
+    type: 'expense' | 'earning';
     amount: number;
     category: string;
     description?: string;

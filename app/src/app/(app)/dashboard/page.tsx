@@ -22,7 +22,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 
 interface DashboardTransaction {
     id: number;
-    type: string;
+    type: 'expense' | 'earning';
     amount: number;
     category: string;
     description: string;

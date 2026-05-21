@@ -49,7 +49,7 @@ export function useUser() {
 // Transactions
 // ────────────────────────────────────────────────────────────
 interface Transaction {
-    id: number; type: string; amount: number;
+    id: number; type: 'expense' | 'earning'; amount: number;
     category: string; description: string;
     date: string; created_at: string;
 }
