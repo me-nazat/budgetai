@@ -1007,7 +1007,7 @@ export default function TransactionsPage() {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Type</label>
-                                        <select value={editingTx.type} onChange={e => setEditingTx({...editingTx, type: e.target.value})}
+                                        <select value={editingTx.type} onChange={e => setEditingTx({...editingTx, type: e.target.value as "expense" | "earning"})}
                                             className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
                                             <option value="expense">Expense</option>
                                             <option value="earning">Earning</option>
