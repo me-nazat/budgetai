@@ -13,7 +13,7 @@ interface DashboardData {
     categorySpending: Array<{ category: string; total: number }>;
     dailySpending: Array<{ date: string; expenses: number; earnings: number }>;
     recentTransactions: Array<{
-        id: number; type: string; amount: number;
+        id: number; type: 'expense' | 'earning'; amount: number;
         category: string; description: string; date: string;
     }>;
     budgetAlerts: Array<{
