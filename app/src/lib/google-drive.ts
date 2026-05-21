@@ -397,7 +397,7 @@ export async function uploadFilesToTransaction(params: {
       const mimeType = file.type || 'application/octet-stream';
       const res = await drive.files.create({
         requestBody: { name: file.name, parents: [folder.folderId] },
-        media: { mimeType, body: Readable.fromWeb(file.stream() as any) },
+        media: { mimeType, body: Readable.fromWeb(file.stream() as any) }, // eslint-disable-line @typescript-eslint/no-explicit-any
         fields: 'id,name,mimeType,size,modifiedTime',
         supportsAllDrives: true,
       });

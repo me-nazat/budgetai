@@ -136,13 +136,16 @@ export function apiHandler(
 
       // ── Zod Validation Errors ──
       if (error instanceof ZodError) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const zodErr = error as ZodError<any>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fieldErrors = zodErr.issues.map((e: any) => ({
           field: e.path.join('.') || 'body',
           message: e.message,
         }));
         console.warn(
           `[api] ${method} ${path} → 400 VALIDATION (${duration}ms):`,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           fieldErrors.map((e: any) => `${e.field}: ${e.message}`).join(', ')
         );
         return apiError(

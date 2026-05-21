@@ -208,6 +208,12 @@ export const CATEGORIES_INCOME = [
   { label: 'Gift', icon: 'redeem' },
   { label: 'Refund', icon: 'receipt_long' },
   { label: 'Side Hustle', icon: 'rocket_launch' },
+  { label: 'Bonus', icon: 'star' },
+  { label: 'Interest', icon: 'account_balance' },
+  { label: 'Cashback', icon: 'currency_exchange' },
+  { label: 'Awards', icon: 'emoji_events' },
+  { label: 'Royalties', icon: 'workspace_premium' },
+  { label: 'Allowance', icon: 'account_balance_wallet' },
   { label: 'Other', icon: 'category' },
 ];
 
@@ -218,6 +224,8 @@ export const STANDARD_CATEGORY_ICONS: Record<string, string> = {
   Freelance: 'work', Investment: 'trending_up', Bills: 'receipt', Other: 'category',
   Rental: 'apartment', Dividend: 'monitoring', Commission: 'military_tech',
   Gift: 'redeem', Refund: 'receipt_long', 'Side Hustle': 'rocket_launch',
+  Bonus: 'star', Interest: 'account_balance', Cashback: 'currency_exchange',
+  Awards: 'emoji_events', Royalties: 'workspace_premium', Allowance: 'account_balance_wallet',
 };
 
 export const STANDARD_CATEGORY_COLORS: Record<string, string> = {
@@ -227,6 +235,8 @@ export const STANDARD_CATEGORY_COLORS: Record<string, string> = {
   Investment: 'emerald', Bills: 'rose', Other: 'gray',
   Rental: 'blue', Dividend: 'emerald', Commission: 'amber',
   Gift: 'rose', Refund: 'cyan', 'Side Hustle': 'orange',
+  Bonus: 'amber', Interest: 'emerald', Cashback: 'teal',
+  Awards: 'orange', Royalties: 'sky', Allowance: 'blue',
 };
 
 export const CATEGORY_HEX_COLORS: Record<string, string> = {
@@ -235,6 +245,8 @@ export const CATEGORY_HEX_COLORS: Record<string, string> = {
   Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
   Rental: '#3b82f6', Dividend: '#10b981', Commission: '#f59e0b',
   Gift: '#f43f5e', Refund: '#06b6d4', 'Side Hustle': '#f97316',
+  Bonus: '#f59e0b', Interest: '#10b981', Cashback: '#14b8a6',
+  Awards: '#f97316', Royalties: '#0ea5e9', Allowance: '#3b82f6',
 };
 
 // Color name → hex for chart rendering

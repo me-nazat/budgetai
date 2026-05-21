@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import {
   type AttachmentPreviewKind,
@@ -231,12 +232,12 @@ export default function TransactionAttachmentViewer({ fileToken, transactionSlug
                   >
                     Go Back
                   </button>
-                  <a
+                  <Link
                     href="/transactions"
                     className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-gray-900 transition-all active:scale-95 hover:bg-gray-100"
                   >
                     Open Transactions
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>

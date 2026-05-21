@@ -87,6 +87,7 @@ export default function DayDetailPopup({
     }, [anchorEl]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         calculatePosition();
         window.addEventListener('resize', calculatePosition);
         return () => window.removeEventListener('resize', calculatePosition);

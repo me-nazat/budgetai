@@ -76,6 +76,11 @@ export default function FeatureCard3D({
   const glareY = useTransform(mouseY, [-0.5, 0.5], ['0%', '100%']);
   const glareOpacity = useSpring(0, { stiffness: 300, damping: 30 });
 
+  const glareBackground = useTransform(
+    [glareX, glareY],
+    ([x, y]) => `radial-gradient(circle at ${x} ${y}, rgba(255,255,255,0.15), transparent 60%)`
+  );
+
   /**
    * Handles mouse move over the card.
    * Calculates normalized cursor position (-0.5 to 0.5).
@@ -135,11 +140,7 @@ export default function FeatureCard3D({
             position: 'absolute',
             inset: 0,
             borderRadius: 'inherit',
-            background: useTransform(
-              [glareX, glareY],
-              ([x, y]) =>
-                `radial-gradient(circle at ${x} ${y}, rgba(255,255,255,0.15), transparent 60%)`
-            ),
+            background: glareBackground,
             opacity: glareOpacity,
             pointerEvents: 'none',
             zIndex: 2,

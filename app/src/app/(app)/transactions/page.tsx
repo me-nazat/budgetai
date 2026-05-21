@@ -70,6 +70,7 @@ export default function TransactionsPage() {
     const { categories: customCategories, mutate: mutateCategories } = useCustomCategories('all');
 
     // Edit/Action state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [selectedDetailTx, setSelectedDetailTx] = useState<any | null>(null);
     const [editingTx, setEditingTx] = useState<EditableTransaction | null>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);

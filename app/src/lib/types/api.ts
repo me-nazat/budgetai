@@ -246,6 +246,7 @@ export function validateInput<T>(schema: ZodType<T>, data: unknown): T {
 function formatZodErrors(
   zodError: ZodError
 ): Array<{ field: string; message: string }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return zodError.issues.map((err: any) => ({
     field: err.path.join('.') || 'body',
     message: err.message,
