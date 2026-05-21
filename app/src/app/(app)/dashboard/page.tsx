@@ -16,6 +16,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
+import TransactionDetailModal from '@/components/TransactionDetailModal';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -93,7 +94,7 @@ export default function DashboardPage() {
     const marketNews = useMarketNews();
     const exchangeRates = useExchangeRates(currency);
     const { categories: customCats } = useCustomCategories('all');
-    const [actionMenuOpenId, setActionMenuOpenId] = useState<number | null>(null);
+    const [selectedDetailTx, setSelectedDetailTx] = useState<any | null>(null);
     const [editingTx, setEditingTx] = useState<EditableDashboardTransaction | null>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [deletingTxId, setDeletingTxId] = useState<number | null>(null);
@@ -112,18 +113,8 @@ export default function DashboardPage() {
     }, []);
 
     useEffect(() => {
-        if (actionMenuOpenId === null) return;
-
-        const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as Element;
-            if (!target.closest('.dashboard-action-menu')) {
-                setActionMenuOpenId(null);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [actionMenuOpenId]);
+        setMounted(true);
+    }, []);
 
     // Generate last 12 months for the dropdown
     const monthOptions = Array.from({ length: 12 }).map((_, i) => {
@@ -248,7 +239,6 @@ export default function DashboardPage() {
 
             if (!response.ok) throw new Error('Dashboard transaction duplicate failed');
 
-            setActionMenuOpenId(null);
             await finishMutation();
         } catch (error) {
             console.error('Dashboard duplicate error:', error);
@@ -264,7 +254,6 @@ export default function DashboardPage() {
             if (!response.ok) throw new Error('Dashboard transaction delete failed');
 
             setDeletingTxId(null);
-            setActionMenuOpenId(null);
             await finishMutation();
         } catch (error) {
             console.error('Dashboard delete error:', error);
@@ -274,59 +263,7 @@ export default function DashboardPage() {
     };
 
     const renderActionMenu = (tx: DashboardTransaction) => (
-        <div className="relative inline-block text-left dashboard-action-menu">
-            <button
-                onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setActionMenuOpenId(actionMenuOpenId === tx.id ? null : tx.id);
-                }}
-                aria-label="Transaction actions"
-                className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${actionMenuOpenId === tx.id ? 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-surface-hover dark:hover:text-gray-200'}`}
-            >
-                <span className="material-symbols-outlined text-[20px]">more_vert</span>
-            </button>
-
-            <AnimatePresence>
-                {actionMenuOpenId === tx.id && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.96, y: -8 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-full z-[80] mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-800"
-                    >
-                        <button
-                            onClick={() => {
-                                setEditingTx({ ...tx });
-                                setActionMenuOpenId(null);
-                            }}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">edit</span>
-                            Edit
-                        </button>
-                        <button
-                            onClick={() => submitDashboardDuplicate(tx)}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                            Duplicate
-                        </button>
-                        <button
-                            onClick={() => {
-                                setDeletingTxId(tx.id);
-                                setActionMenuOpenId(null);
-                            }}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                            Delete
-                        </button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
+        <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 ml-1 text-sm">chevron_right</span>
     );
 
     return (
@@ -468,8 +405,8 @@ export default function DashboardPage() {
                                 <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
                             </div>
                         ) : data.recentTransactions.slice(0, 6).map(t => (
-                            <div key={t.id} className="relative overflow-visible card-premium rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md cursor-pointer group">
-                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-gray-200 dark:via-[#30363d] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible card-premium rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group">
+                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
                                     <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                         {getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}
@@ -663,7 +600,7 @@ export default function DashboardPage() {
                                             <p className="text-gray-400 dark:text-text-muted">No transactions yet. Use AI Chat to start tracking!</p>
                                         </td></tr>
                                     ) : data.recentTransactions.map((t) => (
-                                        <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover/50 transition-colors duration-200">
+                                        <tr key={t.id} onClick={() => setSelectedDetailTx(t)} className="hover:bg-gray-50 dark:hover:bg-surface-hover/50 transition-colors duration-200 cursor-pointer relative group">
                                             <td className="px-4 lg:px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
@@ -681,8 +618,8 @@ export default function DashboardPage() {
                                             <td className={`px-4 lg:px-6 py-4 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                                 {t.type === 'expense' ? '-' : '+'}{fmt(t.amount)}
                                             </td>
-                                            <td className="px-4 lg:px-6 py-4 text-right">
-                                                {renderActionMenu(t)}
+                                            <td className="px-4 lg:px-6 py-4 text-right w-12 text-gray-400">
+                                                <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">chevron_right</span>
                                             </td>
                                         </tr>
                                     ))}
@@ -963,6 +900,30 @@ export default function DashboardPage() {
                     )}
                 </AnimatePresence>,
                 document.body
+            )}
+
+            {/* Global Details Modal */}
+            {selectedDetailTx && mounted && (
+                <TransactionDetailModal
+                    transaction={selectedDetailTx}
+                    customCategories={customCats}
+                    onClose={() => setSelectedDetailTx(null)}
+                    onEdit={(tx) => {
+                        setSelectedDetailTx(null);
+                        setEditingTx({ ...tx, amount: String(tx.amount) });
+                    }}
+                    onDuplicate={(tx) => {
+                        setSelectedDetailTx(null);
+                        submitDashboardDuplicate(tx);
+                    }}
+                    onDelete={(tx) => {
+                        setSelectedDetailTx(null);
+                        setDeletingTxId(tx.id);
+                    }}
+                    onNotesChange={(id, notes) => {
+                        // Optional optimistic update logic if needed
+                    }}
+                />
             )}
         </div>
     );

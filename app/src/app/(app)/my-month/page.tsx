@@ -5,6 +5,8 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useDashboard, useTransactions } from '@/hooks/useApi';
 import { getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
+import DayDetailPopup from '@/components/DayDetailPopup';
+import TransactionDetailModal from '@/components/TransactionDetailModal';
 
 interface RecurringItem {
     id: number;
@@ -33,6 +35,8 @@ export default function MyMonthPage() {
     const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
     const range = useMemo(() => monthRange(selectedMonth), [selectedMonth]);
     const [selectedDay, setSelectedDay] = useState(new Date().toISOString().split('T')[0]);
+    const [popupAnchor, setPopupAnchor] = useState<HTMLElement | null>(null);
+    const [selectedTx, setSelectedTx] = useState<any | null>(null);
     const [recurring, setRecurring] = useState<RecurringItem[]>([]);
     const { fmt } = useCurrency();
     const { categories: customCategories } = useCustomCategories('all');
@@ -117,7 +121,7 @@ export default function MyMonthPage() {
     });
 
     return (
-        <div className="grid min-h-screen grid-cols-1 xl:grid-cols-[1fr_360px]">
+        <div className="grid min-h-screen grid-cols-1">
             <section className="border-r border-gray-200/70 p-4 lg:p-8 dark:border-white/10">
                 <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                     <div>
@@ -168,8 +172,11 @@ export default function MyMonthPage() {
                             return (
                                 <button
                                     key={item.date}
-                                    onClick={() => setSelectedDay(item.date)}
-                                    className={`min-h-[132px] border-b border-r border-gray-200/80 p-3 text-left transition-all hover:bg-primary/5 dark:border-white/10 dark:hover:bg-primary/10 ${isSelected ? 'bg-primary text-white hover:bg-primary' : 'bg-white/55 dark:bg-transparent'} ${isToday && !isSelected ? 'ring-2 ring-inset ring-primary/40' : ''}`}
+                                    onClick={(e) => {
+                                        setSelectedDay(item.date);
+                                        setPopupAnchor(e.currentTarget);
+                                    }}
+                                    className={`min-h-[132px] border-b border-r border-gray-200/80 p-3 text-left transition-all hover:bg-primary/5 dark:border-white/10 dark:hover:bg-primary/10 ${isSelected ? 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20' : 'bg-white/55 dark:bg-transparent'} ${isToday && !isSelected ? 'ring-2 ring-inset ring-primary/40' : ''}`}
                                 >
                                     <div className="mb-3 flex items-center justify-between">
                                         <span className={`text-2xl font-bold ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{String(item.day).padStart(2, '0')}</span>
@@ -191,99 +198,36 @@ export default function MyMonthPage() {
                 </div>
             </section>
 
-            <aside className="bg-white/65 p-4 lg:p-8 dark:bg-white/[0.02]">
-                <div className="mb-8">
-                    <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-gray-500 dark:text-text-muted">Mini view</p>
-                    <div className="grid grid-cols-7 gap-2 text-center text-xs">
-                        {miniDays.map(date => {
-                            const active = activeSelectedDay === date;
-                            const hasData = Boolean(transactionsByDate[date]?.length || recurringThisMonth.some(item => item.next_date === date));
-                            return (
-                                <button key={date} onClick={() => setSelectedDay(date)} className={`rounded-lg px-1 py-2 font-bold ${active ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : hasData ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}>
-                                    {Number(date.slice(-2))}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                <div className="mb-8">
-                    <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-gray-500 dark:text-text-muted">Selected day</p>
-                    <div className="card-premium rounded-2xl p-5">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h2 className="text-xl font-black text-gray-900 dark:text-white">{new Date(activeSelectedDay).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</h2>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-text-muted">{selectedTransactions.length} transaction{selectedTransactions.length === 1 ? '' : 's'}, {selectedRecurring.length} recurring</p>
-                            </div>
-                            <span className="material-symbols-outlined rounded-2xl bg-primary/10 p-3 text-primary">event_note</span>
-                        </div>
-                        <div className="mt-5 grid grid-cols-2 gap-3">
-                            <div className="rounded-xl bg-emerald-500/10 p-3">
-                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Income</p>
-                                <p className="mt-1 text-lg font-black text-emerald-600">{fmt(selectedIncome)}</p>
-                            </div>
-                            <div className="rounded-xl bg-rose-500/10 p-3">
-                                <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Expenses</p>
-                                <p className="mt-1 text-lg font-black text-rose-600">{fmt(selectedExpense)}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mb-8">
-                    <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-gray-500 dark:text-text-muted">Day details</p>
-                    <div className="space-y-3">
-                        {isLoading ? <div className="text-sm text-gray-400">Loading...</div> : null}
-                        {selectedTransactions.map(tx => (
-                            <div key={tx.id} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-white/5">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="flex min-w-0 items-center gap-3">
-                                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: getCategoryHex(tx.category, customCategories) }} />
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{tx.description || tx.category}</p>
-                                            <p className="text-xs text-gray-400">{tx.category}</p>
-                                        </div>
-                                    </div>
-                                    <span className={`text-sm font-black ${tx.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'}`}>{tx.type === 'expense' ? '-' : '+'}{fmt(tx.amount)}</span>
-                                </div>
-                            </div>
-                        ))}
-                        {selectedRecurring.map(item => (
-                            <div key={item.id} className="rounded-2xl border border-primary/15 bg-primary/10 p-4 dark:bg-primary/10">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900 dark:text-white">{item.name}</p>
-                                        <p className="text-xs text-gray-500 dark:text-text-muted">{item.frequency} recurring - {item.category}</p>
-                                    </div>
-                                    <span className={`text-sm font-black ${item.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'}`}>{item.type === 'expense' ? '-' : '+'}{fmt(item.amount)}</span>
-                                </div>
-                            </div>
-                        ))}
-                        {!isLoading && selectedTransactions.length === 0 && selectedRecurring.length === 0 && (
-                            <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-400 dark:border-white/10">No activity on this day.</div>
-                        )}
-                    </div>
-                </div>
-
-                <div>
-                    <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-gray-500 dark:text-text-muted">Upcoming</p>
-                    <div className="space-y-4">
-                        {upcoming.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-400 dark:border-white/10">No upcoming recurring items or budget risks.</div>
-                        ) : upcoming.map(item => (
-                            <div key={item.id} className="relative border-l-2 border-gray-200 pl-5 dark:border-white/10">
-                                <span className={`absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full ${item.type === 'expense' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                                <p className="mt-1 text-sm font-black text-gray-900 dark:text-white">{item.title}</p>
-                                <div className="mt-1 flex items-center justify-between gap-3">
-                                    <span className="text-xs text-gray-500 dark:text-text-muted">{item.subtitle}</span>
-                                    <span className={`text-xs font-black ${item.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'}`}>{fmt(item.amount)}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </aside>
+            {popupAnchor && (
+                <DayDetailPopup
+                    date={selectedDay}
+                    anchorEl={popupAnchor}
+                    transactions={selectedTransactions}
+                    recurringItems={selectedRecurring}
+                    customCategories={customCategories}
+                    onClose={() => setPopupAnchor(null)}
+                    onTransactionClick={(tx) => { setPopupAnchor(null); setSelectedTx(tx); }}
+                />
+            )}
+            
+            {selectedTx && (
+                <TransactionDetailModal
+                    transaction={selectedTx}
+                    customCategories={customCategories}
+                    onClose={() => setSelectedTx(null)}
+                    onEdit={(tx) => { alert('Please use Transactions tab to edit'); }}
+                    onDuplicate={(tx) => { alert('Please use Transactions tab to duplicate'); }}
+                    onDelete={async (tx) => { 
+                        if (confirm('Are you sure you want to delete this transaction?')) {
+                            await fetch(`/api/transactions?id=${tx.id}`, { method: 'DELETE' });
+                            window.location.reload();
+                        }
+                    }}
+                    onNotesChange={(id, notes) => {
+                        window.location.reload();
+                    }}
+                />
+            )}
         </div>
     );
 }

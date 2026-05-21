@@ -152,6 +152,12 @@ export async function ensureDbInitialized(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_custom_categories_user ON custom_categories(user_id)`,
   ], 'write');
 
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN notes TEXT DEFAULT \'\' ');
+  } catch {
+    // Ignore if column already exists
+  }
+
   initialized = true;
 }
 

@@ -202,6 +202,12 @@ export const CATEGORIES_INCOME = [
   { label: 'Investment', icon: 'trending_up' },
   { label: 'Business', icon: 'business_center' },
   { label: 'Savings', icon: 'savings' },
+  { label: 'Rental', icon: 'apartment' },
+  { label: 'Dividend', icon: 'monitoring' },
+  { label: 'Commission', icon: 'military_tech' },
+  { label: 'Gift', icon: 'redeem' },
+  { label: 'Refund', icon: 'receipt_long' },
+  { label: 'Side Hustle', icon: 'rocket_launch' },
   { label: 'Other', icon: 'category' },
 ];
 
@@ -210,6 +216,8 @@ export const STANDARD_CATEGORY_ICONS: Record<string, string> = {
   Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety',
   Education: 'school', Business: 'business_center', Savings: 'savings', Salary: 'payments',
   Freelance: 'work', Investment: 'trending_up', Bills: 'receipt', Other: 'category',
+  Rental: 'apartment', Dividend: 'monitoring', Commission: 'military_tech',
+  Gift: 'redeem', Refund: 'receipt_long', 'Side Hustle': 'rocket_launch',
 };
 
 export const STANDARD_CATEGORY_COLORS: Record<string, string> = {
@@ -217,12 +225,16 @@ export const STANDARD_CATEGORY_COLORS: Record<string, string> = {
   Entertainment: 'pink', Shopping: 'fuchsia', Health: 'emerald', Education: 'cyan',
   Business: 'sky', Savings: 'emerald', Salary: 'teal', Freelance: 'teal',
   Investment: 'emerald', Bills: 'rose', Other: 'gray',
+  Rental: 'blue', Dividend: 'emerald', Commission: 'amber',
+  Gift: 'rose', Refund: 'cyan', 'Side Hustle': 'orange',
 };
 
 export const CATEGORY_HEX_COLORS: Record<string, string> = {
   Food: '#f97316', Transport: '#8b5cf6', Housing: '#3b82f6', Utilities: '#eab308',
   Entertainment: '#ec4899', Shopping: '#6366f1', Health: '#10b981', Education: '#06b6d4',
   Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
+  Rental: '#3b82f6', Dividend: '#10b981', Commission: '#f59e0b',
+  Gift: '#f43f5e', Refund: '#06b6d4', 'Side Hustle': '#f97316',
 };
 
 // Color name → hex for chart rendering

@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor } from '@/lib/categoryUtils';
 import TransactionAttachmentsSection from '@/components/TransactionAttachmentsSection';
+import TransactionDetailModal from '@/components/TransactionDetailModal';
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
 
 interface TransactionRecord {
@@ -69,7 +70,7 @@ export default function TransactionsPage() {
     const { categories: customCategories, mutate: mutateCategories } = useCustomCategories('all');
 
     // Edit/Action state
-    const [actionMenuOpenId, setActionMenuOpenId] = useState<number | string | null>(null);
+    const [selectedDetailTx, setSelectedDetailTx] = useState<any | null>(null);
     const [editingTx, setEditingTx] = useState<EditableTransaction | null>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [deletingTxId, setDeletingTxId] = useState<number | string | null>(null);
@@ -848,10 +849,10 @@ export default function TransactionsPage() {
                         </div>
                         <p className="text-sm font-semibold text-gray-500 dark:text-text-muted">No transactions found for this period.</p>
                     </div>
-                ) : sorted.map((t, i) => (
                     <div
                         key={t.id}
-                        className={`relative overflow-visible rounded-3xl border border-gray-200/70 bg-white/88 p-4 shadow-sm backdrop-blur-xl transition-all active:scale-[0.985] dark:border-white/10 dark:bg-[#161b22]/82 ${actionMenuOpenId === t.id ? 'z-50' : 'z-0'}`}
+                        onClick={() => setSelectedDetailTx(t)}
+                        className={`relative overflow-visible rounded-3xl border border-gray-200/70 bg-white/88 p-4 shadow-sm backdrop-blur-xl transition-all active:scale-[0.985] dark:border-white/10 dark:bg-[#161b22]/82 cursor-pointer hover:border-primary/30`}
                         style={{ animation: `slideUp 0.3s ease-out ${Math.min(i * 0.03, 0.3)}s both` }}
                     >
                         <div className="flex items-center gap-3">
@@ -881,55 +882,7 @@ export default function TransactionsPage() {
                                 <p className={`text-sm font-black ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                     {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
                                 </p>
-                                <div className="relative inline-block text-left action-menu-container">
-                                    <button
-                                        onClick={() => setActionMenuOpenId(actionMenuOpenId === t.id ? null : t.id)}
-                                        className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${actionMenuOpenId === t.id ? 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-400 active:bg-gray-100 dark:text-gray-500 dark:active:bg-surface-hover'}`}
-                                        aria-label="Transaction actions"
-                                    >
-                                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                                    </button>
-
-                                    <AnimatePresence>
-                                        {actionMenuOpenId === t.id && (
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="absolute right-0 top-full z-[9999] mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-800"
-                                            >
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingTx({ ...t });
-                                                        setActionMenuOpenId(null);
-                                                    }}
-                                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
-                                                >
-                                                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => submitDuplicate(t)}
-                                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/10"
-                                                >
-                                                    <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                                                    Duplicate
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setDeletingTxId(t.id);
-                                                        setActionMenuOpenId(null);
-                                                    }}
-                                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                                                >
-                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                                                    Delete
-                                                </button>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
+                                <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 ml-1 text-sm">chevron_right</span>
                             </div>
                         </div>
                     </div>
@@ -978,7 +931,9 @@ export default function TransactionsPage() {
                                     <p className="text-gray-400 dark:text-text-muted">No transactions found for this period.</p>
                                 </td></tr>
                             ) : sorted.map((t, i) => (
-                                <tr key={t.id} className={`group hover:bg-gray-50/50 dark:hover:bg-surface-hover/30 transition-colors duration-200 ${actionMenuOpenId === t.id ? 'relative z-50' : 'relative z-0'}`}
+                                <tr key={t.id} 
+                                    onClick={() => setSelectedDetailTx(t)}
+                                    className={`group hover:bg-gray-50/50 dark:hover:bg-surface-hover/30 transition-colors duration-200 cursor-pointer relative z-0`}
                                     style={{ animation: `slideUp 0.3s ease-out ${Math.min(i * 0.03, 0.3)}s both` }}>
                                     <td className="px-6 py-3.5">
                                         <div className="flex items-center gap-3">
@@ -1007,57 +962,8 @@ export default function TransactionsPage() {
                                     <td className={`px-6 py-3.5 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                         {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
                                     </td>
-                                    <td className="px-6 py-3.5 text-right w-12">
-                                        <div className="relative inline-block text-left action-menu-container">
-                                            <button
-                                                onClick={() => setActionMenuOpenId(actionMenuOpenId === t.id ? null : t.id)}
-                                                className={`p-1.5 rounded-full transition-colors ${actionMenuOpenId === t.id ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-surface-dark text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}
-                                            >
-                                                <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                                            </button>
-
-                                            <AnimatePresence>
-                                                {actionMenuOpenId === t.id && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                        transition={{ duration: 0.15 }}
-                                                        className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl z-[9999] overflow-hidden"
-                                                    >
-                                                        <div className="flex flex-col py-1">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setEditingTx({ ...t });
-                                                                    setActionMenuOpenId(null);
-                                                                }}
-                                                                className="px-4 py-3 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors w-full cursor-pointer"
-                                                            >
-                                                                <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                onClick={() => submitDuplicate(t)}
-                                                                className="px-4 py-3 text-sm text-left hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors w-full cursor-pointer"
-                                                            >
-                                                                <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                                                                Duplicate
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    setDeletingTxId(t.id);
-                                                                    setActionMenuOpenId(null);
-                                                                }}
-                                                                className="px-4 py-3 text-sm text-left hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center gap-3 transition-colors w-full cursor-pointer"
-                                                            >
-                                                                <span className="material-symbols-outlined text-[18px]">delete</span>
-                                                                Delete
-                                                            </button>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
+                                    <td className="px-6 py-3.5 text-right w-12 text-gray-400">
+                                        <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">chevron_right</span>
                                     </td>
                                 </tr>
                             ))}
@@ -1193,9 +1099,34 @@ export default function TransactionsPage() {
                                 </div>
                             </motion.div>
                         </div>
+                        </div>
                     )}
                 </AnimatePresence>,
             document.body)}
+
+            {/* Global Details Modal */}
+            {selectedDetailTx && mounted && (
+                <TransactionDetailModal
+                    transaction={selectedDetailTx}
+                    customCategories={customCategories}
+                    onClose={() => setSelectedDetailTx(null)}
+                    onEdit={(tx) => {
+                        setSelectedDetailTx(null);
+                        setEditingTx({ ...tx });
+                    }}
+                    onDuplicate={(tx) => {
+                        setSelectedDetailTx(null);
+                        submitDuplicate(tx);
+                    }}
+                    onDelete={(tx) => {
+                        setSelectedDetailTx(null);
+                        setDeletingTxId(tx.id);
+                    }}
+                    onNotesChange={(id, notes) => {
+                        mutate('/api/transactions?month=' + selectedMonth);
+                    }}
+                />
+            )}
         </div>
     );
 }

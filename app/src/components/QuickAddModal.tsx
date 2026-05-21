@@ -40,6 +40,8 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('');
     const [description, setDescription] = useState('');
+    const [notes, setNotes] = useState('');
+    const [descriptionError, setDescriptionError] = useState(false);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [submitting, setSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -101,6 +103,8 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         setAmount('');
         setCategory('');
         setDescription('');
+        setNotes('');
+        setDescriptionError(false);
         setDate(new Date().toISOString().split('T')[0]);
         setType('expense');
         setAttachments([]);
@@ -188,6 +192,11 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
 
     const handleSave = async () => {
         const parsed = parseFloat(amount);
+        if (!description.trim()) {
+            setDescriptionError(true);
+            return;
+        }
+        setDescriptionError(false);
         if (!amount || isNaN(parsed) || parsed <= 0 || !category) return;
         setSubmitting(true);
 
@@ -196,8 +205,9 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
             type,
             amount: parsed,
             category,
-            description: description || category,
+            description: description.trim(),
             date,
+            notes: notes.trim() || undefined,
         };
 
         try {
@@ -438,15 +448,39 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                 />
                             </div>
 
-                            {/* Description */}
-                            <div className="mb-6">
-                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">What was this for?</label>
+                            {/* Description (Required) */}
+                            <div className="mb-4">
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                                    What was this for? <span className="text-rose-500">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     value={description}
-                                    onChange={e => setDescription(e.target.value)}
+                                    onChange={e => { setDescription(e.target.value); if (e.target.value.trim()) setDescriptionError(false); }}
                                     placeholder="e.g. Lunch with friends"
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                                    className={`w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-primary/20 text-sm transition-all ${
+                                        descriptionError
+                                            ? 'border-rose-400 focus:border-rose-500 ring-2 ring-rose-500/20'
+                                            : 'border-gray-200 dark:border-[#30363d] focus:border-primary'
+                                    }`}
+                                />
+                                {descriptionError && (
+                                    <p className="mt-1.5 text-xs font-medium text-rose-500 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[14px]">error</span>
+                                        Please describe this transaction
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Additional Notes (Optional) */}
+                            <div className="mb-6">
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Add more details <span className="text-gray-400 dark:text-gray-500 font-normal normal-case">(optional)</span></label>
+                                <textarea
+                                    value={notes}
+                                    onChange={e => setNotes(e.target.value)}
+                                    placeholder="Additional notes, receipt info, context..."
+                                    rows={2}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm resize-none"
                                 />
                             </div>
 
@@ -491,7 +525,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                             {/* Save Button */}
                             <button
                                 onClick={handleSave}
-                                disabled={submitting || !amount || !category || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0}
+                                disabled={submitting || !amount || !category || !description.trim() || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0}
                                 className={`w-full py-4 rounded-2xl text-white font-bold text-base transition-all disabled:opacity-40 active:scale-[0.98] ${type === 'expense'
                                     ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/25'
                                     : 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/25'

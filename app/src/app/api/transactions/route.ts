@@ -95,6 +95,7 @@ export async function POST(request: Request) {
         const type = body.type;
         const amount = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
         const description = sanitizeDescription(body.description);
+        const notes = sanitizeDescription(body.notes || '');
         const date = body.date || new Date().toISOString().split('T')[0];
 
         if (!isValidType(type)) {
@@ -111,8 +112,8 @@ export async function POST(request: Request) {
         await ensureCustomCategory(session.userId, type, categoryName);
 
         const result = await run(
-            'INSERT INTO transactions (user_id, type, amount, category, description, date) VALUES (?, ?, ?, ?, ?, ?)',
-            [session.userId, type, amount, categoryName, description, date]
+            'INSERT INTO transactions (user_id, type, amount, category, description, date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [session.userId, type, amount, categoryName, description, date, notes]
         );
 
         await maybeCreateBudgetAlert({
@@ -162,6 +163,7 @@ export async function PUT(request: Request) {
         const type = body.type;
         const amount = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
         const description = sanitizeDescription(body.description);
+        const notes = sanitizeDescription(body.notes || '');
         const date = body.date || new Date().toISOString().split('T')[0];
 
         if (!id || typeof id !== 'number') {
@@ -181,8 +183,8 @@ export async function PUT(request: Request) {
         await ensureCustomCategory(session.userId, type, categoryName);
 
         const result = await run(
-            'UPDATE transactions SET type = ?, amount = ?, category = ?, description = ?, date = ? WHERE id = ? AND user_id = ?',
-            [type, amount, categoryName, description, date, id, session.userId]
+            'UPDATE transactions SET type = ?, amount = ?, category = ?, description = ?, date = ?, notes = ? WHERE id = ? AND user_id = ?',
+            [type, amount, categoryName, description, date, notes, id, session.userId]
         );
 
         if (result.rowsAffected === 0) {
