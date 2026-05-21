@@ -23,7 +23,7 @@ export default function LoginPage() {
                 body: JSON.stringify({ email, password }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
+            if (!res.ok) throw new Error(data.error?.message || (typeof data.error === 'string' ? data.error : 'Login failed'));
             router.push('/dashboard');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
