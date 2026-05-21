@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, Variants } from 'framer-motion';
 
 /* ──────────────────────────────────────────────
    Theme Toggle Helper
@@ -125,7 +125,7 @@ function Header({ onToggleTheme, onNavigate, isLoggedIn }: { onToggleTheme: () =
 /* ═══════════════════════════════════════════════
    HERO SECTION
    ═══════════════════════════════════════════════ */
-const staggerContainer = {
+const staggerContainer: Variants = {
     hidden: { opacity: 0 },
     show: {
         opacity: 1,
@@ -133,7 +133,7 @@ const staggerContainer = {
     }
 };
 
-const fadeInUp = {
+const fadeInUp: Variants = {
     hidden: { opacity: 0, y: 30 },
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
