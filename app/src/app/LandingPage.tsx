@@ -1,33 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-
-/* ──────────────────────────────────────────────
-   Intersection Observer hook for scroll animations
-   ────────────────────────────────────────────── */
-function useScrollAnimations() {
-    const observerRef = useRef<IntersectionObserver | null>(null);
-
-    useEffect(() => {
-        observerRef.current = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('lp-visible');
-                    }
-                });
-            },
-            { threshold: 0.12, rootMargin: '0px 0px -60px 0px' }
-        );
-
-        const elements = document.querySelectorAll('.lp-animate');
-        elements.forEach((el) => observerRef.current?.observe(el));
-
-        return () => observerRef.current?.disconnect();
-    }, []);
-}
+import { motion, useScroll, useTransform } from 'framer-motion';
 
 /* ──────────────────────────────────────────────
    Theme Toggle Helper
@@ -50,18 +26,17 @@ function useThemeToggle() {
    ═══════════════════════════════════════════════ */
 export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
     const router = useRouter();
-    useScrollAnimations();
     const toggleTheme = useThemeToggle();
+    const { scrollYProgress } = useScroll();
+    const y = useTransform(scrollYProgress, [0, 1], [0, -100]);
 
     return (
         <div className="relative flex min-h-screen flex-col bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-slate-300 overflow-x-hidden selection:bg-primary dark:selection:bg-lp-cyan selection:text-white dark:selection:text-[#0A0A0A]">
             {/* Ambient background glow */}
-            <div className="lp-ambient-glow" />
+            <motion.div style={{ y }} className="lp-ambient-glow" />
 
-            {/* ─── HEADER ─── */}
             <Header onToggleTheme={toggleTheme} onNavigate={(path) => router.push(path)} isLoggedIn={isLoggedIn} />
 
-            {/* ─── MAIN ─── */}
             <main className="flex-1 relative z-10">
                 <HeroSection onNavigate={(path) => router.push(path)} />
                 <ProcessFlowSection />
@@ -72,7 +47,6 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 <CTASection onNavigate={(path) => router.push(path)} />
             </main>
 
-            {/* ─── FOOTER ─── */}
             <FooterSection />
         </div>
     );
@@ -83,106 +57,143 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
    ═══════════════════════════════════════════════ */
 function Header({ onToggleTheme, onNavigate, isLoggedIn }: { onToggleTheme: () => void; onNavigate: (p: string) => void; isLoggedIn: boolean }) {
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-gray-200/60 dark:border-white/5 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl">
+        <motion.header 
+            initial={{ y: -100 }}
+            animate={{ y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="sticky top-0 z-50 w-full border-b border-gray-200/60 dark:border-white/5 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl"
+        >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                 {/* Logo */}
-                <div className="flex items-center gap-3 group cursor-pointer">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm p-1 group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                <motion.div whileHover={{ scale: 1.05 }} className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('/')}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm p-1 overflow-hidden">
                         <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={36} height={36} className="object-contain rounded-lg" />
                     </div>
                     <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-playfair), serif' }}>Wealth AI</span>
-                </div>
+                </motion.div>
 
                 {/* Nav */}
                 <nav className="hidden md:flex items-center gap-10">
-                    <a className="text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-lp-cyan transition-colors" href="#features">Features</a>
-                    <a className="text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-lp-cyan transition-colors" href="#how-it-works">How it works</a>
-                    <a className="text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-lp-cyan transition-colors" href="#pricing">Pricing</a>
-                    <a className="text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-lp-cyan transition-colors" href="#about">About</a>
+                    {['Features', 'How it works', 'Pricing', 'About'].map((item) => (
+                        <motion.a 
+                            key={item}
+                            whileHover={{ y: -2, color: 'var(--color-primary)' }}
+                            className="text-sm font-medium text-gray-500 dark:text-slate-400 transition-colors" 
+                            href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                            {item}
+                        </motion.a>
+                    ))}
                 </nav>
 
                 {/* Right */}
                 <div className="flex items-center gap-4">
-                    <button onClick={onToggleTheme} className="lp-theme-toggle" aria-label="Toggle theme">
-                        {/* Sun (light → dark) */}
+                    <motion.button whileHover={{ rotate: 180 }} transition={{ duration: 0.3 }} onClick={onToggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10" aria-label="Toggle theme">
                         <span className="material-symbols-outlined text-xl text-gray-600 dark:text-yellow-300 hidden dark:block">light_mode</span>
-                        {/* Moon (dark → light) */}
                         <span className="material-symbols-outlined text-xl text-gray-600 dark:text-yellow-300 block dark:hidden">dark_mode</span>
-                    </button>
+                    </motion.button>
                     {isLoggedIn ? (
-                        <button
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => onNavigate('/dashboard')}
                             className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan transition-all duration-300"
                         >
                             Go to Dashboard
-                        </button>
+                        </motion.button>
                     ) : (
                         <>
                             <button onClick={() => onNavigate('/login')} className="hidden sm:block text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                                 Login
                             </button>
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => onNavigate('/register')}
                                 className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan transition-all duration-300"
                             >
                                 Get Started
-                            </button>
+                            </motion.button>
                         </>
                     )}
                 </div>
             </div>
-        </header>
+        </motion.header>
     );
 }
 
 /* ═══════════════════════════════════════════════
    HERO SECTION
    ═══════════════════════════════════════════════ */
+const staggerContainer = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: { staggerChildren: 0.1 }
+    }
+};
+
+const fadeInUp = {
+    hidden: { opacity: 0, y: 30 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
+
 function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
     return (
         <section className="relative pt-20 pb-24 lg:pt-32 lg:pb-40 overflow-hidden">
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="grid gap-16 lg:grid-cols-2 lg:gap-12 items-center">
                     {/* ── Left Column ── */}
-                    <div className="flex flex-col justify-center space-y-8">
+                    <motion.div 
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="show"
+                        className="flex flex-col justify-center space-y-8"
+                    >
                         {/* Badge */}
-                        <div className="lp-animate inline-flex items-center rounded-full border border-primary/20 dark:border-lp-cyan/20 bg-primary/5 dark:bg-lp-cyan/5 px-4 py-1.5 text-sm font-medium text-primary dark:text-lp-cyan w-fit backdrop-blur-sm">
+                        <motion.div variants={fadeInUp} className="inline-flex items-center rounded-full border border-primary/20 dark:border-lp-cyan/20 bg-primary/5 dark:bg-lp-cyan/5 px-4 py-1.5 text-sm font-medium text-primary dark:text-lp-cyan w-fit backdrop-blur-sm">
                             <span className="relative flex h-2 w-2 mr-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary dark:bg-lp-cyan opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary dark:bg-lp-cyan" />
                             </span>
                             Wealth Management Reimagined
-                        </div>
+                        </motion.div>
 
                         {/* Headline */}
-                        <h1 className="lp-animate text-5xl font-medium tracking-tight text-gray-900 dark:text-white sm:text-6xl md:text-7xl lg:text-6xl xl:text-7xl leading-[1.1]" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                        <motion.h1 variants={fadeInUp} className="text-5xl font-medium tracking-tight text-gray-900 dark:text-white sm:text-6xl md:text-7xl lg:text-6xl xl:text-7xl leading-[1.1]" style={{ fontFamily: 'var(--font-playfair), serif' }}>
                             Master your<br />wealth with<br />
                             <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-indigo-400 dark:from-lp-cyan dark:via-cyan-200 dark:to-white lp-glow-text">
                                 precision.
                             </span>
-                        </h1>
+                        </motion.h1>
 
                         {/* Subtitle */}
-                        <p className="lp-animate max-w-[560px] text-lg text-gray-500 dark:text-slate-400 md:text-xl leading-relaxed font-light">
+                        <motion.p variants={fadeInUp} className="max-w-[560px] text-lg text-gray-500 dark:text-slate-400 md:text-xl leading-relaxed font-light">
                             Wealth AI unifies your financial life. Real-time net worth tracking, intelligent insights, and automated planning—all in one elegant interface.
-                        </p>
+                        </motion.p>
 
                         {/* CTAs */}
-                        <div className="lp-animate flex flex-col sm:flex-row gap-4">
-                            <button
+                        <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4">
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => onNavigate('/register')}
-                                className="lp-glow-btn h-14 rounded-xl bg-gradient-to-r from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 px-8 text-base font-bold text-white dark:text-black hover:brightness-110 transition-all duration-300"
+                                className="lp-glow-btn h-14 rounded-xl bg-gradient-to-r from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 px-8 text-base font-bold text-white dark:text-black hover:brightness-110 transition-all duration-300 shadow-[0_0_40px_rgba(19,109,236,0.3)] dark:shadow-[0_0_40px_rgba(0,229,255,0.3)]"
                             >
                                 Start Your Journey
-                            </button>
-                            <button className="h-14 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-8 text-base font-medium text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
+                            </motion.button>
+                            <motion.button 
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="h-14 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-8 text-base font-medium text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                            >
                                 <span className="material-symbols-outlined text-primary dark:text-lp-cyan">play_circle</span>
                                 See How It Works
-                            </button>
-                        </div>
+                            </motion.button>
+                        </motion.div>
 
                         {/* Social proof */}
-                        <div className="lp-animate pt-2 flex items-center gap-6 border-t border-gray-200 dark:border-white/5">
+                        <motion.div variants={fadeInUp} className="pt-2 flex items-center gap-6 border-t border-gray-200 dark:border-white/5">
                             <div className="flex -space-x-3 pt-4">
                                 {[
                                     'bg-gradient-to-br from-blue-400 to-indigo-500',
@@ -202,27 +213,33 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                                 </div>
                                 <p className="text-sm text-gray-500 dark:text-slate-400">Trusted by <span className="text-gray-900 dark:text-white font-semibold">10,000+</span> investors</p>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
 
                     {/* ── Right Column: Dashboard Mockup ── */}
-                    <div className="lp-animate lp-animate-scale relative lg:ml-auto w-full">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.8, rotateY: 15 }}
+                        animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="relative lg:ml-auto w-full perspective-[1000px]"
+                    >
                         <DashboardMockup />
-                    </div>
+                    </motion.div>
                 </div>
             </div>
         </section>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   DASHBOARD MOCKUP (CSS/SVG illustration)
-   ═══════════════════════════════════════════════ */
 function DashboardMockup() {
     return (
-        <div className="relative w-full max-w-[580px] mx-auto">
+        <div className="relative w-full max-w-[580px] mx-auto group">
             {/* Main card */}
-            <div className="rounded-3xl bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border shadow-2xl overflow-hidden">
+            <motion.div 
+                whileHover={{ rotateY: -2, rotateX: 2, scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="rounded-3xl bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border shadow-2xl overflow-hidden"
+            >
                 {/* Top bar */}
                 <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 dark:border-white/5">
                     <div className="h-3 w-3 rounded-full bg-red-400" />
@@ -233,7 +250,6 @@ function DashboardMockup() {
 
                 {/* Content area */}
                 <div className="p-6 space-y-6">
-                    {/* Greeting bar */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center p-1 overflow-hidden">
@@ -250,7 +266,6 @@ function DashboardMockup() {
                         </div>
                     </div>
 
-                    {/* Chart area */}
                     <div className="relative h-40 border border-gray-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#0A0A0A] p-4 overflow-hidden">
                         <p className="text-xs text-gray-400 dark:text-slate-500 mb-2 font-medium uppercase tracking-wider">Portfolio Performance</p>
                         <svg className="w-full h-24" viewBox="0 0 400 100" preserveAspectRatio="none">
@@ -265,7 +280,13 @@ function DashboardMockup() {
                                 </linearGradient>
                             </defs>
                             <path d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10 L400,100 L0,100 Z" fill="url(#chart-gradient)" />
-                            <path d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10" fill="none" stroke="url(#line-gradient)" strokeWidth="2.5" strokeLinecap="round" />
+                            <motion.path 
+                                initial={{ pathLength: 0 }}
+                                animate={{ pathLength: 1 }}
+                                transition={{ duration: 1.5, ease: "easeInOut" }}
+                                d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10" 
+                                fill="none" stroke="url(#line-gradient)" strokeWidth="2.5" strokeLinecap="round" 
+                            />
                             <circle cx="400" cy="10" r="4" className="fill-primary dark:fill-lp-cyan" />
                             <circle cx="400" cy="10" r="8" className="fill-primary/20 dark:fill-lp-cyan/20">
                                 <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
@@ -274,7 +295,6 @@ function DashboardMockup() {
                         </svg>
                     </div>
 
-                    {/* Chat preview */}
                     <div className="space-y-3">
                         <div className="flex gap-3 items-start">
                             <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
@@ -299,10 +319,15 @@ function DashboardMockup() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Floating cards */}
-            <div className="absolute -bottom-8 -left-12 lp-glass-card p-4 rounded-xl border-l-4 border-primary dark:border-lp-cyan lp-float-delayed z-30 hidden sm:block shadow-2xl">
+            <motion.div 
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8, type: "spring", stiffness: 200 }}
+                className="absolute -bottom-8 -left-12 lp-glass-card p-4 rounded-xl border-l-4 border-primary dark:border-lp-cyan lp-float-delayed z-30 hidden sm:block shadow-2xl"
+            >
                 <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-primary/10 dark:bg-lp-cyan/20 flex items-center justify-center text-primary dark:text-lp-cyan">
                         <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
@@ -312,22 +337,24 @@ function DashboardMockup() {
                         <p className="text-xs font-bold text-gray-900 dark:text-white">Spending goal reached</p>
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
-            <div className="absolute -top-6 -right-8 lp-glass-card px-4 py-3 rounded-xl lp-float z-30 hidden sm:block shadow-2xl">
+            <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1, type: "spring", stiffness: 200 }}
+                className="absolute -top-6 -right-8 lp-glass-card px-4 py-3 rounded-xl lp-float z-30 hidden sm:block shadow-2xl"
+            >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-sm text-emerald-500">trending_up</span>
                     <span className="text-xs font-bold text-emerald-500">+12.5%</span>
                     <span className="text-xs text-gray-400 dark:text-slate-500">this month</span>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   PROCESS FLOW SECTION
-   ═══════════════════════════════════════════════ */
 function ProcessFlowSection() {
     const steps = [
         { icon: 'chat', title: 'Tell Wealth AI', copy: 'Add "coffee 6 dollars" or ask a finance question in natural language.' },
@@ -338,8 +365,14 @@ function ProcessFlowSection() {
 
     return (
         <section className="relative py-10 sm:py-14">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="lp-animate rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
+            <motion.div 
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={staggerContainer}
+                className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
+                <motion.div variants={fadeInUp} className="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
                     <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                         <div>
                             <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-primary dark:text-lp-cyan">How Wealth AI works</p>
@@ -348,7 +381,12 @@ function ProcessFlowSection() {
                             </h2>
                             <div className="mt-6 grid gap-3 sm:grid-cols-2">
                                 {steps.map((step, index) => (
-                                    <div key={step.title} className="lp-flow-card rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/[0.04]" style={{ animationDelay: `${index * 0.18}s` }}>
+                                    <motion.div 
+                                        key={step.title} 
+                                        variants={fadeInUp}
+                                        whileHover={{ scale: 1.02 }}
+                                        className="lp-flow-card rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/[0.04]"
+                                    >
                                         <div className="mb-3 flex items-center gap-3">
                                             <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary dark:bg-lp-cyan/10 dark:text-lp-cyan">
                                                 <span className="material-symbols-outlined text-[21px]">{step.icon}</span>
@@ -356,12 +394,12 @@ function ProcessFlowSection() {
                                             <h3 className="text-sm font-bold text-gray-900 dark:text-white">{step.title}</h3>
                                         </div>
                                         <p className="text-sm leading-relaxed text-gray-500 dark:text-slate-400">{step.copy}</p>
-                                    </div>
+                                    </motion.div>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gray-950 p-5 text-white shadow-2xl shadow-slate-900/20 dark:border-white/10">
+                        <motion.div variants={fadeInUp} className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gray-950 p-5 text-white shadow-2xl shadow-slate-900/20 dark:border-white/10">
                             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lp-cyan/70 to-transparent" />
                             <div className="mb-5 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -379,7 +417,12 @@ function ProcessFlowSection() {
                                         <span>Lunch with client 28 today</span>
                                     </div>
                                     <div className="h-2 w-full rounded-full bg-white/10">
-                                        <div className="lp-scan-line h-full rounded-full bg-cyan-300" />
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            whileInView={{ width: "100%" }}
+                                            transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop" }}
+                                            className="h-full rounded-full bg-cyan-300" 
+                                        />
                                     </div>
                                 </div>
 
@@ -388,7 +431,14 @@ function ProcessFlowSection() {
                                     ['event_available', 'Date', 'Today', 'Ready'],
                                     ['donut_large', 'Report', 'Spending trend', '+1 entry'],
                                 ].map(([icon, label, detail, value], index) => (
-                                    <div key={label} className="lp-flow-row flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3" style={{ animationDelay: `${0.35 + index * 0.16}s` }}>
+                                    <motion.div 
+                                        key={label} 
+                                        initial={{ opacity: 0, x: 20 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.1 }}
+                                        viewport={{ once: true }}
+                                        className="lp-flow-row flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+                                    >
                                         <div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-300/10 text-cyan-200">
                                             <span className="material-symbols-outlined text-[20px]">{icon}</span>
                                         </div>
@@ -397,10 +447,16 @@ function ProcessFlowSection() {
                                             <p className="truncate text-sm font-bold text-white">{detail}</p>
                                         </div>
                                         <p className="text-sm font-bold text-cyan-200">{value}</p>
-                                    </div>
+                                    </motion.div>
                                 ))}
 
-                                <div className="lp-insight-ticket rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.5 }}
+                                    viewport={{ once: true }}
+                                    className="lp-insight-ticket rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4"
+                                >
                                     <div className="flex items-start gap-3">
                                         <span className="material-symbols-outlined text-emerald-300">auto_awesome</span>
                                         <div>
@@ -408,46 +464,48 @@ function ProcessFlowSection() {
                                             <p className="mt-1 text-xs leading-relaxed text-emerald-100/70">Dining is 72% of this month&apos;s limit after the new entry.</p>
                                         </div>
                                     </div>
-                                </div>
+                                </motion.div>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         </section>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   PARTNER LOGOS
-   ═══════════════════════════════════════════════ */
 function PartnerLogos() {
     const partners = ['Chase', 'Citi', 'Vanguard', 'FIDELITY', 'Schwab'];
     return (
         <section className="py-16 border-y border-gray-100 dark:border-white/5">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <p className="lp-animate text-center text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-10">
+            <motion.div 
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                variants={staggerContainer}
+                className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
+                <motion.p variants={fadeInUp} className="text-center text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-10">
                     Securely integrated with 12,000+ financial institutions
-                </p>
-                <div className="lp-animate flex flex-wrap items-center justify-center gap-8 sm:gap-16">
+                </motion.p>
+                <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-16">
                     {partners.map((name, i) => (
-                        <span
+                        <motion.span
                             key={i}
-                            className="text-lg sm:text-xl font-bold tracking-wide text-gray-300 dark:text-slate-700 hover:text-gray-500 dark:hover:text-slate-400 transition-colors duration-300 cursor-default select-none"
+                            variants={fadeInUp}
+                            whileHover={{ scale: 1.1, color: "var(--color-primary)" }}
+                            className="text-lg sm:text-xl font-bold tracking-wide text-gray-300 dark:text-slate-700 transition-colors duration-300 cursor-default select-none"
                             style={{ fontFamily: i === 2 ? 'var(--font-playfair), serif' : undefined, fontStyle: i === 2 ? 'italic' : undefined }}
                         >
                             {name}
-                        </span>
+                        </motion.span>
                     ))}
                 </div>
-            </div>
+            </motion.div>
         </section>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   FEATURES SECTION
-   ═══════════════════════════════════════════════ */
 function FeaturesSection() {
     const features = [
         {
@@ -469,8 +527,14 @@ function FeaturesSection() {
 
     return (
         <section id="features" className="py-32 relative">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="lp-animate mb-20 md:text-center max-w-3xl mx-auto">
+            <motion.div 
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={staggerContainer}
+                className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
+                <motion.div variants={fadeInUp} className="mb-20 md:text-center max-w-3xl mx-auto">
                     <h2 className="text-sm font-bold text-primary dark:text-lp-cyan uppercase tracking-[0.2em] mb-4">Core Capabilities</h2>
                     <p className="text-3xl font-medium text-gray-900 dark:text-white sm:text-5xl leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
                         Intelligent Financial Clarity
@@ -478,36 +542,43 @@ function FeaturesSection() {
                     <p className="mt-6 text-lg text-gray-500 dark:text-slate-400 font-light max-w-2xl mx-auto">
                         Wealth AI continuously analyzes your financial landscape to provide actionable advice in real-time. Experience the calm of knowing exactly where you stand.
                     </p>
-                </div>
+                </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lp-stagger">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {features.map((f, i) => (
-                        <div key={i} className="lp-animate group lp-glass-card p-10 rounded-3xl">
+                        <motion.div 
+                            key={i} 
+                            variants={fadeInUp}
+                            whileHover={{ y: -10 }}
+                            className="group lp-glass-card p-10 rounded-3xl"
+                        >
                             <div className="h-14 w-14 rounded-2xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-white mb-8 group-hover:bg-primary dark:group-hover:bg-lp-cyan group-hover:text-white dark:group-hover:text-black group-hover:border-primary dark:group-hover:border-lp-cyan transition-all duration-500 shadow-lg shadow-black/5 dark:shadow-black/50">
                                 <span className="material-symbols-outlined text-3xl">{f.icon}</span>
                             </div>
                             <h3 className="text-2xl font-medium text-gray-900 dark:text-white mb-4" style={{ fontFamily: 'var(--font-playfair), serif' }}>{f.title}</h3>
                             <p className="text-gray-500 dark:text-slate-400 leading-relaxed font-light">{f.description}</p>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
-            </div>
+            </motion.div>
         </section>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   DATA VISUALIZATION SECTION
-   ═══════════════════════════════════════════════ */
 function DataVizSection() {
     return (
         <section id="how-it-works" className="py-32 relative">
             <div className="lp-section-divider mb-32" />
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <motion.div 
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={staggerContainer}
+                className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                    {/* Left: Cards */}
                     <div className="space-y-6">
-                        <div className="lp-animate lp-animate-left lp-glass-card p-6 rounded-2xl flex items-center gap-5">
+                        <motion.div variants={fadeInUp} whileHover={{ x: 10 }} className="lp-glass-card p-6 rounded-2xl flex items-center gap-5 cursor-pointer transition-all">
                             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-blue-500/10 dark:from-lp-cyan/20 dark:to-blue-500/10 flex items-center justify-center flex-shrink-0">
                                 <span className="material-symbols-outlined text-3xl text-primary dark:text-lp-cyan">area_chart</span>
                             </div>
@@ -515,8 +586,8 @@ function DataVizSection() {
                                 <h4 className="font-bold text-gray-900 dark:text-white text-lg" style={{ fontFamily: 'var(--font-playfair), serif' }}>Asset Growth</h4>
                                 <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Track assets and liabilities over time with precision and historical data.</p>
                             </div>
-                        </div>
-                        <div className="lp-animate lp-animate-left lp-glass-card p-6 rounded-2xl flex items-center gap-5">
+                        </motion.div>
+                        <motion.div variants={fadeInUp} whileHover={{ x: 10 }} className="lp-glass-card p-6 rounded-2xl flex items-center gap-5 cursor-pointer transition-all">
                             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 flex items-center justify-center flex-shrink-0">
                                 <span className="material-symbols-outlined text-3xl text-violet-500">wallet</span>
                             </div>
@@ -524,75 +595,86 @@ function DataVizSection() {
                                 <h4 className="font-bold text-gray-900 dark:text-white text-lg" style={{ fontFamily: 'var(--font-playfair), serif' }}>Spend Analysis</h4>
                                 <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Understand your spending patterns with detailed, auto-categorized transactions.</p>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
 
-                    {/* Right: Description */}
                     <div>
-                        <p className="lp-animate text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-4">Data Visualization</p>
-                        <h3 className="lp-animate text-3xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-tight mb-6" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                        <motion.p variants={fadeInUp} className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-4">Data Visualization</motion.p>
+                        <motion.h3 variants={fadeInUp} className="text-3xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-tight mb-6" style={{ fontFamily: 'var(--font-playfair), serif' }}>
                             See your money<br />in a new light
-                        </h3>
-                        <p className="lp-animate text-gray-500 dark:text-slate-400 mb-8 font-light leading-relaxed">
+                        </motion.h3>
+                        <motion.p variants={fadeInUp} className="text-gray-500 dark:text-slate-400 mb-8 font-light leading-relaxed">
                             Wealth AI turns complex financial data into beautiful, interactive stories. See exactly where your money goes with charts and reports generated instantly by our AI.
-                        </p>
+                        </motion.p>
                         <div className="space-y-4">
                             {['Exportable tax-ready reports', 'Peer benchmarking', 'Smart savings projections'].map((item, i) => (
-                                <div key={i} className="lp-animate flex items-center gap-3">
+                                <motion.div key={i} variants={fadeInUp} className="flex items-center gap-3">
                                     <div className="h-6 w-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
                                         <span className="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
                                     </div>
                                     <span className="text-gray-600 dark:text-slate-300 font-medium">{item}</span>
-                                </div>
+                                </motion.div>
                             ))}
                         </div>
-                        <button className="lp-animate mt-10 inline-flex h-12 items-center justify-center rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-6 text-sm font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">
+                        <motion.button 
+                            variants={fadeInUp} 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="mt-10 inline-flex h-12 items-center justify-center rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-6 text-sm font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+                        >
                             Explore Visualizations
-                        </button>
+                        </motion.button>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         </section>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   TESTIMONIAL SECTION
-   ═══════════════════════════════════════════════ */
 function TestimonialSection() {
     return (
         <section className="py-32 relative">
             <div className="lp-section-divider mb-32" />
-            <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
-                <div className="lp-animate">
-                    <span className="material-symbols-outlined text-5xl text-gray-200 dark:text-slate-700 mb-8 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</span>
-                    <blockquote className="text-2xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-10" style={{ fontFamily: 'var(--font-playfair), serif' }}>
-                        &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
-                    </blockquote>
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 flex items-center justify-center text-white dark:text-black font-bold text-lg">
-                            NM
-                        </div>
-                        <div>
-                            <p className="font-bold text-gray-900 dark:text-white">Nazat Al Mahmud</p>
-                            <p className="text-sm text-gray-500 dark:text-slate-400">Product Designer and Manager, Bangladesh</p>
-                        </div>
+            <motion.div 
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                variants={staggerContainer}
+                className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center"
+            >
+                <motion.span variants={fadeInUp} className="material-symbols-outlined text-5xl text-gray-200 dark:text-slate-700 mb-8 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
+                <motion.blockquote variants={fadeInUp} className="text-2xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-10" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                    &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
+                </motion.blockquote>
+                <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">
+                    <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 flex items-center justify-center text-white dark:text-black font-bold text-lg">
+                        NM
                     </div>
-                </div>
-            </div>
+                    <div>
+                        <p className="font-bold text-gray-900 dark:text-white">Nazat Al Mahmud</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">Product Designer and Manager, Bangladesh</p>
+                    </div>
+                </motion.div>
+            </motion.div>
         </section>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   CTA SECTION
-   ═══════════════════════════════════════════════ */
 function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
     return (
         <section className="py-24 relative">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="lp-animate lp-animate-scale relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-indigo-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0A0A] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5">
-                    {/* Decorative blurs */}
+            <motion.div 
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                variants={staggerContainer}
+                className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
+                <motion.div 
+                    variants={fadeInUp}
+                    whileHover={{ scale: 1.01 }}
+                    className="relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-indigo-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0A0A] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5"
+                >
                     <div className="absolute top-0 left-1/4 h-48 w-48 rounded-full bg-white/10 dark:bg-lp-cyan/10 blur-[80px]" />
                     <div className="absolute bottom-0 right-1/4 h-48 w-48 rounded-full bg-blue-400/10 dark:bg-blue-600/10 blur-[80px]" />
 
@@ -604,26 +686,29 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
                             Join the community of professionals mastering their finances with AI. Start your 14-day free trial, no credit card required.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => onNavigate('/register')}
                                 className="lp-glow-btn h-14 rounded-xl bg-white px-10 text-base font-bold text-gray-900 hover:bg-gray-100 transition-all duration-300"
                             >
                                 Create Free Account
-                            </button>
-                            <button className="h-14 rounded-xl border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 px-10 text-base font-medium text-white hover:bg-white/20 dark:hover:bg-white/10 transition-colors backdrop-blur-sm">
+                            </motion.button>
+                            <motion.button 
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="h-14 rounded-xl border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 px-10 text-base font-medium text-white hover:bg-white/20 dark:hover:bg-white/10 transition-colors backdrop-blur-sm"
+                            >
                                 Contact Sales
-                            </button>
+                            </motion.button>
                         </div>
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         </section>
     );
 }
 
-/* ═══════════════════════════════════════════════
-   FOOTER
-   ═══════════════════════════════════════════════ */
 function FooterSection() {
     const columns = [
         { title: 'Product', links: ['Features', 'Pricing', 'Security', 'Integrations'] },
@@ -635,7 +720,6 @@ function FooterSection() {
         <footer className="border-t border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#0A0A0A] py-20 relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
-                    {/* Brand */}
                     <div className="col-span-2">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm p-1 overflow-hidden">
@@ -646,37 +730,25 @@ function FooterSection() {
                         <p className="text-sm text-gray-500 dark:text-slate-400 max-w-xs leading-relaxed mb-6">
                             Empowering your financial journey with intelligent insights and real-time tracking. Built for the modern investor.
                         </p>
-                        <div className="flex gap-4">
-                            <a className="text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-white transition-colors" href="#">
-                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
-                            </a>
-                            <a className="text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-white transition-colors" href="#">
-                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" fillRule="evenodd" /></svg>
-                            </a>
-                        </div>
                     </div>
-
-                    {/* Link columns */}
                     {columns.map((col, i) => (
                         <div key={i}>
-                            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-5">{col.title}</h4>
+                            <h4 className="font-bold text-gray-900 dark:text-white mb-4">{col.title}</h4>
                             <ul className="space-y-3">
                                 {col.links.map((link, j) => (
                                     <li key={j}>
-                                        <a className="text-sm text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-lp-cyan transition-colors" href="#">{link}</a>
+                                        <a href="#" className="text-sm text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors">{link}</a>
                                     </li>
                                 ))}
                             </ul>
                         </div>
                     ))}
                 </div>
-
-                {/* Bottom */}
-                <div className="pt-8 border-t border-gray-200 dark:border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <p className="text-xs text-gray-400 dark:text-slate-600">© 2026 Wealth AI Inc. All rights reserved.</p>
-                    <div className="flex gap-6 text-xs text-gray-400 dark:text-slate-600">
-                        <a className="hover:text-primary dark:hover:text-slate-400 transition-colors" href="#">Privacy Policy</a>
-                        <a className="hover:text-primary dark:hover:text-slate-400 transition-colors" href="#">Terms of Service</a>
+                <div className="pt-8 border-t border-gray-200 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <p className="text-sm text-gray-500 dark:text-slate-500">© 2026 Wealth AI. All rights reserved.</p>
+                    <div className="flex gap-6">
+                        <a href="#" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Privacy</a>
+                        <a href="#" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Terms</a>
                     </div>
                 </div>
             </div>
