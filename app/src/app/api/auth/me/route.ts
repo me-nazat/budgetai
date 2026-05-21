@@ -1,21 +1,28 @@
-import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { queryOne } from '@/lib/db';
+/**
+ * @fileoverview Current user profile endpoint.
+ *
+ * Returns the authenticated user's profile data.
+ * Used by the client-side `useApi` hook on app initialization.
+ *
+ * @module api/auth/me
+ */
 
-export async function GET() {
-    const session = await getSession();
-    if (!session) {
-        return NextResponse.json({ user: null }, { status: 401 });
-    }
+import { NextRequest } from 'next/server';
+import { apiHandler } from '@/lib/middleware/api-handler';
+import { apiSuccess, apiError } from '@/lib/types/api';
+import { withAuth } from '@/lib/middleware/with-auth';
+import { AuthService } from '@/services/auth.service';
 
-    const user = await queryOne<{ id: number; name: string; email: string; currency: string; notify_budget: number; notify_overspend: number }>(
-        'SELECT id, name, email, currency, notify_budget, notify_overspend FROM users WHERE id = ?',
-        [session.userId]
-    );
-
-    if (!user) {
-        return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    return NextResponse.json({ user });
-}
+/**
+ * GET /api/auth/me
+ *
+ * Returns the current user's profile.
+ *
+ * @security Requires valid access token in cookies.
+ */
+export const GET = apiHandler(
+  withAuth(async (_request, { userId }) => {
+    const profile = await AuthService.getProfile(userId);
+    return apiSuccess({ user: profile });
+  })
+);

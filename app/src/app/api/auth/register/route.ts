@@ -1,55 +1,38 @@
-import { NextResponse } from 'next/server';
-import { queryOne, run } from '@/lib/db';
-import { hashPassword, createToken, setSessionCookie } from '@/lib/auth';
-import { isValidEmail, isValidPassword, sanitizeName, checkRateLimit, getClientIP } from '@/lib/validation';
+/**
+ * @fileoverview Registration API route.
+ *
+ * Creates a new user account with hashed password,
+ * sets session cookies, and creates a welcome notification.
+ *
+ * @module api/auth/register
+ */
 
-export async function POST(request: Request) {
-    try {
-        // Rate limit: 5 registrations per 15 min per IP
-        const ip = getClientIP(request);
-        const rl = checkRateLimit(`register:${ip}`, 5, 15 * 60 * 1000);
-        if (!rl.allowed) {
-            return NextResponse.json(
-                { error: 'Too many registration attempts. Please try again later.' },
-                { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
-            );
-        }
+import { NextRequest } from 'next/server';
+import { apiHandler } from '@/lib/middleware/api-handler';
+import { apiSuccess } from '@/lib/types/api';
+import { AuthService } from '@/services/auth.service';
+import { getClientIP } from '@/lib/security/rate-limiter';
 
-        const body = await request.json();
-        const name = sanitizeName(body.name);
-        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-        const password = typeof body.password === 'string' ? body.password : '';
+/**
+ * POST /api/auth/register
+ *
+ * Registers a new user account.
+ *
+ * @security Rate limited: 5 attempts per 15 minutes per IP.
+ */
+export const POST = apiHandler(
+  async (request: NextRequest) => {
+    const body = await request.json();
+    const ip = getClientIP(request);
+    const userAgent = request.headers.get('user-agent') || undefined;
 
-        if (!name) {
-            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-        }
+    const result = await AuthService.register(body, {
+      ip,
+      userAgent,
+      request,
+    });
 
-        if (!isValidEmail(email)) {
-            return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
-        }
-
-        if (!isValidPassword(password)) {
-            return NextResponse.json({ error: 'Password must be 6-128 characters' }, { status: 400 });
-        }
-
-        const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email]);
-        if (existing) {
-            return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
-        }
-
-        const passwordHash = await hashPassword(password);
-        const result = await run(
-            'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
-            [name, email, passwordHash]
-        );
-
-        const userId = result.lastInsertRowid;
-        const token = await createToken(userId, email);
-        await setSessionCookie(token);
-
-        return NextResponse.json({ user: { id: userId, name, email } });
-    } catch (error) {
-        console.error('Register error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    return apiSuccess({ user: result.user }, 201);
+  },
+  { rateLimit: 'auth' }
+);
