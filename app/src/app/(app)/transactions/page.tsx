@@ -75,6 +75,7 @@ export default function TransactionsPage() {
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [deletingTxId, setDeletingTxId] = useState<number | string | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [actionMenuOpenId, setActionMenuOpenId] = useState<number | string | null>(null);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
