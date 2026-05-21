@@ -849,6 +849,7 @@ export default function TransactionsPage() {
                         </div>
                         <p className="text-sm font-semibold text-gray-500 dark:text-text-muted">No transactions found for this period.</p>
                     </div>
+                ) : sorted.map((t, i) => (
                     <div
                         key={t.id}
                         onClick={() => setSelectedDetailTx(t)}
@@ -1098,7 +1099,6 @@ export default function TransactionsPage() {
                                     </div>
                                 </div>
                             </motion.div>
-                        </div>
                         </div>
                     )}
                 </AnimatePresence>,
