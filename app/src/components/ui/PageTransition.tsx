@@ -10,7 +10,7 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
 /**
@@ -65,17 +65,14 @@ export default function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        variants={pageVariants}
-        initial="initial"
-        animate="enter"
-        exit="exit"
-        style={{ minHeight: '100%' }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={pathname}
+      variants={pageVariants}
+      initial="initial"
+      animate="enter"
+      style={{ minHeight: '100%' }}
+    >
+      {children}
+    </motion.div>
   );
 }
