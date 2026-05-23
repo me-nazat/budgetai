@@ -178,6 +178,26 @@ export default function TransactionAttachmentsSection({
     [attachments.length, fetchAttachments, showNotice, transactionId],
   );
 
+  const handleDeleteFile = useCallback(async (fileId: string, fileName: string) => {
+    if (!confirm(`Are you sure you want to delete "${fileName}"?`)) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/transactions/${transactionId}/attachments?fileId=${fileId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error || 'Failed to delete file.');
+      }
+      setAttachments((cur) => cur.filter((f) => f.id !== fileId));
+      showNotice('success', 'File deleted successfully.');
+    } catch (e) {
+      showNotice('error', e instanceof Error ? e.message : 'Unable to delete file.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [transactionId, showNotice]);
+
   const handleFileChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
       const selected = Array.from(e.target.files ?? []);
@@ -344,15 +364,25 @@ export default function TransactionAttachmentsSection({
                           {file.modifiedTime ? ` · ${timeAgo(file.modifiedTime)}` : ''}
                         </p>
                       </div>
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 transition-all active:scale-95 hover:border-primary/20 hover:bg-primary/5 hover:text-primary dark:border-[#30363d] dark:bg-[#0d1117] dark:text-gray-400 dark:hover:text-primary"
-                      >
-                        Open
-                        <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                      </a>
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 transition-all active:scale-95 hover:border-primary/20 hover:bg-primary/5 hover:text-primary dark:border-[#30363d] dark:bg-[#0d1117] dark:text-gray-400 dark:hover:text-primary"
+                        >
+                          Open
+                          <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFile(file.id, file.name)}
+                          className="flex items-center justify-center rounded-lg border border-transparent px-2 py-1.5 text-gray-400 transition-all hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 active:scale-95"
+                          title="Delete file"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

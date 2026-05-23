@@ -487,3 +487,27 @@ export async function getAttachmentContent(params: {
     };
   } catch (error) { throw toFriendlyError(error); }
 }
+
+export async function deleteTransactionAttachment(params: {
+  userId: number;
+  userName?: string | null;
+  userEmail?: string | null;
+  folderLabel: string;
+  fileId: string;
+}): Promise<void> {
+  const drive = await getDriveClient();
+  // Ensure the user actually owns the file via resolveAttachment
+  await resolveAttachment(
+    drive,
+    { userId: params.userId, name: params.userName, email: params.userEmail },
+    params.folderLabel,
+    params.fileId,
+  );
+
+  try {
+    await drive.files.delete({
+      fileId: params.fileId,
+      supportsAllDrives: true,
+    });
+  } catch (error) { throw toFriendlyError(error); }
+}

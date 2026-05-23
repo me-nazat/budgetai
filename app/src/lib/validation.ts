@@ -74,6 +74,12 @@ export function sanitizeDescription(desc: unknown): string {
     return sanitizeText(desc, MAX_TEXT_LENGTH);
 }
 
+export function sanitizeNotes(notes: unknown): string {
+    if (typeof notes !== 'string') return '';
+    // Preserve newlines, but cap length
+    return notes.trim().slice(0, 1000);
+}
+
 export function clampPaginationLimit(limit: unknown): number {
     const n = typeof limit === 'string' ? parseInt(limit, 10) : (typeof limit === 'number' ? limit : 100);
     if (!Number.isFinite(n) || n < 1) return 100;

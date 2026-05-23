@@ -132,3 +132,37 @@ export async function POST(request: Request, context: RouteContext) {
     return jsonError(error instanceof Error ? error.message : 'Unable to upload files right now.', 500);
   }
 }
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const session = await getSession();
+  if (!session) return jsonError('Please sign in to delete files.', 401);
+
+  const { transactionId } = await context.params;
+  const txId = parseInt(transactionId, 10);
+  if (!Number.isFinite(txId) || txId < 1) return jsonError('Invalid transaction.', 400);
+
+  const tx = await getAuthorizedTransaction(txId, session.userId);
+  if (!tx) return jsonError('Transaction not found.', 404);
+
+  const url = new URL(request.url);
+  const fileId = url.searchParams.get('fileId');
+  if (!fileId) return jsonError('File ID is required.', 400);
+
+  const user = await getUser(session.userId);
+  const folderLabel = buildFolderLabel(tx);
+
+  try {
+    const { deleteTransactionAttachment } = await import('@/lib/google-drive');
+    await deleteTransactionAttachment({
+      userId: session.userId,
+      userName: user?.name ?? null,
+      userEmail: user?.email ?? session.email,
+      folderLabel,
+      fileId,
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete attachment', error);
+    return jsonError(error instanceof Error ? error.message : 'Unable to delete file right now.', 500);
+  }
+}

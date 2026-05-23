@@ -46,6 +46,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [submitting, setSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [attachments, setAttachments] = useState<File[]>([]);
+    const [qaScanningId, setQaScanningId] = useState<number | null>(null);
     
     // Custom Categories State
     const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -73,6 +74,8 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     useEffect(() => {
         if (isOpen) {
             fetchCustomCategories();
+        } else {
+            setQaScanningId(null);
         }
     }, [fetchCustomCategories, isOpen]);
 
@@ -86,6 +89,28 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
             setGeneratedIcons(getIconCandidates(customName));
         }
     }, [customName]);
+
+    const handleScanAttachment = async (file: File, index: number) => {
+        setQaScanningId(index);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch('/api/transactions/scan', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error('Scan failed');
+            const data = await res.json();
+            
+            if (data.amount) setAmount(data.amount.toString());
+            if (data.date) setDate(data.date);
+            if (data.description) setDescription(data.description);
+            if (data.category) setCategory(data.category);
+            if (data.type === 'earning' || data.type === 'expense') setType(data.type);
+        } catch (error) {
+            console.error('Failed to scan attachment:', error);
+            alert('Failed to extract data from image.');
+        } finally {
+            setQaScanningId(null);
+        }
+    };
 
     const standardCategories = type === 'expense' ? CATEGORIES_EXPENSE : CATEGORIES_INCOME;
     const allCategories: CategoryOption[] = useMemo(() => [
@@ -491,15 +516,29 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                     <span className="text-xs text-gray-400">{attachments.length}/{MAX_ATTACHMENT_FILES}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {attachments.map((file, index) => (
-                                        <div key={index} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700">
+                                    {attachments.map((file, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700">
                                             <span className="material-symbols-outlined text-gray-500 text-[16px]">
                                                 {file.type.startsWith('image/') ? 'image' : 'description'}
                                             </span>
-                                            <span className="text-gray-700 dark:text-gray-300 max-w-[120px] truncate">{file.name}</span>
+                                            <span className="max-w-[100px] truncate text-gray-700 dark:text-gray-300">{file.name}</span>
+                                            
+                                            {(file.type.startsWith('image/') || file.type === 'application/pdf') && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleScanAttachment(file, idx)}
+                                                    disabled={qaScanningId === idx}
+                                                    className="ml-1 flex items-center gap-1 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600 hover:bg-violet-200 disabled:opacity-50 dark:bg-violet-500/20 dark:text-violet-300"
+                                                >
+                                                    {qaScanningId === idx ? 'Scanning...' : 'Scan'}
+                                                    <span className="material-symbols-outlined text-[12px]">document_scanner</span>
+                                                </button>
+                                            )}
+
                                             <button 
-                                                onClick={() => removeAttachment(index)}
-                                                className="ml-1 text-gray-400 hover:text-red-500 flex items-center justify-center"
+                                                type="button" 
+                                                onClick={() => removeAttachment(idx)}
+                                                className="ml-1 flex items-center justify-center text-gray-400 hover:text-rose-500"
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">close</span>
                                             </button>

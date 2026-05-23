@@ -12,6 +12,7 @@ import { queueTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor } from '@/lib/categoryUtils';
+import { MAX_ATTACHMENT_FILES } from '@/lib/transaction-attachments';
 import TransactionAttachmentsSection from '@/components/TransactionAttachmentsSection';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
@@ -59,6 +60,9 @@ export default function TransactionsPage() {
     const [qaCategory, setQaCategory] = useState('');
     const [qaDesc, setQaDesc] = useState('');
     const [qaDate, setQaDate] = useState(new Date().toISOString().split('T')[0]);
+    const [qaNotes, setQaNotes] = useState('');
+    const [qaAttachments, setQaAttachments] = useState<File[]>([]);
+    const [qaScanningId, setQaScanningId] = useState<number | null>(null);
     const [qaSubmitting, setQaSubmitting] = useState(false);
 
     // Custom Category Add State (Desktop Inline)
@@ -158,6 +162,28 @@ export default function TransactionsPage() {
         return `/api/transactions?${params.toString()}`;
     }, [dateRange.start, dateRange.end, typeFilter]);
 
+    const handleScanAttachment = async (file: File, index: number) => {
+        setQaScanningId(index);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch('/api/transactions/scan', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error('Scan failed');
+            const data = await res.json();
+            
+            if (data.amount) setQaAmount(data.amount.toString());
+            if (data.date) setQaDate(data.date);
+            if (data.description) setQaDesc(data.description);
+            if (data.category) setQaCategory(data.category);
+            if (data.type === 'earning' || data.type === 'expense') setQaType(data.type);
+        } catch (error) {
+            console.error('Failed to scan attachment:', error);
+            alert('Failed to extract data from image.');
+        } finally {
+            setQaScanningId(null);
+        }
+    };
+
     const submitQuickAdd = async () => {
         const parsed = parseFloat(qaAmount);
         const categoryName = (qaAddingCustomCategory ? qaCustomCategoryName.trim().replace(/\s+/g, ' ') : qaCategory.trim().replace(/\s+/g, ' '));
@@ -171,6 +197,7 @@ export default function TransactionsPage() {
             category: categoryName,
             description: qaDesc || categoryName,
             date: qaDate,
+            notes: qaNotes.trim() || undefined,
         };
 
         try {
@@ -193,6 +220,16 @@ export default function TransactionsPage() {
                     body: JSON.stringify(payload),
                 });
                 if (!res.ok) throw new Error('API add failed');
+                const data = await res.json();
+                
+                if (data.id && qaAttachments.length > 0) {
+                    const form = new FormData();
+                    qaAttachments.forEach(file => form.append('attachments', file));
+                    await fetch(`/api/transactions/${data.id}/attachments`, {
+                        method: 'POST',
+                        body: form
+                    });
+                }
                 
                 invalidateFinancialData();
                 mutate(swrKey);
@@ -221,6 +258,7 @@ export default function TransactionsPage() {
             }
 
             setQaAmount(''); setQaDesc(''); setQaCategory(''); setShowQuickAdd(false); setQaSubmitting(false);
+            setQaNotes(''); setQaAttachments([]);
             setQaAddingCustomCategory(false); setQaCustomCategoryName('');
             setQaCustomIcon(CUSTOM_CATEGORY_ICONS[0]); setQaCustomColor(CUSTOM_COLORS[0]); setQaIconOptions(CUSTOM_CATEGORY_ICONS.slice(0, 40));
             setShowSuccess(true);
@@ -618,6 +656,78 @@ export default function TransactionsPage() {
                                         onChange={e => setQaDesc(e.target.value)}
                                         className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
                                     />
+                                </div>
+                            </div>
+
+                            {/* Additional Notes */}
+                            <div className="mt-3">
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Additional Notes (Optional)</label>
+                                <textarea
+                                    value={qaNotes}
+                                    onChange={e => setQaNotes(e.target.value)}
+                                    placeholder="Receipt info, context..."
+                                    rows={2}
+                                    className="w-full resize-none rounded-xl border border-gray-200 bg-white/85 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                />
+                            </div>
+
+                            {/* Attachments */}
+                            <div className="mt-4">
+                                <div className="mb-2 flex items-center justify-between">
+                                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Attachments</label>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">{qaAttachments.length}/{MAX_ATTACHMENT_FILES}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {qaAttachments.map((file, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs dark:border-[#30363d] dark:bg-[#0d1117]">
+                                            <span className="material-symbols-outlined text-gray-500 text-[14px]">
+                                                {file.type.startsWith('image/') ? 'image' : 'description'}
+                                            </span>
+                                            <span className="max-w-[100px] truncate text-gray-700 dark:text-gray-300">{file.name}</span>
+                                            
+                                            {(file.type.startsWith('image/') || file.type === 'application/pdf') && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleScanAttachment(file, idx)}
+                                                    disabled={qaScanningId === idx}
+                                                    className="ml-1 flex items-center gap-1 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600 hover:bg-violet-200 disabled:opacity-50 dark:bg-violet-500/20 dark:text-violet-300"
+                                                >
+                                                    {qaScanningId === idx ? 'Scanning...' : 'Scan'}
+                                                    <span className="material-symbols-outlined text-[12px]">document_scanner</span>
+                                                </button>
+                                            )}
+
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setQaAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                                className="ml-1 flex items-center justify-center text-gray-400 hover:text-rose-500"
+                                            >
+                                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {qaAttachments.length < MAX_ATTACHMENT_FILES && (
+                                        <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all">
+                                            <span className="material-symbols-outlined text-[14px]">attach_file</span>
+                                            Attach File
+                                            <input 
+                                                type="file" 
+                                                multiple 
+                                                className="hidden" 
+                                                accept="image/*,application/pdf"
+                                                onChange={e => {
+                                                    if (!e.target.files?.length) return;
+                                                    const newFiles = Array.from(e.target.files);
+                                                    if (qaAttachments.length + newFiles.length > MAX_ATTACHMENT_FILES) {
+                                                        alert(`Max ${MAX_ATTACHMENT_FILES} files allowed.`);
+                                                        return;
+                                                    }
+                                                    setQaAttachments(prev => [...prev, ...newFiles]);
+                                                    e.target.value = '';
+                                                }}
+                                            />
+                                        </label>
+                                    )}
                                 </div>
                             </div>
                         </div>

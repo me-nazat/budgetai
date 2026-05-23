@@ -5,7 +5,7 @@ import { maybeCreateBudgetAlert } from '@/lib/alerts';
 import { isStandardCategory, resolveColor, resolveIcon } from '@/lib/categoryUtils';
 import {
     isValidAmount, isValidType, isValidDate,
-    sanitizeCategory, sanitizeDescription,
+    sanitizeCategory, sanitizeDescription, sanitizeNotes,
     clampPaginationLimit, clampPaginationOffset
 } from '@/lib/validation';
 
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         const type = body.type;
         const amount = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
         const description = sanitizeDescription(body.description);
-        const notes = sanitizeDescription(body.notes || '');
+        const notes = sanitizeNotes(body.notes || '');
         const date = body.date || new Date().toISOString().split('T')[0];
 
         if (!isValidType(type)) {
@@ -163,7 +163,7 @@ export async function PUT(request: Request) {
         const type = body.type;
         const amount = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
         const description = sanitizeDescription(body.description);
-        const notes = sanitizeDescription(body.notes || '');
+        const notes = sanitizeNotes(body.notes || '');
         const date = body.date || new Date().toISOString().split('T')[0];
 
         if (!id || typeof id !== 'number') {
