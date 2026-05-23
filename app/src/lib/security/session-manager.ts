@@ -262,11 +262,23 @@ export async function setSessionCookies(
   refreshToken: string
 ): Promise<void> {
   const cookieStore = await cookies();
-  const isProduction = process.env.NODE_ENV === 'production';
+  let isSecure = process.env.NODE_ENV === 'production';
+  
+  try {
+    // Next.js 15 requires headers() to be awaited
+    const { headers } = await import('next/headers');
+    const headersList = await headers();
+    const host = headersList.get('host') || '';
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      isSecure = false; // Disable secure cookies for local production builds
+    }
+  } catch {
+    // Silently continue if headers() is unavailable
+  }
 
   cookieStore.set(ACCESS_COOKIE_NAME, accessToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure: isSecure,
     sameSite: 'lax',
     maxAge: ACCESS_MAX_AGE,
     path: '/',
@@ -274,7 +286,7 @@ export async function setSessionCookies(
 
   cookieStore.set(REFRESH_COOKIE_NAME, refreshToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure: isSecure,
     sameSite: 'lax',
     maxAge: REFRESH_MAX_AGE,
     path: '/',
