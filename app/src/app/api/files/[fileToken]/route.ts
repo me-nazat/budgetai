@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession } from '@/lib/security/session-manager';
 import { queryOne } from '@/lib/db';
 import { getAttachmentContent, getAttachmentMetadata } from '@/lib/google-drive';
 import { decodeAttachmentToken } from '@/lib/transaction-attachments';

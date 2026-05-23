@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession } from '@/lib/security/session-manager';
 import { run } from '@/lib/db';
 import { AttachmentInput, processMessage } from '@/lib/ai';
 import { getFinancialContextBundle } from '@/lib/financialContext';

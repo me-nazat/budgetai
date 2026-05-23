@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession } from '@/lib/security/session-manager';
 import { queryAll } from '@/lib/db';
 
 export async function GET() {

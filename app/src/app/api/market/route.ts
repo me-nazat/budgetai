@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession } from '@/lib/security/session-manager';
 import { isValidCurrency } from '@/lib/validation';
 
 // In-memory cache to avoid hitting external APIs too frequently
