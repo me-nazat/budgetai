@@ -13,7 +13,7 @@
 
 import { NextRequest } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
-import { apiSuccess, apiError } from '@/lib/types/api';
+import { NextResponse } from 'next/server';
 import { AuthService } from '@/services/auth.service';
 import { getClientIP } from '@/lib/security/rate-limiter';
 
@@ -42,17 +42,17 @@ export const POST = apiHandler(
     });
 
     if (result.requires2FA) {
-      return apiSuccess(
-        {
-          requires2FA: true,
-          tempToken: result.tempToken,
-          user: { id: result.user.id, email: result.user.email },
-        },
-        200
-      );
+        return NextResponse.json(
+          {
+            requires2FA: true,
+            tempToken: result.tempToken,
+            user: { id: result.user.id, email: result.user.email },
+          },
+          { status: 200 }
+        );
     }
 
-    return apiSuccess({ user: result.user });
+    return NextResponse.json({ user: result.user });
   },
   { rateLimit: 'auth' }
 );

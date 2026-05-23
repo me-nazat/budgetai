@@ -8,8 +8,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { apiHandler } from '@/lib/middleware/api-handler';
-import { apiSuccess, apiError } from '@/lib/types/api';
+import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { AuthService } from '@/services/auth.service';
 
@@ -20,9 +19,7 @@ import { AuthService } from '@/services/auth.service';
  *
  * @security Requires valid access token in cookies.
  */
-export const GET = apiHandler(
-  withAuth(async (_request, { userId }) => {
+export const GET = withAuth<any>(async (_request, { userId }) => {
     const profile = await AuthService.getProfile(userId);
-    return apiSuccess({ user: profile });
-  })
-);
+    return NextResponse.json({ user: profile });
+});

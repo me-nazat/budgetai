@@ -9,7 +9,7 @@
 
 import { NextRequest } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
-import { apiSuccess } from '@/lib/types/api';
+import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { UserRepository } from '@/repositories/user.repository';
 import { AuditService } from '@/services/audit.service';
@@ -22,7 +22,7 @@ import { getClientIP } from '@/lib/security/rate-limiter';
  * Useful for "active devices" UI.
  */
 export const GET = apiHandler(
-  withAuth(async (_request, { userId }) => {
+  withAuth<any>(async (_request, { userId }) => {
     const sessions = await UserRepository.listActiveSessions(userId);
 
     // Strip sensitive token hashes from the response
@@ -34,7 +34,7 @@ export const GET = apiHandler(
       createdAt: s.createdAt,
     }));
 
-    return apiSuccess({ sessions: sanitized });
+    return NextResponse.json({ sessions: sanitized });
   })
 );
 
@@ -47,7 +47,7 @@ export const GET = apiHandler(
  * @security Audit-logged as a security event.
  */
 export const DELETE = apiHandler(
-  withAuth(async (request, { userId }) => {
+  withAuth<any>(async (request, { userId }) => {
     await UserRepository.revokeAllSessions(userId);
 
     const ip = getClientIP(request);
@@ -59,6 +59,6 @@ export const DELETE = apiHandler(
       ip,
     });
 
-    return apiSuccess({ message: 'All sessions revoked' });
+    return NextResponse.json({ message: 'All sessions revoked' });
   })
 );

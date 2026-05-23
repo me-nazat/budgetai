@@ -10,7 +10,7 @@
 
 import { NextRequest } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
-import { apiSuccess } from '@/lib/types/api';
+import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { AuthService } from '@/services/auth.service';
 import { validateInput } from '@/lib/types/api';
@@ -26,9 +26,9 @@ import { TwoFactorSetupDTO } from '@/lib/types/dto';
  * @security Requires authentication.
  */
 export const POST = apiHandler(
-  withAuth(async (_request, { userId }) => {
+  withAuth<any>(async (_request, { userId }) => {
     const setup = await AuthService.setupTOTP(userId);
-    return apiSuccess({
+    return NextResponse.json({
       uri: setup.uri,
       backupCodes: setup.backupCodes,
     });
@@ -46,7 +46,7 @@ export const POST = apiHandler(
  * - Requires a valid TOTP code to confirm setup.
  */
 export const PUT = apiHandler(
-  withAuth(async (request, { userId }) => {
+  withAuth<any>(async (request, { userId }) => {
     const body = await request.json();
     const validated = validateInput(TwoFactorSetupDTO, body);
 
@@ -59,6 +59,6 @@ export const PUT = apiHandler(
       body.backupCodes || []
     );
 
-    return apiSuccess({ message: '2FA enabled successfully' });
+    return NextResponse.json({ message: '2FA enabled successfully' });
   })
 );

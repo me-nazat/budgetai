@@ -10,7 +10,7 @@
 
 import { NextRequest } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
-import { apiSuccess } from '@/lib/types/api';
+import { NextResponse } from 'next/server';
 import { AuthService } from '@/services/auth.service';
 import { getClientIP } from '@/lib/security/rate-limiter';
 
@@ -32,7 +32,7 @@ export const POST = apiHandler(
 
     const result = await AuthService.refresh({ ip, userAgent, request });
 
-    return apiSuccess({ user: result.user });
+    return NextResponse.json({ user: result.user });
   },
   { rateLimit: 'api' }
 );

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { queryAll, queryOne } from '@/lib/db';
-import { apiSuccess, apiError } from '@/lib/types/api';
 
 export async function GET(request: NextRequest) {
     try {
@@ -112,7 +111,7 @@ export async function GET(request: NextRequest) {
         const expChange = lastExpenses?.total ? ((currentExpenses!.total - lastExpenses.total) / lastExpenses.total * 100) : 0;
         const earnChange = lastEarnings?.total ? ((currentEarnings!.total - lastEarnings.total) / lastEarnings.total * 100) : 0;
 
-        return apiSuccess({
+        return NextResponse.json({
             expenses: { current: currentExpenses?.total || 0, change: expChange },
             earnings: { current: currentEarnings?.total || 0, change: earnChange },
             netSavings: (currentEarnings?.total || 0) - (currentExpenses?.total || 0),
@@ -125,6 +124,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (error) {
         console.error('Dashboard error:', error);
-        return apiError(error);
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
     }
 }

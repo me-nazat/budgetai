@@ -9,7 +9,7 @@
 
 import { NextRequest } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
-import { apiSuccess } from '@/lib/types/api';
+import { NextResponse } from 'next/server';
 import { AuthService } from '@/services/auth.service';
 import { getClientIP } from '@/lib/security/rate-limiter';
 
@@ -32,7 +32,7 @@ export const POST = apiHandler(
       request,
     });
 
-    return apiSuccess({ user: result.user }, 201);
+    return NextResponse.json({ user: result.user }, { status: 201 });
   },
   { rateLimit: 'auth' }
 );

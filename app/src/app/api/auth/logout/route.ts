@@ -9,7 +9,7 @@
 
 import { NextRequest } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
-import { apiSuccess } from '@/lib/types/api';
+import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { AuthService } from '@/services/auth.service';
 import { getClientIP } from '@/lib/security/rate-limiter';
@@ -21,9 +21,9 @@ import { getClientIP } from '@/lib/security/rate-limiter';
  * Revokes the refresh token and clears session cookies.
  */
 export const POST = apiHandler(
-  withAuth(async (request, { userId }) => {
+  withAuth<any>(async (request, { userId }) => {
     const ip = getClientIP(request);
     await AuthService.logout(userId, { ip });
-    return apiSuccess({ message: 'Logged out successfully' });
+    return NextResponse.json({ message: 'Logged out successfully' });
   })
 );
