@@ -10,6 +10,7 @@ import {
     Title, Tooltip, Legend, Filler, ArcElement,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import TrophyRoom from '@/components/charts/TrophyRoom';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -163,6 +164,16 @@ export default function AnalyticsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Gamification / Trophy Room */}
+            <div className="mb-6">
+                <TrophyRoom 
+                    transactionsCount={data.totalTransactions || data.recentTransactions.length}
+                    savingsRate={savingsRate}
+                    monthsActive={1} 
+                    budgetAlertsAvoided={data.budgetAlerts.length === 0}
+                />
+            </div>
 
             {/* Top Expenses */}
             {topExpenses.length > 0 && (

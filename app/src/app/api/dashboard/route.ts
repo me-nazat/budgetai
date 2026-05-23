@@ -82,6 +82,11 @@ export async function GET(request: NextRequest) {
             [session.userId, currentStartDate, currentEndDate]
         );
 
+        const totalTxs = await queryOne<{ count: number }>(
+            'SELECT COUNT(*) as count FROM transactions WHERE user_id = ?',
+            [session.userId]
+        );
+
         // Recent transactions
         const recentTransactions = await queryAll(
             'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 5',
@@ -121,6 +126,7 @@ export async function GET(request: NextRequest) {
             recentTransactions,
             budgetAlerts,
             netWorth: netWorth?.amount || 0,
+            totalTransactions: totalTxs?.count || 0,
         });
     } catch (error) {
         console.error('Dashboard error:', error);

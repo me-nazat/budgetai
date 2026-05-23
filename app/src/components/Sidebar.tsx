@@ -46,7 +46,9 @@ export default function Sidebar() {
         const next = !isDark;
         setIsDark(next);
         localStorage.setItem('budget-ai-theme', next ? 'dark' : 'light');
+        document.documentElement.classList.add('theme-transitioning');
         document.documentElement.classList.toggle('dark', next);
+        setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 400);
     };
 
     const handleLogout = async () => {
@@ -116,14 +118,25 @@ export default function Sidebar() {
                 
                 {/* Bottom section (Settings & Profile) */}
                 <div className="p-4 shrink-0 mt-auto">
-                    {/* Settings */}
-                    <Link
-                        href="/settings"
-                        className="flex items-center gap-3 px-4 py-3 mb-3 rounded-xl text-gray-600 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
-                    >
-                        <span className="material-symbols-outlined group-hover:rotate-45 transition-transform duration-300">settings</span>
-                        <span className="text-sm font-medium">Settings</span>
-                    </Link>
+                    {/* Settings + Theme Toggle */}
+                    <div className="flex items-center gap-2 mb-3">
+                        <Link
+                            href="/settings"
+                            className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
+                        >
+                            <span className="material-symbols-outlined group-hover:rotate-45 transition-transform duration-300">settings</span>
+                            <span className="text-sm font-medium">Settings</span>
+                        </Link>
+                        <button
+                            onClick={toggleTheme}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
+                            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        >
+                            <span className="material-symbols-outlined text-lg text-gray-500 dark:text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-all duration-300 group-hover:rotate-45" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                {isDark ? 'light_mode' : 'dark_mode'}
+                            </span>
+                        </button>
+                    </div>
 
                     {/* Highly Polished Profile Card */}
                     {user && (

@@ -18,6 +18,8 @@ import { Bar, Doughnut } from 'react-chartjs-2';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
+import PredictiveCashflow from '@/components/charts/PredictiveCashflow';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -344,7 +346,10 @@ export default function DashboardPage() {
                     {/* Content */}
                     <div className="relative z-10">
                         <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Total Balance</p>
-                        <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear">{fmt(data.balance)}</h3>
+                        <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear flex items-baseline gap-1">
+                            <span className="text-2xl text-white/70">{sym}</span>
+                            <AnimatedCounter value={data.balance} delay={0.1} />
+                        </h3>
 
                         <div className="flex gap-3">
                             <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
@@ -354,7 +359,10 @@ export default function DashboardPage() {
                                     </div>
                                     <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Income</span>
                                 </div>
-                                <p className="text-base font-bold text-white">{fmt(data.earnings.current)}</p>
+                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
+                                    <span className="text-xs text-white/70">{sym}</span>
+                                    <AnimatedCounter value={data.earnings.current} delay={0.2} />
+                                </p>
                             </div>
                             <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
                                 <div className="flex items-center gap-1.5 mb-1">
@@ -363,7 +371,10 @@ export default function DashboardPage() {
                                     </div>
                                     <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Expense</span>
                                 </div>
-                                <p className="text-base font-bold text-white">{fmt(data.expenses.current)}</p>
+                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
+                                    <span className="text-xs text-white/70">{sym}</span>
+                                    <AnimatedCounter value={data.expenses.current} delay={0.3} />
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -518,6 +529,11 @@ export default function DashboardPage() {
 
                     {/* Budget Alerts & Categories */}
                     <div className="flex flex-col gap-5" style={{ animation: 'slideUp 0.5s ease-out 0.45s both' }}>
+                        {/* Predictive Analytics */}
+                        {data.dailySpending && data.earnings && (
+                            <PredictiveCashflow dailySpending={data.dailySpending} monthlyIncome={data.earnings.current} />
+                        )}
+
                         {/* Budget Alerts */}
                         <div className="card-premium p-6 rounded-2xl">
                             <div className="flex items-center justify-between mb-4">
