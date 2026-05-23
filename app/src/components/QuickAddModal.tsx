@@ -532,7 +532,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                                     type="button"
                                                     onClick={() => handleScanAttachment(file, idx)}
                                                     disabled={qaScanningId === idx}
-                                                    className="ml-1 flex items-center gap-1 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600 hover:bg-violet-200 disabled:opacity-50 dark:bg-violet-500/20 dark:text-violet-300"
+                                                    className="ml-1 flex items-center gap-1 rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-600 hover:bg-teal-200 disabled:opacity-50 dark:bg-teal-500/20 dark:text-teal-300"
                                                 >
                                                     {qaScanningId === idx ? 'Scanning...' : 'Scan'}
                                                     <span className="material-symbols-outlined text-[12px]">document_scanner</span>

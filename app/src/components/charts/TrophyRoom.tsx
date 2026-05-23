@@ -51,7 +51,7 @@ export default function TrophyRoom({ transactionsCount, savingsRate, monthsActiv
             description: 'Use Budget AI for 3+ months',
             icon: 'workspace_premium',
             unlocked: monthsActive >= 3,
-            color: 'bg-purple-500',
+            color: 'bg-cyan-500',
         },
         {
             id: 'hundred_club',

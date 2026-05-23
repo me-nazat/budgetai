@@ -147,12 +147,12 @@ export default function Sidebar() {
                             onClick={() => router.push('/settings')}
                         >
                             {/* Animated Background Glow */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                             
                             {/* Avatar */}
-                            <div className="relative w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-purple-600 p-[2px] shrink-0 transform group-hover:scale-105 transition-transform duration-300">
+                            <div className="relative w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-cyan-600 p-[2px] shrink-0 transform group-hover:scale-105 transition-transform duration-300">
                                 <div className="w-full h-full rounded-full bg-white dark:bg-[#0d1117] flex items-center justify-center overflow-hidden">
-                                    <span className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-tr from-primary to-purple-600">
+                                    <span className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-tr from-primary to-cyan-600">
                                         {user.name.charAt(0).toUpperCase()}
                                     </span>
                                 </div>

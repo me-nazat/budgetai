@@ -15,7 +15,7 @@ import TrophyRoom from '@/components/charts/TrophyRoom';
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
 const categoryColors: Record<string, string> = {
-    Food: '#f97316', Transport: '#8b5cf6', Housing: '#3b82f6', Utilities: '#eab308',
+    Food: '#f97316', Transport: '#14b8a6', Housing: '#3b82f6', Utilities: '#eab308',
     Entertainment: '#ec4899', Shopping: '#6366f1', Health: '#10b981', Education: '#06b6d4',
     Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
 };

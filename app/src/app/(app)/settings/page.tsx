@@ -232,7 +232,7 @@ export default function SettingsPage() {
                                 >
                                     <div className="w-full h-full rounded-full bg-white dark:bg-[#0d1117] flex items-center justify-center relative overflow-hidden">
                                         {/* Name Initial */}
-                                        <span className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-tr from-primary to-purple-600 transition-transform duration-300 ${avatarHovered ? 'scale-90 opacity-0' : 'scale-100 opacity-100'}`}>
+                                        <span className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-tr from-primary to-cyan-600 transition-transform duration-300 ${avatarHovered ? 'scale-90 opacity-0' : 'scale-100 opacity-100'}`}>
                                             {name?.charAt(0)?.toUpperCase() || 'U'}
                                         </span>
                                         

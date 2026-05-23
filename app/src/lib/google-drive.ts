@@ -61,17 +61,17 @@ function extractGoogleApiMessage(error: unknown) {
 }
 
 function toFriendlyError(error: unknown) {
-  const msg = extractGoogleApiMessage(error) ?? 'Unable to reach Google Drive right now.';
-  console.error('[Google Drive Error]', msg, error);
+  const msg = extractGoogleApiMessage(error) ?? 'Unable to reach the storage server right now.';
+  console.error('[Storage Error]', msg, error);
   
   if (msg.includes('Google Drive API has not been used') || msg.includes('drive.googleapis.com'))
-    return new Error('Google Drive API is disabled. Enable drive.googleapis.com in Google Cloud Console.');
+    return new Error('Storage API is disabled. Please contact support.');
   if (msg.includes('Service Usage API has not been used'))
-    return new Error('Enable serviceusage.googleapis.com first, then Google Drive API.');
+    return new Error('Storage services are not fully enabled. Please contact support.');
   if (msg.includes('File not found') || msg.includes('insufficientFilePermissions'))
-    return new Error('Drive folder is not accessible. Share the root folder with the service account email.');
+    return new Error('Storage folder is not accessible. Please check permissions.');
   if (msg.includes('Service Accounts do not have storage quota'))
-    return new Error('Use OAuth credentials for personal Drive uploads. Service accounts cannot store files in personal drives.');
+    return new Error('Storage accounts do not have sufficient quota.');
   return new Error(msg);
 }
 
@@ -158,7 +158,7 @@ async function getDriveClient() {
 
   if (!credentials.client_email || !credentials.private_key) {
     throw new Error(
-      'Google Drive is not configured. Set OAuth credentials (GOOGLE_DRIVE_OAUTH_CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN) or service account credentials.'
+      'Secure storage is not configured. Please check environment variables.'
     );
   }
 

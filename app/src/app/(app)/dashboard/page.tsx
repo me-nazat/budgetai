@@ -177,7 +177,7 @@ export default function DashboardPage() {
         { label: 'Total Balance', value: fmt(data.balance), change: data.earnings.change, icon: 'account_balance', color: 'text-primary', gradient: 'stat-gradient-blue' },
         { label: 'Monthly Earnings', value: fmt(data.earnings.current), change: data.earnings.change, icon: 'payments', color: 'text-emerald-500', gradient: 'stat-gradient-emerald' },
         { label: 'Monthly Expenses', value: fmt(data.expenses.current), change: data.expenses.change, icon: 'shopping_cart', color: 'text-orange-500', gradient: 'stat-gradient-orange', negative: true },
-        { label: 'Net Savings', value: fmt(data.netSavings), change: data.netSavings > 0 ? 8.1 : -5, icon: 'savings', color: 'text-violet-500', gradient: 'stat-gradient-violet' },
+        { label: 'Net Savings', value: fmt(data.netSavings), change: data.netSavings > 0 ? 8.1 : -5, icon: 'savings', color: 'text-blue-500', gradient: 'stat-gradient-blue' },
     ];
 
     const greeting = () => {
@@ -649,126 +649,110 @@ export default function DashboardPage() {
 
                     {/* Financial Intelligence Hub */}
                     <div className="card-premium rounded-2xl flex flex-col overflow-hidden" style={{ animation: 'slideUp 0.5s ease-out 0.65s both' }}>
-                        <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-violet-500/10 to-transparent">
+                        <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-blue-500/10 to-transparent">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-violet-500">insights</span>
+                                <span className="material-symbols-outlined text-blue-500">insights</span>
                                 Intelligence Hub
                             </h3>
                         </div>
 
                         {/* Tabs */}
                         <div className="flex bg-gray-50 dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] text-sm">
-                            <button onClick={() => setActiveTab('currency')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'currency' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Rates</button>
-                            <button onClick={() => setActiveTab('news')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'news' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>News</button>
-                            <button onClick={() => setActiveTab('calculator')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'calculator' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Growth</button>
+                            <button onClick={() => setActiveTab('currency')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'currency' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Rates</button>
+                            <button onClick={() => setActiveTab('news')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'news' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>News</button>
+                            <button onClick={() => setActiveTab('calculator')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'calculator' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Growth</button>
                         </div>
 
                         {/* Tab Content */}
                         <div className="p-5 flex-1 bg-white dark:bg-surface-dark overflow-y-auto max-h-[350px]">
                             <AnimatePresence mode="wait">
-                            {activeTab === 'currency' && (
                                 <motion.div
-                                    key="currency"
+                                    key={activeTab}
                                     initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
                                     animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
                                     exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
                                     transition={{ duration: 0.22 }}
-                                    className="space-y-4"
+                                    className={`space-y-4 ${activeTab === 'calculator' ? 'flex flex-col h-full' : ''}`}
                                 >
-                                    {!exchangeRates ? (
-                                        <HubSkeleton rows={5} />
-                                    ) : (
+                                    {activeTab === 'currency' ? (
                                         <>
-                                            <p className="text-xs text-gray-500 mb-3 font-medium">1 {currency} equals:</p>
-                                            <div className="space-y-3">
-                                                {['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => {
-                                                    // If base is already one of these, skip or show USD instead
-                                                    if (c === currency) return null;
-                                                    const rate = exchangeRates.rates[c];
-                                                    if (!rate) return null;
-                                                    return (
-                                                        <div key={c} className="flex justify-between items-center group p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors border border-transparent hover:border-gray-100 dark:hover:border-[#30363d]">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#21262d] flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
-                                                                    {c.slice(0, 2)}
+                                            {!exchangeRates ? (
+                                                <HubSkeleton rows={5} />
+                                            ) : (
+                                                <>
+                                                    <p className="text-xs text-gray-500 mb-3 font-medium">1 {currency} equals:</p>
+                                                    <div className="space-y-3">
+                                                        {['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => {
+                                                            // If base is already one of these, skip or show USD instead
+                                                            if (c === currency) return null;
+                                                            const rate = exchangeRates.rates[c];
+                                                            if (!rate) return null;
+                                                            return (
+                                                                <div key={c} className="flex justify-between items-center group p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors border border-transparent hover:border-gray-100 dark:hover:border-[#30363d]">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#21262d] flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                                            {c.slice(0, 2)}
+                                                                        </div>
+                                                                        <span className="font-semibold text-gray-900 dark:text-white">{c}</span>
+                                                                    </div>
+                                                                    <span className="font-mono text-gray-700 dark:text-gray-300 group-hover:text-blue-500 transition-colors">{rate.toFixed(4)}</span>
                                                                 </div>
-                                                                <span className="font-semibold text-gray-900 dark:text-white">{c}</span>
-                                                            </div>
-                                                            <span className="font-mono text-gray-700 dark:text-gray-300 group-hover:text-violet-500 transition-colors">{rate.toFixed(4)}</span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    ) : activeTab === 'news' ? (
+                                        <>
+                                            {marketNews.length === 0 ? (
+                                                <HubSkeleton rows={4} />
+                                            ) : (
+                                                marketNews.map(news => (
+                                                    <a key={news.id} href="#" className="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-surface-hover border border-gray-100 dark:border-[#30363d] transition-all hover:scale-[1.02] hover:shadow-md">
+                                                        <div className="flex justify-between items-start mb-1.5">
+                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${news.sentiment === 'positive' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                                                news.sentiment === 'negative' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
+                                                                    'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
+                                                                }`}>
+                                                                {news.sentiment}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400">{news.time}</span>
                                                         </div>
-                                                    );
-                                                })}
+                                                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-blue-500 transition-colors">{news.title}</h4>
+                                                        <p className="text-xs text-gray-500 font-medium">{news.source}</p>
+                                                    </a>
+                                                ))
+                                            )}
+                                        </>
+                                    ) : activeTab === 'calculator' ? (
+                                        <>
+                                            <p className="text-xs text-gray-500 mb-2">See how monthly savings grow over time with compound interest.</p>
+        
+                                            <div className="space-y-3 flex-1">
+                                                <div>
+                                                    <label htmlFor="calcAmount" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Monthly Save <span>{fmt(calcAmount)}</span></label>
+                                                    <input id="calcAmount" type="range" min="50" max="5000" step="50" value={calcAmount} onChange={e => setCalcAmount(Number(e.target.value))} className="w-full accent-blue-500" />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="calcYears" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Years <span>{calcYears} yrs</span></label>
+                                                    <input id="calcYears" type="range" min="1" max="40" step="1" value={calcYears} onChange={e => setCalcYears(Number(e.target.value))} className="w-full accent-blue-500" />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="calcRate" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Est. Return <span>{calcRate}%</span></label>
+                                                    <input id="calcRate" type="range" min="1" max="15" step="0.5" value={calcRate} onChange={e => setCalcRate(Number(e.target.value))} className="w-full accent-blue-500" />
+                                                </div>
+                                            </div>
+        
+                                            <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-center">
+                                                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Future Value</p>
+                                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                                    {fmt(calcAmount * 12 * ((Math.pow(1 + calcRate / 100, calcYears) - 1) / (calcRate / 100)))}
+                                                </p>
                                             </div>
                                         </>
-                                    )}
+                                    ) : null}
                                 </motion.div>
-                            )}
-
-                            {activeTab === 'news' && (
-                                <motion.div
-                                    key="news"
-                                    initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
-                                    animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-                                    exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
-                                    transition={{ duration: 0.22 }}
-                                    className="space-y-4"
-                                >
-                                    {marketNews.length === 0 ? (
-                                        <HubSkeleton rows={4} />
-                                    ) : (
-                                        marketNews.map(news => (
-                                            <a key={news.id} href="#" className="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-surface-hover border border-gray-100 dark:border-[#30363d] transition-all hover:scale-[1.02] hover:shadow-md">
-                                                <div className="flex justify-between items-start mb-1.5">
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${news.sentiment === 'positive' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
-                                                        news.sentiment === 'negative' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
-                                                            'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
-                                                        }`}>
-                                                        {news.sentiment}
-                                                    </span>
-                                                    <span className="text-xs text-gray-400">{news.time}</span>
-                                                </div>
-                                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-violet-500 transition-colors">{news.title}</h4>
-                                                <p className="text-xs text-gray-500 font-medium">{news.source}</p>
-                                            </a>
-                                        ))
-                                    )}
-                                </motion.div>
-                            )}
-
-                            {activeTab === 'calculator' && (
-                                <motion.div
-                                    key="calculator"
-                                    initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
-                                    animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-                                    exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
-                                    transition={{ duration: 0.22 }}
-                                    className="space-y-4 flex flex-col h-full"
-                                >
-                                    <p className="text-xs text-gray-500 mb-2">See how monthly savings grow over time with compound interest.</p>
-
-                                    <div className="space-y-3 flex-1">
-                                        <div>
-                                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Monthly Save <span>{fmt(calcAmount)}</span></label>
-                                            <input type="range" min="50" max="5000" step="50" value={calcAmount} onChange={e => setCalcAmount(Number(e.target.value))} className="w-full accent-violet-500" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Years <span>{calcYears} yrs</span></label>
-                                            <input type="range" min="1" max="40" step="1" value={calcYears} onChange={e => setCalcYears(Number(e.target.value))} className="w-full accent-violet-500" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Est. Return <span>{calcRate}%</span></label>
-                                            <input type="range" min="1" max="15" step="0.5" value={calcRate} onChange={e => setCalcRate(Number(e.target.value))} className="w-full accent-violet-500" />
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 p-4 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-100 dark:border-violet-500/20 text-center">
-                                        <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1">Future Value</p>
-                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                            {fmt(calcAmount * 12 * ((Math.pow(1 + calcRate / 100, calcYears) - 1) / (calcRate / 100)))}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            )}
                             </AnimatePresence>
                         </div>
                     </div>

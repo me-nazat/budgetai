@@ -127,7 +127,7 @@ export default function WealthGoalsPage() {
         { label: 'Current Net Worth', value: fmt(currentWorth), icon: 'account_balance', tone: 'text-primary bg-primary/10 border-primary/20' },
         { label: 'Goal Progress', value: `${combinedProgress}%`, icon: 'donut_large', tone: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' },
         { label: 'Still Needed', value: fmt(remainingTarget), icon: 'track_changes', tone: 'text-amber-600 bg-amber-500/10 border-amber-500/20' },
-        { label: 'Monthly Target', value: fmt(monthlyContribution), icon: 'next_plan', tone: 'text-violet-600 bg-violet-500/10 border-violet-500/20' },
+        { label: 'Monthly Target', value: fmt(monthlyContribution), icon: 'next_plan', tone: 'text-teal-600 bg-teal-500/10 border-teal-500/20' },
     ];
 
     return (

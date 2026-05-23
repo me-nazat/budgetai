@@ -651,8 +651,8 @@ function DataVizSection() {
                             </div>
                         </motion.div>
                         <motion.div variants={fadeInUp} whileHover={{ x: 10 }} className="lp-glass-card p-6 rounded-2xl flex items-center gap-5 cursor-pointer transition-all">
-                            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 flex items-center justify-center flex-shrink-0">
-                                <span className="material-symbols-outlined text-3xl text-violet-500">wallet</span>
+                            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                                <span className="material-symbols-outlined text-3xl text-teal-500">wallet</span>
                             </div>
                             <div>
                                 <h4 className="font-bold text-gray-900 dark:text-white text-lg" style={{ fontFamily: 'var(--font-playfair), serif' }}>Spend Analysis</h4>

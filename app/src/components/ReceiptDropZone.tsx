@@ -91,7 +91,7 @@ export default function ReceiptDropZone() {
                         : 'border-gray-200 dark:border-white/10 hover:border-primary/40 hover:bg-gray-50 dark:hover:bg-white/5'
                     }`}
             >
-                <input
+                <input aria-label="Input field"
                     ref={fileRef}
                     type="file"
                     accept="image/*"

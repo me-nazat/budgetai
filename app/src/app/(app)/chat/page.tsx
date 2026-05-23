@@ -555,7 +555,7 @@ export default function ChatPage() {
                 { t: 'Good morning! Show my spending today', i: 'wb_sunny', c: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-200 dark:border-amber-500/20' },
                 { t: 'I spent 200 on breakfast', i: 'restaurant', c: 'text-orange-500 bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20' },
                 { t: 'How much have I saved this month?', i: 'savings', c: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20' },
-                { t: 'Generate a full report', i: 'summarize', c: 'text-violet-500 bg-violet-50 dark:bg-violet-500/10', border: 'border-violet-200 dark:border-violet-500/20' },
+                { t: 'Generate a full report', i: 'summarize', c: 'text-teal-500 bg-teal-50 dark:bg-teal-500/10', border: 'border-teal-200 dark:border-teal-500/20' },
             ];
         }
         if (h < 17) {
@@ -563,14 +563,14 @@ export default function ChatPage() {
                 { t: 'Show my spending this week', i: 'pie_chart', c: 'text-primary bg-blue-50 dark:bg-primary/10', border: 'border-blue-200 dark:border-primary/20' },
                 { t: 'I spent 500 on groceries', i: 'shopping_cart', c: 'text-orange-500 bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20' },
                 { t: 'Am I on track with my budgets?', i: 'account_balance_wallet', c: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20' },
-                { t: 'Generate a report for this month', i: 'summarize', c: 'text-violet-500 bg-violet-50 dark:bg-violet-500/10', border: 'border-violet-200 dark:border-violet-500/20' },
+                { t: 'Generate a report for this month', i: 'summarize', c: 'text-teal-500 bg-teal-50 dark:bg-teal-500/10', border: 'border-teal-200 dark:border-teal-500/20' },
             ];
         }
         return [
             { t: 'Summarize my spending today', i: 'query_stats', c: 'text-primary bg-blue-50 dark:bg-primary/10', border: 'border-blue-200 dark:border-primary/20' },
             { t: 'I spent 800 on dinner out', i: 'restaurant', c: 'text-orange-500 bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20' },
             { t: 'I received 3000 salary', i: 'payments', c: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20' },
-            { t: 'Generate my weekly report', i: 'summarize', c: 'text-violet-500 bg-violet-50 dark:bg-violet-500/10', border: 'border-violet-200 dark:border-violet-500/20' },
+            { t: 'Generate my weekly report', i: 'summarize', c: 'text-teal-500 bg-teal-50 dark:bg-teal-500/10', border: 'border-teal-200 dark:border-teal-500/20' },
         ];
     };
 
@@ -579,7 +579,7 @@ export default function ChatPage() {
             {/* Header */}
             <div className="h-14 lg:h-16 border-b border-gray-200 dark:border-[#30363d] flex items-center justify-between px-4 lg:px-6 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary to-violet-600 flex items-center justify-center shadow-sm shadow-primary/30">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary to-teal-600 flex items-center justify-center shadow-sm shadow-primary/30">
                         <span className="material-symbols-outlined text-white text-lg">smart_toy</span>
                     </div>
                     <div>
@@ -635,7 +635,7 @@ export default function ChatPage() {
             {/* Finance Mode Toast */}
             {showFinanceToast && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 toast-enter">
-                    <div className="flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-violet-600 to-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-teal-600 to-primary text-white rounded-xl shadow-lg shadow-primary/20">
                         <span className="material-symbols-outlined text-lg">construction</span>
                         <span className="text-sm font-semibold">Finance Mode is under development — coming soon!</span>
                     </div>
@@ -697,7 +697,7 @@ export default function ChatPage() {
             <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-5">
                 {messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto page-enter">
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary/20 to-violet-600/20 flex items-center justify-center mb-6 relative animate-glow-pulse">
+                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary/20 to-teal-600/20 flex items-center justify-center mb-6 relative animate-glow-pulse">
                             <div className="absolute inset-0 rounded-2xl bg-primary/10 animate-ping opacity-50" style={{ animationDuration: '2s' }} />
                             <span className="material-symbols-outlined text-4xl text-primary relative z-10">smart_toy</span>
                         </div>
@@ -736,7 +736,7 @@ export default function ChatPage() {
                         {/* Avatar */}
                         <div className={`w-8 h-8 lg:w-9 lg:h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${msg.role === 'user'
                             ? 'bg-gray-200 dark:bg-surface-hover border border-gray-300 dark:border-[#30363d]'
-                            : 'bg-gradient-to-tr from-primary to-violet-600 shadow-lg shadow-primary/20'
+                            : 'bg-gradient-to-tr from-primary to-teal-600 shadow-lg shadow-primary/20'
                             }`}>
                             <span className={`material-symbols-outlined text-base lg:text-lg ${msg.role === 'user' ? 'text-gray-500 dark:text-text-muted' : 'text-white'}`}>
                                 {msg.role === 'user' ? 'person' : 'smart_toy'}
@@ -811,7 +811,7 @@ export default function ChatPage() {
                             {msg.attachmentSummaries && msg.attachmentSummaries.length > 0 && (
                                 <div className="mt-2 space-y-1.5 w-full">
                                     {msg.attachmentSummaries.map((summary, j) => (
-                                        <div key={`${summary.name}-${j}`} className="rounded-xl border border-violet-200 bg-violet-50/80 px-3 py-2.5 text-xs text-violet-800 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200">
+                                        <div key={`${summary.name}-${j}`} className="rounded-xl border border-teal-200 bg-teal-50/80 px-3 py-2.5 text-xs text-teal-800 dark:border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-200">
                                             <div className="mb-1 flex items-center gap-2 font-bold">
                                                 <span className="material-symbols-outlined text-[15px]">attach_file</span>
                                                 <span className="truncate">{summary.name}</span>
@@ -899,7 +899,7 @@ export default function ChatPage() {
                 {/* Loading indicator with elapsed timer */}
                 {loading && (
                     <div className="flex gap-3 max-w-3xl animate-fade-in">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-violet-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-teal-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
                             <span className="material-symbols-outlined text-lg text-white">smart_toy</span>
                         </div>
                         <div className="card-premium px-5 py-3.5 rounded-2xl rounded-tl-sm">
@@ -925,7 +925,7 @@ export default function ChatPage() {
                     <button onClick={() => setInput('📊 Give me a summary of my spending')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-gray-100 text-primary dark:bg-primary/10 hover:bg-gray-200 dark:hover:bg-primary/20 transition-all border border-gray-200 dark:border-primary/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">query_stats</span>Summary</button>
                     <button onClick={() => setInput('💰 I spent 500 on groceries')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-all border border-orange-200 dark:border-orange-500/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">remove</span>Expense</button>
                     <button onClick={() => setInput('📈 I earned 5000 from freelance')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all border border-emerald-200 dark:border-emerald-500/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">add</span>Earning</button>
-                    <button onClick={() => setInput('Generate a full report for this month')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-all border border-violet-200 dark:border-violet-500/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">summarize</span>Report</button>
+                    <button onClick={() => setInput('Generate a full report for this month')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition-all border border-teal-200 dark:border-teal-500/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">summarize</span>Report</button>
                 </div>
                 {attachments.length > 0 && (
                     <div className="mb-3 flex max-w-3xl mx-auto flex-wrap gap-2">

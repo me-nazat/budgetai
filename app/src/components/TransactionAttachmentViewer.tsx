@@ -87,6 +87,8 @@ export default function TransactionAttachmentViewer({ fileToken, transactionSlug
         <html>
           <head>
             <title>${metadata.name}</title>
+            <meta name="description" content="Print preview for ${metadata.name}" />
+            <meta property="og:title" content="${metadata.name}" />
             <style>
               html, body { margin: 0; background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
               img { max-width: 100vw; max-height: 100vh; object-fit: contain; }

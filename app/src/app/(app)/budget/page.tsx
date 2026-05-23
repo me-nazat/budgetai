@@ -9,10 +9,10 @@ interface CustomBudgetCategory { id?: number; name: string; icon: string; color:
 
 const STANDARD_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Other'];
 const DB_ICONS: Record<string, string> = { Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt', Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety', Education: 'school', Business: 'business_center', Other: 'category' };
-const DB_COLORS: Record<string, string> = { Food: 'orange', Transport: 'purple', Housing: 'blue', Utilities: 'yellow', Entertainment: 'pink', Shopping: 'indigo', Health: 'emerald', Education: 'cyan', Business: 'sky', Other: 'gray' };
+const DB_COLORS: Record<string, string> = { Food: 'orange', Transport: 'cyan', Housing: 'blue', Utilities: 'yellow', Entertainment: 'pink', Shopping: 'indigo', Health: 'emerald', Education: 'cyan', Business: 'sky', Other: 'gray' };
 const CATEGORY_COLOR_STYLES: Record<string, { icon: string; iconBg: string; text: string }> = {
     orange: { icon: 'text-orange-600 dark:text-orange-400', iconBg: 'bg-orange-50 dark:bg-orange-500/10', text: 'text-orange-500' },
-    purple: { icon: 'text-purple-600 dark:text-purple-400', iconBg: 'bg-purple-50 dark:bg-purple-500/10', text: 'text-purple-500' },
+    cyan: { icon: 'text-cyan-600 dark:text-cyan-400', iconBg: 'bg-cyan-50 dark:bg-cyan-500/10', text: 'text-cyan-500' },
     blue: { icon: 'text-blue-600 dark:text-blue-400', iconBg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-500' },
     yellow: { icon: 'text-yellow-600 dark:text-yellow-400', iconBg: 'bg-yellow-50 dark:bg-yellow-500/10', text: 'text-yellow-500' },
     pink: { icon: 'text-pink-600 dark:text-pink-400', iconBg: 'bg-pink-50 dark:bg-pink-500/10', text: 'text-pink-500' },
@@ -23,8 +23,8 @@ const CATEGORY_COLOR_STYLES: Record<string, { icon: string; iconBg: string; text
     rose: { icon: 'text-rose-600 dark:text-rose-400', iconBg: 'bg-rose-50 dark:bg-rose-500/10', text: 'text-rose-500' },
     amber: { icon: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-50 dark:bg-amber-500/10', text: 'text-amber-500' },
     teal: { icon: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-50 dark:bg-teal-500/10', text: 'text-teal-500' },
-    violet: { icon: 'text-violet-600 dark:text-violet-400', iconBg: 'bg-violet-50 dark:bg-violet-500/10', text: 'text-violet-500' },
-    fuchsia: { icon: 'text-fuchsia-600 dark:text-fuchsia-400', iconBg: 'bg-fuchsia-50 dark:bg-fuchsia-500/10', text: 'text-fuchsia-500' },
+    teal: { icon: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-50 dark:bg-teal-500/10', text: 'text-teal-500' },
+    cyan: { icon: 'text-cyan-600 dark:text-cyan-400', iconBg: 'bg-cyan-50 dark:bg-cyan-500/10', text: 'text-cyan-500' },
     gray: { icon: 'text-gray-600 dark:text-gray-400', iconBg: 'bg-gray-50 dark:bg-gray-500/10', text: 'text-gray-500' },
     primary: { icon: 'text-primary', iconBg: 'bg-primary/10', text: 'text-primary' },
 };

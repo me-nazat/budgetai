@@ -101,7 +101,7 @@ export default function OverviewPage() {
     const kpis = [
         { label: 'Total Saved', value: fmt(Math.max(0, netSavings)), detail: `${savingsRate.toFixed(1)}% savings rate`, icon: 'savings', tone: 'text-emerald-500', bgTone: 'bg-emerald-50 dark:bg-emerald-500/10' },
         { label: 'Cash Flow', value: fmt(totalIncome - totalExpense), detail: `${totalIncome >= totalExpense ? 'Positive' : 'Negative'} monthly cashflow`, icon: 'account_balance_wallet', tone: 'text-primary', bgTone: 'bg-blue-50 dark:bg-blue-500/10' },
-        { label: 'Budget Health', value: `${Math.max(0, Math.min(100, Math.round(100 - Math.max(0, totalExpense - totalIncome) / Math.max(1, totalIncome) * 100)))}%`, detail: riskBudgets.length ? `${riskBudgets.length} critical budgets` : 'Budgets stable', icon: 'health_and_safety', tone: 'text-violet-500', bgTone: 'bg-violet-50 dark:bg-violet-500/10' },
+        { label: 'Budget Health', value: `${Math.max(0, Math.min(100, Math.round(100 - Math.max(0, totalExpense - totalIncome) / Math.max(1, totalIncome) * 100)))}%`, detail: riskBudgets.length ? `${riskBudgets.length} critical budgets` : 'Budgets stable', icon: 'health_and_safety', tone: 'text-teal-500', bgTone: 'bg-teal-50 dark:bg-teal-500/10' },
     ];
 
     return (

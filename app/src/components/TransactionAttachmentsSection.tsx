@@ -241,7 +241,7 @@ export default function TransactionAttachmentsSection({
             </button>
           </div>
 
-          <input ref={inputRef} type="file" multiple onChange={handleFileChange} className="hidden" />
+          <input aria-label="Input field" ref={inputRef} type="file" multiple onChange={handleFileChange} className="hidden" />
 
           {/* Drop Zone */}
           <div
@@ -353,9 +353,9 @@ export default function TransactionAttachmentsSection({
                       key={file.id}
                       className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-[#30363d] dark:bg-[#161b22]"
                     >
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-0"></a>
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10"></a>
                       
-                      <div className="relative z-10 p-4">
+                      <div className="relative z-20 p-4 pointer-events-none">
                           <div className="flex items-start justify-between">
                             <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isImage ? 'bg-indigo-50 text-indigo-500 dark:bg-indigo-500/10 dark:text-indigo-400' : 'bg-primary/10 text-primary'}`}>
                                 <span className="material-symbols-outlined text-[20px]">{icon}</span>
@@ -363,7 +363,7 @@ export default function TransactionAttachmentsSection({
                             <button
                               type="button"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFile(file.id, file.name); }}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:opacity-100 dark:bg-[#21262d] dark:hover:bg-rose-500/20"
+                              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:opacity-100 dark:bg-[#21262d] dark:hover:bg-rose-500/20"
                               title="Delete file"
                             >
                               <span className="material-symbols-outlined text-[16px]">delete</span>

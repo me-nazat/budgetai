@@ -580,18 +580,18 @@ export default function TransactionsPage() {
                 </div>
 
                 {/* Wealth Insights Widget */}
-                <div className="card-premium p-4 rounded-xl col-span-2 lg:col-span-2 flex gap-4 bg-gradient-to-r from-violet-500/5 to-fuchsia-500/5 items-center justify-around border-violet-100 dark:border-violet-500/10 border">
+                <div className="card-premium p-4 rounded-xl col-span-2 lg:col-span-2 flex gap-4 bg-gradient-to-r from-teal-500/5 to-cyan-500/5 items-center justify-around border-teal-100 dark:border-teal-500/10 border">
                     <div className="flex flex-col items-center justify-center text-center w-1/2">
-                        <span className="material-symbols-outlined text-violet-500 text-sm mb-0.5">warning</span>
-                        <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Largest Expense</p>
+                        <span className="material-symbols-outlined text-teal-500 text-sm mb-0.5">warning</span>
+                        <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Largest Expense</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 truncate w-full px-2" title={biggestExpense?.description || biggestExpense?.category || 'None'}>
                             {biggestExpense ? `${fmt(biggestExpense.amount)} (${biggestExpense.description || biggestExpense.category})` : 'N/A'}
                         </p>
                     </div>
                     <div className="w-px h-10 bg-gray-200 dark:bg-[#30363d]"></div>
                     <div className="flex flex-col items-center justify-center text-center w-1/2">
-                        <span className="material-symbols-outlined text-fuchsia-500 text-sm mb-0.5">repeat</span>
-                        <p className="text-[10px] font-bold text-fuchsia-600 dark:text-fuchsia-400 uppercase tracking-wider">Frequent Category</p>
+                        <span className="material-symbols-outlined text-cyan-500 text-sm mb-0.5">repeat</span>
+                        <p className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">Frequent Category</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 truncate w-full px-2">
                             {topCategory ? `${topCategory} (${topCategoryCount}x)` : 'N/A'}
                         </p>
@@ -694,7 +694,7 @@ export default function TransactionsPage() {
                                                     type="button"
                                                     onClick={() => handleScanAttachment(file, idx)}
                                                     disabled={qaScanningId === idx}
-                                                    className="ml-1 flex items-center gap-1 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600 hover:bg-violet-200 disabled:opacity-50 dark:bg-violet-500/20 dark:text-violet-300"
+                                                    className="ml-1 flex items-center gap-1 rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-600 hover:bg-teal-200 disabled:opacity-50 dark:bg-teal-500/20 dark:text-teal-300"
                                                 >
                                                     {qaScanningId === idx ? 'Scanning...' : 'Scan'}
                                                     <span className="material-symbols-outlined text-[12px]">document_scanner</span>
