@@ -13,7 +13,7 @@ import {
     CategoryScale, LinearScale, BarElement, LineElement, PointElement,
     Title, Tooltip, Legend, Filler, ArcElement,
 } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
+import { Line, Doughnut } from 'react-chartjs-2';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
@@ -147,11 +147,11 @@ export default function DashboardPage() {
     const gridColor = isDark ? '#21262d' : '#e5e7eb';
     const tickColor = isDark ? '#8b949e' : '#6b7280';
 
-    const barData = {
+    const chartData = {
         labels: data.dailySpending.map(d => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
         datasets: [
-            { label: 'Expenses', data: data.dailySpending.map(d => d.expenses), backgroundColor: isDark ? 'rgba(19, 109, 236, 0.6)' : 'rgba(19, 109, 236, 0.7)', borderRadius: 6, borderSkipped: false as const },
-            { label: 'Earnings', data: data.dailySpending.map(d => d.earnings), backgroundColor: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(16, 185, 129, 0.7)', borderRadius: 6, borderSkipped: false as const },
+            { label: 'Expenses', data: data.dailySpending.map(d => d.expenses), borderColor: '#136dec', backgroundColor: isDark ? 'rgba(19, 109, 236, 0.2)' : 'rgba(19, 109, 236, 0.1)', fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 6, borderWidth: 2 },
+            { label: 'Earnings', data: data.dailySpending.map(d => d.earnings), borderColor: '#10b981', backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 6, borderWidth: 2 },
         ],
     };
 
@@ -499,7 +499,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <div className="h-[280px]">
-                            <Bar ref={chartRef} data={barData} options={{
+                            <Line ref={chartRef} data={chartData} options={{
                                 responsive: true, maintainAspectRatio: false,
                                 plugins: {
                                     legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },

@@ -11,7 +11,9 @@ export default function Home() {
     fetch('/api/auth/me')
       .then(r => r.json())
       .then(d => {
-        if (d.user) setIsLoggedIn(true);
+        // Handle both legacy and apiSuccess envelope formats
+        const user = d.user || d.data?.user;
+        if (user) setIsLoggedIn(true);
       })
       .catch(() => { })
       .finally(() => setLoading(false));

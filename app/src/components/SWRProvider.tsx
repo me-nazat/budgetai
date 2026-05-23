@@ -3,10 +3,16 @@
 import { SWRConfig } from 'swr';
 import type { Cache, State } from 'swr';
 
-const fetcher = (url: string) => fetch(url).then(r => {
-    if (!r.ok) throw new Error('API error');
-    return r.json();
-});
+const fetcher = async (url: string) => {
+    const r = await fetch(url);
+    if (!r.ok) {
+        const errJson = await r.json().catch(() => ({}));
+        throw new Error(errJson?.error?.message || errJson?.error || 'API error');
+    }
+    const json = await r.json();
+    // Transparently unwrap ApiSuccessResponse envelope
+    return (json && typeof json === 'object' && json.success === true && 'data' in json) ? json.data : json;
+};
 
 const STORAGE_KEY = 'wealth-ai-swr-cache-v1';
 const CACHE_TTL_MS = 30 * 60 * 1000;

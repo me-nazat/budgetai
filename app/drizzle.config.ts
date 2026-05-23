@@ -8,7 +8,10 @@
  * @module drizzle.config
  */
 
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+dotenv.config(); // fallback to .env if .env.local variables are missing
+
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
