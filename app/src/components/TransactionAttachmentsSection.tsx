@@ -343,45 +343,42 @@ export default function TransactionAttachmentsSection({
                 No files attached yet. Upload receipts, invoices, or documents to this transaction.
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {attachments.map((file) => {
                   const icon = pickFileIcon(file.mimeType, file.name);
                   const href = buildAttachmentViewerHref(transactionDescription, transactionId, file.id);
+                  const isImage = file.mimeType?.startsWith('image/');
                   return (
                     <div
                       key={file.id}
-                      className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-all hover:border-primary/20 hover:shadow-md dark:border-[#30363d] dark:bg-[#161b22] dark:hover:border-primary/30"
+                      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-[#30363d] dark:bg-[#161b22]"
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary/70">
-                        <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-semibold text-gray-800 dark:text-gray-200">
-                          {file.name}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
-                          {formatFileSize(file.size)}
-                          {file.modifiedTime ? ` · ${timeAgo(file.modifiedTime)}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 transition-all active:scale-95 hover:border-primary/20 hover:bg-primary/5 hover:text-primary dark:border-[#30363d] dark:bg-[#0d1117] dark:text-gray-400 dark:hover:text-primary"
-                        >
-                          Open
-                          <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteFile(file.id, file.name)}
-                          className="flex items-center justify-center rounded-lg border border-transparent px-2 py-1.5 text-gray-400 transition-all hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 active:scale-95"
-                          title="Delete file"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">delete</span>
-                        </button>
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-0"></a>
+                      
+                      <div className="relative z-10 p-4">
+                          <div className="flex items-start justify-between">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isImage ? 'bg-indigo-50 text-indigo-500 dark:bg-indigo-500/10 dark:text-indigo-400' : 'bg-primary/10 text-primary'}`}>
+                                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFile(file.id, file.name); }}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:opacity-100 dark:bg-[#21262d] dark:hover:bg-rose-500/20"
+                              title="Delete file"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                          </div>
+                          
+                          <div className="mt-4">
+                            <p className="truncate text-sm font-bold text-gray-900 dark:text-white" title={file.name}>
+                              {file.name}
+                            </p>
+                            <div className="mt-1 flex items-center justify-between text-xs font-medium text-gray-500">
+                              <span>{formatFileSize(file.size)}</span>
+                              {file.modifiedTime && <span>{timeAgo(file.modifiedTime)}</span>}
+                            </div>
+                          </div>
                       </div>
                     </div>
                   );

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
-import { invalidateFinancialData } from '@/hooks/useApi';
+import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction } from '@/lib/offlineDb';
 import {
@@ -47,6 +47,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     const [showSuccess, setShowSuccess] = useState(false);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [qaScanningId, setQaScanningId] = useState<number | null>(null);
+    const invalidateFinancialData = useInvalidateFinancialData();
     
     // Custom Categories State
     const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -391,8 +392,10 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                 </button>
                             </div>
 
-                            {/* Amount Input */}
-                            <div className="mb-6">
+                            {/* Amount & Date Grid */}
+                            <div className="grid grid-cols-2 gap-4 mb-5">
+                                {/* Amount Input */}
+                                <div>
                                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Amount</label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400 dark:text-gray-500">{sym}</span>
@@ -405,11 +408,23 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                         className="w-full pl-12 pr-4 py-4 text-3xl font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-[#30363d] rounded-2xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-center"
                                         autoFocus
                                     />
+                                    </div>
+                                </div>
+
+                                {/* Date Picker */}
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Date</label>
+                                    <input
+                                        type="date"
+                                        value={date}
+                                        onChange={e => setDate(e.target.value)}
+                                        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm font-medium"
+                                    />
                                 </div>
                             </div>
 
                             {/* Category Pills */}
-                            <div className="mb-6">
+                            <div className="mb-5">
                                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Category</label>
                                 <div className="flex flex-wrap gap-2">
                                     {allCategories.map(cat => {
@@ -462,17 +477,6 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                                 </div>
                             </div>
 
-                            {/* Date Picker */}
-                            <div className="mb-4">
-                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Date</label>
-                                <input
-                                    type="date"
-                                    value={date}
-                                    onChange={e => setDate(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
-                                />
-                            </div>
-
                             {/* Description (Required) */}
                             <div className="mb-4">
                                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
@@ -498,7 +502,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                             </div>
 
                             {/* Additional Notes (Optional) */}
-                            <div className="mb-6">
+                            <div className="mb-5">
                                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Add more details <span className="text-gray-400 dark:text-gray-500 font-normal normal-case">(optional)</span></label>
                                 <textarea
                                     value={notes}

@@ -5,13 +5,15 @@ import { createPortal } from 'react-dom';
 import { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
-import { CURRENCIES } from '@/lib/currency';
-import { useTransactions, invalidateFinancialData } from '@/hooks/useApi';
+import { useSWRConfig } from 'swr';
+import { useTransactions } from '@/hooks/useApi';
+import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor } from '@/lib/categoryUtils';
+import { CURRENCIES } from '@/lib/currency';
 import { MAX_ATTACHMENT_FILES } from '@/lib/transaction-attachments';
 import TransactionAttachmentsSection from '@/components/TransactionAttachmentsSection';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
@@ -64,6 +66,8 @@ export default function TransactionsPage() {
     const [qaAttachments, setQaAttachments] = useState<File[]>([]);
     const [qaScanningId, setQaScanningId] = useState<number | null>(null);
     const [qaSubmitting, setQaSubmitting] = useState(false);
+    
+    const invalidateFinancialData = useInvalidateFinancialData();
 
     // Custom Category Add State (Desktop Inline)
     const [qaAddingCustomCategory, setQaAddingCustomCategory] = useState(false);
@@ -599,8 +603,8 @@ export default function TransactionsPage() {
             {showQuickAdd && (
                 <form onSubmit={e => { e.preventDefault(); submitQuickAdd(); }} className="card-premium mb-5 overflow-hidden rounded-2xl animate-slide-up">
                     <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
-                        <div className={`relative p-5 lg:p-6 ${qaType === 'expense' ? 'stat-gradient-orange' : 'stat-gradient-emerald'}`}>
-                            <div className="mb-5 flex items-center justify-between gap-3">
+                        <div className={`relative p-4 lg:p-5 ${qaType === 'expense' ? 'stat-gradient-orange' : 'stat-gradient-emerald'}`}>
+                            <div className="mb-4 flex items-center justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-text-muted">New transaction</p>
                                     <h3 className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{qaType === 'expense' ? 'Record Expense' : 'Record Earning'}</h3>
@@ -610,7 +614,7 @@ export default function TransactionsPage() {
                                 </div>
                             </div>
 
-                            <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-white/70 p-1 dark:bg-black/20">
+                            <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white/70 p-1 dark:bg-black/20">
                                 {(['expense', 'earning'] as const).map(type => (
                                     <button
                                         key={type}
@@ -637,7 +641,7 @@ export default function TransactionsPage() {
                                 />
                             </div>
 
-                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div>
                                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Date</label>
                                     <input
@@ -732,8 +736,8 @@ export default function TransactionsPage() {
                             </div>
                         </div>
 
-                        <div className="p-5 lg:p-6">
-                            <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="p-4 lg:p-5">
+                            <div className="mb-3 flex items-center justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-text-muted">Category</p>
                                     <p className="mt-1 text-sm text-gray-500 dark:text-text-muted">{qaAddingCustomCategory ? 'Custom style' : 'Select a group'}</p>

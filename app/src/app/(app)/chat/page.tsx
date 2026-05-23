@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { invalidateFinancialData } from '@/hooks/useApi';
+import { useUser } from '@/hooks/useApi';
+import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 
@@ -48,6 +49,8 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [mode, setMode] = useState<'chat' | 'silent'>('silent');
+    const [submitting, setSubmitting] = useState(false);
+    const invalidateFinancialData = useInvalidateFinancialData();
     const [loading, setLoading] = useState(false);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [showFinanceToast, setShowFinanceToast] = useState(false);

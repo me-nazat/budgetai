@@ -131,7 +131,7 @@ export default function TransactionDetailModal({
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
                                 placeholder="Add extra details, context, or receipt notes..."
-                                className="w-full flex-1 min-h-[100px] p-4 rounded-2xl bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-[#30363d] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all text-sm text-gray-800 dark:text-white placeholder-gray-400"
+                                className="w-full flex-1 min-h-[120px] p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none transition-all text-[15px] leading-relaxed text-gray-800 dark:text-gray-200 placeholder-gray-400 whitespace-pre-wrap shadow-sm"
                             />
                             {notes !== (transaction.notes || '') && (
                                 <button
@@ -172,7 +172,7 @@ export default function TransactionDetailModal({
                     </div>
 
                     {/* Right Column: Attachments */}
-                    <div className="flex-1 p-6 md:p-8 bg-gray-50/50 dark:bg-black/20 relative overflow-y-auto scrollbar-thin">
+                    <div className="flex-1 p-6 md:p-8 bg-gray-50 dark:bg-black/40 relative overflow-y-auto scrollbar-thin border-l border-gray-100 dark:border-white/5">
                         <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors hidden md:block">
                             <span className="material-symbols-outlined text-gray-500 text-[20px]">close</span>
                         </button>

@@ -6,12 +6,13 @@ import {
     deleteSyncedTransaction,
     incrementRetryCount,
 } from '@/lib/offlineDb';
-import { invalidateFinancialData } from '@/hooks/useApi';
+import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 
 const MAX_RETRIES = 3;
 
 export function useSyncOnReconnect() {
     const isSyncing = useRef(false);
+    const invalidateFinancialData = useInvalidateFinancialData();
 
     useEffect(() => {
         const syncPending = async () => {

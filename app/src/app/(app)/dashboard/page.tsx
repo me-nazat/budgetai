@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
-import { invalidateFinancialData, useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
+import { useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
+import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import {
     Chart as ChartJS,
     CategoryScale, LinearScale, BarElement, LineElement, PointElement,
@@ -103,6 +104,8 @@ export default function DashboardPage() {
     const [mounted, setMounted] = useState(false);
 
     // Intelligence Hub — default to 'news' tab (Task 2)
+    const [chartTimeframe, setChartTimeframe] = useState<'30D' | '90D' | 'YTD'>('30D');
+    const invalidateFinancialData = useInvalidateFinancialData();
     const [activeTab, setActiveTab] = useState<'currency' | 'news' | 'calculator'>('news');
     const [calcAmount, setCalcAmount] = useState<number>(500);
     const [calcYears, setCalcYears] = useState<number>(10);
