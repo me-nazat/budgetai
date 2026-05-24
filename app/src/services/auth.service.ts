@@ -48,6 +48,11 @@ import {
   ValidationError,
   ErrorCode,
 } from '@/lib/types/errors';
+import {
+  isLockedOut,
+  recordFailedAttempt,
+  clearFailedAttempts,
+} from '@/lib/security/account-lockout';
 
 /** Bcrypt cost factor — 12 provides ~250ms hash time. */
 const BCRYPT_ROUNDS = 12;
@@ -196,10 +201,22 @@ export class AuthService {
   ): Promise<AuthResult> {
     const validated = validateInput(LoginDTO, data);
 
+    // Account lockout check
+    if (ctx.ip) {
+      const lockout = isLockedOut(ctx.ip);
+      if (lockout.locked) {
+        throw new AuthenticationError(
+          'Too many failed attempts. Please try again later.',
+          ErrorCode.RATE_LIMITED
+        );
+      }
+    }
+
     // Find user
     const user = await UserRepository.findByEmail(validated.email);
     if (!user) {
       AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'user_not_found');
+      if (ctx.ip) recordFailedAttempt(ctx.ip);
       throw new AuthenticationError(
         'Invalid email or password',
         ErrorCode.INVALID_CREDENTIALS
@@ -210,6 +227,7 @@ export class AuthService {
     const passwordValid = await bcrypt.compare(validated.password, user.passwordHash);
     if (!passwordValid) {
       AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_password');
+      if (ctx.ip) recordFailedAttempt(ctx.ip);
       throw new AuthenticationError(
         'Invalid email or password',
         ErrorCode.INVALID_CREDENTIALS
@@ -247,6 +265,7 @@ export class AuthService {
     }
 
     // Full login — create session
+    if (ctx.ip) clearFailedAttempts(ctx.ip);
     return AuthService.completeLogin(user, ctx);
   }
 
@@ -505,5 +524,53 @@ export class AuthService {
       totpEnabled: user.totpEnabled === 1,
       createdAt: user.createdAt,
     };
+  }
+
+  /**
+   * Changes the user's password.
+   *
+   * Requires verification of the current password before accepting a new one.
+   * Invalidates all existing refresh tokens for the user on success.
+   *
+   * @param userId - The user's ID.
+   * @param currentPassword - The user's current password.
+   * @param newPassword - The desired new password.
+   *
+   * @throws {AuthenticationError} If the current password is incorrect.
+   * @throws {NotFoundError} If the user doesn't exist.
+   */
+  static async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<void> {
+    const user = await UserRepository.findById(userId);
+    if (!user) throw new NotFoundError('User not found', ErrorCode.USER_NOT_FOUND);
+
+    // Verify current password
+    const passwordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!passwordValid) {
+      throw new AuthenticationError(
+        'Current password is incorrect',
+        ErrorCode.INVALID_CREDENTIALS
+      );
+    }
+
+    // Hash new password
+    const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+    // Update password in DB
+    await UserRepository.updatePassword(userId, newHash);
+
+    // Revoke all existing sessions (force re-login everywhere)
+    await UserRepository.revokeAllSessions(userId);
+
+    // Audit log
+    AuditService.logAction({
+      userId,
+      action: 'PASSWORD_CHANGE',
+      entityType: 'user',
+      entityId: String(userId),
+    });
   }
 }

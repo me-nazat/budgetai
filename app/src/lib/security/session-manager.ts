@@ -279,7 +279,7 @@ export async function setSessionCookies(
   cookieStore.set(ACCESS_COOKIE_NAME, accessToken, {
     httpOnly: true,
     secure: isSecure,
-    sameSite: 'lax',
+    sameSite: 'strict',
     maxAge: ACCESS_MAX_AGE,
     path: '/',
   });
@@ -287,7 +287,7 @@ export async function setSessionCookies(
   cookieStore.set(REFRESH_COOKIE_NAME, refreshToken, {
     httpOnly: true,
     secure: isSecure,
-    sameSite: 'lax',
+    sameSite: 'strict',
     maxAge: REFRESH_MAX_AGE,
     path: '/',
   });

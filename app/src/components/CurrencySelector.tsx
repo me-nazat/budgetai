@@ -20,7 +20,7 @@ export default function CurrencySelector() {
         fetch('/api/auth/me')
             .then(r => r.json())
             .then(d => {
-                if (d.user?.currency && (d.user.currency === 'USD' || d.user.currency === 'BDT')) {
+                if (d.user?.currency && Object.keys(CURRENCIES).includes(d.user.currency)) {
                     // Server has currency — save to localStorage and skip modal
                     localStorage.setItem('budget-ai-currency', d.user.currency);
                 } else {

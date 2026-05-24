@@ -20,6 +20,7 @@ import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex 
 import TransactionDetailModal from '@/components/TransactionDetailModal';
 import PredictiveCashflow from '@/components/charts/PredictiveCashflow';
 import AnimatedCounter from '@/components/AnimatedCounter';
+import { HealthScoreWidget } from '@/components/dashboard/HealthScoreWidget';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -380,6 +381,11 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
+                {/* Health Score Widget */}
+                <div className="mb-6">
+                    <HealthScoreWidget />
+                </div>
+
                 {/* AI Insight Card (Redesigned) */}
                 <div className="relative card-premium rounded-2xl p-5 mb-6 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgb(16,185,129)]" />
@@ -481,6 +487,11 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </header>
+
+                {/* Health Score Widget */}
+                <div className="mb-8" style={{ animation: 'slideUp 0.5s ease-out 0s both' }}>
+                    <HealthScoreWidget />
+                </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">

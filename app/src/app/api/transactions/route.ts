@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/security/session-manager';
+import { NextRequest, NextResponse } from 'next/server';
+import { apiHandler } from "@/lib/middleware/api-handler";
+import { withAuth } from "@/lib/middleware/with-auth";
 import { queryAll, queryOne, run } from '@/lib/db';
 import { maybeCreateBudgetAlert } from '@/lib/alerts';
 import { isStandardCategory, resolveColor, resolveIcon } from '@/lib/categoryUtils';
@@ -31,11 +32,8 @@ async function ensureCustomCategory(userId: number, type: string, categoryName: 
     }
 }
 
-export async function GET(request: Request) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+export const GET = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
         const { searchParams } = new URL(request.url);
         const startDate = searchParams.get('start');
         const endDate = searchParams.get('end');
@@ -56,7 +54,7 @@ export async function GET(request: Request) {
         }
 
         let sql = 'SELECT * FROM transactions WHERE user_id = ?';
-        const params: unknown[] = [session.userId];
+        const params: unknown[] = [userId];
 
         if (startDate) { sql += ' AND date >= ?'; params.push(startDate); }
         if (endDate) { sql += ' AND date <= ?'; params.push(endDate); }
@@ -70,7 +68,7 @@ export async function GET(request: Request) {
 
         // Get total count
         let countSql = 'SELECT COUNT(*) as total FROM transactions WHERE user_id = ?';
-        const countParams: unknown[] = [session.userId];
+        const countParams: unknown[] = [userId];
         if (startDate) { countSql += ' AND date >= ?'; countParams.push(startDate); }
         if (endDate) { countSql += ' AND date <= ?'; countParams.push(endDate); }
         if (category) { countSql += ' AND category = ?'; countParams.push(category); }
@@ -80,17 +78,11 @@ export async function GET(request: Request) {
         const total = countResult[0]?.total || 0;
 
         return NextResponse.json({ transactions, total });
-    } catch (error) {
-        console.error('Transactions error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    })
+);
 
-export async function POST(request: Request) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+export const POST = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
         const body = await request.json();
         const type = body.type;
         const amount = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
@@ -109,15 +101,15 @@ export async function POST(request: Request) {
         }
 
         const categoryName = sanitizeCategory(body.category);
-        await ensureCustomCategory(session.userId, type, categoryName);
+        await ensureCustomCategory(userId, type, categoryName);
 
         const result = await run(
             'INSERT INTO transactions (user_id, type, amount, category, description, date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [session.userId, type, amount, categoryName, description, date, notes]
+            [userId, type, amount, categoryName, description, date, notes]
         );
 
         await maybeCreateBudgetAlert({
-            userId: session.userId,
+            userId: userId,
             type,
             amount,
             category: categoryName,
@@ -125,17 +117,11 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ id: result.lastInsertRowid });
-    } catch (error) {
-        console.error('Transaction create error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    })
+);
 
-export async function DELETE(request: Request) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+export const DELETE = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -145,19 +131,13 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
         }
 
-        await run('DELETE FROM transactions WHERE id = ? AND user_id = ?', [numId, session.userId]);
+        await run('DELETE FROM transactions WHERE id = ? AND user_id = ?', [numId, userId]);
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Transaction delete error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    })
+);
 
-export async function PUT(request: Request) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+export const PUT = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
         const body = await request.json();
         const id = body.id;
         const type = body.type;
@@ -180,11 +160,11 @@ export async function PUT(request: Request) {
         }
 
         const categoryName = sanitizeCategory(body.category);
-        await ensureCustomCategory(session.userId, type, categoryName);
+        await ensureCustomCategory(userId, type, categoryName);
 
         const result = await run(
             'UPDATE transactions SET type = ?, amount = ?, category = ?, description = ?, date = ?, notes = ? WHERE id = ? AND user_id = ?',
-            [type, amount, categoryName, description, date, notes, id, session.userId]
+            [type, amount, categoryName, description, date, notes, id, userId]
         );
 
         if (result.rowsAffected === 0) {
@@ -192,7 +172,7 @@ export async function PUT(request: Request) {
         }
 
         await maybeCreateBudgetAlert({
-            userId: session.userId,
+            userId: userId,
             type,
             amount,
             category: categoryName,
@@ -200,8 +180,5 @@ export async function PUT(request: Request) {
         });
 
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Transaction update error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    })
+);

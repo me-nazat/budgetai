@@ -17,6 +17,7 @@ import { CURRENCIES } from '@/lib/currency';
 import { MAX_ATTACHMENT_FILES } from '@/lib/transaction-attachments';
 import TransactionAttachmentsSection from '@/components/TransactionAttachmentsSection';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
+import { ReceiptScannerModal } from '@/components/transactions/ReceiptScannerModal';
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Business', 'Savings', 'Salary', 'Freelance', 'Investment', 'Other'];
 
 interface TransactionRecord {
@@ -57,6 +58,7 @@ export default function TransactionsPage() {
 
     // Quick Add state
     const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [qaType, setQaType] = useState<'expense' | 'earning'>('expense');
     const [qaAmount, setQaAmount] = useState('');
     const [qaCategory, setQaCategory] = useState('');
@@ -553,6 +555,9 @@ export default function TransactionsPage() {
                     <p className="text-gray-500 dark:text-text-muted text-sm mt-1">View and manage your expenses and earnings</p>
                 </div>
                 <div className="flex gap-2">
+                    <button onClick={() => setIsScannerOpen(true)} className="px-4 py-2.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-xl font-semibold text-sm transition-all flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-500/20 active:scale-95 shadow-sm">
+                        <span className="material-symbols-outlined text-[18px]">document_scanner</span> <span className="hidden sm:inline">Smart Scan</span>
+                    </button>
                     <button onClick={() => setShowQuickAdd(!showQuickAdd)} className="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl font-semibold text-sm transition-all flex items-center gap-1.5 btn-primary-glow active:scale-95">
                         <span className="material-symbols-outlined text-[18px]">{showQuickAdd ? 'close' : 'add'}</span> {showQuickAdd ? 'Cancel' : 'Quick Add'}
                     </button>
@@ -1224,8 +1229,10 @@ export default function TransactionsPage() {
             {selectedDetailTx && mounted && (
                 <TransactionDetailModal
                     transaction={selectedDetailTx}
+                    isOpen={!!selectedDetailTx}
                     customCategories={customCategories}
                     onClose={() => setSelectedDetailTx(null)}
+                    currency={currency}
                     onEdit={(tx) => {
                         setSelectedDetailTx(null);
                         setEditingTx({ ...tx });

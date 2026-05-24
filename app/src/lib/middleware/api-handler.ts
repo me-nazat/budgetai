@@ -182,9 +182,7 @@ export function apiHandler(
       );
 
       return apiError(
-        new InternalError(
-          error instanceof Error ? error.message : 'Unknown error'
-        )
+        new InternalError('Something went wrong')
       );
     }
   };

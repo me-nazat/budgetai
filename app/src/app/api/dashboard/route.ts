@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/security/session-manager';
+import { apiHandler } from "@/lib/middleware/api-handler";
+import { withAuth } from "@/lib/middleware/with-auth";
 import { queryAll, queryOne } from '@/lib/db';
 
-export async function GET(request: NextRequest) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+export const GET = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
         const searchParams = request.nextUrl.searchParams;
         const monthQuery = searchParams.get('month'); // format: YYYY-MM
         const weekQuery = searchParams.get('week'); // format: 'all', '1', '2', '3', '4'
@@ -50,27 +48,27 @@ export async function GET(request: NextRequest) {
         // Current period totals
         const currentExpenses = await queryOne<{ total: number }>(
             "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ?",
-            [session.userId, currentStartDate, currentEndDate]
+            [userId, currentStartDate, currentEndDate]
         );
         const currentEarnings = await queryOne<{ total: number }>(
             "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?",
-            [session.userId, currentStartDate, currentEndDate]
+            [userId, currentStartDate, currentEndDate]
         );
 
         // Previous period totals
         const lastExpenses = await queryOne<{ total: number }>(
             "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ?",
-            [session.userId, prevStartDate, prevEndDate]
+            [userId, prevStartDate, prevEndDate]
         );
         const lastEarnings = await queryOne<{ total: number }>(
             "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?",
-            [session.userId, prevStartDate, prevEndDate]
+            [userId, prevStartDate, prevEndDate]
         );
 
         // Spending by category this period
         const categorySpending = await queryAll<{ category: string; total: number }>(
             "SELECT category, SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ? GROUP BY category ORDER BY total DESC",
-            [session.userId, currentStartDate, currentEndDate]
+            [userId, currentStartDate, currentEndDate]
         );
 
         // Daily spending for chart 
@@ -79,24 +77,24 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expenses,
         COALESCE(SUM(CASE WHEN type = 'earning' THEN amount ELSE 0 END), 0) as earnings
        FROM transactions WHERE user_id = ? AND date >= ? AND date <= ? GROUP BY date ORDER BY date ASC`,
-            [session.userId, currentStartDate, currentEndDate]
+            [userId, currentStartDate, currentEndDate]
         );
 
         const totalTxs = await queryOne<{ count: number }>(
             'SELECT COUNT(*) as count FROM transactions WHERE user_id = ?',
-            [session.userId]
+            [userId]
         );
 
         // Recent transactions
         const recentTransactions = await queryAll(
             'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 5',
-            [session.userId]
+            [userId]
         );
 
         // Budget alerts
         const budgets = await queryAll<{ category: string; monthly_limit: number }>(
             'SELECT category, monthly_limit FROM budgets WHERE user_id = ? AND month = ? AND year = ?',
-            [session.userId, currentMonth, currentYear]
+            [userId, currentMonth, currentYear]
         );
 
         const budgetAlerts = budgets.map(b => {
@@ -110,7 +108,7 @@ export async function GET(request: NextRequest) {
         // Net worth
         const netWorth = await queryOne<{ amount: number }>(
             'SELECT amount FROM net_worth WHERE user_id = ? ORDER BY created_at DESC LIMIT 1',
-            [session.userId]
+            [userId]
         );
 
         const expChange = lastExpenses?.total ? ((currentExpenses!.total - lastExpenses.total) / lastExpenses.total * 100) : 0;
@@ -128,8 +126,5 @@ export async function GET(request: NextRequest) {
             netWorth: netWorth?.amount || 0,
             totalTransactions: totalTxs?.count || 0,
         });
-    } catch (error) {
-        console.error('Dashboard error:', error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
-    }
-}
+    })
+);

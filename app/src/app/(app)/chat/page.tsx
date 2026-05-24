@@ -508,6 +508,39 @@ export default function ChatPage() {
         !historySearch || session.latest_content?.toLowerCase().includes(historySearch.toLowerCase())
     );
 
+    // Safe inline markdown renderer — returns React elements instead of raw HTML
+    const renderInlineMarkdown = (text: string): React.ReactNode[] => {
+        const parts: React.ReactNode[] = [];
+        // Regex that captures bold (**), italic (*), and inline code (`)
+        const tokenRegex = /\*\*(.*?)\*\*|\*(.*?)\*|`(.*?)`/g;
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+        let partKey = 0;
+
+        while ((match = tokenRegex.exec(text)) !== null) {
+            // Text before the match
+            if (match.index > lastIndex) {
+                parts.push(text.slice(lastIndex, match.index));
+            }
+            if (match[1] !== undefined) {
+                // Bold
+                parts.push(<strong key={partKey++}>{match[1]}</strong>);
+            } else if (match[2] !== undefined) {
+                // Italic
+                parts.push(<em key={partKey++}>{match[2]}</em>);
+            } else if (match[3] !== undefined) {
+                // Inline code
+                parts.push(<code key={partKey++} className="px-1.5 py-0.5 bg-gray-100 dark:bg-surface-hover rounded text-xs font-mono">{match[3]}</code>);
+            }
+            lastIndex = match.index + match[0].length;
+        }
+        // Remaining text after last match
+        if (lastIndex < text.length) {
+            parts.push(text.slice(lastIndex));
+        }
+        return parts.length > 0 ? parts : [text];
+    };
+
     // Enhanced markdown-like rendering for AI messages
     const renderContent = (text: string) => {
         if (!text) return null;
@@ -524,26 +557,19 @@ export default function ChatPage() {
             if (line.trim() === '---' || line.trim() === '***') {
                 return <hr key={i} className="border-gray-200 dark:border-[#30363d] my-2" />;
             }
-            // Bold
-            let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            // Italic
-            processed = processed.replace(/\*(.*?)\*/g, '<em>$1</em>');
-            // Inline code
-            processed = processed.replace(/`(.*?)`/g, '<code class="px-1.5 py-0.5 bg-gray-100 dark:bg-surface-hover rounded text-xs font-mono">$1</code>');
-
             // List items
-            if (processed.startsWith('- ') || processed.startsWith('• ')) {
-                return <div key={i} className="flex gap-2 ml-1"><span className="text-primary mt-0.5 shrink-0">•</span><span dangerouslySetInnerHTML={{ __html: processed.slice(2) }} /></div>;
+            if (line.startsWith('- ') || line.startsWith('• ')) {
+                return <div key={i} className="flex gap-2 ml-1"><span className="text-primary mt-0.5 shrink-0">•</span><span>{renderInlineMarkdown(line.slice(2))}</span></div>;
             }
             // Numbered lists
-            const numMatch = processed.match(/^(\d+)\.\s/);
+            const numMatch = line.match(/^(\d+)\.\s/);
             if (numMatch) {
-                return <div key={i} className="flex gap-2 ml-1"><span className="text-primary font-semibold shrink-0">{numMatch[1]}.</span><span dangerouslySetInnerHTML={{ __html: processed.slice(numMatch[0].length) }} /></div>;
+                return <div key={i} className="flex gap-2 ml-1"><span className="text-primary font-semibold shrink-0">{numMatch[1]}.</span><span>{renderInlineMarkdown(line.slice(numMatch[0].length))}</span></div>;
             }
             // Empty line
-            if (!processed.trim()) return <div key={i} className="h-2" />;
+            if (!line.trim()) return <div key={i} className="h-2" />;
             // Normal paragraph
-            return <p key={i} dangerouslySetInnerHTML={{ __html: processed }} />;
+            return <p key={i}>{renderInlineMarkdown(line)}</p>;
         });
     };
 

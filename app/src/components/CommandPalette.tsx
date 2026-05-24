@@ -4,12 +4,21 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
+import { ReceiptScannerModal } from '@/components/transactions/ReceiptScannerModal';
+import BillSplitterModal from '@/components/BillSplitterModal';
 
 const COMMANDS = [
     { id: 'dash', name: 'Go to Dashboard', icon: 'dashboard', path: '/dashboard' },
+    { id: 'scan', name: 'Smart Receipt Scanner', icon: 'document_scanner', action: 'SCAN_RECEIPT' },
     { id: 'trans', name: 'View Transactions', icon: 'receipt_long', path: '/transactions' },
     { id: 'bud', name: 'Budget Planner', icon: 'account_balance_wallet', path: '/budget' },
     { id: 'wealth', name: 'Wealth & Goals', icon: 'savings', path: '/wealth-goals' },
+    { id: 'fire', name: 'FIRE Simulator', icon: 'local_fire_department', path: '/fire' },
+    { id: 'sim', name: 'What-If Simulator', icon: 'science', path: '/simulator' },
+    { id: 'coach', name: 'AI Financial Coach', icon: 'smart_toy', path: '/coach' },
+    { id: 'subs', name: 'Subscriptions', icon: 'subscriptions', path: '/subscriptions' },
+    { id: 'split', name: 'Split a Bill', icon: 'receipt_long', isAction: true },
+    { id: 'ach', name: 'Achievements', icon: 'emoji_events', path: '/achievements' },
     { id: 'month', name: 'My Month Calendar', icon: 'calendar_month', path: '/my-month' },
     { id: 'over', name: 'Executive Overview', icon: 'insights', path: '/overview' },
     { id: 'report', name: 'Analytics & Reports', icon: 'bar_chart', path: '/reports' },
@@ -21,11 +30,12 @@ const COMMANDS = [
 export default function CommandPalette() {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isSplitterOpen, setIsSplitterOpen] = useState(false);
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -43,6 +53,7 @@ export default function CommandPalette() {
     if (!mounted) return null;
 
     return createPortal(
+        <>
         <AnimatePresence>
             {open && (
                 <div className="fixed inset-0 z-[99999] flex items-start justify-center pt-[15vh] sm:pt-[20vh] px-4 pb-20">
@@ -89,7 +100,13 @@ export default function CommandPalette() {
                                         onClick={() => {
                                             setOpen(false);
                                             setSearch('');
-                                            router.push(cmd.path);
+                                            if (cmd.id === 'scan') {
+                                                setIsScannerOpen(true);
+                                            } else if (cmd.id === 'split') {
+                                                setIsSplitterOpen(true);
+                                            } else if (cmd.path) {
+                                                router.push(cmd.path);
+                                            }
                                         }}
                                         className="w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors group cursor-pointer"
                                     >
@@ -103,7 +120,10 @@ export default function CommandPalette() {
                     </motion.div>
                 </div>
             )}
-        </AnimatePresence>,
+        </AnimatePresence>
+        <ReceiptScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} />
+        <BillSplitterModal isOpen={isSplitterOpen} onClose={() => setIsSplitterOpen(false)} />
+        </>,
         document.body
     );
 }

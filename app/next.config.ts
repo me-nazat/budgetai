@@ -2,16 +2,26 @@ import type { NextConfig } from "next";
 
 const securityHeaders = [
     {
-        key: 'X-Content-Type-Options',
-        value: 'nosniff',
+        key: 'Content-Security-Policy',
+        value: [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob:",
+            "connect-src 'self' https://*.turso.io https://generativelanguage.googleapis.com https://openrouter.ai https://open.er-api.com https://www.googleapis.com",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "upgrade-insecure-requests",
+        ].join('; '),
     },
     {
         key: 'X-Frame-Options',
-        value: 'SAMEORIGIN',
+        value: 'DENY',
     },
     {
-        key: 'X-XSS-Protection',
-        value: '1; mode=block',
+        key: 'X-Content-Type-Options',
+        value: 'nosniff',
     },
     {
         key: 'Referrer-Policy',
@@ -19,32 +29,22 @@ const securityHeaders = [
     },
     {
         key: 'Permissions-Policy',
-        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+        value: 'camera=(), microphone=(), geolocation=()',
     },
     {
         key: 'Strict-Transport-Security',
         value: 'max-age=63072000; includeSubDomains; preload',
     },
     {
-        key: 'Content-Security-Policy',
-        value: [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.puter.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-            "font-src 'self' https://fonts.gstatic.com",
-            "img-src 'self' data: blob:",
-            "connect-src 'self' https://open.er-api.com https://generativelanguage.googleapis.com https://openrouter.ai https://js.puter.com https://api.puter.com https://www.googleapis.com",
-            "frame-src 'self' blob:",
-            "frame-ancestors 'self'",
-            "base-uri 'self'",
-            "form-action 'self'",
-        ].join('; '),
+        key: 'X-DNS-Prefetch-Control',
+        value: 'off',
     },
 ];
 
 const nextConfig: NextConfig = {
     outputFileTracingRoot: process.cwd(),
     poweredByHeader: false,
+    productionBrowserSourceMaps: false,
     typescript: {
         ignoreBuildErrors: true,
     },

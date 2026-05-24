@@ -8,6 +8,7 @@ import { useCustomCategories } from '@/hooks/useCustomCategories';
 import DayDetailPopup from '@/components/DayDetailPopup';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
 import QuickAddModal from '@/components/QuickAddModal';
+import { motion } from 'framer-motion';
 
 interface RecurringItem {
     id: number;
@@ -187,7 +188,10 @@ export default function MyMonthPage() {
                             const isSelected = activeSelectedDay === item.date;
                             const isToday = item.date === new Date().toISOString().split('T')[0];
                             return (
-                                <button
+                                <motion.button
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.2, delay: index * 0.01 }}
                                     key={item.date}
                                     onClick={(e) => {
                                         setSelectedDay(item.date);
@@ -208,7 +212,7 @@ export default function MyMonthPage() {
                                             ))}
                                         </div>
                                     </div>
-                                </button>
+                                </motion.button>
                             );
                         })}
                     </div>

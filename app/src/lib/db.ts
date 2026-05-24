@@ -150,13 +150,72 @@ export async function ensureDbInitialized(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_savings_goals_user ON savings_goals(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_transactions(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_custom_categories_user ON custom_categories(user_id)`,
+    `CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      currency TEXT DEFAULT 'BDT',
+      billing_cycle TEXT NOT NULL CHECK(billing_cycle IN ('weekly', 'monthly', 'yearly')),
+      next_renewal_date TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Other',
+      logo_url TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS bill_splits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      description TEXT NOT NULL,
+      total_amount REAL NOT NULL,
+      date TEXT NOT NULL,
+      split_mode TEXT NOT NULL CHECK(split_mode IN ('Equal', 'Percentage', 'Custom')),
+      participants_json TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_badges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      badge_id TEXT NOT NULL,
+      earned_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, badge_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS coach_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_bill_splits_user ON bill_splits(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_coach_messages_user ON coach_messages(user_id)`
   ], 'write');
 
   try {
     await getClient().execute('ALTER TABLE transactions ADD COLUMN notes TEXT DEFAULT \'\' ');
-  } catch {
-    // Ignore if column already exists
-  }
+  } catch { /* Ignore if column already exists */ }
+  
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN currency TEXT DEFAULT \'BDT\' ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN receipt_image TEXT ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN split_id INTEGER ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT \'BDT\' ');
+  } catch { /* Ignore */ }
 
   initialized = true;
 }

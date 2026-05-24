@@ -6,21 +6,25 @@ import AppRouteTransition from '@/components/AppRouteTransition';
 import CommandPalette from '@/components/CommandPalette';
 import PageTransition from '@/components/PageTransition';
 
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <SWRProvider>
-            <div className="min-h-screen app-surface flex flex-col overflow-x-hidden">
-                <Sidebar />
-                <CurrencySelector />
-                <CommandPalette />
-                <AppRouteTransition />
-                <main className="lg:ml-64 flex-1 pb-28 lg:pb-0 min-h-screen pt-[env(safe-area-inset-top)] mb-[env(safe-area-inset-bottom)]">
-                    <PageTransition>
-                        {children}
-                    </PageTransition>
-                </main>
-                <MobileTabBar />
-            </div>
+            <CurrencyProvider>
+                <div className="min-h-screen app-surface flex flex-col overflow-x-hidden">
+                    <Sidebar />
+                    <CurrencySelector />
+                    <CommandPalette />
+                    <AppRouteTransition />
+                    <main className="lg:ml-64 flex-1 pb-28 lg:pb-0 min-h-screen pt-[env(safe-area-inset-top)] mb-[env(safe-area-inset-bottom)]">
+                        <PageTransition>
+                            {children}
+                        </PageTransition>
+                    </main>
+                    <MobileTabBar />
+                </div>
+            </CurrencyProvider>
         </SWRProvider>
     );
 }

@@ -14,6 +14,11 @@ const menuItems = [
     { href: '/reports', icon: 'bar_chart', label: 'Reports' },
     { href: '/overview', icon: 'analytics', label: 'Overview' },
     { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
+    { href: '/fire', icon: 'local_fire_department', label: 'FIRE Simulator' },
+    { href: '/simulator', icon: 'science', label: 'What-If Simulator' },
+    { href: '/coach', icon: 'smart_toy', label: 'AI Coach' },
+    { href: '/subscriptions', icon: 'subscriptions', label: 'Subscriptions' },
+    { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
     { href: '/recurring', icon: 'repeat', label: 'Recurring' },
     { href: '/notifications', icon: 'notifications', label: 'Alerts' },
 ];
