@@ -7,6 +7,7 @@ import { getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import DayDetailPopup from '@/components/DayDetailPopup';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
+import QuickAddModal from '@/components/QuickAddModal';
 
 interface RecurringItem {
     id: number;
@@ -43,6 +44,11 @@ export default function MyMonthPage() {
     const { data } = useDashboard(selectedMonth, 'all');
     const { transactions, isLoading } = useTransactions(range.start, range.end, 'all', 500);
     const activeSelectedDay = selectedDay.startsWith(selectedMonth) ? selectedDay : range.start;
+
+    // QuickAddModal states
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    const [formModalDate, setFormModalDate] = useState<string | undefined>(undefined);
+    const [formModalTx, setFormModalTx] = useState<any | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -122,7 +128,7 @@ export default function MyMonthPage() {
 
     return (
         <div className="grid min-h-screen grid-cols-1">
-            <section className="border-r border-gray-200/70 p-4 lg:p-8 dark:border-white/10">
+            <section className="border-r border-gray-200/70 p-4 lg:p-8 dark:border-[#30363d]">
                 <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Monthly command center</p>
@@ -131,12 +137,23 @@ export default function MyMonthPage() {
                         </h1>
                         <p className="mt-1 text-2xl font-light tracking-[0.35em] text-gray-400">{range.year}</p>
                     </div>
-                    <label className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
-                        <span className="material-symbols-outlined text-primary">calendar_month</span>
-                        <select value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)} className="bg-transparent outline-none">
-                            {monthOptions.map(option => <option key={option.value} value={option.value} className="bg-white dark:bg-surface-dark">{option.label}</option>)}
-                        </select>
-                    </label>
+                    
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => { setFormModalDate(undefined); setFormModalTx(null); setIsFormModalOpen(true); }}
+                            className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">add</span>
+                            <span className="hidden sm:inline">Add Transaction</span>
+                        </button>
+                        
+                        <label className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 shadow-sm dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-gray-200 cursor-pointer hover:border-primary/50 transition-colors">
+                            <span className="material-symbols-outlined text-primary">calendar_month</span>
+                            <select value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)} className="bg-transparent outline-none cursor-pointer">
+                                {monthOptions.map(option => <option key={option.value} value={option.value} className="bg-white dark:bg-surface-dark">{option.label}</option>)}
+                            </select>
+                        </label>
+                    </div>
                 </div>
 
                 <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -207,6 +224,7 @@ export default function MyMonthPage() {
                     customCategories={customCategories}
                     onClose={() => setPopupAnchor(null)}
                     onTransactionClick={(tx) => { setPopupAnchor(null); setSelectedTx(tx); }}
+                    onAddClick={(date) => { setFormModalDate(date); setFormModalTx(null); setIsFormModalOpen(true); }}
                 />
             )}
             
@@ -215,8 +233,11 @@ export default function MyMonthPage() {
                     transaction={selectedTx}
                     customCategories={customCategories}
                     onClose={() => setSelectedTx(null)}
-                    onEdit={(tx) => { alert('Please use Transactions tab to edit'); }}
-                    onDuplicate={(tx) => { alert('Please use Transactions tab to duplicate'); }}
+                    onEdit={(tx) => { setFormModalDate(undefined); setFormModalTx(tx); setIsFormModalOpen(true); }}
+                    onDuplicate={(tx) => {
+                        const duplicateTx = { ...tx, id: undefined, date: new Date().toISOString().split('T')[0] };
+                        setFormModalDate(undefined); setFormModalTx(duplicateTx); setIsFormModalOpen(true);
+                    }}
                     onDelete={async (tx) => { 
                         if (confirm('Are you sure you want to delete this transaction?')) {
                             await fetch(`/api/transactions?id=${tx.id}`, { method: 'DELETE' });
@@ -228,6 +249,15 @@ export default function MyMonthPage() {
                     }}
                 />
             )}
+            
+            {/* Unified Add / Edit Form Modal */}
+            <QuickAddModal 
+                isOpen={isFormModalOpen}
+                onClose={() => { setIsFormModalOpen(false); setFormModalTx(null); setFormModalDate(undefined); }}
+                initialTransaction={formModalTx}
+                initialDate={formModalDate}
+                onSaveSuccess={() => { window.location.reload(); }}
+            />
         </div>
     );
 }

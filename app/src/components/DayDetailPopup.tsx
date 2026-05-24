@@ -34,6 +34,7 @@ interface DayDetailPopupProps {
     customCategories?: { name: string; color: string }[];
     onClose: () => void;
     onTransactionClick: (tx: Transaction) => void;
+    onAddClick: (date: string) => void;
 }
 
 export default function DayDetailPopup({
@@ -44,6 +45,7 @@ export default function DayDetailPopup({
     customCategories,
     onClose,
     onTransactionClick,
+    onAddClick,
 }: DayDetailPopupProps) {
     const popupRef = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -215,11 +217,22 @@ export default function DayDetailPopup({
 
                         {/* Empty State */}
                         {transactions.length === 0 && recurringItems.length === 0 && (
-                            <div className="rounded-xl border border-dashed border-gray-200 dark:border-white/10 p-8 text-center">
+                            <div className="rounded-xl border border-dashed border-gray-200 dark:border-white/10 p-8 text-center mb-2">
                                 <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-600 mb-2 block">event_busy</span>
                                 <p className="text-sm text-gray-400 dark:text-gray-500">No activity on this day</p>
                             </div>
                         )}
+                        
+                        {/* Add Transaction Button */}
+                        <div className="pt-2">
+                            <button
+                                onClick={() => { onClose(); onAddClick(date); }}
+                                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-sm transition-all shadow-md hover:shadow-lg active:scale-95"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">add</span>
+                                Add Transaction
+                            </button>
+                        </div>
                     </div>
                 </motion.div>
             </div>

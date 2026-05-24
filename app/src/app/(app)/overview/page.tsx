@@ -105,17 +105,17 @@ export default function OverviewPage() {
     ];
 
     return (
-        <div className="p-4 lg:p-8 max-w-[1500px] mx-auto page-enter">
+        <div className="p-4 lg:p-6 max-w-[1500px] mx-auto page-enter">
             {isValidating && <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-primary/70 animate-pulse lg:left-64" />}
 
             {/* ENHANCED HEADER */}
-            <div className="mb-10 flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
+            <div className="mb-6 flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
                 <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-3">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-2">
                         <span className="material-symbols-outlined text-[16px]">insert_chart</span>
                         Financial Overview
                     </div>
-                    <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-gray-900 dark:text-white">Executive Dashboard</h1>
+                    <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-gray-900 dark:text-white">Executive Dashboard</h1>
                     <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
                         A comprehensive, high-level breakdown of your spending, saving, and cash flow patterns.
                     </p>
@@ -131,19 +131,19 @@ export default function OverviewPage() {
             </div>
 
             {/* KPI CARDS */}
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3 mb-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-6">
                 {kpis.map((kpi, index) => (
-                    <div key={kpi.label} className="card-premium rounded-[2rem] p-8 animate-slide-up hover:-translate-y-1 transition-all border border-gray-100 dark:border-white/5" style={{ animationDelay: `${index * 0.1}s` }}>
-                        <div className="flex items-start justify-between mb-8">
+                    <div key={kpi.label} className="card-premium rounded-[1.5rem] p-6 animate-slide-up hover:-translate-y-1 transition-all border border-gray-100 dark:border-white/5" style={{ animationDelay: `${index * 0.1}s` }}>
+                        <div className="flex items-start justify-between mb-4">
                             <div>
                                 <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-1">{kpi.label}</p>
                                 <p className="text-sm font-bold text-gray-500">{kpi.detail}</p>
                             </div>
-                            <div className={`grid h-14 w-14 place-items-center rounded-2xl ${kpi.bgTone}`}>
-                                <span className={`material-symbols-outlined text-[28px] ${kpi.tone}`}>{kpi.icon}</span>
+                            <div className={`grid h-12 w-12 place-items-center rounded-2xl ${kpi.bgTone}`}>
+                                <span className={`material-symbols-outlined text-[24px] ${kpi.tone}`}>{kpi.icon}</span>
                             </div>
                         </div>
-                        <p className="text-4xl lg:text-5xl font-black tracking-tighter text-gray-900 dark:text-white">
+                        <p className="text-3xl lg:text-4xl font-black tracking-tighter text-gray-900 dark:text-white">
                             {kpi.value}
                         </p>
                     </div>
@@ -151,19 +151,19 @@ export default function OverviewPage() {
             </div>
 
             {/* MAIN CHARTS SECTION */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
-                <div className="card-premium rounded-[2rem] p-6 lg:col-span-2 border border-gray-100 dark:border-white/5 flex flex-col">
-                    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 mb-6">
+                <div className="card-premium rounded-[1.5rem] p-5 lg:col-span-2 border border-gray-100 dark:border-white/5 flex flex-col">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h2 className="text-xl font-black text-gray-900 dark:text-white">Monthly Cash Flow</h2>
-                            <p className="text-sm text-gray-500 font-medium">Income vs Expenses over time</p>
+                            <p className="text-xs text-gray-500 font-medium">Income vs Expenses over time</p>
                         </div>
-                        <div className="flex items-center gap-4 text-xs font-bold bg-gray-50 dark:bg-white/5 px-4 py-2 rounded-xl">
-                            <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" /> Income</span>
-                            <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]" /> Expenses</span>
+                        <div className="flex items-center gap-4 text-xs font-bold bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-xl">
+                            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> Income</span>
+                            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" /> Expenses</span>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-[350px] relative">
+                    <div className="flex-1 min-h-[280px] relative">
                         <Line data={lineData} options={{
                             responsive: true,
                             maintainAspectRatio: false,
@@ -177,12 +177,12 @@ export default function OverviewPage() {
                     </div>
                 </div>
 
-                <div className="card-premium rounded-[2rem] p-6 border border-gray-100 dark:border-white/5 flex flex-col">
-                    <div className="mb-6">
+                <div className="card-premium rounded-[1.5rem] p-5 border border-gray-100 dark:border-white/5 flex flex-col">
+                    <div className="mb-4">
                         <h2 className="text-xl font-black text-gray-900 dark:text-white">Expense Distribution</h2>
-                        <p className="text-sm text-gray-500 font-medium">Where your money goes</p>
+                        <p className="text-xs text-gray-500 font-medium">Where your money goes</p>
                     </div>
-                    <div className="relative h-[250px] mb-6 flex-shrink-0">
+                    <div className="relative h-[200px] mb-4 flex-shrink-0">
                         {data.categorySpending.length > 0 ? (
                             <Doughnut data={doughnutData} options={{
                                 responsive: true,
@@ -230,13 +230,13 @@ export default function OverviewPage() {
             </div>
 
             {/* AI INSIGHTS */}
-            <div className="mb-6 card-premium rounded-[2rem] p-8 border border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-primary/5 dark:from-bg-dark dark:to-primary/10 transition-colors">
-                <div className="flex items-center gap-3 mb-6">
-                    <span className="material-symbols-outlined text-3xl text-primary animate-pulse">auto_awesome</span>
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white">AI Financial Insights</h2>
+            <div className="mb-6 card-premium rounded-[1.5rem] p-6 border border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-primary/5 dark:from-bg-dark dark:to-primary/10 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                    <span className="material-symbols-outlined text-2xl text-primary animate-pulse">auto_awesome</span>
+                    <h2 className="text-xl font-black text-gray-900 dark:text-white">AI Financial Insights</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white dark:bg-white/5 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white dark:bg-white/5 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden">
                         <div className="absolute right-0 top-0 w-16 h-16 bg-rose-500/10 rounded-bl-full pointer-events-none"></div>
                         <p className="text-xs font-black uppercase tracking-wider text-rose-500 mb-2">Highest Spending Day</p>
                         <p className="text-gray-800 dark:text-gray-200 font-medium text-sm leading-relaxed">
@@ -244,7 +244,7 @@ export default function OverviewPage() {
                             {highestDay && <span className="font-black text-rose-600 dark:text-rose-400">{fmt(highestDay.expenses)}</span>}
                         </p>
                     </div>
-                    <div className="bg-white dark:bg-white/5 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden">
+                    <div className="bg-white dark:bg-white/5 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden">
                         <div className="absolute right-0 top-0 w-16 h-16 bg-emerald-500/10 rounded-bl-full pointer-events-none"></div>
                         <p className="text-xs font-black uppercase tracking-wider text-emerald-500 mb-2">Savings Trajectory</p>
                         <p className="text-gray-800 dark:text-gray-200 font-medium text-sm leading-relaxed">
@@ -253,7 +253,7 @@ export default function OverviewPage() {
                             'Your expenses have completely outpaced your income this month. Review your budgets.'}
                         </p>
                     </div>
-                    <div className="bg-white dark:bg-white/5 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden">
+                    <div className="bg-white dark:bg-white/5 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden">
                         <div className="absolute right-0 top-0 w-16 h-16 bg-amber-500/10 rounded-bl-full pointer-events-none"></div>
                         <p className="text-xs font-black uppercase tracking-wider text-amber-500 mb-2">Budget Pressure</p>
                         <p className="text-gray-800 dark:text-gray-200 font-medium text-sm leading-relaxed">

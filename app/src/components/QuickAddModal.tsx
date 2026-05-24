@@ -33,9 +33,12 @@ interface CategoryOption {
 interface QuickAddModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialTransaction?: any; // To support editing
+    initialDate?: string;     // To prepopulate date
+    onSaveSuccess?: () => void;
 }
 
-export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
+export default function QuickAddModal({ isOpen, onClose, initialTransaction, initialDate, onSaveSuccess }: QuickAddModalProps) {
     const [type, setType] = useState<'expense' | 'earning'>('expense');
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('');
@@ -75,10 +78,23 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     useEffect(() => {
         if (isOpen) {
             fetchCustomCategories();
+            
+            // Populate if editing or specific date passed
+            if (initialTransaction) {
+                setType(initialTransaction.type || 'expense');
+                setAmount(initialTransaction.amount?.toString() || '');
+                setCategory(initialTransaction.category || '');
+                setDescription(initialTransaction.description || '');
+                setNotes(initialTransaction.notes || '');
+                setDate(initialTransaction.date || new Date().toISOString().split('T')[0]);
+            } else if (initialDate) {
+                setDate(initialDate);
+            }
         } else {
             setQaScanningId(null);
+            // reset logic handled in resetForm
         }
-    }, [fetchCustomCategories, isOpen]);
+    }, [fetchCustomCategories, isOpen, initialTransaction, initialDate]);
 
     // Smart auto-resolve: update icon & color as user types custom category name
     useEffect(() => {
@@ -238,10 +254,14 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
 
         try {
             if (isOnline) {
+                const isEdit = !!initialTransaction;
+                const method = isEdit ? 'PUT' : 'POST';
+                const body = isEdit ? JSON.stringify({ ...payload, id: initialTransaction.id }) : JSON.stringify(payload);
+
                 const res = await fetch('/api/transactions', {
-                    method: 'POST',
+                    method,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    body,
                 });
                 
                 const data = await res.json();
@@ -258,12 +278,13 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                 // Fire and forget cache invalidation
                 invalidateFinancialData();
             } else {
-                await queueTransaction(payload);
+                await queueTransaction(initialTransaction ? { ...payload, id: initialTransaction.id } : payload);
             }
 
             setShowSuccess(true);
             setTimeout(() => {
                 setShowSuccess(false);
+                if (onSaveSuccess) onSaveSuccess();
                 handleClose();
             }, 300); // Drastically reduced for faster UX
         } catch {
@@ -287,7 +308,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="lg:hidden fixed inset-0 z-[60] flex items-end justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center lg:p-6">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
@@ -296,11 +317,11 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
 
             {/* Modal Sheet */}
             <div
-                className="relative w-full max-h-[90dvh] bg-white dark:bg-[#161b22] rounded-t-3xl overflow-y-auto"
+                className="relative w-full lg:max-w-xl max-h-[90dvh] bg-white dark:bg-[#161b22] rounded-t-3xl lg:rounded-3xl overflow-y-auto shadow-2xl"
                 style={{ animation: 'sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}
             >
-                {/* Handle bar */}
-                <div className="flex justify-center pt-3 pb-1">
+                {/* Handle bar (Mobile Only) */}
+                <div className="flex justify-center pt-3 pb-1 lg:hidden">
                     <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
                 </div>
 
@@ -308,7 +329,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                            {isCreatingCustom ? 'New Custom Category' : showRecentCustom ? 'Custom Categories' : 'Add Transaction'}
+                            {isCreatingCustom ? 'New Custom Category' : showRecentCustom ? 'Custom Categories' : initialTransaction ? 'Edit Transaction' : 'Add Transaction'}
                         </h2>
                         <button
                             onClick={() => {

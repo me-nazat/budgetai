@@ -511,3 +511,46 @@ export async function deleteTransactionAttachment(params: {
     });
   } catch (error) { throw toFriendlyError(error); }
 }
+
+export async function uploadChatAttachmentsToGemini(params: {
+  userId: number;
+  userName?: string | null;
+  userEmail?: string | null;
+  sessionId: string;
+  files: File[];
+}) {
+  const drive = await getDriveClient();
+  
+  // 1. Ensure "Gemini" folder inside Root
+  const driveRootId = getDriveRootFolderId();
+  const geminiFolder = await ensureSubFolder(drive, driveRootId, 'Gemini', true);
+  if (!geminiFolder) throw new Error('Could not resolve Gemini folder');
+
+  // 2. Ensure User folder inside Gemini
+  const identity = { userId: params.userId, name: params.userName, email: params.userEmail };
+  const preferredName = resolveDriveUsername(identity);
+  const userFolder = await ensureSubFolder(drive, geminiFolder.folderId, preferredName, true);
+  if (!userFolder) throw new Error('Could not resolve User folder in Gemini');
+
+  // 3. Ensure Session folder inside User folder
+  const sessionFolder = await ensureSubFolder(drive, userFolder.folderId, params.sessionId, true);
+  if (!sessionFolder) throw new Error('Could not resolve Session folder');
+
+  // 4. Upload files
+  const uploaded: AttachmentRecord[] = [];
+  try {
+    for (const file of params.files) {
+      const mimeType = file.type || 'application/octet-stream';
+      const res = await drive.files.create({
+        requestBody: { name: file.name, parents: [sessionFolder.folderId] },
+        media: { mimeType, body: Readable.fromWeb(file.stream() as any) }, // eslint-disable-line @typescript-eslint/no-explicit-any
+        fields: 'id,name,mimeType,size,modifiedTime',
+        supportsAllDrives: true,
+      });
+      uploaded.push(mapDriveFile(res.data));
+    }
+  } catch (error) { throw toFriendlyError(error); }
+
+  return { files: uploaded, folderUrl: sessionFolder.folderUrl };
+}
+

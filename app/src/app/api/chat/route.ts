@@ -4,6 +4,7 @@ import { run } from '@/lib/db';
 import { AttachmentInput, processMessage } from '@/lib/ai';
 import { getFinancialContextBundle } from '@/lib/financialContext';
 import { ActionResult, StoredTransaction, processDataActions, storeFinancialData } from '@/lib/chatActions';
+import { uploadChatAttachmentsToGemini } from '@/lib/google-drive';
 
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -57,6 +58,7 @@ async function parseChatRequest(request: Request) {
             mode: body.mode === 'silent' ? 'silent' : 'chat',
             sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
             attachments: [] as AttachmentInput[],
+            rawFiles: [] as File[],
             hasAttachments: false,
         };
     }
@@ -83,6 +85,7 @@ async function parseChatRequest(request: Request) {
         mode: form.get('mode') === 'silent' ? 'silent' : 'chat',
         sessionId: typeof form.get('sessionId') === 'string' ? String(form.get('sessionId')) : undefined,
         attachments,
+        rawFiles: files,
         hasAttachments: attachments.length > 0,
     };
 }
@@ -94,7 +97,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { message, mode, sessionId, attachments, hasAttachments } = await parseChatRequest(request);
+        const { message, mode, sessionId, attachments, rawFiles, hasAttachments } = await parseChatRequest(request);
         if (!message && attachments.length === 0) {
             return NextResponse.json({ error: 'Message or attachment is required' }, { status: 400 });
         }
@@ -110,6 +113,18 @@ export async function POST(request: Request) {
         );
 
         const contextBundle = await getFinancialContextBundle(session.userId, chatSessionId);
+        
+        // Background upload to Gemini -> User -> Session in Google Drive
+        if (hasAttachments && rawFiles.length > 0) {
+            uploadChatAttachmentsToGemini({
+                userId: session.userId,
+                userName: contextBundle.profile?.name,
+                userEmail: contextBundle.profile?.email,
+                sessionId: chatSessionId,
+                files: rawFiles,
+            }).catch(e => console.error('Failed to upload to Gemini Drive folder:', e));
+        }
+
         const aiResponse = await processMessage(
             `${message || 'Analyze the attached files and extract financial actions.'}${contextBundle.historyContext}`,
             contextBundle.context,
