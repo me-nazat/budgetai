@@ -80,9 +80,9 @@ describe('dateSchema', () => {
 
 describe('currencySchema', () => {
   it('should accept valid currencies and uppercase them', () => {
-    const result = currencySchema.safeParse('usd');
+    const result = currencySchema.safeParse('bdt');
     expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toBe('USD');
+    if (result.success) expect(result.data).toBe('BDT');
   });
 
   it('should reject invalid currencies', () => {

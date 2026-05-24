@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         const type = searchParams.get('type');
 
         if (type === 'rates') {
-            const base = (searchParams.get('base') || 'USD').toUpperCase();
+            const base = (searchParams.get('base') || 'BDT').toUpperCase();
 
             // Validate currency code to prevent SSRF
             if (!isValidCurrency(base)) {

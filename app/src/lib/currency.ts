@@ -30,7 +30,7 @@ export function convertAmount(amount: number, from: CurrencyCode, to: CurrencyCo
     return amountInUSD * (rates[to] || FALLBACK_RATES[to]);
 }
 
-export function formatCurrency(amount: number, currency: CurrencyCode = 'USD'): string {
+export function formatCurrency(amount: number, currency: CurrencyCode = 'BDT'): string {
     const info = CURRENCIES[currency];
     if (currency === 'BDT' || currency === 'INR') {
         // South Asian numbering system formatting
@@ -39,8 +39,8 @@ export function formatCurrency(amount: number, currency: CurrencyCode = 'USD'): 
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
 }
 
-// Format with conversion from stored USD to display currency
-export function displayAmount(amountInUSD: number, displayCurrency: CurrencyCode = 'USD'): string {
-    const converted = convertAmount(amountInUSD, 'USD', displayCurrency);
+// Format with conversion from stored base (BDT) to display currency
+export function displayAmount(amountInBase: number, displayCurrency: CurrencyCode = 'BDT'): string {
+    const converted = convertAmount(amountInBase, 'BDT', displayCurrency);
     return formatCurrency(converted, displayCurrency);
 }

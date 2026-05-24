@@ -48,9 +48,9 @@ export const users = sqliteTable('users', {
 
   /**
    * ISO 4217 currency code for display formatting.
-   * @default 'USD'
+   * @default 'BDT'
    */
-  currency: text('currency').default('USD'),
+  currency: text('currency').default('BDT'),
 
   /** Whether budget-related notifications are enabled. 1 = enabled, 0 = disabled. */
   notifyBudget: integer('notify_budget').default(1),

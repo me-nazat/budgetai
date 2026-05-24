@@ -37,7 +37,7 @@ export function createMockUser(overrides: Record<string, unknown> = {}) {
     name: `Test User ${id}`,
     email: `testuser${id}@example.com`,
     passwordHash: '$2a$12$mockHashedPasswordForTesting000000000000000000000',
-    currency: 'USD',
+    currency: 'BDT',
     notifyBudget: 1,
     notifyOverspend: 1,
     totpSecret: null,

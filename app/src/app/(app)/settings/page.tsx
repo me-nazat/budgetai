@@ -21,7 +21,7 @@ const itemVariants: Variants = {
 export default function SettingsPage() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [currency, setCurrency] = useState<CurrencyCode>('USD');
+    const [currency, setCurrency] = useState<CurrencyCode>('BDT');
     const [notifyBudget, setNotifyBudget] = useState(true);
     const [notifyOverspend, setNotifyOverspend] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -34,7 +34,7 @@ export default function SettingsPage() {
         setIsDark(document.documentElement.classList.contains('dark'));
         fetch('/api/auth/me').then(r => r.json()).then(d => {
             if (d.user) {
-                setName(d.user.name); setEmail(d.user.email); setCurrency((d.user.currency || 'USD') as CurrencyCode);
+                setName(d.user.name); setEmail(d.user.email); setCurrency((d.user.currency || 'BDT') as CurrencyCode);
                 setNotifyBudget(!!d.user.notify_budget); setNotifyOverspend(!!d.user.notify_overspend);
             }
         });

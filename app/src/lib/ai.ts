@@ -291,7 +291,7 @@ export async function processMessage(
     attachments: AttachmentInput[] = [],
 ): Promise<AIResponse> {
     const profileStr = userProfile?.name
-        ? `Name: ${userProfile.name}, Currency: ${userProfile.currency || 'USD'}`
+        ? `Name: ${userProfile.name}, Currency: ${userProfile.currency || 'BDT'}`
         : 'No profile data';
     const prompt = SYSTEM_PROMPT
         .replace('{CONTEXT}', context)
@@ -340,7 +340,7 @@ export function buildContext(
     const totalEarnings = transactions.filter(t => t.type === 'earning').reduce((sum, t) => sum + t.amount, 0);
 
     let context = '';
-    if (userName) context += `User: ${userName} (${userCurrency || 'USD'})\n`;
+    if (userName) context += `User: ${userName} (${userCurrency || 'BDT'})\n`;
     context += `Recent financial summary:\n`;
     context += `- Total expenses (this month): ${sym}${totalExpenses.toFixed(2)}\n`;
     context += `- Total earnings (this month): ${sym}${totalEarnings.toFixed(2)}\n`;

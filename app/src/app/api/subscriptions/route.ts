@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json();
-        const { name, amount, currency = 'USD', billing_cycle = 'monthly', next_renewal_date, category = 'Other', logo_url = null, is_active = 1 } = body;
+        const { name, amount, currency = 'BDT', billing_cycle = 'monthly', next_renewal_date, category = 'Other', logo_url = null, is_active = 1 } = body;
 
         if (!name || amount == null || !next_renewal_date) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

@@ -52,7 +52,7 @@ export async function ensureDbInitialized(): Promise<void> {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      currency TEXT DEFAULT 'USD',
+      currency TEXT DEFAULT 'BDT',
       notify_budget INTEGER DEFAULT 1,
       notify_overspend INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))

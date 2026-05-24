@@ -176,7 +176,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        currency: user.currency || 'USD',
+        currency: user.currency || 'BDT',
       },
     };
   }
@@ -207,7 +207,7 @@ export class AuthService {
       if (lockout.locked) {
         throw new AuthenticationError(
           'Too many failed attempts. Please try again later.',
-          ErrorCode.RATE_LIMITED
+          ErrorCode.RATE_LIMIT_EXCEEDED
         );
       }
     }
@@ -256,7 +256,7 @@ export class AuthService {
             id: user.id,
             name: user.name,
             email: user.email,
-            currency: user.currency || 'USD',
+            currency: user.currency || 'BDT',
           },
           requires2FA: true,
           tempToken,
@@ -309,7 +309,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        currency: user.currency || 'USD',
+        currency: user.currency || 'BDT',
       },
     };
   }
@@ -388,7 +388,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        currency: user.currency || 'USD',
+        currency: user.currency || 'BDT',
       },
     };
   }
@@ -518,7 +518,7 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
-      currency: user.currency || 'USD',
+      currency: user.currency || 'BDT',
       notifyBudget: user.notifyBudget ?? 1,
       notifyOverspend: user.notifyOverspend ?? 1,
       totpEnabled: user.totpEnabled === 1,

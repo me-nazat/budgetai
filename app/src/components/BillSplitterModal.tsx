@@ -136,7 +136,7 @@ export default function BillSplitterModal({ isOpen, onClose }: { isOpen: boolean
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Amount</label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '৳'}</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'BDT' ? '৳' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '৳'}</span>
                                     <input type="number" min="0" step="0.01" placeholder="0.00" value={totalAmount} onChange={e => handleAmountChange(e.target.value)} className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 pl-8 pr-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-teal-500 dark:text-white" />
                                 </div>
                             </div>

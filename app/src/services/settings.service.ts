@@ -59,7 +59,7 @@ export class SettingsService {
       id: updated.id,
       name: updated.name,
       email: updated.email,
-      currency: updated.currency || 'USD',
+      currency: updated.currency || 'BDT',
       notifyBudget: updated.notifyBudget,
       notifyOverspend: updated.notifyOverspend,
     };

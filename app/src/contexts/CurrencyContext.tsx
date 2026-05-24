@@ -7,7 +7,7 @@ interface CurrencyContextType {
     currency: CurrencyCode;
     rates: Record<string, number>;
     setCurrency: (currency: CurrencyCode) => void;
-    fmt: (amountInUSD: number) => string;
+    fmt: (amountInBase: number) => string;
     fmtRaw: (amountInLocal: number) => string;
     convert: (amount: number, from: CurrencyCode, to: CurrencyCode) => number;
 }
@@ -16,9 +16,9 @@ const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     const [currency, setCurrencyState] = useState<CurrencyCode>(() => {
-        if (typeof window === 'undefined') return 'USD';
+        if (typeof window === 'undefined') return 'BDT';
         const stored = localStorage.getItem('budget-ai-currency') as CurrencyCode;
-        return stored && Object.keys(CURRENCIES).includes(stored) ? stored : 'USD';
+        return stored && Object.keys(CURRENCIES).includes(stored) ? stored : 'BDT';
     });
 
     const [rates, setRates] = useState<Record<string, number>>(FALLBACK_RATES);
@@ -51,8 +51,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('budget-ai-currency', c);
     };
 
-    const fmt = (amountInUSD: number) => {
-        const converted = convertAmount(amountInUSD, 'USD', currency, rates);
+    const fmt = (amountInBase: number) => {
+        const converted = convertAmount(amountInBase, 'BDT', currency, rates);
         return formatCurrency(converted, currency);
     };
 

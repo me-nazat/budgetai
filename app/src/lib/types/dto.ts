@@ -154,7 +154,7 @@ export const UserProfileDTO = z.object({
   id: z.number(),
   name: z.string(),
   email: z.string(),
-  currency: z.string().default('USD'),
+  currency: z.string().default('BDT'),
   notifyBudget: z.number().default(1),
   notifyOverspend: z.number().default(1),
   totpEnabled: z.boolean().default(false),

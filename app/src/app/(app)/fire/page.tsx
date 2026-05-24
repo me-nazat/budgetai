@@ -174,14 +174,14 @@ export default function FIRECalculatorPage() {
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Current Net Worth</label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'USD' ? '$' : '€'}</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'BDT' ? '৳' : currency === 'USD' ? '$' : '€'}</span>
                                     <input type="number" min={0} value={currentNetWorth} onChange={e => setCurrentNetWorth(Number(e.target.value))} className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 pl-8 pr-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-orange-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Monthly Contribution</label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'USD' ? '$' : '€'}</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'BDT' ? '৳' : currency === 'USD' ? '$' : '€'}</span>
                                     <input type="number" min={0} value={monthlyContribution} onChange={e => setMonthlyContribution(Number(e.target.value))} className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 pl-8 pr-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-orange-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
                                 </div>
                             </div>
@@ -210,7 +210,7 @@ export default function FIRECalculatorPage() {
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Target Monthly Income</label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'USD' ? '$' : '€'}</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency === 'BDT' ? '৳' : currency === 'USD' ? '$' : '€'}</span>
                                     <input type="number" min={0} value={monthlyExpenses} onChange={e => setMonthlyExpenses(Number(e.target.value))} className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 pl-8 pr-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-orange-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
                                 </div>
                             </div>
