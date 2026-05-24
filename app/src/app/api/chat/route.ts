@@ -114,19 +114,26 @@ export async function POST(request: Request) {
 
         const contextBundle = await getFinancialContextBundle(session.userId, chatSessionId);
         
+        let driveUploadInfo = '';
         // Background upload to Gemini -> User -> Session in Google Drive
         if (hasAttachments && rawFiles.length > 0) {
-            uploadChatAttachmentsToGemini({
-                userId: session.userId,
-                userName: contextBundle.profile?.name,
-                userEmail: contextBundle.profile?.email,
-                sessionId: chatSessionId,
-                files: rawFiles,
-            }).catch(e => console.error('Failed to upload to Gemini Drive folder:', e));
+            try {
+                const uploadResult = await uploadChatAttachmentsToGemini({
+                    userId: session.userId,
+                    userName: contextBundle.profile?.name,
+                    sessionId: chatSessionId,
+                    files: rawFiles,
+                });
+                
+                driveUploadInfo = `\n\n[SYSTEM NOTE: The attached files have been successfully uploaded to Google Drive. Drive Folder URL: ${uploadResult.folderUrl}. Files uploaded: ${uploadResult.files.map(f => f.name).join(', ')}]`;
+            } catch (e) {
+                console.error('Failed to upload to Gemini Drive folder:', e);
+                driveUploadInfo = `\n\n[SYSTEM NOTE: Failed to upload attached files to Google Drive.]`;
+            }
         }
 
         const aiResponse = await processMessage(
-            `${message || 'Analyze the attached files and extract financial actions.'}${contextBundle.historyContext}`,
+            `${message || 'Analyze the attached files and extract financial actions.'}${driveUploadInfo}${contextBundle.historyContext}`,
             contextBundle.context,
             contextBundle.budgetContext,
             today,

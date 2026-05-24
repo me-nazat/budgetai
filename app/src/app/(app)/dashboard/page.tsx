@@ -20,7 +20,6 @@ import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex 
 import TransactionDetailModal from '@/components/TransactionDetailModal';
 import PredictiveCashflow from '@/components/charts/PredictiveCashflow';
 import AnimatedCounter from '@/components/AnimatedCounter';
-import { HealthScoreWidget } from '@/components/dashboard/HealthScoreWidget';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -381,10 +380,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Health Score Widget */}
-                <div className="mb-6">
-                    <HealthScoreWidget />
-                </div>
 
                 {/* AI Insight Card (Redesigned) */}
                 <div className="relative card-premium rounded-2xl p-5 mb-6 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
@@ -424,7 +419,7 @@ export default function DashboardPage() {
                                 </div>
                                 <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
                             </div>
-                        ) : data.recentTransactions.slice(0, 6).map(t => (
+                        ) : data.recentTransactions.slice(0, 7).map(t => (
                             <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible card-premium rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group">
                                 <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
@@ -488,10 +483,6 @@ export default function DashboardPage() {
                     </div>
                 </header>
 
-                {/* Health Score Widget */}
-                <div className="mb-8" style={{ animation: 'slideUp 0.5s ease-out 0s both' }}>
-                    <HealthScoreWidget />
-                </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
@@ -523,7 +514,7 @@ export default function DashboardPage() {
                                 <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Income vs Expenses over time</p>
                             </div>
                         </div>
-                        <div className="h-[280px]">
+                        <div className="h-[250px]">
                             <Bar ref={chartRef} data={barData} options={{
                                 responsive: true, maintainAspectRatio: false,
                                 plugins: {
@@ -544,43 +535,6 @@ export default function DashboardPage() {
                         {data.dailySpending && data.earnings && (
                             <PredictiveCashflow dailySpending={data.dailySpending} monthlyIncome={data.earnings.current} />
                         )}
-
-                        {/* Budget Alerts */}
-                        <div className="card-premium p-6 rounded-2xl">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Budget Alerts</h3>
-                                {data.budgetAlerts.length > 0 && (
-                                    <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold px-2 py-1 rounded-md">
-                                        {data.budgetAlerts.filter(b => b.percentage >= 80).length} Alerts
-                                    </span>
-                                )}
-                            </div>
-                            <div className="space-y-4">
-                                {data.budgetAlerts.length === 0 ? (
-                                    <div className="text-center py-4">
-                                        <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-600 mb-2 block">verified</span>
-                                        <p className="text-sm text-gray-400 dark:text-text-muted">No budget alerts. Set budgets to track spending.</p>
-                                    </div>
-                                ) : data.budgetAlerts.slice(0, 3).map((b, i) => (
-                                    <div key={i}>
-                                        <div className="flex justify-between items-center mb-1.5">
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{b.category}</span>
-                                            <span className={`text-xs font-bold ${b.percentage >= 100 ? 'text-rose-500' : b.percentage >= 80 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                                {b.percentage >= 100 ? 'Over Budget!' : b.percentage >= 80 ? `${b.percentage}% used` : 'On Track'}
-                                            </span>
-                                        </div>
-                                        <div className="w-full bg-gray-100 dark:bg-surface-hover rounded-full h-2 overflow-hidden">
-                                            <div className={`h-2 rounded-full transition-all duration-700 ease-out ${b.percentage >= 100 ? 'bg-rose-500' : b.percentage >= 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                                                style={{ width: `${Math.min(b.percentage, 100)}%` }} />
-                                        </div>
-                                        <div className="flex justify-between mt-1 text-xs text-gray-400 dark:text-text-muted">
-                                            <span>{fmt(b.spent)} spent</span>
-                                            <span>{fmt(b.limit)} limit</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
 
                         {/* Top Categories */}
                         {data.categorySpending.length > 0 && (
@@ -658,8 +612,46 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Financial Intelligence Hub */}
-                    <div className="card-premium rounded-2xl flex flex-col overflow-hidden" style={{ animation: 'slideUp 0.5s ease-out 0.65s both' }}>
+                    <div className="flex flex-col gap-5" style={{ animation: 'slideUp 0.5s ease-out 0.65s both' }}>
+                        {/* Budget Alerts */}
+                        <div className="card-premium p-6 rounded-2xl">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Budget Alerts</h3>
+                                {data.budgetAlerts.length > 0 && (
+                                    <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold px-2 py-1 rounded-md">
+                                        {data.budgetAlerts.filter(b => b.percentage >= 80).length} Alerts
+                                    </span>
+                                )}
+                            </div>
+                            <div className="space-y-4">
+                                {data.budgetAlerts.length === 0 ? (
+                                    <div className="text-center py-4">
+                                        <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-600 mb-2 block">verified</span>
+                                        <p className="text-sm text-gray-400 dark:text-text-muted">No budget alerts. Set budgets to track spending.</p>
+                                    </div>
+                                ) : data.budgetAlerts.slice(0, 3).map((b, i) => (
+                                    <div key={i}>
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{b.category}</span>
+                                            <span className={`text-xs font-bold ${b.percentage >= 100 ? 'text-rose-500' : b.percentage >= 80 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                                {b.percentage >= 100 ? 'Over Budget!' : b.percentage >= 80 ? `${b.percentage}% used` : 'On Track'}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-100 dark:bg-surface-hover rounded-full h-2 overflow-hidden">
+                                            <div className={`h-2 rounded-full transition-all duration-700 ease-out ${b.percentage >= 100 ? 'bg-rose-500' : b.percentage >= 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                style={{ width: `${Math.min(b.percentage, 100)}%` }} />
+                                        </div>
+                                        <div className="flex justify-between mt-1 text-xs text-gray-400 dark:text-text-muted">
+                                            <span>{fmt(b.spent)} spent</span>
+                                            <span>{fmt(b.limit)} limit</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Financial Intelligence Hub */}
+                        <div className="card-premium rounded-2xl flex flex-col overflow-hidden">
                         <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-blue-500/10 to-transparent">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-blue-500">insights</span>
@@ -766,6 +758,7 @@ export default function DashboardPage() {
                                 </motion.div>
                             </AnimatePresence>
                         </div>
+                    </div>
                     </div>
 
                 </div>

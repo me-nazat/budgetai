@@ -18,7 +18,7 @@ interface Subscription {
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-export default function SubscriptionsPage() {
+export function SubscriptionsContent() {
     const { currency, fmtRaw, convert, fmt } = useCurrency();
     const { data, mutate, isLoading } = useSWR<{ subscriptions: Subscription[] }>('/api/subscriptions', fetcher);
     
@@ -109,15 +109,12 @@ export default function SubscriptionsPage() {
     };
 
     return (
-        <div className="p-4 lg:p-8 max-w-[1200px] mx-auto page-enter">
+        <div className="w-full">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 text-xs font-bold uppercase tracking-wider mb-3">
-                        <span className="material-symbols-outlined text-[16px]">subscriptions</span>
-                        Subscription Tracker
-                    </div>
-                    <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-gray-900 dark:text-white">Active Subscriptions</h1>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Active Subscriptions</h2>
+                    <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Manage your subscriptions and memberships</p>
                 </div>
                 
                 <button

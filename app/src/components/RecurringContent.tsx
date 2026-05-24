@@ -12,7 +12,7 @@ const FREQUENCIES = [
     { value: 'yearly', label: 'Yearly', icon: '📆' },
 ];
 
-export default function RecurringPage() {
+export function RecurringContent() {
     const [items, setItems] = useState<RecurringItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
@@ -56,10 +56,10 @@ export default function RecurringPage() {
     const isOverdue = (dateStr: string) => new Date(dateStr).getTime() < Date.now();
 
     return (
-        <div className="p-4 lg:p-8 max-w-[1100px] mx-auto">
+        <div className="w-full">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Recurring Transactions</h1>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recurring Transactions</h2>
                     <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Track your regular expenses and income</p>
                 </div>
                 <button onClick={() => setShowAdd(!showAdd)} className="px-5 py-2.5 bg-primary text-white rounded-lg font-bold transition-all hover:-translate-y-0.5 flex items-center gap-2 shadow-md btn-primary-glow">

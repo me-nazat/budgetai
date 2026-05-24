@@ -9,6 +9,7 @@ import DayDetailPopup from '@/components/DayDetailPopup';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
 import QuickAddModal from '@/components/QuickAddModal';
 import { motion } from 'framer-motion';
+import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 
 interface RecurringItem {
     id: number;
@@ -45,6 +46,7 @@ export default function MyMonthPage() {
     const { data } = useDashboard(selectedMonth, 'all');
     const { transactions, isLoading } = useTransactions(range.start, range.end, 'all', 500);
     const activeSelectedDay = selectedDay.startsWith(selectedMonth) ? selectedDay : range.start;
+    const invalidateData = useInvalidateFinancialData();
 
     // QuickAddModal states
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -245,11 +247,11 @@ export default function MyMonthPage() {
                     onDelete={async (tx) => { 
                         if (confirm('Are you sure you want to delete this transaction?')) {
                             await fetch(`/api/transactions?id=${tx.id}`, { method: 'DELETE' });
-                            window.location.reload();
+                            invalidateData();
                         }
                     }}
                     onNotesChange={(id, notes) => {
-                        window.location.reload();
+                        invalidateData();
                     }}
                 />
             )}
@@ -260,7 +262,7 @@ export default function MyMonthPage() {
                 onClose={() => { setIsFormModalOpen(false); setFormModalTx(null); setFormModalDate(undefined); }}
                 initialTransaction={formModalTx}
                 initialDate={formModalDate}
-                onSaveSuccess={() => { window.location.reload(); }}
+                onSaveSuccess={() => { invalidateData(); }}
             />
         </div>
     );

@@ -19,6 +19,7 @@ import { CURRENCIES } from '@/lib/currency';
 import { useDashboard } from '@/hooks/useApi';
 import { getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
+import { HealthScoreWidget } from '@/components/dashboard/HealthScoreWidget';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Filler, Legend);
 
@@ -109,7 +110,7 @@ export default function OverviewPage() {
             {isValidating && <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-primary/70 animate-pulse lg:left-64" />}
 
             {/* ENHANCED HEADER */}
-            <div className="mb-4 flex flex-col md:flex-row items-start md:items-end justify-between gap-3">
+            <div className="mb-3 flex flex-col md:flex-row items-start md:items-end justify-between gap-3">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-2">
                         <span className="material-symbols-outlined text-[16px]">insert_chart</span>
@@ -131,19 +132,19 @@ export default function OverviewPage() {
             </div>
 
             {/* KPI CARDS */}
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 mb-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 mb-3">
                 {kpis.map((kpi, index) => (
-                    <div key={kpi.label} className="card-premium rounded-2xl p-5 animate-slide-up hover:-translate-y-1 transition-all border border-gray-100 dark:border-white/5" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <div key={kpi.label} className="card-premium rounded-xl p-4 animate-slide-up hover:-translate-y-1 transition-all border border-gray-100 dark:border-white/5" style={{ animationDelay: `${index * 0.1}s` }}>
                         <div className="flex items-start justify-between mb-2">
                             <div>
                                 <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-1">{kpi.label}</p>
                                 <p className="text-sm font-bold text-gray-500">{kpi.detail}</p>
                             </div>
-                            <div className={`grid h-12 w-12 place-items-center rounded-2xl ${kpi.bgTone}`}>
-                                <span className={`material-symbols-outlined text-[24px] ${kpi.tone}`}>{kpi.icon}</span>
+                            <div className={`grid h-10 w-10 place-items-center rounded-xl ${kpi.bgTone}`}>
+                                <span className={`material-symbols-outlined text-[20px] ${kpi.tone}`}>{kpi.icon}</span>
                             </div>
                         </div>
-                        <p className="text-2xl lg:text-3xl font-black tracking-tighter text-gray-900 dark:text-white">
+                        <p className="text-xl lg:text-2xl font-black tracking-tighter text-gray-900 dark:text-white">
                             {kpi.value}
                         </p>
                     </div>
@@ -151,8 +152,8 @@ export default function OverviewPage() {
             </div>
 
             {/* MAIN CHARTS SECTION */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 mb-4">
-                <div className="card-premium rounded-2xl p-5 lg:col-span-2 border border-gray-100 dark:border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 mb-3">
+                <div className="card-premium rounded-xl p-4 lg:col-span-2 border border-gray-100 dark:border-white/5 flex flex-col">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h2 className="text-xl font-black text-gray-900 dark:text-white">Monthly Cash Flow</h2>
@@ -163,7 +164,7 @@ export default function OverviewPage() {
                             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" /> Expenses</span>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-[220px] relative">
+                    <div className="flex-1 h-[180px] relative">
                         <Line data={lineData} options={{
                             responsive: true,
                             maintainAspectRatio: false,
@@ -177,12 +178,12 @@ export default function OverviewPage() {
                     </div>
                 </div>
 
-                <div className="card-premium rounded-2xl p-5 border border-gray-100 dark:border-white/5 flex flex-col">
-                    <div className="mb-4">
+                <div className="card-premium rounded-xl p-4 border border-gray-100 dark:border-white/5 flex flex-col">
+                    <div className="mb-3">
                         <h2 className="text-xl font-black text-gray-900 dark:text-white">Expense Distribution</h2>
                         <p className="text-xs text-gray-500 font-medium">Where your money goes</p>
                     </div>
-                    <div className="relative h-[160px] mb-4 flex-shrink-0">
+                    <div className="relative h-[130px] mb-3 flex-shrink-0">
                         {data.categorySpending.length > 0 ? (
                             <Doughnut data={doughnutData} options={{
                                 responsive: true,
@@ -230,8 +231,8 @@ export default function OverviewPage() {
             </div>
 
             {/* AI INSIGHTS */}
-            <div className="mb-4 card-premium rounded-2xl p-5 border border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-primary/5 dark:from-bg-dark dark:to-primary/10 transition-colors">
-                <div className="flex items-center gap-3 mb-3">
+            <div className="mb-3 card-premium rounded-xl p-4 border border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-primary/5 dark:from-bg-dark dark:to-primary/10 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
                     <span className="material-symbols-outlined text-2xl text-primary animate-pulse">auto_awesome</span>
                     <h2 className="text-xl font-black text-gray-900 dark:text-white">AI Financial Insights</h2>
                 </div>
@@ -261,6 +262,11 @@ export default function OverviewPage() {
                         </p>
                     </div>
                 </div>
+            </div>
+
+            {/* FULL HEALTH SCORE */}
+            <div className="mb-3">
+                <HealthScoreWidget />
             </div>
 
             <style jsx>{`

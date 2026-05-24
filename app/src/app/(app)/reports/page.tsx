@@ -5,6 +5,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import { HealthScoreWidget } from '@/components/dashboard/HealthScoreWidget';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -337,8 +338,9 @@ export default function ReportsPage() {
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <div className="lg:col-span-1 card-premium rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 h-fit">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                <div className="lg:col-span-1 flex flex-col gap-6 h-fit">
+                    <div className="card-premium rounded-3xl p-6 border border-gray-200/50 dark:border-white/5">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm shadow-inner">1</span>
                         Configure View
                     </h2>
@@ -394,6 +396,11 @@ export default function ReportsPage() {
                             <span className="material-symbols-outlined text-[20px]">{generating ? 'hourglass_top' : (format === 'live' ? 'play_arrow' : 'download')}</span>
                             {generating ? 'Processing...' : (format === 'live' ? 'View Live Report' : 'Generate & Download')}
                         </button>
+                    </div>
+                    </div>
+                    
+                    <div className="w-full animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                        <HealthScoreWidget compact={true} />
                     </div>
                 </div>
 

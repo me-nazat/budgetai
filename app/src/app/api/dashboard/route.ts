@@ -87,7 +87,7 @@ export const GET = apiHandler(
 
         // Recent transactions
         const recentTransactions = await queryAll(
-            'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 5',
+            'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 7',
             [userId]
         );
 

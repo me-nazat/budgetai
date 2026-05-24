@@ -18,7 +18,7 @@ interface HealthScoreData {
   insight: string;
 }
 
-export function HealthScoreWidget() {
+export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<HealthScoreData | null>(null);
   const [loading, setLoading] = useState(true);
   const ref = React.useRef(null);
@@ -60,7 +60,7 @@ export function HealthScoreWidget() {
 
   if (loading) {
     return (
-      <div className="w-full h-80 bg-surface/50 dark:bg-surface-dark/50 animate-pulse rounded-2xl border border-gray-200 dark:border-[#30363d]" />
+      <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface/50 dark:bg-surface-dark/50 animate-pulse rounded-2xl border border-gray-200 dark:border-[#30363d]`} />
     );
   }
 
@@ -79,20 +79,20 @@ export function HealthScoreWidget() {
   };
 
   const color = getScoreColor(data.score);
-  const radius = 80;
+  const radius = compact ? 60 : 80;
   const circumference = Math.PI * radius; // Half circle
   const strokeDashoffset = circumference - (data.score / 100) * circumference;
 
   return (
     <div 
       ref={ref}
-      className="w-full bg-surface dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-[#30363d] overflow-hidden flex flex-col md:flex-row relative"
+      className={`w-full bg-surface dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-[#30363d] overflow-hidden flex ${compact ? 'flex-col' : 'flex-col md:flex-row'} relative`}
     >
       {/* Gauge Section */}
-      <div className={`p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 dark:border-[#30363d] w-full md:w-1/3 bg-gradient-to-b ${getScoreGradient(data.score)} relative`}>
+      <div className={`p-6 flex flex-col items-center justify-center ${compact ? '' : 'border-b md:border-b-0 md:border-r'} border-gray-200 dark:border-[#30363d] w-full ${compact ? '' : 'md:w-1/3'} bg-gradient-to-b ${getScoreGradient(data.score)} relative`}>
         <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 tracking-wider uppercase">Financial Health</h3>
         
-        <div className="relative w-48 h-28 flex items-end justify-center overflow-hidden">
+        <div className={`relative ${compact ? 'w-36 h-20' : 'w-48 h-28'} flex items-end justify-center overflow-hidden`}>
           {/* Background Arc */}
           <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 200 100">
             <path
@@ -119,48 +119,52 @@ export function HealthScoreWidget() {
             />
           </svg>
           <div className="flex flex-col items-center z-10 -mb-2">
-            <span className="text-5xl font-bold tabular-nums" style={{ color }}>{displayScore}</span>
+            <span className={`${compact ? 'text-4xl' : 'text-5xl'} font-bold tabular-nums`} style={{ color }}>{displayScore}</span>
             <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 uppercase font-semibold tracking-wider">
               {data.score >= 70 ? 'Excellent' : data.score >= 40 ? 'Fair' : 'Needs Work'}
             </span>
           </div>
         </div>
 
-        {/* Sparkline History */}
-        <div className="w-full h-12 mt-6 px-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data.history}>
-              <defs>
-                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={color} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <Area 
-                type="monotone" 
-                dataKey="score" 
-                stroke={color} 
-                fillOpacity={1} 
-                fill="url(#colorScore)" 
-                strokeWidth={2}
-                isAnimationActive={isInView}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        {/* Sparkline History - hide on compact */}
+        {!compact && (
+          <div className="w-full h-12 mt-6 px-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.history}>
+                <defs>
+                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <Area 
+                  type="monotone" 
+                  dataKey="score" 
+                  stroke={color} 
+                  fillOpacity={1} 
+                  fill="url(#colorScore)" 
+                  strokeWidth={2}
+                  isAnimationActive={isInView}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Breakdown Section */}
-      <div className="p-6 w-full md:w-2/3 flex flex-col justify-between">
-        <div className="space-y-4">
-          <ScoreRow label="Savings Rate" score={data.breakdown.savingsRate.score} max={data.breakdown.savingsRate.max} />
-          <ScoreRow label="Budget Adherence" score={data.breakdown.budgetAdherence.score} max={data.breakdown.budgetAdherence.max} />
-          <ScoreRow label="Net Worth Trend" score={data.breakdown.netWorth.score} max={data.breakdown.netWorth.max} />
-          <ScoreRow label="Emergency Fund" score={data.breakdown.emergencyFund.score} max={data.breakdown.emergencyFund.max} />
-          <ScoreRow label="Expense Consistency" score={data.breakdown.consistency.score} max={data.breakdown.consistency.max} />
-        </div>
+      <div className={`p-6 w-full ${compact ? '' : 'md:w-2/3'} flex flex-col justify-between`}>
+        {!compact && (
+          <div className="space-y-4">
+            <ScoreRow label="Savings Rate" score={data.breakdown.savingsRate.score} max={data.breakdown.savingsRate.max} />
+            <ScoreRow label="Budget Adherence" score={data.breakdown.budgetAdherence.score} max={data.breakdown.budgetAdherence.max} />
+            <ScoreRow label="Net Worth Trend" score={data.breakdown.netWorth.score} max={data.breakdown.netWorth.max} />
+            <ScoreRow label="Emergency Fund" score={data.breakdown.emergencyFund.score} max={data.breakdown.emergencyFund.max} />
+            <ScoreRow label="Expense Consistency" score={data.breakdown.consistency.score} max={data.breakdown.consistency.max} />
+          </div>
+        )}
 
-        <div className="mt-6 p-4 rounded-xl bg-primary/10 border border-primary/20 flex gap-3 items-start">
+        <div className={`${compact ? 'mt-0' : 'mt-6'} p-4 rounded-xl bg-primary/10 border border-primary/20 flex gap-3 items-start`}>
           <SparklesIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-medium">
             {data.insight}
