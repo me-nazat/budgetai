@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@heroicons/react": "^2.2.0",
     "@heyputer/puter.js": "^2.2.10",
     "@libsql/client": "^0.17.0",
     "@simplewebauthn/browser": "^13.3.0",
@@ -43,7 +44,9 @@
     "react": "19.2.3",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
+    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "swr": "^2.4.1",
     "uuid": "^14.0.0",

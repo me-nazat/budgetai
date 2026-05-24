@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { queryAll, queryOne } from '@/lib/db';
-import { generateGeminiResponse } from '@/lib/ai/gemini';
+import { generateGeminiResponse } from '@/lib/ai';
 
 export const GET = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {

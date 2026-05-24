@@ -206,6 +206,33 @@ async function callGeminiWithAttachments(
     };
 }
 
+export async function generateGeminiResponse(prompt: string, userMessage: string = ''): Promise<string> {
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+    for (const modelName of models) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            const model = getGenAI().getGenerativeModel({ model: modelName });
+            
+            const result = await Promise.race([
+                model.generateContent(`${prompt}\n${userMessage}`),
+                new Promise<never>((_, reject) => {
+                    controller.signal.addEventListener('abort', () => reject(new Error('Timeout')));
+                }),
+            ]);
+            clearTimeout(timeout);
+            return result.response.text().trim();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg.includes('429') || msg.includes('quota') || msg.includes('Timeout') || msg.includes('abort')) {
+                continue;
+            }
+            throw err;
+        }
+    }
+    return "Insights unavailable.";
+}
+
 // ==========================================
 // FALLBACK: OpenRouter API
 // ==========================================
