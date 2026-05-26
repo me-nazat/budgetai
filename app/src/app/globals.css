@@ -1116,3 +1116,253 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================ */
+/* AUTH PAGE PREMIUM ANIMATIONS                 */
+/* ============================================ */
+
+@keyframes meshGradientMove {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+}
+
+@keyframes floatOrbit1 {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  25% { transform: translate(60px, -40px) rotate(90deg) scale(1.1); }
+  50% { transform: translate(20px, -80px) rotate(180deg) scale(0.95); }
+  75% { transform: translate(-40px, -30px) rotate(270deg) scale(1.05); }
+  100% { transform: translate(0, 0) rotate(360deg) scale(1); }
+}
+
+@keyframes floatOrbit2 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-50px, 30px) rotate(-90deg); }
+  50% { transform: translate(-20px, 70px) rotate(-180deg); }
+  75% { transform: translate(40px, 20px) rotate(-270deg); }
+  100% { transform: translate(0, 0) rotate(-360deg); }
+}
+
+@keyframes floatOrbit3 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.15); }
+  66% { transform: translate(-30px, -20px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes glowBorderRotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes authReveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes authInputGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(19, 109, 236, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(19, 109, 236, 0.1);
+  }
+}
+
+@keyframes particleDrift {
+  0% { transform: translateY(0) translateX(0) scale(0); opacity: 0; }
+  10% { opacity: 0.8; transform: scale(1); }
+  90% { opacity: 0.4; }
+  100% { transform: translateY(-100vh) translateX(50px) scale(0.5); opacity: 0; }
+}
+
+@keyframes shimmerBorder {
+  0% { opacity: 0; left: -30%; }
+  50% { opacity: 1; }
+  100% { opacity: 0; left: 130%; }
+}
+
+@keyframes featureCardFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Auth mesh gradient background */
+.auth-mesh-bg {
+  background: linear-gradient(
+    -45deg,
+    #0B0F19, #111827, #0d1b2a, #1b263b, #0B0F19
+  );
+  background-size: 400% 400%;
+  animation: meshGradientMove 15s ease infinite;
+}
+
+:where(:not(.dark)) .auth-mesh-bg {
+  background: linear-gradient(
+    -45deg,
+    #f8f9fb, #e8f0fe, #f0f4ff, #e0e7ff, #f8f9fb
+  );
+  background-size: 400% 400%;
+  animation: meshGradientMove 15s ease infinite;
+}
+
+/* Auth floating icons */
+.auth-float-1 { animation: floatOrbit1 20s ease-in-out infinite; }
+.auth-float-2 { animation: floatOrbit2 25s ease-in-out infinite; }
+.auth-float-3 { animation: floatOrbit3 18s ease-in-out infinite; }
+
+/* Auth card with animated glow border */
+.auth-card-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.auth-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(19, 109, 236, 0.15),
+    rgba(16, 185, 129, 0.15),
+    rgba(6, 182, 212, 0.15),
+    rgba(19, 109, 236, 0.15)
+  );
+  background-size: 300% 300%;
+  animation: glowBorderRotate 6s linear infinite;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.auth-card-glow:hover::before,
+.auth-card-glow:focus-within::before {
+  opacity: 1;
+}
+
+/* Auth reveal stagger animation */
+.auth-reveal {
+  animation: authReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-reveal-1 { animation-delay: 0.1s; }
+.auth-reveal-2 { animation-delay: 0.2s; }
+.auth-reveal-3 { animation-delay: 0.35s; }
+.auth-reveal-4 { animation-delay: 0.5s; }
+.auth-reveal-5 { animation-delay: 0.65s; }
+
+/* Auth input focus effect */
+.auth-input:focus {
+  animation: authInputGlow 2s ease-in-out infinite;
+  border-color: var(--color-primary);
+}
+
+/* Particle effect */
+.auth-particle {
+  animation: particleDrift linear infinite;
+  pointer-events: none;
+}
+
+/* Feature card float */
+.auth-feature-float {
+  animation: featureCardFloat 4s ease-in-out infinite;
+}
+
+.auth-feature-float:nth-child(2) {
+  animation-delay: -1.3s;
+}
+
+.auth-feature-float:nth-child(3) {
+  animation-delay: -2.6s;
+}
+
+/* Password strength bar */
+.password-strength-bar {
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.4s ease;
+}
+
+/* Shimmer effect on card edge */
+.auth-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: shimmerBorder 4s ease-in-out infinite;
+}
+
+/* ============================================ */
+/* ENHANCED MICRO-INTERACTIONS                  */
+/* ============================================ */
+@layer utilities {
+  .card-interactive {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.28s ease,
+      border-color 0.28s ease;
+  }
+
+  .card-interactive::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(19, 109, 236, 0.03), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -8px rgba(19, 109, 236, 0.12);
+    border-color: rgba(19, 109, 236, 0.2);
+  }
+
+  .card-interactive:hover::after {
+    opacity: 1;
+  }
+
+  :where(.dark) .card-interactive:hover {
+    box-shadow: 0 12px 32px -8px rgba(19, 109, 236, 0.15);
+  }
+
+  /* Focus visible rings for accessibility */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+
+  /* Animated text gradient */
+  .text-gradient-animated {
+    background: linear-gradient(90deg, #136dec, #10b981, #06b6d4, #136dec);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 4s ease infinite;
+  }
+}
+

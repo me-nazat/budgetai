@@ -3,12 +3,53 @@
 import { SWRConfig } from 'swr';
 import type { Cache, State } from 'swr';
 
+/** Track whether a token refresh is in-flight to prevent parallel refreshes. */
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Attempts to refresh the auth tokens.
+ * De-duplicates concurrent refresh requests.
+ */
+async function refreshTokens(): Promise<boolean> {
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = (async () => {
+        try {
+            const res = await fetch('/api/auth/refresh', { method: 'POST' });
+            return res.ok;
+        } catch {
+            return false;
+        } finally {
+            refreshPromise = null;
+        }
+    })();
+
+    return refreshPromise;
+}
+
 const fetcher = async (url: string) => {
-    const r = await fetch(url);
+    let r = await fetch(url);
+
+    // Auto-refresh on 401 — the access token may have expired
+    if (r.status === 401) {
+        const refreshed = await refreshTokens();
+        if (refreshed) {
+            // Retry the original request with new cookies
+            r = await fetch(url);
+        } else {
+            // Refresh failed — redirect to login
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+                window.location.href = '/login';
+            }
+            throw new Error('Session expired. Please log in again.');
+        }
+    }
+
     if (!r.ok) {
         const errJson = await r.json().catch(() => ({}));
         throw new Error(errJson?.error?.message || errJson?.error || 'API error');
     }
+
     const json = await r.json();
     // Transparently unwrap ApiSuccessResponse envelope
     return (json && typeof json === 'object' && json.success === true && 'data' in json) ? json.data : json;

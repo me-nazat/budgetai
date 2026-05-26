@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { motion, useAnimation, useInView } from 'framer-motion';
+import React, { useEffect, useState, useCallback } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 
@@ -21,19 +21,32 @@ interface HealthScoreData {
 export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<HealthScoreData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const ref = React.useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
   const [displayScore, setDisplayScore] = useState(0);
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch('/api/health-score')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load health score');
+        return res.json();
+      })
       .then(d => {
         setData(d);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        setError(err.message || 'Unable to load health score');
+        setLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     if (isInView && data) {
@@ -60,11 +73,36 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
 
   if (loading) {
     return (
-      <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface/50 dark:bg-surface-dark/50 animate-pulse rounded-2xl border border-gray-200 dark:border-[#30363d]`} />
+      <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface/50 dark:bg-surface-dark/50 animate-pulse rounded-2xl border border-gray-200 dark:border-[#30363d] flex items-center justify-center`}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Analyzing your finances...</p>
+        </div>
+      </div>
     );
   }
 
-  if (!data) return null;
+  // Error state with retry button — no longer returns null
+  if (error || !data) {
+    return (
+      <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-[#30363d] flex flex-col items-center justify-center p-6 text-center`}>
+        <div className="w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-amber-500">error_outline</span>
+        </div>
+        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Health Score Unavailable</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 max-w-[240px]">
+          {error || 'Unable to calculate your financial health score right now.'}
+        </p>
+        <button 
+          onClick={fetchData}
+          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-all duration-200 active:scale-95"
+        >
+          <span className="material-symbols-outlined text-sm">refresh</span>
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return '#10b981'; // Emerald

@@ -1,41 +1,55 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import * as jose from 'jose';
-import { run } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+import { apiHandler } from '@/lib/middleware/api-handler';
+import { withAuth } from '@/lib/middleware/with-auth';
+import { queryAll, run, queryOne } from '@/lib/db';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-key-for-dev');
+export const GET = apiHandler(
+  withAuth(async (_request: NextRequest, { userId }) => {
+    const splits = await queryAll(
+      `SELECT id, description, total_amount as totalAmount, date, split_mode as splitMode, participants_json, created_at 
+       FROM bill_splits 
+       WHERE user_id = ? 
+       ORDER BY date DESC, created_at DESC`,
+      [userId]
+    );
 
-async function getUserId() {
-    const token = cookies().get('token')?.value;
-    if (!token) return null;
-    try {
-        const { payload } = await jose.jwtVerify(token, JWT_SECRET);
-        return payload.userId as number;
-    } catch {
-        return null;
+    const parsedSplits = splits.map((s: any) => ({
+      ...s,
+      participants: JSON.parse(s.participants_json || '[]')
+    }));
+
+    return NextResponse.json(parsedSplits);
+  })
+);
+
+export const POST = apiHandler(
+  withAuth(async (request: NextRequest, { userId }) => {
+    const body = await request.json();
+    // Support both naming conventions depending on client payload
+    const description = body.description;
+    const totalAmount = body.totalAmount || body.total_amount;
+    const date = body.date || new Date().toISOString();
+    const splitMode = body.splitMode || body.split_mode || 'Equal';
+    const participants = body.participants || (body.participants_json ? JSON.parse(body.participants_json) : []);
+
+    if (!description || totalAmount == null) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
-}
 
-export async function POST(req: Request) {
-    const userId = await getUserId();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { lastInsertRowid } = await run(
+      `INSERT INTO bill_splits (user_id, description, total_amount, date, split_mode, participants_json)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, description, totalAmount, date, splitMode, JSON.stringify(participants)]
+    );
 
-    try {
-        const body = await req.json();
-        const { description, total_amount, date, split_mode, participants_json } = body;
+    const newSplit = await queryOne(
+      `SELECT id, description, total_amount as totalAmount, date, split_mode as splitMode, participants_json, created_at FROM bill_splits WHERE id = ?`,
+      [lastInsertRowid]
+    );
 
-        if (!description || total_amount == null) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-        }
-
-        const res = await run(
-            `INSERT INTO bill_splits (user_id, description, total_amount, date, split_mode, participants_json)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [userId, description, total_amount, date || new Date().toISOString(), split_mode || 'Equal', participants_json || '[]']
-        );
-
-        return NextResponse.json({ message: 'Created', id: res.lastInsertRowid });
-    } catch (e) {
-        return NextResponse.json({ error: 'Failed to create bill split' }, { status: 500 });
-    }
-}
+    return NextResponse.json({
+      ...(newSplit as any),
+      participants: JSON.parse((newSplit as any).participants_json || '[]')
+    }, { status: 201 });
+  })
+);

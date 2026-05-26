@@ -117,10 +117,6 @@ export default function DashboardPage() {
         setMounted(true);
     }, []);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
     // Generate last 12 months for the dropdown
     const monthOptions = Array.from({ length: 12 }).map((_, i) => {
         const d = new Date();
