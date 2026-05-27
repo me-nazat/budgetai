@@ -14,7 +14,8 @@ export function useInvalidateFinancialData() {
                     key.startsWith('/api/networth') ||
                     key.startsWith('/api/goals') ||
                     key.startsWith('/api/recurring') ||
-                    key.startsWith('/api/categories')
+                    key.startsWith('/api/categories') ||
+                    key.startsWith('/api/heatmap')
                 ),
             undefined,
             { revalidate: true }

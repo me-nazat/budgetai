@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo, useState } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
 import AsyncDayDetailPopup from './AsyncDayDetailPopup';
@@ -8,8 +10,6 @@ interface DayData {
     expenses: number;
     count: number;
 }
-
-const DAYS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
 
 function getIntensity(amount: number, thresholds: number[]): number {
     if (amount === 0) return 0;
@@ -59,7 +59,7 @@ export default function MonthlyHeatmap({
     const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; amount: number; count: number } | null>(null);
     const [popupTarget, setPopupTarget] = useState<{ element: HTMLElement; date: string } | null>(null);
 
-    const { grid, thresholds } = useMemo(() => {
+    const { grid } = useMemo(() => {
         const spendMap = new Map<string, DayData>();
         dailySpending.forEach(d => spendMap.set(d.date, d));
 
@@ -70,19 +70,17 @@ export default function MonthlyHeatmap({
         const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // 0=Mon
         const daysInMonth = new Date(year, month, 0).getDate();
 
-        // For GitHub style (horizontal), columns are weeks, rows are days of the week (Mon-Sun).
-        // 7 rows (Mon to Sun)
-        const rows: { date: string; amount: number; count: number; intensity: number; isToday: boolean }[][] = Array.from({ length: 7 }, () => []);
-        
-        let currentDayOfWeek = startDay;
-        let weekIndex = 0;
+        // Construct a single flat list of days representing a calendar view:
+        // Mon Tue Wed Thu Fri Sat Sun running horizontally
+        const daysList: { date: string; amount: number; count: number; intensity: number; isToday: boolean }[] = [];
 
         // Pad first week with empty days
         for (let r = 0; r < startDay; r++) {
-            rows[r].push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
+            daysList.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
         }
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -90,30 +88,21 @@ export default function MonthlyHeatmap({
             const amount = dayData ? (mode === 'earnings' ? dayData.earnings : dayData.expenses) : 0;
             const count = dayData?.count || 0;
 
-            rows[currentDayOfWeek].push({
+            daysList.push({
                 date: dateStr,
                 amount,
                 count,
                 intensity: getIntensity(amount, calcThresholds),
                 isToday: dateStr === todayStr,
             });
-
-            currentDayOfWeek++;
-            if (currentDayOfWeek === 7) {
-                currentDayOfWeek = 0;
-                weekIndex++;
-            }
         }
 
-        // Pad the last week to make all rows have same length
-        const maxWeeks = Math.max(...rows.map(r => r.length));
-        for (let r = 0; r < 7; r++) {
-            while (rows[r].length < maxWeeks) {
-                rows[r].push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
-            }
+        // Pad the last week to align complete 7-day rows
+        while (daysList.length % 7 !== 0) {
+            daysList.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
         }
 
-        return { grid: rows, thresholds: calcThresholds };
+        return { grid: daysList, thresholds: calcThresholds };
     }, [year, month, dailySpending, mode]);
 
     const colors = mode === 'earnings' ? GREEN_INTENSITY : RED_INTENSITY;
@@ -121,7 +110,10 @@ export default function MonthlyHeatmap({
     return (
         <div className="card-premium rounded-2xl p-6 h-full border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] flex flex-col relative z-0">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Monthly Heatmap</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-500">grid_on</span>
+                    Monthly Activity
+                </h3>
                 
                 {/* iOS Liquid Glass Toggle */}
                 <div className="relative flex items-center p-1 bg-gray-100/80 dark:bg-black/40 backdrop-blur-md rounded-full shadow-inner border border-gray-200/50 dark:border-white/10">
@@ -131,39 +123,37 @@ export default function MonthlyHeatmap({
                 </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto relative min-h-0 flex items-center justify-center">
-                <div className="flex gap-1.5 justify-center pb-4 pt-2">
-                    <div className="flex flex-col justify-between pr-2 shrink-0 h-full py-[4px]">
-                        {DAYS.map((d, i) => (
-                            <div key={i} className="text-[11px] text-gray-400 font-medium h-[24px] flex items-center">{d}</div>
+            <div className="flex-1 flex flex-col justify-center items-center relative min-h-0">
+                <div className="w-full max-w-[240px]">
+                    {/* Horizontal headers (Mon - Sun) */}
+                    <div className="grid grid-cols-7 gap-2.5 mb-3 text-center">
+                        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                            <div key={i} className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{d}</div>
                         ))}
                     </div>
 
-                    <div className="flex flex-col justify-between h-full">
-                        {grid.map((row, ri) => (
-                            <div key={ri} className="flex gap-[6px] h-[24px]">
-                                {row.map((day, di) => (
-                                    <div
-                                        key={di}
-                                        className={`w-[24px] h-[24px] rounded-md transition-colors duration-300
-                                            ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
-                                            ${day.isToday ? 'ring-2 ring-primary/50' : ''}
-                                            hover:ring-2 hover:ring-primary/50 hover:scale-110 relative cursor-pointer z-0 hover:z-10 shadow-sm`}
-                                        onClick={(e) => {
-                                            if (day.date) {
-                                                setPopupTarget({ element: e.currentTarget, date: day.date });
-                                            }
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (day.date && !popupTarget) {
-                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                setTooltip({ x: rect.left + rect.width / 2, y: rect.top - 8, date: day.date, amount: day.amount, count: day.count });
-                                            }
-                                        }}
-                                        onMouseLeave={() => setTooltip(null)}
-                                    />
-                                ))}
-                            </div>
+                    {/* Flat Grid in 7 Columns */}
+                    <div className="grid grid-cols-7 gap-2.5">
+                        {grid.map((day, index) => (
+                            <div
+                                key={index}
+                                className={`w-[26px] h-[26px] rounded-[6px] transition-all duration-300 shadow-sm border border-black/5 dark:border-white/5
+                                    ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
+                                    ${day.isToday ? 'ring-2 ring-primary/60 scale-105' : ''}
+                                    hover:ring-2 hover:ring-primary/40 hover:scale-115 relative cursor-pointer z-0 hover:z-10`}
+                                onClick={(e) => {
+                                    if (day.date) {
+                                        setPopupTarget({ element: e.currentTarget, date: day.date });
+                                    }
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (day.date && !popupTarget) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setTooltip({ x: rect.left + rect.width / 2, y: rect.top - 8, date: day.date, amount: day.amount, count: day.count });
+                                    }
+                                }}
+                                onMouseLeave={() => setTooltip(null)}
+                            />
                         ))}
                     </div>
                 </div>
@@ -188,10 +178,10 @@ export default function MonthlyHeatmap({
                 />
             )}
             
-            <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400">
+            <div className="flex items-center justify-center gap-2 mt-6 text-[11px] text-gray-400">
                 <span>Less</span>
                 {colors.map((c, i) => (
-                    <div key={i} className={`w-[16px] h-[16px] rounded-md transition-colors duration-300 shadow-sm ${c}`} />
+                    <div key={i} className={`w-[12px] h-[12px] rounded-sm transition-colors duration-300 shadow-sm ${c}`} />
                 ))}
                 <span>More</span>
             </div>

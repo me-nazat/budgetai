@@ -181,7 +181,8 @@ export default function MyMonthPage() {
     const heatmapData = useMemo(() => {
         return Object.entries(transactionsByDate).map(([date, txs]) => ({
             date,
-            total: txs.reduce((sum, tx) => sum + tx.amount, 0),
+            earnings: txs.filter(tx => tx.type === 'earning').reduce((sum, tx) => sum + tx.amount, 0),
+            expenses: txs.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0),
             count: txs.length
         }));
     }, [transactionsByDate]);

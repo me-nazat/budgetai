@@ -66,7 +66,7 @@ export default function YearlyHeatmap() {
     const { data, isLoading } = useSWR<HeatmapData>(`/api/heatmap?year=${year}`);
 
     // Build the grid: 53 weeks x 7 days
-    const { grid, thresholds } = useMemo(() => {
+    const { grid } = useMemo(() => {
         if (!data) return { grid: [], thresholds: [0, 0, 0] };
 
         const spendMap = new Map<string, DayData>();
@@ -87,11 +87,15 @@ export default function YearlyHeatmap() {
             currentWeek.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
         }
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
         for (let d = 0; d < totalDays; d++) {
             const date = new Date(year, 0, d + 1);
-            const dateStr = date.toISOString().split('T')[0];
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const dayNum = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${y}-${m}-${dayNum}`;
             const dayData = spendMap.get(dateStr);
             const amount = dayData?.total || 0;
             const count = dayData?.count || 0;

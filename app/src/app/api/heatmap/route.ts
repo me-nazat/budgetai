@@ -20,8 +20,8 @@ export const GET = apiHandler(
       [userId, startDate, endDate]
     );
 
-    const dailyEarnings = await queryAll<{ date: string; total: number }>(
-      `SELECT date, SUM(amount) as total
+    const dailyEarnings = await queryAll<{ date: string; total: number; count: number }>(
+      `SELECT date, SUM(amount) as total, COUNT(*) as count
        FROM transactions
        WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?
        GROUP BY date
