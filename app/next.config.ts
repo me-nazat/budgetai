@@ -41,14 +41,26 @@ const securityHeaders = [
     },
 ];
 
+const isVercel = process.env.VERCEL === '1';
+
 const nextConfig: NextConfig = {
-    output: 'export',
+    ...(isVercel ? {} : { output: 'export' }),
     outputFileTracingRoot: process.cwd(),
     poweredByHeader: false,
     productionBrowserSourceMaps: false,
     typescript: {
         ignoreBuildErrors: true,
     },
+    ...(isVercel && {
+        async headers() {
+            return [
+                {
+                    source: '/(.*)',
+                    headers: securityHeaders,
+                },
+            ];
+        },
+    }),
 };
 
 export default nextConfig;
