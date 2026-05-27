@@ -136,8 +136,8 @@ export default function MyMonthPage() {
 
     const cashFlowData = useMemo(() => {
         const labels = [];
-        const balances = [];
-        let currentBalance = 0;
+        const incomes = [];
+        const expenses = [];
 
         for (let i = 1; i <= range.endDay; i++) {
             const d = isoDate(range.year, range.month, i);
@@ -145,20 +145,34 @@ export default function MyMonthPage() {
             const dayTxs = transactionsByDate[d] || [];
             const dInc = dayTxs.filter(t => t.type === 'earning').reduce((sum, t) => sum + t.amount, 0);
             const dExp = dayTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-            currentBalance += (dInc - dExp);
-            balances.push(currentBalance);
+            incomes.push(dInc);
+            expenses.push(dExp);
         }
 
         return {
             labels,
             datasets: [
                 {
-                    label: 'Net Cash Flow',
-                    data: balances,
-                    borderColor: '#136DEC',
-                    backgroundColor: 'rgba(19, 109, 236, 0.1)',
+                    label: 'Income',
+                    data: incomes,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     fill: true,
                     tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
+                },
+                {
+                    label: 'Expenses',
+                    data: expenses,
+                    borderColor: '#f43f5e',
+                    backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
                 }
             ]
         };
@@ -266,24 +280,34 @@ export default function MyMonthPage() {
 
                 {/* 50/50 Section */}
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
-                    <div className="card-premium rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[350px] flex flex-col">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Cash Flow Graph</h3>
-                        <div className="flex-1 min-h-0">
+                    <div className="card-premium rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[400px] flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Monthly Cash Flow</h3>
+                                <p className="text-xs text-gray-500 font-medium">Income vs Expenses over time</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-bold bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-xl">
+                                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> Income</span>
+                                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" /> Expenses</span>
+                            </div>
+                        </div>
+                        <div className="flex-1 min-h-0 relative">
                             <Line 
                                 data={cashFlowData} 
                                 options={{ 
                                     maintainAspectRatio: false, 
-                                    plugins: { legend: { display: false } },
+                                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
                                     scales: {
-                                        x: { grid: { display: false } },
-                                        y: { grid: { color: 'rgba(150, 150, 150, 0.1)' } }
-                                    }
+                                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+                                        y: { grid: { color: 'rgba(148, 163, 184, 0.1)', tickLength: 0 }, border: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 }, callback: value => fmt(Number(value)) } },
+                                    },
+                                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
                                 }} 
                             />
                         </div>
                     </div>
                     
-                    <div className="h-[350px]">
+                    <div className="h-[400px]">
                         <MonthlyHeatmap year={range.year} month={range.month} dailySpending={heatmapData} />
                     </div>
                 </div>

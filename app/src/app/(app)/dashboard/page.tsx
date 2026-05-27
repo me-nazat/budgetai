@@ -510,7 +510,7 @@ export default function DashboardPage() {
                                 <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Income vs Expenses over time</p>
                             </div>
                         </div>
-                        <div className="h-[250px]">
+                        <div className="h-[320px]">
                             <Bar ref={chartRef} data={barData} options={{
                                 responsive: true, maintainAspectRatio: false,
                                 plugins: {
@@ -518,8 +518,8 @@ export default function DashboardPage() {
                                     tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8, displayColors: true, boxPadding: 4 },
                                 },
                                 scales: {
-                                    x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 } } },
-                                    y: { grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => sym + v, font: { size: 11 } }, border: { display: false } },
+                                    x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
+                                    y: { beginAtZero: true, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => sym + v, font: { size: 11 }, padding: 8 }, border: { display: false } },
                                 },
                             }} />
                         </div>
