@@ -6,6 +6,7 @@ import { CURRENCIES } from '@/lib/currency';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import { HealthScoreWidget } from '@/components/dashboard/HealthScoreWidget';
+import YearlyHeatmap from '@/components/YearlyHeatmap';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -477,6 +478,8 @@ export default function ReportsPage() {
                     )}
                 </div>
             </div>
+
+            <YearlyHeatmap />
         </div>
     );
 }

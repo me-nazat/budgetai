@@ -11,8 +11,6 @@ const menuItems = [
     { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
     { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
     { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
-    { href: '/spending-heatmap', icon: 'local_fire_department', label: 'Heatmap' },
-    { href: '/bill-split', icon: 'call_split', label: 'Bill Splitter' },
     { href: '/reports', icon: 'bar_chart', label: 'Reports' },
     { href: '/overview', icon: 'analytics', label: 'Overview' },
     { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },

@@ -10,6 +10,11 @@ import TransactionDetailModal from '@/components/TransactionDetailModal';
 import QuickAddModal from '@/components/QuickAddModal';
 import { motion } from 'framer-motion';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
+import MonthlyHeatmap from '@/components/MonthlyHeatmap';
+import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 interface RecurringItem {
     id: number;
@@ -129,6 +134,45 @@ export default function MyMonthPage() {
         return isoDate(range.year, range.month, day);
     });
 
+    const cashFlowData = useMemo(() => {
+        const labels = [];
+        const balances = [];
+        let currentBalance = 0;
+
+        for (let i = 1; i <= range.endDay; i++) {
+            const d = isoDate(range.year, range.month, i);
+            labels.push(i);
+            const dayTxs = transactionsByDate[d] || [];
+            const dInc = dayTxs.filter(t => t.type === 'earning').reduce((sum, t) => sum + t.amount, 0);
+            const dExp = dayTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            currentBalance += (dInc - dExp);
+            balances.push(currentBalance);
+        }
+
+        return {
+            labels,
+            datasets: [
+                {
+                    label: 'Net Cash Flow',
+                    data: balances,
+                    borderColor: '#136DEC',
+                    backgroundColor: 'rgba(19, 109, 236, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                }
+            ]
+        };
+    }, [range.endDay, range.year, range.month, transactionsByDate]);
+
+    const heatmapData = useMemo(() => {
+        return Object.entries(transactionsByDate).map(([date, txs]) => ({
+            date,
+            total: txs.reduce((sum, tx) => sum + tx.amount, 0),
+            count: txs.length
+        }));
+    }, [transactionsByDate]);
+
+
     return (
         <div className="grid min-h-screen grid-cols-1">
             <section className="border-r border-gray-200/70 p-4 lg:p-8 dark:border-[#30363d]">
@@ -217,6 +261,30 @@ export default function MyMonthPage() {
                                 </motion.button>
                             );
                         })}
+                    </div>
+                </div>
+
+                {/* 50/50 Section */}
+                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
+                    <div className="card-premium rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[350px] flex flex-col">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Cash Flow Graph</h3>
+                        <div className="flex-1 min-h-0">
+                            <Line 
+                                data={cashFlowData} 
+                                options={{ 
+                                    maintainAspectRatio: false, 
+                                    plugins: { legend: { display: false } },
+                                    scales: {
+                                        x: { grid: { display: false } },
+                                        y: { grid: { color: 'rgba(150, 150, 150, 0.1)' } }
+                                    }
+                                }} 
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="h-[350px]">
+                        <MonthlyHeatmap year={range.year} month={range.month} dailySpending={heatmapData} />
                     </div>
                 </div>
             </section>

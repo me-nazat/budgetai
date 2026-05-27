@@ -1,60 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
-/** Floating financial icon for background decoration. */
-function FloatingIcon({ icon, className }: { icon: string; className: string }) {
-    return (
-        <div className={`absolute pointer-events-none select-none ${className}`}>
-            <div className="w-12 h-12 rounded-2xl bg-white/5 dark:bg-white/[0.03] backdrop-blur-sm border border-white/10 dark:border-white/5 flex items-center justify-center shadow-lg">
-                <span className="material-symbols-outlined text-white/30 dark:text-white/20 text-xl">{icon}</span>
-            </div>
-        </div>
-    );
-}
-
-/** Particle dots for ambient background. */
-function Particles() {
-    const particles = useMemo(() =>
-        Array.from({ length: 20 }).map((_, i) => ({
-            id: i,
-            left: `${Math.random() * 100}%`,
-            size: 2 + Math.random() * 3,
-            duration: 8 + Math.random() * 12,
-            delay: Math.random() * 10,
-            opacity: 0.15 + Math.random() * 0.25,
-        })), []);
-
-    return (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {particles.map(p => (
-                <div
-                    key={p.id}
-                    className="absolute rounded-full bg-emerald-400/40 auth-particle"
-                    style={{
-                        left: p.left,
-                        bottom: '-10px',
-                        width: p.size,
-                        height: p.size,
-                        animationDuration: `${p.duration}s`,
-                        animationDelay: `${p.delay}s`,
-                        opacity: p.opacity,
-                    }}
-                />
-            ))}
-        </div>
-    );
-}
-
-/** Password strength calculator and indicator. */
 function PasswordStrength({ password }: { password: string }) {
     const checks = [
-        { label: 'At least 6 characters', pass: password.length >= 6 },
+        { label: 'Min 6 characters', pass: password.length >= 6 },
         { label: 'Contains a number', pass: /\d/.test(password) },
-        { label: 'Contains uppercase', pass: /[A-Z]/.test(password) },
-        { label: 'Contains special char', pass: /[^A-Za-z0-9]/.test(password) },
+        { label: 'Uppercase letter', pass: /[A-Z]/.test(password) },
+        { label: 'Special character', pass: /[^A-Za-z0-9]/.test(password) },
     ];
 
     const strength = checks.filter(c => c.pass).length;
@@ -65,24 +21,24 @@ function PasswordStrength({ password }: { password: string }) {
     if (!password) return null;
 
     return (
-        <div className="space-y-3 animate-fade-in">
+        <div className="space-y-3 mt-3 animate-fade-in-up">
             <div className="flex items-center gap-3">
                 <div className="flex-1 h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
                     <div
-                        className="h-full rounded-full password-strength-bar"
+                        className="h-full rounded-full transition-all duration-300"
                         style={{ width: strengthWidth, backgroundColor: strengthColor }}
                     />
                 </div>
                 <span className="text-xs font-bold" style={{ color: strengthColor }}>{strengthLabel}</span>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
                 {checks.map((c, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-xs">
-                        <span className={`material-symbols-outlined text-sm transition-colors duration-300 ${c.pass ? 'text-emerald-500' : 'text-gray-300 dark:text-white/20'}`}
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                        <span className={`material-symbols-outlined text-[14px] transition-colors duration-300 ${c.pass ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}
                             style={{ fontVariationSettings: c.pass ? "'FILL' 1" : "'FILL' 0" }}>
                             {c.pass ? 'check_circle' : 'radio_button_unchecked'}
                         </span>
-                        <span className={`transition-colors ${c.pass ? 'text-gray-600 dark:text-white/60' : 'text-gray-400 dark:text-white/25'}`}>{c.label}</span>
+                        <span className={`transition-colors ${c.pass ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-500'}`}>{c.label}</span>
                     </div>
                 ))}
             </div>
@@ -122,195 +78,172 @@ export default function RegisterPage() {
         }
     };
 
-    // Progress dots
-    const step = name ? (email ? (password ? 3 : 2) : 1) : 0;
-
     return (
-        <div className="min-h-screen auth-mesh-bg flex relative overflow-hidden">
-            {/* Ambient glows */}
-            <div className="absolute top-1/3 -left-20 w-[500px] h-[500px] bg-emerald-500/10 blur-[140px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-1/3 -right-20 w-[400px] h-[400px] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 blur-[160px] rounded-full pointer-events-none" />
+        <div className="min-h-screen flex bg-gray-50 dark:bg-[#0b0f19] transition-colors duration-500">
+            {/* Left Panel - Brand Showcase (Hidden on Mobile) */}
+            <div className="hidden lg:flex flex-col justify-between w-[45%] max-w-[600px] p-12 bg-white dark:bg-[#111827] border-r border-gray-200 dark:border-white/5 relative overflow-hidden transition-colors duration-500">
+                {/* Decorative background elements */}
+                <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent rounded-br-full pointer-events-none transition-opacity duration-1000 dark:opacity-20 opacity-60" />
+                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-cyan-500/10 via-cyan-500/5 to-transparent rounded-tl-full pointer-events-none transition-opacity duration-1000 dark:opacity-20 opacity-60" />
 
-            <Particles />
+                <div className="relative z-10 flex items-center gap-3 animate-fade-in-up">
+                    <div className="w-12 h-12 rounded-xl bg-gray-900 dark:bg-white flex items-center justify-center shadow-lg">
+                        <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={32} height={32} className="object-contain filter invert dark:invert-0" />
+                    </div>
+                    <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Wealth AI</span>
+                </div>
 
-            {/* Floating Icons */}
-            <FloatingIcon icon="account_balance_wallet" className="top-[15%] left-[8%] auth-float-1" />
-            <FloatingIcon icon="bar_chart" className="top-[25%] right-[12%] auth-float-2" />
-            <FloatingIcon icon="credit_card" className="bottom-[20%] left-[15%] auth-float-3" />
-            <FloatingIcon icon="rocket_launch" className="bottom-[35%] right-[8%] auth-float-1" />
+                <div className="relative z-10 mt-auto mb-auto animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                    <h1 className="text-4xl xl:text-5xl font-black text-gray-900 dark:text-white leading-[1.15] tracking-tight mb-6">
+                        Start building your <br/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500">wealth today.</span>
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400 text-lg max-w-md leading-relaxed mb-8">
+                        Join thousands of people who use AI to make smarter financial decisions every day.
+                    </p>
 
-            {/* Left Panel — Feature Showcase (desktop only) */}
-            <div className="hidden lg:flex flex-col justify-center w-[45%] px-16 py-12 relative z-10">
-                <div className="auth-reveal auth-reveal-1">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/30">
-                            <div className="w-full h-full bg-[#0B0F19] rounded-[13px] flex items-center justify-center p-1.5">
-                                <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={40} height={40} className="object-contain rounded-lg" />
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-6">
+                        {[
+                            { value: '10K+', label: 'Active Users' },
+                            { value: '$50M+', label: 'Tracked' },
+                            { value: '4.9★', label: 'App Rating' },
+                        ].map((stat, i) => (
+                            <div key={i} className="border-l-2 border-gray-200 dark:border-white/10 pl-4">
+                                <p className="text-xl font-black text-gray-900 dark:text-white">{stat.value}</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-500 mt-1">{stat.label}</p>
                             </div>
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-white tracking-tight">Wealth AI</h2>
-                            <p className="text-xs text-white/40 font-medium">Smart Finance Platform</p>
-                        </div>
+                        ))}
                     </div>
                 </div>
 
-                <div className="auth-reveal auth-reveal-2">
-                    <h1 className="text-4xl xl:text-5xl font-black text-white leading-tight tracking-tight mb-4">
-                        Start building
-                        <br />
-                        <span className="text-gradient-animated">your wealth today.</span>
-                    </h1>
-                    <p className="text-white/50 text-base max-w-md leading-relaxed mb-10">
-                        Join thousands of people who use AI to make smarter financial decisions every day.
-                    </p>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 auth-reveal auth-reveal-3">
-                    {[
-                        { value: '10K+', label: 'Users' },
-                        { value: '₹50M+', label: 'Tracked' },
-                        { value: '4.9★', label: 'Rating' },
-                    ].map((stat, i) => (
-                        <div key={i} className="bg-white/[0.06] backdrop-blur-md border border-white/10 rounded-2xl p-4 text-center auth-feature-float">
-                            <p className="text-xl font-black text-white">{stat.value}</p>
-                            <p className="text-xs text-white/40 font-medium mt-0.5">{stat.label}</p>
-                        </div>
-                    ))}
+                <div className="relative z-10 flex items-center gap-6 text-sm font-medium text-gray-500 dark:text-gray-500 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                    <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">security</span> Safe & Secure</span>
+                    <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">verified</span> Free Forever</span>
                 </div>
             </div>
 
-            {/* Right Panel — Register Form */}
-            <div className="flex-1 flex items-center justify-center p-4 sm:p-8 relative z-10">
-                <div className="w-full max-w-md">
-                    {/* Mobile logo */}
-                    <div className="lg:hidden text-center mb-6 auth-reveal auth-reveal-1">
-                        <div className="inline-flex items-center justify-center mb-4">
-                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/30">
-                                <div className="w-full h-full bg-[#0B0F19] rounded-[14px] flex items-center justify-center p-2">
-                                    <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={56} height={56} className="object-contain rounded-xl" />
-                                </div>
-                            </div>
-                        </div>
-                        <h1 className="text-3xl font-bold text-white">Create Account</h1>
-                        <p className="text-white/50 mt-2 text-sm">Start managing your finances with AI</p>
+            {/* Right Panel - Register Form */}
+            <div className="flex-1 flex flex-col justify-center px-4 sm:px-12 lg:px-24 xl:px-32 relative z-10 overflow-y-auto py-12">
+                {/* Mobile Header */}
+                <div className="lg:hidden flex flex-col items-center mb-8 animate-fade-in-up">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-900 dark:bg-white flex items-center justify-center shadow-lg mb-4">
+                        <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={40} height={40} className="object-contain filter invert dark:invert-0" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Create Account</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Start managing your finances</p>
+                </div>
+
+                <div className="w-full max-w-[440px] mx-auto animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                    <div className="hidden lg:block mb-10">
+                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">Create an account</h2>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">It takes less than a minute to get started.</p>
                     </div>
 
-                    {/* Progress dots */}
-                    <div className="flex items-center justify-center gap-2 mb-6 auth-reveal auth-reveal-1">
-                        {[0, 1, 2, 3].map(i => (
-                            <div
-                                key={i}
-                                className={`h-1.5 rounded-full transition-all duration-500 ${i <= step ? 'bg-emerald-500 w-8' : 'bg-white/10 w-3'}`}
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {error && (
+                            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm rounded-xl p-4 flex items-start gap-3">
+                                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">error</span>
+                                <p>{error}</p>
+                            </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Full Name</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all shadow-sm"
+                                placeholder="John Doe"
+                                required
+                                autoComplete="name"
                             />
-                        ))}
-                    </div>
+                        </div>
 
-                    {/* Form Card */}
-                    <div className="auth-card-glow auth-shimmer auth-reveal auth-reveal-2 rounded-3xl overflow-hidden">
-                        <div className="card-glass rounded-3xl p-8 sm:p-10">
-                            <div className="hidden lg:block mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create your account</h2>
-                                <p className="text-sm text-gray-500 dark:text-white/40 mt-1">It takes less than a minute</p>
-                            </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Email Address</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all shadow-sm"
+                                placeholder="you@example.com"
+                                required
+                                autoComplete="email"
+                            />
+                        </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                {error && (
-                                    <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm rounded-xl p-3.5 flex items-start gap-2 animate-fade-in">
-                                        <span className="material-symbols-outlined text-base mt-0.5 shrink-0">error</span>
-                                        {error}
-                                    </div>
-                                )}
-
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-white/70">Full Name</label>
-                                    <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/30 text-lg transition-colors group-focus-within:text-primary">person</span>
-                                        <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                                            className="auth-input w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-                                            placeholder="John Doe" required autoComplete="name" />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-white/70">Email</label>
-                                    <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/30 text-lg transition-colors group-focus-within:text-primary">mail</span>
-                                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                                            className="auth-input w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-                                            placeholder="you@example.com" required autoComplete="email" />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-white/70">Password</label>
-                                    <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/30 text-lg transition-colors group-focus-within:text-primary">lock</span>
-                                        <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
-                                            className="auth-input w-full pl-12 pr-12 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-                                            placeholder="••••••••" required minLength={6} />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 transition-colors"
-                                        >
-                                            <span className="material-symbols-outlined text-lg">{showPassword ? 'visibility_off' : 'visibility'}</span>
-                                        </button>
-                                    </div>
-                                    <PasswordStrength password={password} />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-white/70">Confirm Password</label>
-                                    <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/30 text-lg transition-colors group-focus-within:text-primary">lock_reset</span>
-                                        <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
-                                            className="auth-input w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-                                            placeholder="••••••••" required minLength={6} />
-                                        {confirm && password && (
-                                            <span className={`absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg transition-colors ${confirm === password ? 'text-emerald-500' : 'text-red-400'}`}
-                                                style={{ fontVariationSettings: "'FILL' 1" }}>
-                                                {confirm === password ? 'check_circle' : 'cancel'}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <button type="submit" disabled={loading}
-                                    className="w-full py-4 px-4 bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0 select-none mt-2 relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                                    {loading ? (
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                            Creating Account...
-                                        </div>
-                                    ) : (
-                                        <span className="flex items-center justify-center gap-2">
-                                            Create Account
-                                            <span className="material-symbols-outlined text-lg">rocket_launch</span>
-                                        </span>
-                                    )}
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Password</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3.5 pr-12 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all shadow-sm"
+                                    placeholder="••••••••"
+                                    required
+                                    minLength={6}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                                 </button>
-                            </form>
+                            </div>
+                            <PasswordStrength password={password} />
+                        </div>
 
-                            <div className="mt-6 text-center">
-                                <p className="text-sm text-gray-500 dark:text-white/40">
-                                    Already have an account?{' '}
-                                    <a href="/login" onClick={(e) => { e.preventDefault(); router.push('/login'); }} className="text-primary font-semibold hover:underline transition-colors">
-                                        Sign in
-                                    </a>
-                                </p>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Confirm Password</label>
+                            <div className="relative">
+                                <input
+                                    type="password"
+                                    value={confirm}
+                                    onChange={(e) => setConfirm(e.target.value)}
+                                    className="w-full px-4 py-3.5 pr-12 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all shadow-sm"
+                                    placeholder="••••••••"
+                                    required
+                                    minLength={6}
+                                />
+                                {confirm && password && (
+                                    <span className={`absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] transition-colors ${confirm === password ? 'text-emerald-500' : 'text-red-400'}`}
+                                        style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        {confirm === password ? 'check_circle' : 'cancel'}
+                                    </span>
+                                )}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Trust badges */}
-                    <div className="auth-reveal auth-reveal-4 mt-6 flex items-center justify-center gap-6 text-white/25 text-xs">
-                        <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-sm">verified_user</span> Free Forever</span>
-                        <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-sm">shield</span> No Credit Card</span>
-                        <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-sm">lock</span> Private</span>
+                        <button
+                            type="submit"
+                            disabled={loading || (password !== confirm && confirm !== '')}
+                            className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:hover:translate-y-0 disabled:shadow-none mt-6 flex items-center justify-center gap-2 group"
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Creating Account...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span>Create Account</span>
+                                    <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="mt-8 pt-8 border-t border-gray-200 dark:border-white/10 text-center">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Already have an account?{' '}
+                            <Link href="/login" className="text-emerald-600 font-bold hover:underline transition-colors">
+                                Sign in
+                            </Link>
+                        </p>
                     </div>
                 </div>
             </div>

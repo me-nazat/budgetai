@@ -42,19 +42,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+    output: 'export',
     outputFileTracingRoot: process.cwd(),
     poweredByHeader: false,
     productionBrowserSourceMaps: false,
     typescript: {
         ignoreBuildErrors: true,
-    },
-    async headers() {
-        return [
-            {
-                source: '/(.*)',
-                headers: securityHeaders,
-            },
-        ];
     },
 };
 

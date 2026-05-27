@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { ReceiptScannerModal } from '@/components/transactions/ReceiptScannerModal';
-import BillSplitterModal from '@/components/BillSplitterModal';
 
 const COMMANDS = [
     { id: 'dash', name: 'Go to Dashboard', icon: 'dashboard', path: '/dashboard' },
@@ -14,7 +13,6 @@ const COMMANDS = [
     { id: 'bud', name: 'Budget Planner', icon: 'account_balance_wallet', path: '/budget' },
     { id: 'wealth', name: 'Wealth & Goals', icon: 'savings', path: '/wealth-goals' },
     { id: 'fire', name: 'FIRE Simulator', icon: 'local_fire_department', path: '/fire' },
-    { id: 'split', name: 'Split a Bill', icon: 'receipt_long', isAction: true },
     { id: 'month', name: 'My Month Calendar', icon: 'calendar_month', path: '/my-month' },
     { id: 'over', name: 'Executive Overview', icon: 'insights', path: '/overview' },
     { id: 'report', name: 'Analytics & Reports', icon: 'bar_chart', path: '/reports' },
@@ -27,7 +25,6 @@ export default function CommandPalette() {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [isScannerOpen, setIsScannerOpen] = useState(false);
-    const [isSplitterOpen, setIsSplitterOpen] = useState(false);
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
@@ -98,8 +95,6 @@ export default function CommandPalette() {
                                             setSearch('');
                                             if (cmd.id === 'scan') {
                                                 setIsScannerOpen(true);
-                                            } else if (cmd.id === 'split') {
-                                                setIsSplitterOpen(true);
                                             } else if (cmd.path) {
                                                 router.push(cmd.path);
                                             }
@@ -118,7 +113,6 @@ export default function CommandPalette() {
             )}
         </AnimatePresence>
         <ReceiptScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} />
-        <BillSplitterModal isOpen={isSplitterOpen} onClose={() => setIsSplitterOpen(false)} />
         </>,
         document.body
     );

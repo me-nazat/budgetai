@@ -1,6 +1,8 @@
 'use client';
 
 import useSWR from 'swr';
+import { useState } from 'react';
+import AchievementDetailModal from '@/components/AchievementDetailModal';
 
 interface Achievement {
     id: string;
@@ -54,12 +56,12 @@ function AchievementsSkeleton() {
     );
 }
 
-function AchievementCard({ achievement }: { achievement: Achievement }) {
+function AchievementCard({ achievement, onClick }: { achievement: Achievement, onClick: () => void }) {
     const tier = TIER_COLORS[achievement.tier];
     const progress = achievement.target > 0 ? (achievement.progress / achievement.target) * 100 : 0;
 
     return (
-        <div className={`card-premium rounded-2xl p-5 relative overflow-hidden transition-all duration-300 group
+        <div onClick={onClick} className={`card-premium rounded-2xl p-5 relative overflow-hidden transition-all duration-300 group cursor-pointer
             ${achievement.unlocked ? `border ${tier.border} ${tier.bg}` : 'opacity-70 grayscale-[30%]'}
             hover:scale-[1.02] hover:shadow-lg`}
         >
@@ -92,17 +94,17 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 
                 {/* Content */}
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">{achievement.title}</h3>
-                <p className="text-xs text-gray-500 dark:text-text-muted mb-4">{achievement.description}</p>
+                <p className="text-xs text-gray-500 dark:text-text-muted mb-4 line-clamp-2">{achievement.description}</p>
 
                 {/* Progress bar */}
-                <div className="space-y-1.5">
-                    <div className="w-full h-2 bg-gray-100 dark:bg-[#21262d] rounded-full overflow-hidden">
+                <div className="space-y-1.5 mt-auto">
+                    <div className="w-full h-2 bg-gray-200 dark:bg-[#21262d] rounded-full overflow-hidden">
                         <div
-                            className={`h-full rounded-full transition-all duration-1000 ease-out ${achievement.unlocked ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                            className={`h-full rounded-full transition-all duration-1000 ease-out ${achievement.unlocked ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gray-400 dark:bg-gray-600'}`}
                             style={{ width: `${Math.min(progress, 100)}%` }}
                         />
                     </div>
-                    <p className="text-xs text-gray-400 dark:text-text-muted font-medium tabular-nums">
+                    <p className="text-xs text-gray-500 dark:text-text-muted font-medium tabular-nums">
                         {achievement.progress} / {achievement.target}
                     </p>
                 </div>
@@ -113,6 +115,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 
 export default function AchievementsPage() {
     const { data, isLoading } = useSWR<AchievementsData>('/api/achievements');
+    const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
 
     if (isLoading || !data) return <AchievementsSkeleton />;
 
@@ -120,7 +123,7 @@ export default function AchievementsPage() {
     const categories = ['tracking', 'saving', 'budget', 'streak'] as const;
 
     return (
-        <div className="p-4 lg:p-8 max-w-[1200px] mx-auto page-enter">
+        <div className="p-4 lg:p-8 max-w-[1200px] mx-auto page-enter pb-24">
             {/* Header */}
             <div className="mb-8">
                 <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
@@ -158,7 +161,7 @@ export default function AchievementsPage() {
                     <div className="h-full rounded-full bg-gradient-to-r from-primary via-emerald-500 to-cyan-500 transition-all duration-1000"
                         style={{ width: `${(stats.unlocked / stats.total) * 100}%` }} />
                 </div>
-                <p className="text-xs text-gray-400 dark:text-text-muted mt-2">{stats.unlocked} of {stats.total} badges unlocked</p>
+                <p className="text-xs text-gray-500 dark:text-text-muted mt-2">{stats.unlocked} of {stats.total} badges unlocked</p>
             </div>
 
             {/* Achievements by category */}
@@ -173,12 +176,24 @@ export default function AchievementsPage() {
                             <span className={`material-symbols-outlined ${catInfo.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{catInfo.icon}</span>
                             {catInfo.label}
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {catAchievements.map(a => <AchievementCard key={a.id} achievement={a} />)}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {catAchievements.map(a => (
+                                <AchievementCard 
+                                    key={a.id} 
+                                    achievement={a} 
+                                    onClick={() => setSelectedAchievement(a)} 
+                                />
+                            ))}
                         </div>
                     </div>
                 );
             })}
+
+            <AchievementDetailModal 
+                achievement={selectedAchievement}
+                isOpen={!!selectedAchievement}
+                onClose={() => setSelectedAchievement(null)}
+            />
         </div>
     );
 }
