@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
+import AsyncDayDetailPopup from './AsyncDayDetailPopup';
 
 interface DayData {
     date: string;
@@ -8,29 +9,40 @@ interface DayData {
     count: number;
 }
 
-const DAYS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
+const DAYS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
 
-function getIntensity(amount: number, max: number): number {
+function getIntensity(amount: number, thresholds: number[]): number {
     if (amount === 0) return 0;
-    if (max === 0) return 0;
-    const ratio = amount / max;
-    if (ratio > 0.75) return 3;
-    if (ratio > 0.4) return 2;
+    if (amount >= thresholds[2]) return 4;
+    if (amount >= thresholds[1]) return 3;
+    if (amount >= thresholds[0]) return 2;
     return 1;
+}
+
+function calculateThresholds(amounts: number[]) {
+    const nonZero = amounts.filter(a => a > 0).sort((a, b) => a - b);
+    if (nonZero.length === 0) return [0, 0, 0];
+    return [
+        nonZero[Math.floor(nonZero.length * 0.25)],
+        nonZero[Math.floor(nonZero.length * 0.50)],
+        nonZero[Math.floor(nonZero.length * 0.75)],
+    ];
 }
 
 const GREEN_INTENSITY = [
     'bg-gray-100 dark:bg-[#161b22]',
+    'bg-emerald-200/60 dark:bg-emerald-500/20',
     'bg-emerald-300 dark:bg-emerald-500/40',
-    'bg-emerald-400 dark:bg-emerald-500/70',
-    'bg-emerald-600 dark:bg-emerald-500',
+    'bg-emerald-500 dark:bg-emerald-500/70',
+    'bg-emerald-600 dark:bg-emerald-400',
 ];
 
 const RED_INTENSITY = [
     'bg-gray-100 dark:bg-[#161b22]',
+    'bg-rose-200/60 dark:bg-rose-500/20',
     'bg-rose-300 dark:bg-rose-500/40',
-    'bg-rose-400 dark:bg-rose-500/70',
-    'bg-rose-600 dark:bg-rose-500',
+    'bg-rose-500 dark:bg-rose-500/70',
+    'bg-rose-600 dark:bg-rose-400',
 ];
 
 export default function MonthlyHeatmap({
@@ -45,22 +57,29 @@ export default function MonthlyHeatmap({
     const { fmt } = useCurrency();
     const [mode, setMode] = useState<'earnings' | 'expenses'>('earnings');
     const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; amount: number; count: number } | null>(null);
+    const [popupTarget, setPopupTarget] = useState<{ element: HTMLElement; date: string } | null>(null);
 
-    const grid = useMemo(() => {
+    const { grid, thresholds } = useMemo(() => {
         const spendMap = new Map<string, DayData>();
         dailySpending.forEach(d => spendMap.set(d.date, d));
 
-        const maxSpend = Math.max(...dailySpending.map(d => mode === 'earnings' ? d.earnings : d.expenses), 1);
+        const amounts = dailySpending.map(d => mode === 'earnings' ? d.earnings : d.expenses);
+        const calcThresholds = calculateThresholds(amounts);
 
         const firstDay = new Date(year, month - 1, 1);
         const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // 0=Mon
         const daysInMonth = new Date(year, month, 0).getDate();
 
-        const weeks: { date: string; amount: number; count: number; intensity: number; isToday: boolean }[][] = [];
-        let currentWeek: typeof weeks[0] = [];
+        // For GitHub style (horizontal), columns are weeks, rows are days of the week (Mon-Sun).
+        // 7 rows (Mon to Sun)
+        const rows: { date: string; amount: number; count: number; intensity: number; isToday: boolean }[][] = Array.from({ length: 7 }, () => []);
+        
+        let currentDayOfWeek = startDay;
+        let weekIndex = 0;
 
-        for (let i = 0; i < startDay; i++) {
-            currentWeek.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
+        // Pad first week with empty days
+        for (let r = 0; r < startDay; r++) {
+            rows[r].push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
         }
 
         const todayStr = new Date().toISOString().split('T')[0];
@@ -71,28 +90,30 @@ export default function MonthlyHeatmap({
             const amount = dayData ? (mode === 'earnings' ? dayData.earnings : dayData.expenses) : 0;
             const count = dayData?.count || 0;
 
-            currentWeek.push({
+            rows[currentDayOfWeek].push({
                 date: dateStr,
                 amount,
                 count,
-                intensity: getIntensity(amount, maxSpend),
+                intensity: getIntensity(amount, calcThresholds),
                 isToday: dateStr === todayStr,
             });
 
-            if (currentWeek.length === 7) {
-                weeks.push(currentWeek);
-                currentWeek = [];
+            currentDayOfWeek++;
+            if (currentDayOfWeek === 7) {
+                currentDayOfWeek = 0;
+                weekIndex++;
             }
         }
 
-        if (currentWeek.length > 0) {
-            while (currentWeek.length < 7) {
-                currentWeek.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
+        // Pad the last week to make all rows have same length
+        const maxWeeks = Math.max(...rows.map(r => r.length));
+        for (let r = 0; r < 7; r++) {
+            while (rows[r].length < maxWeeks) {
+                rows[r].push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
             }
-            weeks.push(currentWeek);
         }
 
-        return weeks;
+        return { grid: rows, thresholds: calcThresholds };
     }, [year, month, dailySpending, mode]);
 
     const colors = mode === 'earnings' ? GREEN_INTENSITY : RED_INTENSITY;
@@ -111,29 +132,35 @@ export default function MonthlyHeatmap({
             </div>
 
             <div className="flex-1 overflow-x-auto relative min-h-0 flex items-center justify-center">
-                <div className="flex gap-1.5 justify-center">
-                    <div className="flex flex-col gap-[6px] pr-2 pt-1 w-6 shrink-0">
+                <div className="flex gap-1.5 justify-center pb-4 pt-2">
+                    <div className="flex flex-col justify-between pr-2 shrink-0 h-full py-[4px]">
                         {DAYS.map((d, i) => (
-                            <div key={i} className="text-xs text-gray-400 font-medium h-[20px] flex items-center">{d}</div>
+                            <div key={i} className="text-[11px] text-gray-400 font-medium h-[24px] flex items-center">{d}</div>
                         ))}
                     </div>
 
-                    <div className="flex gap-[6px]">
-                        {grid.map((week, wi) => (
-                            <div key={wi} className="flex flex-col gap-[6px]">
-                                {week.map((day, di) => (
+                    <div className="flex flex-col justify-between h-full">
+                        {grid.map((row, ri) => (
+                            <div key={ri} className="flex gap-[6px] h-[24px]">
+                                {row.map((day, di) => (
                                     <div
                                         key={di}
-                                        className={`w-[20px] h-[20px] rounded-md transition-colors duration-300
+                                        className={`w-[24px] h-[24px] rounded-md transition-colors duration-300
                                             ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
                                             ${day.isToday ? 'ring-2 ring-primary/50' : ''}
-                                            hover:ring-2 hover:ring-primary/50 hover:scale-110 relative cursor-pointer z-0 hover:z-10`}
+                                            hover:ring-2 hover:ring-primary/50 hover:scale-110 relative cursor-pointer z-0 hover:z-10 shadow-sm`}
                                         onClick={(e) => {
                                             if (day.date) {
+                                                setPopupTarget({ element: e.currentTarget, date: day.date });
+                                            }
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (day.date && !popupTarget) {
                                                 const rect = e.currentTarget.getBoundingClientRect();
                                                 setTooltip({ x: rect.left + rect.width / 2, y: rect.top - 8, date: day.date, amount: day.amount, count: day.count });
                                             }
                                         }}
+                                        onMouseLeave={() => setTooltip(null)}
                                     />
                                 ))}
                             </div>
@@ -141,7 +168,7 @@ export default function MonthlyHeatmap({
                     </div>
                 </div>
                 
-                {tooltip && (
+                {tooltip && !popupTarget && (
                     <div className="fixed z-50 px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
                         style={{ left: tooltip.x, top: tooltip.y }}>
                         <p className="font-bold mb-1 text-center">{new Date(tooltip.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
@@ -152,16 +179,19 @@ export default function MonthlyHeatmap({
                     </div>
                 )}
             </div>
-            
-            {/* Click outside tooltip handler */}
-            {tooltip && (
-                <div className="fixed inset-0 z-40" onClick={() => setTooltip(null)} />
-            )}
 
+            {popupTarget && (
+                <AsyncDayDetailPopup
+                    date={popupTarget.date}
+                    anchorEl={popupTarget.element}
+                    onClose={() => setPopupTarget(null)}
+                />
+            )}
+            
             <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400">
                 <span>Less</span>
                 {colors.map((c, i) => (
-                    <div key={i} className={`w-[16px] h-[16px] rounded-md transition-colors duration-300 ${c}`} />
+                    <div key={i} className={`w-[16px] h-[16px] rounded-md transition-colors duration-300 shadow-sm ${c}`} />
                 ))}
                 <span>More</span>
             </div>

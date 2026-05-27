@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { useCurrency } from '@/hooks/useCurrency';
+import AsyncDayDetailPopup from './AsyncDayDetailPopup';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAYS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
+const DAYS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
 
 interface DayData {
     date: string;
@@ -20,27 +21,38 @@ interface HeatmapData {
     totalDaysTracked: number;
 }
 
-function getIntensity(amount: number, max: number): number {
+function getIntensity(amount: number, thresholds: number[]): number {
     if (amount === 0) return 0;
-    if (max === 0) return 0;
-    const ratio = amount / max;
-    if (ratio > 0.75) return 3;
-    if (ratio > 0.4) return 2;
+    if (amount >= thresholds[2]) return 4;
+    if (amount >= thresholds[1]) return 3;
+    if (amount >= thresholds[0]) return 2;
     return 1;
+}
+
+function calculateThresholds(amounts: number[]) {
+    const nonZero = amounts.filter(a => a > 0).sort((a, b) => a - b);
+    if (nonZero.length === 0) return [0, 0, 0];
+    return [
+        nonZero[Math.floor(nonZero.length * 0.25)],
+        nonZero[Math.floor(nonZero.length * 0.50)],
+        nonZero[Math.floor(nonZero.length * 0.75)],
+    ];
 }
 
 const GREEN_INTENSITY = [
     'bg-gray-100 dark:bg-[#161b22]',
+    'bg-emerald-200/60 dark:bg-emerald-500/20',
     'bg-emerald-300 dark:bg-emerald-500/40',
-    'bg-emerald-400 dark:bg-emerald-500/70',
-    'bg-emerald-600 dark:bg-emerald-500',
+    'bg-emerald-500 dark:bg-emerald-500/70',
+    'bg-emerald-600 dark:bg-emerald-400',
 ];
 
 const RED_INTENSITY = [
     'bg-gray-100 dark:bg-[#161b22]',
+    'bg-rose-200/60 dark:bg-rose-500/20',
     'bg-rose-300 dark:bg-rose-500/40',
-    'bg-rose-400 dark:bg-rose-500/70',
-    'bg-rose-600 dark:bg-rose-500',
+    'bg-rose-500 dark:bg-rose-500/70',
+    'bg-rose-600 dark:bg-rose-400',
 ];
 
 export default function YearlyHeatmap() {
@@ -49,21 +61,23 @@ export default function YearlyHeatmap() {
     const { fmt } = useCurrency();
     const [mode, setMode] = useState<'earnings' | 'expenses'>('earnings');
     const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; amount: number; count: number } | null>(null);
+    const [popupTarget, setPopupTarget] = useState<{ element: HTMLElement; date: string } | null>(null);
 
     const { data, isLoading } = useSWR<HeatmapData>(`/api/heatmap?year=${year}`);
 
     // Build the grid: 53 weeks x 7 days
-    const grid = useMemo(() => {
-        if (!data) return [];
+    const { grid, thresholds } = useMemo(() => {
+        if (!data) return { grid: [], thresholds: [0, 0, 0] };
 
         const spendMap = new Map<string, DayData>();
         const targetData = mode === 'earnings' ? (data.dailyEarnings || []) : data.dailySpending;
         targetData.forEach(d => spendMap.set(d.date, d));
 
-        const maxSpend = Math.max(...targetData.map(d => d.total), 1);
+        const amounts = targetData.map(d => d.total);
+        const calcThresholds = calculateThresholds(amounts);
 
         const jan1 = new Date(year, 0, 1);
-        const startDay = jan1.getDay(); // 0=Sun
+        const startDay = jan1.getDay() === 0 ? 6 : jan1.getDay() - 1; // 0=Mon
         const totalDays = 365 + (year % 4 === 0 ? 1 : 0);
 
         const weeks: { date: string; amount: number; count: number; intensity: number; isToday: boolean }[][] = [];
@@ -86,7 +100,7 @@ export default function YearlyHeatmap() {
                 date: dateStr,
                 amount,
                 count,
-                intensity: getIntensity(amount, maxSpend),
+                intensity: getIntensity(amount, calcThresholds),
                 isToday: dateStr === todayStr,
             });
 
@@ -103,7 +117,7 @@ export default function YearlyHeatmap() {
             weeks.push(currentWeek);
         }
 
-        return weeks;
+        return { grid: weeks, thresholds: calcThresholds };
     }, [data, year, mode]);
 
     if (isLoading || !data) return (
@@ -168,16 +182,22 @@ export default function YearlyHeatmap() {
                                     {week.map((day, di) => (
                                         <div
                                             key={di}
-                                            className={`w-[14px] h-[14px] rounded-sm transition-colors duration-200
+                                            className={`w-[14px] h-[14px] rounded-sm transition-colors duration-200 shadow-sm
                                                 ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
                                                 ${day.isToday ? 'ring-2 ring-primary/50' : ''}
                                                 hover:ring-2 hover:ring-primary/50 hover:scale-125 hover:z-10 relative cursor-pointer`}
                                             onClick={(e) => {
                                                 if (day.date) {
+                                                    setPopupTarget({ element: e.currentTarget, date: day.date });
+                                                }
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (day.date && !popupTarget) {
                                                     const rect = e.currentTarget.getBoundingClientRect();
                                                     setTooltip({ x: rect.left + rect.width / 2, y: rect.top - 8, date: day.date, amount: day.amount, count: day.count });
                                                 }
                                             }}
+                                            onMouseLeave={() => setTooltip(null)}
                                         />
                                     ))}
                                 </div>
@@ -188,13 +208,13 @@ export default function YearlyHeatmap() {
                     <div className="flex items-center justify-end gap-2 mt-4 text-[11px] text-gray-400">
                         <span>Less</span>
                         {colors.map((c, i) => (
-                            <div key={i} className={`w-[12px] h-[12px] rounded-sm transition-colors duration-300 ${c}`} />
+                            <div key={i} className={`w-[12px] h-[12px] rounded-sm shadow-sm transition-colors duration-300 ${c}`} />
                         ))}
                         <span>More</span>
                     </div>
                 </div>
 
-                {tooltip && (
+                {tooltip && !popupTarget && (
                     <div className="fixed z-50 px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
                         style={{ left: tooltip.x, top: tooltip.y }}>
                         <p className="font-bold mb-1 text-center">{new Date(tooltip.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
@@ -205,10 +225,13 @@ export default function YearlyHeatmap() {
                     </div>
                 )}
             </div>
-            
-            {/* Click outside tooltip handler */}
-            {tooltip && (
-                <div className="fixed inset-0 z-40" onClick={() => setTooltip(null)} />
+
+            {popupTarget && (
+                <AsyncDayDetailPopup
+                    date={popupTarget.date}
+                    anchorEl={popupTarget.element}
+                    onClose={() => setPopupTarget(null)}
+                />
             )}
 
             <div className="mt-4 flex gap-4 text-sm text-gray-500">
