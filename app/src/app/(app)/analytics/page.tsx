@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
             {/* Gamification / Trophy Room */}
             <div className="mb-6">
                 <TrophyRoom 
-                    transactionsCount={data.totalTransactions || data.recentTransactions.length}
+                    transactionsCount={data.recentTransactions.length}
                     savingsRate={savingsRate}
                     monthsActive={1} 
                     budgetAlertsAvoided={data.budgetAlerts.length === 0}

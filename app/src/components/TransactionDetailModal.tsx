@@ -84,7 +84,7 @@ export default function TransactionDetailModal({
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="relative w-full max-w-4xl bg-white dark:bg-[#161b22] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200 dark:border-[#30363d] max-h-[90vh]"
+                    className="relative w-full max-w-4xl card-premium-v2 rounded-[2rem] shadow-2xl shadow-primary/20 overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 max-h-[90vh] ambient-glow"
                 >
                     {/* Left Column: Details */}
                     <div className="flex-1 p-6 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 overflow-y-auto scrollbar-thin">
@@ -172,7 +172,7 @@ export default function TransactionDetailModal({
                     </div>
 
                     {/* Right Column: Attachments */}
-                    <div className="flex-1 p-6 md:p-8 bg-gray-50 dark:bg-black/40 relative overflow-y-auto scrollbar-thin border-l border-gray-100 dark:border-white/5">
+                    <div className="flex-1 p-6 md:p-8 bg-black/5 dark:bg-black/40 relative overflow-y-auto scrollbar-thin border-l border-white/10 dark:border-white/5">
                         <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors hidden md:block">
                             <span className="material-symbols-outlined text-gray-500 text-[20px]">close</span>
                         </button>

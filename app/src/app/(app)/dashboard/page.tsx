@@ -329,8 +329,24 @@ export default function DashboardPage() {
                     </label>
                 </div>
 
+                {/* NEW FEATURE: Quick Stats Bar */}
+                <div className="flex overflow-x-auto custom-scrollbar gap-3 mb-6 pb-2 snap-x stagger-children">
+                    <div className="snap-start shrink-0 card-premium-v2 p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out both' }}>
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-emerald-500 text-[18px]">savings</span></div>
+                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Savings Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%</p></div>
+                    </div>
+                    <div className="snap-start shrink-0 card-premium-v2 p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.1s both' }}>
+                        <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-rose-500 text-[18px]">speed</span></div>
+                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Burn Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{sym}{(data.expenses.current / Math.max(1, new Date().getDate())).toFixed(0)}/d</p></div>
+                    </div>
+                    <div className="snap-start shrink-0 card-premium-v2 p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.2s both' }}>
+                        <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-amber-500 text-[18px]">warning</span></div>
+                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Active Alerts</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.budgetAlerts.filter(b => b.percentage >= 80).length}</p></div>
+                    </div>
+                </div>
+
                 {/* Total Balance Card (Redesigned) */}
-                <div className="relative rounded-[2rem] p-6 mb-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10">
+                <div className="relative rounded-[2rem] p-6 mb-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe hover:scale-[1.02] transition-transform duration-500">
                     {/* Animated background layers */}
                     <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" style={{ animationDuration: '4s' }} />
@@ -378,7 +394,7 @@ export default function DashboardPage() {
 
 
                 {/* AI Insight Card (Redesigned) */}
-                <div className="relative card-premium rounded-2xl p-5 mb-6 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
+                <div className="relative card-premium-v2 rounded-2xl p-5 mb-6 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgb(16,185,129)]" />
                     <div className="flex items-start gap-3">
                         <div className="relative shrink-0 mt-0.5">
@@ -416,7 +432,7 @@ export default function DashboardPage() {
                                 <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
                             </div>
                         ) : data.recentTransactions.slice(0, 7).map(t => (
-                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible card-premium rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group">
+                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible card-premium-v2 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group category-accent" style={{ borderLeftColor: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) }}>
                                 <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
                                     <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
@@ -480,14 +496,13 @@ export default function DashboardPage() {
                 </header>
 
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8 stagger-children">
                     {stats.map((s, i) => (
-                        <div key={i} className={`card-premium ${s.gradient} p-5 lg:p-6 rounded-2xl relative overflow-hidden group`}
+                        <div key={i} className={`card-premium-v2 ${s.gradient} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe`}
                             style={{ animationDelay: `${i * 0.08}s`, animation: `slideUp 0.5s ease-out ${i * 0.08}s both` }}>
                             <div className="flex flex-col gap-1 relative z-10">
                                 <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">{s.label}</p>
-                                <h3 className="text-gray-900 dark:text-white text-2xl lg:text-3xl font-bold tracking-tight number-appear">{s.value}</h3>
+                                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{s.value}</h3>
                                 <div className="flex items-center gap-1.5 mt-2">
                                     <span className={`${s.change >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'} text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1`}>
                                         <span className="material-symbols-outlined text-sm">{s.change >= 0 ? 'trending_up' : 'trending_down'}</span>
@@ -503,7 +518,7 @@ export default function DashboardPage() {
                 {/* Charts & Alerts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
                     {/* Spending Trends */}
-                    <div className="lg:col-span-2 card-premium p-6 rounded-2xl" style={{ animation: 'slideUp 0.5s ease-out 0.35s both' }}>
+                    <div className="lg:col-span-2 card-premium-v2 p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.35s both' }}>
                         <div className="flex justify-between items-center mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
@@ -534,7 +549,7 @@ export default function DashboardPage() {
 
                         {/* Top Categories */}
                         {data.categorySpending.length > 0 && (
-                            <div className="card-premium p-6 rounded-2xl flex-1">
+                            <div className="card-premium-v2 p-6 rounded-3xl flex-1 ambient-glow">
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Top Categories</h3>
                                 <div className="h-[160px]">
                                     <Doughnut data={doughnutData} options={{
@@ -555,7 +570,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
 
                     {/* Recent Transactions (Takes up 2 cols on large) */}
-                    <div className="lg:col-span-2 card-premium rounded-2xl overflow-visible" style={{ animation: 'slideUp 0.5s ease-out 0.55s both' }}>
+                    <div className="lg:col-span-2 card-premium-v2 rounded-3xl overflow-visible ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.55s both' }}>
                         <div className="p-6 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
                             <Link href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
@@ -610,7 +625,7 @@ export default function DashboardPage() {
 
                     <div className="flex flex-col gap-5" style={{ animation: 'slideUp 0.5s ease-out 0.65s both' }}>
                         {/* Budget Alerts */}
-                        <div className="card-premium p-6 rounded-2xl">
+                        <div className="card-premium-v2 p-6 rounded-3xl">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Budget Alerts</h3>
                                 {data.budgetAlerts.length > 0 && (
@@ -647,7 +662,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Financial Intelligence Hub */}
-                        <div className="card-premium rounded-2xl flex flex-col overflow-hidden">
+                        <div className="card-premium-v2 rounded-3xl flex flex-col overflow-hidden ambient-glow">
                         <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-blue-500/10 to-transparent">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-blue-500">insights</span>

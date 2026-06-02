@@ -44,8 +44,9 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
             <div className={`
                 fixed bottom-0 left-0 w-full z-50 lg:hidden overflow-hidden
                 rounded-t-[2rem] border-t border-white/70 bg-white/92 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl
-                transition-transform duration-300 transform dark:border-white/10 dark:bg-[#0d1117]/94 dark:shadow-black/55
+                transition-transform duration-[400ms] transform dark:border-white/10 dark:bg-[#0d1117]/94 dark:shadow-black/55
                 ${isOpen ? 'translate-y-0' : 'translate-y-full'}
+                flex flex-col max-h-[85vh]
                 flex flex-col max-h-[85vh]
             `} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
                 {/* Drag Handle */}
@@ -77,7 +78,7 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
 
                 {/* Navigation Links */}
                 <div className="flex-1 overflow-y-auto px-5 pb-4 custom-scrollbar">
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-2 gap-2.5 stagger-children">
                     {menuItems.map((item) => {
                         const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                         return (
@@ -85,9 +86,9 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                                 key={item.href}
                                 href={item.href}
                                 onClick={onClose}
-                                className={`relative overflow-hidden rounded-2xl border p-3.5 transition-all duration-300 ${isActive
-                                    ? 'border-primary/20 bg-primary/10 text-primary font-bold shadow-sm'
-                                    : 'border-gray-200 bg-gray-50/80 text-gray-600 active:bg-gray-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-text-secondary dark:active:bg-[#21262d]'
+                                className={`relative overflow-hidden rounded-2xl border p-3.5 transition-all duration-300 ${isOpen ? 'scroll-reveal revealed' : 'scroll-reveal'} ${isActive
+                                    ? 'border-primary/20 bg-primary/10 text-primary font-bold shadow-sm nav-glow-pill'
+                                    : 'border-gray-200 bg-gray-50/80 text-gray-600 active:bg-gray-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-text-secondary dark:active:bg-[#21262d] hover:bg-gray-100 dark:hover:bg-white/5'
                                     }`}
                             >
                                 {isActive && <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-primary" />}

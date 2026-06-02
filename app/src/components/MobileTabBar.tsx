@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import QuickAddModal from './QuickAddModal';
 import MobileMenu from './MobileMenu';
 
@@ -39,8 +40,8 @@ export default function MobileTabBar() {
                                         className="relative z-10 flex items-center justify-center transition-transform duration-300 active:scale-90"
                                         aria-label="Quick Add Transaction"
                                     >
-                                        <div className="absolute inset-0 rounded-3xl bg-emerald-500/30 blur-xl animate-pulse" />
-                                        <div className="grid h-[60px] w-[60px] place-items-center rounded-3xl border border-white/30 bg-gradient-to-tr from-emerald-600 via-emerald-500 to-cyan-400 shadow-[0_14px_34px_rgb(16,185,129,0.34)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_42px_rgb(16,185,129,0.48)]">
+                                        <div className="absolute inset-0 rounded-3xl bg-emerald-500/30 blur-xl breathe" />
+                                        <div className="grid h-[60px] w-[60px] place-items-center rounded-3xl border border-white/30 bg-gradient-to-tr from-emerald-600 via-emerald-500 to-cyan-400 shadow-[0_14px_34px_rgb(16,185,129,0.34)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_42px_rgb(16,185,129,0.48)] breathe">
                                             <span className="material-symbols-outlined text-white text-3xl font-bold">add</span>
                                         </div>
                                     </button>
@@ -79,7 +80,12 @@ export default function MobileTabBar() {
                                     }`}
                             >
                                 {isActive && (
-                                    <div className="absolute inset-x-2 top-2 bottom-2 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/10" />
+                                    <motion.div 
+                                        layoutId="mobile-nav-pill"
+                                        className="absolute inset-x-2 top-2 bottom-2 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/10 nav-glow-pill" 
+                                        initial={false}
+                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                    />
                                 )}
                                 <span
                                     className={`material-symbols-outlined relative z-10 text-[22px] transition-all duration-300 ${isActive ? 'scale-110' : ''}`}

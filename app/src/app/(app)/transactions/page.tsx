@@ -1229,10 +1229,8 @@ export default function TransactionsPage() {
             {selectedDetailTx && mounted && (
                 <TransactionDetailModal
                     transaction={selectedDetailTx}
-                    isOpen={!!selectedDetailTx}
                     customCategories={customCategories}
                     onClose={() => setSelectedDetailTx(null)}
-                    currency={currency}
                     onEdit={(tx) => {
                         setSelectedDetailTx(null);
                         setEditingTx({ ...tx });

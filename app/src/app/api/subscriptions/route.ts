@@ -6,7 +6,8 @@ import { queryAll, run } from '@/lib/db';
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-key-for-dev');
 
 async function getUserId() {
-    const token = cookies().get('token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
     if (!token) return null;
     try {
         const { payload } = await jose.jwtVerify(token, JWT_SECRET);

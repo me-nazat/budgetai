@@ -18,13 +18,10 @@ const CATEGORY_COLOR_STYLES: Record<string, { icon: string; iconBg: string; text
     pink: { icon: 'text-pink-600 dark:text-pink-400', iconBg: 'bg-pink-50 dark:bg-pink-500/10', text: 'text-pink-500' },
     indigo: { icon: 'text-indigo-600 dark:text-indigo-400', iconBg: 'bg-indigo-50 dark:bg-indigo-500/10', text: 'text-indigo-500' },
     emerald: { icon: 'text-emerald-600 dark:text-emerald-400', iconBg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-500' },
-    cyan: { icon: 'text-cyan-600 dark:text-cyan-400', iconBg: 'bg-cyan-50 dark:bg-cyan-500/10', text: 'text-cyan-500' },
     sky: { icon: 'text-sky-600 dark:text-sky-400', iconBg: 'bg-sky-50 dark:bg-sky-500/10', text: 'text-sky-500' },
     rose: { icon: 'text-rose-600 dark:text-rose-400', iconBg: 'bg-rose-50 dark:bg-rose-500/10', text: 'text-rose-500' },
     amber: { icon: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-50 dark:bg-amber-500/10', text: 'text-amber-500' },
     teal: { icon: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-50 dark:bg-teal-500/10', text: 'text-teal-500' },
-    teal: { icon: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-50 dark:bg-teal-500/10', text: 'text-teal-500' },
-    cyan: { icon: 'text-cyan-600 dark:text-cyan-400', iconBg: 'bg-cyan-50 dark:bg-cyan-500/10', text: 'text-cyan-500' },
     gray: { icon: 'text-gray-600 dark:text-gray-400', iconBg: 'bg-gray-50 dark:bg-gray-500/10', text: 'text-gray-500' },
     primary: { icon: 'text-primary', iconBg: 'bg-primary/10', text: 'text-primary' },
 };

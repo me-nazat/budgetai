@@ -30,11 +30,12 @@ export default function AppRouteTransition() {
     if (!visible) return null;
 
     return (
-        <div className="pointer-events-none fixed top-0 left-0 lg:left-64 right-0 z-[45] h-0.5">
+        <div className="pointer-events-none fixed top-0 left-0 lg:left-64 right-0 z-[45] h-1">
             <div
-                className="h-full bg-gradient-to-r from-primary via-emerald-400 to-primary rounded-full"
+                className="h-full bg-gradient-to-r from-[#136dec] via-[#06b6d4] to-[#10b981] rounded-full shadow-[0_0_12px_rgba(6,182,212,0.6)]"
                 style={{
-                    animation: 'routeProgress 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                    backgroundSize: '200% 100%',
+                    animation: 'routeProgress 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards, progressGradient 2s linear infinite',
                 }}
             />
         </div>

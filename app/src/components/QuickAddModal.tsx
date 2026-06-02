@@ -317,7 +317,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
 
             {/* Modal Sheet */}
             <div
-                className="relative w-full lg:max-w-xl max-h-[90dvh] bg-white dark:bg-[#161b22] rounded-t-3xl lg:rounded-3xl overflow-y-auto shadow-2xl"
+                className="relative w-full lg:max-w-xl max-h-[90dvh] card-premium-v2 rounded-t-[2rem] lg:rounded-[2rem] overflow-y-auto shadow-2xl shadow-primary/20 border border-white/20 dark:border-white/10"
                 style={{ animation: 'sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}
             >
                 {/* Handle bar (Mobile Only) */}

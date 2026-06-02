@@ -4,8 +4,8 @@ import { withAuth } from '@/lib/middleware/with-auth';
 import { run } from '@/lib/db';
 
 export const DELETE = apiHandler(
-  withAuth(async (request: NextRequest, { userId, params }) => {
-    const { id } = params as { id: string };
+  withAuth<{ params: Promise<{ id: string }> }>(async (request: NextRequest, { userId }, routeContext) => {
+    const { id } = await (routeContext as { params: Promise<{ id: string }> }).params;
 
     if (!id) {
       return NextResponse.json({ error: 'Missing bill split ID' }, { status: 400 });

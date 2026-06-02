@@ -92,7 +92,7 @@ export function SubscriptionsContent() {
         setEditMode(sub);
         setName(sub.name);
         setAmount(sub.amount.toString());
-        setSubCurrency(sub.currency);
+        setSubCurrency(sub.currency as any);
         setBillingCycle(sub.billing_cycle);
         setNextRenewal(sub.next_renewal_date);
         setCategory(sub.category);
@@ -225,7 +225,7 @@ export function SubscriptionsContent() {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Currency</label>
-                                        <select value={subCurrency} onChange={e => setSubCurrency(e.target.value)} className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary dark:text-white">
+                                        <select value={subCurrency} onChange={e => setSubCurrency(e.target.value as any)} className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary dark:text-white">
                                             <option value="USD">USD</option>
                                             <option value="EUR">EUR</option>
                                             <option value="GBP">GBP</option>

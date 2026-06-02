@@ -269,7 +269,7 @@ export function ReceiptScannerModal({ isOpen, onClose }: ReceiptScannerModalProp
                         onChange={e => setScannedData({...scannedData, category: e.target.value})}
                         className="w-full bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-[#30363d] rounded-xl py-3 px-4 text-gray-900 dark:text-white font-medium outline-none focus:border-primary"
                       >
-                        {CATEGORIES_EXPENSE.map(c => <option key={c} value={c}>{c}</option>)}
+                        {CATEGORIES_EXPENSE.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
                       </select>
                     </div>
                   </div>

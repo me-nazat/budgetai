@@ -127,7 +127,7 @@ export default function DayDetailPopup({
                     exit={{ opacity: 0, scale: 0.95, y: 6 }}
                     transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                     onClick={e => e.stopPropagation()}
-                    className={`absolute flex flex-col bg-white dark:bg-[#161b22] rounded-2xl shadow-2xl border border-gray-200/70 dark:border-[#30363d] overflow-hidden
+                    className={`absolute flex flex-col card-premium-v2 rounded-[2rem] shadow-2xl shadow-primary/20 border border-white/20 dark:border-white/10 overflow-hidden ambient-glow
                         ${compact ? 'w-[355px] max-h-[400px]' : 'w-[380px] max-h-[440px]'}`}
                     style={{ top: position.top, left: position.left }}
                 >

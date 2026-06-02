@@ -36,7 +36,7 @@ export default function AnimatedCounter({
             if (ref.current) {
                 ref.current.textContent = Intl.NumberFormat('en-US', {
                     maximumFractionDigits: 0
-                }).format(latest.toFixed(0));
+                }).format(Math.round(latest));
             }
         });
     }, [springValue]);

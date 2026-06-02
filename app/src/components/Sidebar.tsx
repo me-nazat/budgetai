@@ -98,13 +98,13 @@ export default function Sidebar() {
                                 {isActive && (
                                     <motion.div 
                                         layoutId="sidebar-active"
-                                        className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-xl"
+                                        className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-xl nav-glow-pill"
                                         initial={false}
                                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
                                 )}
                                 {isActive && (
-                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_10px_rgba(19,109,236,0.8)] z-10" />
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_rgba(19,109,236,0.9)] z-10" />
                                 )}
                                 
                                 <span className={`material-symbols-outlined relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:-rotate-3'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
