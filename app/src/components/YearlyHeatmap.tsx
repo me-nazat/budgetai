@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { useCurrency } from '@/hooks/useCurrency';
 import AsyncDayDetailPopup from './AsyncDayDetailPopup';
@@ -66,8 +67,8 @@ export default function YearlyHeatmap() {
     const { data, isLoading } = useSWR<HeatmapData>(`/api/heatmap?year=${year}`);
 
     // Build the grid: 53 weeks x 7 days
-    const { grid } = useMemo(() => {
-        if (!data) return { grid: [], thresholds: [0, 0, 0] };
+    const { grid, monthLabels } = useMemo(() => {
+        if (!data) return { grid: [], thresholds: [0, 0, 0], monthLabels: [] };
 
         const spendMap = new Map<string, DayData>();
         const targetData = mode === 'earnings' ? (data.dailyEarnings || []) : data.dailySpending;
@@ -121,7 +122,17 @@ export default function YearlyHeatmap() {
             weeks.push(currentWeek);
         }
 
-        return { grid: weeks, thresholds: calcThresholds };
+        const monthLabels: number[] = [];
+        for (let m = 0; m < 12; m++) {
+            const date = new Date(year, m, 1);
+            const start = new Date(year, 0, 1);
+            const diff = date.getTime() - start.getTime();
+            const dayOfYear = Math.round(diff / (1000 * 60 * 60 * 24));
+            const col = Math.floor((dayOfYear + startDay) / 7);
+            monthLabels.push(col * 17); // 14px width + 3px gap
+        }
+
+        return { grid: weeks, thresholds: calcThresholds, monthLabels };
     }, [data, year, mode]);
 
     if (isLoading || !data) return (
@@ -167,9 +178,9 @@ export default function YearlyHeatmap() {
 
             <div className="card-premium rounded-2xl p-6 overflow-x-auto relative">
                 <div className="min-w-[750px]">
-                    <div className="flex ml-8 mb-2">
+                    <div className="ml-8 mb-2 relative h-4">
                         {MONTHS.map((m, i) => (
-                            <div key={i} className="text-[11px] text-gray-400 font-medium" style={{ width: `${100 / 12}%` }}>{m}</div>
+                            <div key={i} className="absolute text-[11px] text-gray-400 font-medium" style={{ left: `${monthLabels[i] || 0}px` }}>{m}</div>
                         ))}
                     </div>
 
@@ -218,15 +229,16 @@ export default function YearlyHeatmap() {
                     </div>
                 </div>
 
-                {tooltip && !popupTarget && (
-                    <div className="fixed z-50 px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
+                {tooltip && !popupTarget && typeof window !== 'undefined' && createPortal(
+                    <div className="fixed z-[9999] px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
                         style={{ left: tooltip.x, top: tooltip.y }}>
                         <p className="font-bold mb-1 text-center">{new Date(tooltip.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                         <div className={`px-2 py-1 rounded-md bg-white/10 font-medium flex flex-col items-center`}>
                             <span className="text-white/70 text-[10px] uppercase tracking-wider">{mode === 'earnings' ? 'Total Income' : 'Total Expense'}</span>
                             <span className={`text-sm font-bold ${mode === 'earnings' ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(tooltip.amount)}</span>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
 

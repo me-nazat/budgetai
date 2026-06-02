@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useCurrency } from '@/hooks/useCurrency';
 import AsyncDayDetailPopup from './AsyncDayDetailPopup';
 
@@ -169,15 +170,16 @@ export default function MonthlyHeatmap({
                     </div>
                 </div>
                 
-                {tooltip && !popupTarget && (
-                    <div className="fixed z-50 px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
+                {tooltip && !popupTarget && typeof window !== 'undefined' && createPortal(
+                    <div className="fixed z-[9999] px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
                         style={{ left: tooltip.x, top: tooltip.y }}>
                         <p className="font-bold mb-1 text-center">{new Date(tooltip.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                         <div className={`px-2 py-1 rounded-md bg-white/10 font-medium flex flex-col items-center`}>
                             <span className="text-white/70 text-[10px] uppercase tracking-wider">{mode === 'earnings' ? 'Total Income' : 'Total Expense'}</span>
                             <span className={`text-sm font-bold ${mode === 'earnings' ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(tooltip.amount)}</span>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
 
