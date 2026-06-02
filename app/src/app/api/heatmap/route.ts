@@ -12,32 +12,32 @@ export const GET = apiHandler(
     const endDate = `${year}-12-31`;
 
     const dailySpending = await queryAll<{ date: string; total: number; count: number }>(
-      `SELECT date, SUM(amount) as total, COUNT(*) as count
+      `SELECT date(date) as date, SUM(amount) as total, COUNT(*) as count
        FROM transactions
-       WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ?
-       GROUP BY date
-       ORDER BY date ASC`,
+       WHERE user_id = ? AND type = 'expense' AND date(date) >= date(?) AND date(date) <= date(?)
+       GROUP BY date(date)
+       ORDER BY date(date) ASC`,
       [userId, startDate, endDate]
     );
 
     const dailyEarnings = await queryAll<{ date: string; total: number; count: number }>(
-      `SELECT date, SUM(amount) as total, COUNT(*) as count
+      `SELECT date(date) as date, SUM(amount) as total, COUNT(*) as count
        FROM transactions
-       WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?
-       GROUP BY date
-       ORDER BY date ASC`,
+       WHERE user_id = ? AND type = 'earning' AND date(date) >= date(?) AND date(date) <= date(?)
+       GROUP BY date(date)
+       ORDER BY date(date) ASC`,
       [userId, startDate, endDate]
     );
 
     // Monthly summary
     const monthlyStats = await queryAll<{ month: string; expenses: number; earnings: number }>(
       `SELECT 
-         strftime('%Y-%m', date) as month,
+         strftime('%Y-%m', date(date)) as month,
          SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expenses,
          SUM(CASE WHEN type = 'earning' THEN amount ELSE 0 END) as earnings
        FROM transactions
-       WHERE user_id = ? AND date >= ? AND date <= ?
-       GROUP BY strftime('%Y-%m', date)
+       WHERE user_id = ? AND date(date) >= date(?) AND date(date) <= date(?)
+       GROUP BY strftime('%Y-%m', date(date))
        ORDER BY month ASC`,
       [userId, startDate, endDate]
     );

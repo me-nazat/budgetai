@@ -70,13 +70,13 @@ export default function MonthlyHeatmap({
         const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // 0=Mon
         const daysInMonth = new Date(year, month, 0).getDate();
 
-        // Construct a single flat list of days representing a calendar view:
-        // Mon Tue Wed Thu Fri Sat Sun running horizontally
-        const daysList: { date: string; amount: number; count: number; intensity: number; isToday: boolean }[] = [];
+        // Construct week columns running horizontally, days running vertically (Mon to Sun)
+        const weeks: { date: string; amount: number; count: number; intensity: number; isToday: boolean }[][] = [];
+        let currentWeek: typeof weeks[0] = [];
 
-        // Pad first week with empty days
-        for (let r = 0; r < startDay; r++) {
-            daysList.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
+        // Pad first week
+        for (let i = 0; i < startDay; i++) {
+            currentWeek.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
         }
 
         const today = new Date();
@@ -88,21 +88,28 @@ export default function MonthlyHeatmap({
             const amount = dayData ? (mode === 'earnings' ? dayData.earnings : dayData.expenses) : 0;
             const count = dayData?.count || 0;
 
-            daysList.push({
+            currentWeek.push({
                 date: dateStr,
                 amount,
                 count,
                 intensity: getIntensity(amount, calcThresholds),
                 isToday: dateStr === todayStr,
             });
+
+            if (currentWeek.length === 7) {
+                weeks.push(currentWeek);
+                currentWeek = [];
+            }
         }
 
-        // Pad the last week to align complete 7-day rows
-        while (daysList.length % 7 !== 0) {
-            daysList.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
+        if (currentWeek.length > 0) {
+            while (currentWeek.length < 7) {
+                currentWeek.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false });
+            }
+            weeks.push(currentWeek);
         }
 
-        return { grid: daysList, thresholds: calcThresholds };
+        return { grid: weeks, thresholds: calcThresholds };
     }, [year, month, dailySpending, mode]);
 
     const colors = mode === 'earnings' ? GREEN_INTENSITY : RED_INTENSITY;
@@ -123,37 +130,41 @@ export default function MonthlyHeatmap({
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center items-center relative min-h-0">
-                <div className="w-full max-w-[240px]">
-                    {/* Horizontal headers (Mon - Sun) */}
-                    <div className="grid grid-cols-7 gap-2.5 mb-3 text-center">
+            <div className="flex-1 flex flex-col justify-center items-center relative min-h-0 w-full">
+                <div className="flex gap-3 justify-center items-center w-full max-w-[340px]">
+                    {/* Days of Week (Mon - Sun) running vertically on the left */}
+                    <div className="flex flex-col gap-2.5 pr-1.5 pt-0.5">
                         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                            <div key={i} className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{d}</div>
+                            <div key={i} className="text-[10px] text-gray-400 font-bold uppercase tracking-wider h-[26px] flex items-center justify-end w-4">{d}</div>
                         ))}
                     </div>
 
-                    {/* Flat Grid in 7 Columns */}
-                    <div className="grid grid-cols-7 gap-2.5">
-                        {grid.map((day, index) => (
-                            <div
-                                key={index}
-                                className={`w-[26px] h-[26px] rounded-[6px] transition-all duration-300 shadow-sm border border-black/5 dark:border-white/5
-                                    ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
-                                    ${day.isToday ? 'ring-2 ring-primary/60 scale-105' : ''}
-                                    hover:ring-2 hover:ring-primary/40 hover:scale-115 relative cursor-pointer z-0 hover:z-10`}
-                                onClick={(e) => {
-                                    if (day.date) {
-                                        setPopupTarget({ element: e.currentTarget, date: day.date });
-                                    }
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (day.date && !popupTarget) {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        setTooltip({ x: rect.left + rect.width / 2, y: rect.top - 8, date: day.date, amount: day.amount, count: day.count });
-                                    }
-                                }}
-                                onMouseLeave={() => setTooltip(null)}
-                            />
+                    {/* Columns of Weeks running horizontally */}
+                    <div className="flex gap-2.5">
+                        {grid.map((week, wi) => (
+                            <div key={wi} className="flex flex-col gap-2.5">
+                                {week.map((day, di) => (
+                                    <div
+                                        key={di}
+                                        className={`w-[26px] h-[26px] rounded-[6px] transition-all duration-300 shadow-sm border border-black/5 dark:border-white/5
+                                            ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
+                                            ${day.isToday ? 'ring-2 ring-primary/60 scale-105' : ''}
+                                            hover:ring-2 hover:ring-primary/40 hover:scale-125 relative cursor-pointer z-0 hover:z-10`}
+                                        onClick={(e) => {
+                                            if (day.date) {
+                                                setPopupTarget({ element: e.currentTarget, date: day.date });
+                                            }
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (day.date && !popupTarget) {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setTooltip({ x: rect.left + rect.width / 2, y: rect.top - 8, date: day.date, amount: day.amount, count: day.count });
+                                            }
+                                        }}
+                                        onMouseLeave={() => setTooltip(null)}
+                                    />
+                                ))}
+                            </div>
                         ))}
                     </div>
                 </div>

@@ -65,8 +65,8 @@ export default function DayDetailPopup({
     const calculatePosition = useCallback(() => {
         if (!anchorEl) return;
         const rect = anchorEl.getBoundingClientRect();
-        const popupWidth = compact ? 330 : 380;
-        const popupMaxHeight = compact ? 360 : 440;
+        const popupWidth = compact ? 355 : 380;
+        const popupMaxHeight = compact ? 400 : 440;
         const gap = 8;
         const viewportW = window.innerWidth;
         const viewportH = window.innerHeight;
@@ -128,13 +128,13 @@ export default function DayDetailPopup({
                     transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                     onClick={e => e.stopPropagation()}
                     className={`absolute flex flex-col bg-white dark:bg-[#161b22] rounded-2xl shadow-2xl border border-gray-200/70 dark:border-[#30363d] overflow-hidden
-                        ${compact ? 'w-[330px] max-h-[360px]' : 'w-[380px] max-h-[440px]'}`}
+                        ${compact ? 'w-[355px] max-h-[400px]' : 'w-[380px] max-h-[440px]'}`}
                     style={{ top: position.top, left: position.left }}
                 >
                     {/* Header */}
-                    <div className={`flex items-center justify-between ${compact ? 'px-4 pt-4 pb-2' : 'px-5 pt-5 pb-3'}`}>
+                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
                         <div>
-                            <h3 className={`${compact ? 'text-base' : 'text-lg'} font-black text-gray-900 dark:text-white`}>{formattedDate}</h3>
+                            <h3 className="text-lg font-black text-gray-900 dark:text-white">{formattedDate}</h3>
                             <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
                                 {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
                                 {recurringItems.length > 0 && ` · ${recurringItems.length} recurring`}
@@ -142,7 +142,7 @@ export default function DayDetailPopup({
                         </div>
                         <button
                             onClick={onClose}
-                            className={`${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
+                            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                         >
                             <span className="material-symbols-outlined text-lg text-gray-500">close</span>
                         </button>
@@ -150,25 +150,25 @@ export default function DayDetailPopup({
 
                     {/* Income / Expense Summary */}
                     {(totalIncome > 0 || totalExpense > 0) && (
-                        <div className={`${compact ? 'mx-4 mb-2 gap-1.5' : 'mx-5 mb-3 gap-2'} grid grid-cols-2`}>
+                        <div className="mx-5 mb-3 gap-2 grid grid-cols-2">
                             <div className="rounded-xl bg-emerald-500/10 px-3 py-2">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Income</p>
-                                <p className={`mt-0.5 ${compact ? 'text-sm' : 'text-base'} font-black text-emerald-600`}>{fmt(totalIncome)}</p>
+                                <p className="mt-0.5 text-base font-black text-emerald-600">{fmt(totalIncome)}</p>
                             </div>
                             <div className="rounded-xl bg-rose-500/10 px-3 py-2">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">Expenses</p>
-                                <p className={`mt-0.5 ${compact ? 'text-sm' : 'text-base'} font-black text-rose-600`}>{fmt(totalExpense)}</p>
+                                <p className="mt-0.5 text-base font-black text-rose-600">{fmt(totalExpense)}</p>
                             </div>
                         </div>
                     )}
 
                     {/* Transaction List */}
-                    <div className={`flex-1 overflow-y-auto ${compact ? 'px-4 pb-4 space-y-1.5' : 'px-5 pb-5 space-y-2'} scrollbar-thin`}>
+                    <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-2 scrollbar-thin">
                         {transactions.map(tx => (
                             <button
                                 key={tx.id}
                                 onClick={() => onTransactionClick(tx)}
-                                className={`w-full rounded-xl border border-gray-100 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.03] ${compact ? 'p-2.5' : 'p-3'} text-left transition-all hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:border-gray-200 dark:hover:border-white/15 group`}
+                                className="w-full rounded-xl border border-gray-100 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.03] p-3 text-left transition-all hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:border-gray-200 dark:hover:border-white/15 group"
                             >
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex min-w-0 items-center gap-2.5">
@@ -220,7 +220,7 @@ export default function DayDetailPopup({
 
                         {/* Empty State */}
                         {transactions.length === 0 && recurringItems.length === 0 && (
-                            <div className={`rounded-xl border border-dashed border-gray-200 dark:border-white/10 ${compact ? 'p-5' : 'p-8'} text-center mb-2`}>
+                            <div className="rounded-xl border border-dashed border-gray-200 dark:border-white/10 p-8 text-center mb-2">
                                 <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-600 mb-2 block">event_busy</span>
                                 <p className="text-sm text-gray-400 dark:text-gray-500">No activity on this day</p>
                             </div>
@@ -230,7 +230,7 @@ export default function DayDetailPopup({
                         <div className="pt-2">
                             <button
                                 onClick={() => { onClose(); onAddClick(date); }}
-                                className={`w-full flex items-center justify-center gap-2 ${compact ? 'py-2 rounded-xl text-xs' : 'py-3 rounded-xl text-sm'} bg-primary hover:bg-primary-hover text-white font-bold transition-all shadow-md hover:shadow-lg active:scale-95`}
+                                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm bg-primary hover:bg-primary-hover text-white font-bold transition-all shadow-md hover:shadow-lg active:scale-95"
                             >
                                 <span className="material-symbols-outlined text-[18px]">add</span>
                                 Add Transaction

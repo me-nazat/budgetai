@@ -64,7 +64,13 @@ export const GET = apiHandler(
         sql += ' ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?';
         params.push(limit, offset);
 
-        const transactions = await queryAll(sql, params);
+        const transactions = await queryAll<Record<string, unknown>>(sql, params);
+        const formattedTransactions = transactions.map(tx => {
+            if (typeof tx.date === 'string') {
+                tx.date = tx.date.split('T')[0].split(' ')[0];
+            }
+            return tx;
+        });
 
         // Get total count
         let countSql = 'SELECT COUNT(*) as total FROM transactions WHERE user_id = ?';
@@ -77,7 +83,7 @@ export const GET = apiHandler(
         const countResult = await queryAll<{ total: number }>(countSql, countParams);
         const total = countResult[0]?.total || 0;
 
-        return NextResponse.json({ transactions, total });
+        return NextResponse.json({ transactions: formattedTransactions, total });
     })
 );
 
