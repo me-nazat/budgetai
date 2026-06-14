@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/security/session-manager';
 import { run } from '@/lib/db';

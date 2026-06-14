@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { SparklesIcon } from '@heroicons/react/24/outline';
+import useSWR from 'swr';
 
 interface HealthScoreData {
   score: number;
@@ -19,34 +20,18 @@ interface HealthScoreData {
 }
 
 export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
-  const [data, setData] = useState<HealthScoreData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const ref = React.useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
   const [displayScore, setDisplayScore] = useState(0);
 
-  const fetchData = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    fetch('/api/health-score')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load health score');
-        return res.json();
-      })
-      .then(d => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Unable to load health score');
-        setLoading(false);
-      });
-  }, []);
+  const { data, error, isLoading, mutate } = useSWR<HealthScoreData>(
+    '/api/health-score',
+    { revalidateOnFocus: false, dedupingInterval: 30000 }
+  );
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const fetchData = useCallback(() => {
+    mutate();
+  }, [mutate]);
 
   useEffect(() => {
     if (isInView && data) {
@@ -71,7 +56,7 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
     }
   }, [isInView, data]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface/50 dark:bg-surface-dark/50 animate-pulse rounded-2xl border border-gray-200 dark:border-[#30363d] flex items-center justify-center`}>
         <div className="flex flex-col items-center gap-3">
@@ -82,7 +67,7 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
     );
   }
 
-  // Error state with retry button — no longer returns null
+  // Error state with retry button
   if (error || !data) {
     return (
       <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-[#30363d] flex flex-col items-center justify-center p-6 text-center`}>
@@ -91,7 +76,7 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
         </div>
         <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Health Score Unavailable</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 max-w-[240px]">
-          {error || 'Unable to calculate your financial health score right now.'}
+          {error?.message || 'Unable to calculate your financial health score right now.'}
         </p>
         <button 
           onClick={fetchData}

@@ -40,6 +40,7 @@ export default function BudgetPage() {
     const [isAddingCustom, setIsAddingCustom] = useState(false);
     const [newCustomCatName, setNewCustomCatName] = useState('');
     const [newLimit, setNewLimit] = useState('');
+    const [showRollover, setShowRollover] = useState(false);
     const { fmt } = useCurrency();
     const [reloadToken, setReloadToken] = useState(0);
     const [customCategories, setCustomCategories] = useState<CustomBudgetCategory[]>([]);
@@ -131,9 +132,14 @@ export default function BudgetPage() {
                     <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Monthly Budget Planner</h1>
                     <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Set spending limits for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.</p>
                 </div>
-                <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold transition-all hover:-translate-y-0.5 btn-primary-glow">
-                    <span className="material-symbols-outlined text-lg">{showAdd ? 'close' : 'add'}</span>{showAdd ? 'Cancel' : 'Add Budget'}
-                </button>
+                <div className="flex gap-3">
+                    <button onClick={() => setShowRollover(!showRollover)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-all ${showRollover ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400 shadow-sm' : 'bg-white border-gray-200 text-gray-600 dark:bg-bg-dark dark:border-white/10 dark:text-gray-400 hover:border-gray-300'}`}>
+                        <span className="material-symbols-outlined text-[18px]">{showRollover ? 'visibility' : 'visibility_off'}</span> Rollover Mode
+                    </button>
+                    <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold transition-all hover:-translate-y-0.5 btn-primary-glow">
+                        <span className="material-symbols-outlined text-lg">{showAdd ? 'close' : 'add'}</span>{showAdd ? 'Cancel' : 'Add Budget'}
+                    </button>
+                </div>
             </div>
 
             {/* Summary Cards */}
@@ -242,7 +248,14 @@ export default function BudgetPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5 text-gray-600 dark:text-gray-300 font-medium">{fmt(b.spent)}</td>
-                                            <td className="px-6 py-5 text-gray-900 dark:text-white font-bold">{fmt(b.monthly_limit)}</td>
+                                            <td className="px-6 py-5">
+                                                <div className="text-gray-900 dark:text-white font-bold">{fmt(b.monthly_limit)}</div>
+                                                {showRollover && (
+                                                    <div className={`mt-1 text-xs font-bold ${b.monthly_limit - b.spent >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                        Rollover: {b.monthly_limit - b.spent >= 0 ? '+' : ''}{fmt(b.monthly_limit - b.spent)}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex flex-col gap-2">
                                                     <div className="flex justify-between text-xs font-semibold">

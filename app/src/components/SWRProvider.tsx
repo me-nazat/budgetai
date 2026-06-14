@@ -39,18 +39,20 @@ const fetcher = async (url: string) => {
         } else {
             // Refresh failed — redirect to login
             if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+                localStorage.removeItem(STORAGE_KEY);
                 window.location.href = '/login';
             }
             throw new Error('Session expired. Please log in again.');
         }
     }
 
+    // Parse response once - avoid double consumption
+    const json = await r.json().catch(() => ({}));
+
     if (!r.ok) {
-        const errJson = await r.json().catch(() => ({}));
-        throw new Error(errJson?.error?.message || errJson?.error || 'API error');
+        throw new Error(json?.error?.message || json?.error || 'API error');
     }
 
-    const json = await r.json();
     // Transparently unwrap ApiSuccessResponse envelope
     return (json && typeof json === 'object' && json.success === true && 'data' in json) ? json.data : json;
 };
@@ -157,7 +159,14 @@ function createPersistentCache(): Cache<unknown> {
     };
 }
 
+import { useEffect } from 'react';
+
 export default function SWRProvider({ children }: { children: React.ReactNode }) {
+    useEffect(() => {
+        // Run auto-sync for recurring transactions and subscriptions silently
+        fetch('/api/sync', { method: 'POST' }).catch(() => {});
+    }, []);
+
     return (
         <SWRConfig value={{
             provider: createPersistentCache,

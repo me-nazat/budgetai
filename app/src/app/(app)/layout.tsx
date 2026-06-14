@@ -8,11 +8,16 @@ import PageTransition from '@/components/PageTransition';
 
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 
+import { Inter, Outfit } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <SWRProvider>
             <CurrencyProvider>
-                <div className="min-h-screen app-surface flex flex-col overflow-x-hidden">
+                <div className={`min-h-screen app-surface flex flex-col overflow-x-hidden ${inter.variable} ${outfit.variable} font-sans`}>
                     <Sidebar />
                     <CurrencySelector />
                     <CommandPalette />

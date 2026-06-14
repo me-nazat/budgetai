@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import { Bar, Doughnut } from 'react-chartjs-2';
@@ -26,6 +26,8 @@ export default function ReportsPage() {
     const [customEnd, setCustomEnd] = useState('');
     const [format, setFormat] = useState('live');
     const [generating, setGenerating] = useState(false);
+    const [categories, setCategories] = useState<string[]>([]);
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [liveData, setLiveData] = useState<{
         transactions: Transaction[],
         totalExp: number,
@@ -34,7 +36,43 @@ export default function ReportsPage() {
     } | null>(null);
 
     const { currency, fmt } = useCurrency();
-    const sym = CURRENCIES[currency].symbol;
+    const sym = CURRENCIES[currency]?.symbol || currency;
+
+
+    useEffect(() => {
+        fetch('/api/transactions?limit=1000').then(res => res.json()).then(data => {
+            if (data.transactions) {
+                const cats = Array.from(new Set(data.transactions.map((t: any) => t.category))) as string[];
+                setCategories(cats);
+                setSelectedCategories(cats);
+                loadView(cats);
+            }
+        });
+    }, []);
+
+    const saveView = () => {
+        const view = { reportType, dateRange, customStart, customEnd, selectedCategories, format };
+        localStorage.setItem('wealth_ai_saved_view', JSON.stringify(view));
+        alert('View configuration saved successfully!');
+    };
+
+    const loadView = (availableCats: string[]) => {
+        try {
+            const view = JSON.parse(localStorage.getItem('wealth_ai_saved_view') || '{}');
+            if (view.reportType) {
+                setReportType(view.reportType);
+                setDateRange(view.dateRange);
+                setCustomStart(view.customStart || '');
+                setCustomEnd(view.customEnd || '');
+                setFormat(view.format || 'live');
+                if (view.selectedCategories && view.selectedCategories.length > 0) {
+                    setSelectedCategories(view.selectedCategories);
+                } else {
+                    setSelectedCategories(availableCats);
+                }
+            }
+        } catch (e) {}
+    };
 
     const generateReport = async () => {
         setGenerating(true);
@@ -51,15 +89,22 @@ export default function ReportsPage() {
             }
 
             const res = await fetch(`/api/transactions?start=${start}&end=${end}&limit=5000`);
-            const { transactions } = await res.json();
-            if (!transactions || transactions.length === 0) { alert('No data found for the selected period'); setGenerating(false); return; }
+            const { transactions: rawTransactions } = await res.json();
+            if (!rawTransactions || rawTransactions.length === 0) { alert('No data found for the selected period'); setGenerating(false); return; }
 
-            const totalExp = transactions.filter((t: any) => t.type === 'expense').reduce((s: number, t: { amount: number }) => s + t.amount, 0);
-            const totalEarn = transactions.filter((t: any) => t.type === 'earning').reduce((s: number, t: { amount: number }) => s + t.amount, 0);
+            // Apply category filter
+            const transactions = rawTransactions.filter((t: Transaction) => 
+                selectedCategories.length === 0 || selectedCategories.includes(t.category)
+            );
+            
+            if (transactions.length === 0) { alert('No data matches the selected categories'); setGenerating(false); return; }
+
+            const totalExp = transactions.filter((t: Transaction) => t.type === 'expense').reduce((s: number, t: Transaction) => s + t.amount, 0);
+            const totalEarn = transactions.filter((t: Transaction) => t.type === 'earning').reduce((s: number, t: Transaction) => s + t.amount, 0);
             const net = totalEarn - totalExp;
 
             const catMap: Record<string, { expenses: number; earnings: number }> = {};
-            transactions.forEach((t: any) => {
+            transactions.forEach((t: Transaction) => {
                 if (!catMap[t.category]) catMap[t.category] = { expenses: 0, earnings: 0 };
                 if (t.type === 'expense') catMap[t.category].expenses += t.amount;
                 else catMap[t.category].earnings += t.amount;
@@ -102,7 +147,7 @@ export default function ReportsPage() {
                 });
                 headerRow.height = 28;
 
-                transactions.forEach((t: any) => {
+                transactions.forEach((t: Transaction) => {
                     const isExpense = t.type === 'expense';
                     const sign = isExpense ? '−' : '+';
                     const row = ws.addRow([
@@ -158,7 +203,9 @@ export default function ReportsPage() {
             if (format === 'pdf' || format === 'both') {
                 const { default: jsPDF } = await import('jspdf');
                 const { default: autoTable } = await import('jspdf-autotable');
-                const doc = new jsPDF();
+
+                type PDFDocument = import('jspdf').jsPDF & { lastAutoTable?: { finalY: number } };
+                const doc = new jsPDF() as PDFDocument;
 
                 doc.setFillColor(19, 109, 236);
                 doc.rect(0, 0, 210, 32, 'F');
@@ -173,17 +220,17 @@ export default function ReportsPage() {
                 doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 40);
                 doc.text(`Period: ${start} to ${end}`, 14, 46);
 
-                autoTable(doc as any, {
+                autoTable(doc as import('jspdf').jsPDF, {
                     startY: 52,
                     head: [['Date', 'Type', 'Category', 'Description', 'Amount']],
-                    body: transactions.map((t: any) => {
+                    body: transactions.map((t: Transaction) => {
                         const isExp = t.type === 'expense';
                         return [
                             t.date, 
                             isExp ? 'Expense' : 'Earning', 
                             t.category, 
                             t.description, 
-                            `${isExp ? '-' : '+'} ${sym}${t.amount.toFixed(2)}`
+                            `${isExp ? '-' : '+'} ${currency} ${t.amount.toFixed(2)}`
                         ];
                     }),
                     theme: 'striped',
@@ -195,7 +242,7 @@ export default function ReportsPage() {
                         3: { cellWidth: 'auto' },
                         4: { cellWidth: 35, halign: 'right', fontStyle: 'bold' } 
                     },
-                    didParseCell: (data: any) => {
+                    didParseCell: (data: import('jspdf-autotable').CellHookData) => {
                         if (data.section === 'body') {
                             const rowData = data.row.raw as string[];
                             const isExp = rowData[1] === 'Expense';
@@ -207,7 +254,7 @@ export default function ReportsPage() {
                     alternateRowStyles: { fillColor: [248, 250, 252] },
                 });
 
-                let y = (doc as any).lastAutoTable?.finalY || 100;
+                let y = doc.lastAutoTable?.finalY || 100;
                 y += 15;
 
                 doc.setTextColor(19, 109, 236);
@@ -215,16 +262,16 @@ export default function ReportsPage() {
                 doc.text('Category Breakdown', 14, y);
                 y += 5;
 
-                autoTable(doc as any, {
+                autoTable(doc as import('jspdf').jsPDF, {
                     startY: y,
                     head: [['Category', 'Expenses', 'Earnings', 'Net']],
                     body: catBreakdown.map(([cat, data]) => {
                         const catNet = data.earnings - data.expenses;
                         return [
                             cat,
-                            data.expenses > 0 ? `- ${sym}${data.expenses.toFixed(2)}` : '--',
-                            data.earnings > 0 ? `+ ${sym}${data.earnings.toFixed(2)}` : '--',
-                            `${catNet >= 0 ? '+' : '-'} ${sym}${Math.abs(catNet).toFixed(2)}`,
+                            data.expenses > 0 ? `- ${currency} ${data.expenses.toFixed(2)}` : '--',
+                            data.earnings > 0 ? `+ ${currency} ${data.earnings.toFixed(2)}` : '--',
+                            `${catNet >= 0 ? '+' : '-'} ${currency} ${Math.abs(catNet).toFixed(2)}`,
                         ];
                     }),
                     theme: 'grid',
@@ -234,7 +281,7 @@ export default function ReportsPage() {
                         2: { textColor: [22, 163, 74], halign: 'right' }, 
                         3: { halign: 'right', fontStyle: 'bold' } 
                     },
-                    didParseCell: (data: any) => {
+                    didParseCell: (data: import('jspdf-autotable').CellHookData) => {
                         if (data.section === 'body' && data.column.index === 3) {
                             const val = String(data.cell.raw);
                             data.cell.styles.textColor = val.startsWith('+') ? [22, 163, 74] : [220, 38, 38];
@@ -243,7 +290,7 @@ export default function ReportsPage() {
                     styles: { fontSize: 9, cellPadding: 4 },
                 });
 
-                y = (doc as any).lastAutoTable?.finalY || y + 40;
+                y = doc.lastAutoTable?.finalY || y + 40;
                 y += 15;
 
                 // Improved Summary box
@@ -262,11 +309,11 @@ export default function ReportsPage() {
                 doc.setFontSize(11);
                 doc.setTextColor(220, 38, 38);
                 doc.text(`Total Expenses:`, 20, y + 20);
-                doc.text(`- ${sym}${totalExp.toFixed(2)}`, 180, y + 20, { align: 'right' });
+                doc.text(`- ${currency} ${totalExp.toFixed(2)}`, 180, y + 20, { align: 'right' });
                 
                 doc.setTextColor(22, 163, 74);
                 doc.text(`Total Earnings:`, 20, y + 28);
-                doc.text(`+ ${sym}${totalEarn.toFixed(2)}`, 180, y + 28, { align: 'right' });
+                doc.text(`+ ${currency} ${totalEarn.toFixed(2)}`, 180, y + 28, { align: 'right' });
                 
                 doc.setDrawColor(200, 200, 200);
                 doc.line(20, y + 33, 190, y + 33);
@@ -275,7 +322,7 @@ export default function ReportsPage() {
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
                 doc.text(`Net Balance:`, 20, y + 41);
-                doc.text(`${net >= 0 ? '+' : '-'} ${sym}${Math.abs(net).toFixed(2)}`, 180, y + 41, { align: 'right' });
+                doc.text(`${net >= 0 ? '+' : '-'} ${currency} ${Math.abs(net).toFixed(2)}`, 180, y + 41, { align: 'right' });
 
                 const pdfBlob = doc.output('blob');
                 const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -377,6 +424,22 @@ export default function ReportsPage() {
                         </div>
 
                         <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Categories</label>
+                            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scrollbar p-1">
+                                {categories.map(c => {
+                                    const isSelected = selectedCategories.includes(c);
+                                    return (
+                                        <button key={c} onClick={() => {
+                                            setSelectedCategories(prev => isSelected ? prev.filter(x => x !== c) : [...prev, c]);
+                                        }} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${isSelected ? 'bg-primary text-white border-primary shadow-sm' : 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-bg-dark dark:border-white/10 dark:text-gray-400 hover:border-primary/50'}`}>
+                                            {c}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div>
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Output Format</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {[{ id: 'live', icon: 'monitoring', label: 'Live View' }, 
@@ -392,11 +455,16 @@ export default function ReportsPage() {
                             </div>
                         </div>
 
-                        <button onClick={generateReport} disabled={generating}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:bg-blue-600 transition-all disabled:opacity-50 active:scale-[0.98]">
-                            <span className="material-symbols-outlined text-[20px]">{generating ? 'hourglass_top' : (format === 'live' ? 'play_arrow' : 'download')}</span>
-                            {generating ? 'Processing...' : (format === 'live' ? 'View Live Report' : 'Generate & Download')}
-                        </button>
+                        <div className="flex gap-2">
+                            <button onClick={generateReport} disabled={generating}
+                                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:bg-blue-600 transition-all disabled:opacity-50 active:scale-[0.98]">
+                                <span className="material-symbols-outlined text-[20px]">{generating ? 'hourglass_top' : (format === 'live' ? 'play_arrow' : 'download')}</span>
+                                {generating ? 'Processing...' : (format === 'live' ? 'View Live Report' : 'Generate')}
+                            </button>
+                            <button onClick={saveView} className="px-4 py-4 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-bg-dark text-gray-600 dark:text-gray-300 hover:border-primary hover:text-primary transition-all active:scale-95" title="Save this view configuration">
+                                <span className="material-symbols-outlined">save</span>
+                            </button>
+                        </div>
                     </div>
                     </div>
                     

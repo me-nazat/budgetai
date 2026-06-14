@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import useSWR from 'swr';
 
 const menuItems = [
     { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
@@ -13,6 +14,8 @@ const menuItems = [
     { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
     { href: '/reports', icon: 'bar_chart', label: 'Reports' },
     { href: '/overview', icon: 'analytics', label: 'Overview' },
+    { href: '/spending-heatmap', icon: 'calendar_view_month', label: 'Activity Heatmap' },
+    { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
     { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
     { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
     { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
@@ -22,6 +25,8 @@ const menuItems = [
 
 export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const pathname = usePathname();
+    const { data: notificationsData } = useSWR('/api/notifications');
+    const unreadCount = notificationsData?.unreadCount || 0;
     const [user, setUser] = useState<{ name: string; email: string } | null>(null);
 
     useEffect(() => {
@@ -96,9 +101,16 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                                     <span className={`material-symbols-outlined grid h-9 w-9 place-items-center rounded-xl text-[21px] ${isActive ? 'bg-primary text-white' : 'bg-white text-gray-500 dark:bg-white/10 dark:text-gray-300'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
                                         {item.icon}
                                     </span>
-                                    <span className="min-w-0 truncate text-sm font-semibold">
-                                        {item.label}
-                                    </span>
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <span className="min-w-0 truncate text-sm font-semibold">
+                                            {item.label}
+                                        </span>
+                                        {item.href === '/notifications' && unreadCount > 0 && (
+                                            <div className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse-slow shrink-0">
+                                                {unreadCount > 99 ? '99+' : unreadCount}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </Link>
                         );

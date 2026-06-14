@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * @fileoverview Authentication API routes — login, register, refresh, logout, profile.
  *

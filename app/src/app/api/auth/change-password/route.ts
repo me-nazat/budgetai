@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * @fileoverview Change password endpoint.
  *

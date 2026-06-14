@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import QuickAddModal from './QuickAddModal';
 import MobileMenu from './MobileMenu';
+import useSWR from 'swr';
 
 const mobileNavItems = [
     { href: '/dashboard', icon: 'home', label: 'Home' },
@@ -19,6 +20,8 @@ export default function MobileTabBar() {
     const pathname = usePathname();
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
+    const { data: notificationsData } = useSWR('/api/notifications');
+    const unreadCount = notificationsData?.unreadCount || 0;
 
     return (
         <>
@@ -57,12 +60,17 @@ export default function MobileTabBar() {
                                     className="relative flex h-full w-full flex-col items-center justify-center gap-1 rounded-2xl text-gray-400 transition-all duration-300 active:bg-gray-100 active:text-gray-700 dark:text-gray-500 dark:active:bg-white/10 dark:active:text-gray-300"
                                     aria-label="Open Menu"
                                 >
-                                    <span
-                                        className="material-symbols-outlined text-[22px] transition-all duration-300"
-                                        style={{ fontVariationSettings: "'FILL' 0" }}
-                                    >
-                                        {item.icon}
-                                    </span>
+                                    <div className="relative">
+                                        <span
+                                            className="material-symbols-outlined text-[22px] transition-all duration-300"
+                                            style={{ fontVariationSettings: "'FILL' 0" }}
+                                        >
+                                            {item.icon}
+                                        </span>
+                                        {unreadCount > 0 && (
+                                            <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#10151d] animate-pulse" />
+                                        )}
+                                    </div>
                                     <span className="text-[10px] font-semibold tracking-wide transition-all duration-300">
                                         {item.label}
                                     </span>

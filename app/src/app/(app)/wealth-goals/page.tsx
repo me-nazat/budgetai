@@ -8,7 +8,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
 interface NetWorthEntry { id: number; amount: number; note: string; created_at: string; }
-interface Goal { id: number; name: string; target_amount: number; saved_amount: number; deadline: string | null; created_at: string; }
+interface Goal { id: number; name: string; target_amount: number; saved_amount: number; deadline: string | null; linked_account: string | null; created_at: string; }
 
 function monthsUntil(deadline: string | null) {
     if (!deadline) return 12;
@@ -27,6 +27,7 @@ export default function WealthGoalsPage() {
     const [name, setName] = useState('');
     const [target, setTarget] = useState('');
     const [deadline, setDeadline] = useState('');
+    const [linkedAccount, setLinkedAccount] = useState('');
     const [contribId, setContribId] = useState<number | null>(null);
     const [contribAmt, setContribAmt] = useState('');
     const { fmt } = useCurrency();
@@ -63,11 +64,12 @@ export default function WealthGoalsPage() {
         await fetch('/api/goals', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, target_amount: parseFloat(target), deadline: deadline || null }),
+            body: JSON.stringify({ name, target_amount: parseFloat(target), deadline: deadline || null, linked_account: linkedAccount || '' }),
         });
         setName('');
         setTarget('');
         setDeadline('');
+        setLinkedAccount('');
         setShowGoalForm(false);
         await load();
     };
@@ -193,10 +195,14 @@ export default function WealthGoalsPage() {
                                 <span className="material-symbols-outlined text-emerald-500">flag</span>
                                 Define Savings Target
                             </h2>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                                <div className="md:col-span-2">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Goal Title</label>
                                     <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. New House Downpayment" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Linked Account (Optional)</label>
+                                    <input value={linkedAccount} onChange={e => setLinkedAccount(e.target.value)} placeholder="e.g. Chase Savings" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Target Amount</label>
@@ -261,8 +267,11 @@ export default function WealthGoalsPage() {
                                                 </div>
                                                 <div className="min-w-0">
                                                     <h3 className="font-black text-gray-900 dark:text-white truncate text-lg leading-tight">{goal.name}</h3>
+                                                    {goal.linked_account && (
+                                                        <p className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded inline-block mt-1 mr-2">{goal.linked_account}</p>
+                                                    )}
                                                     {goal.deadline && (
-                                                        <p className={`text-xs font-bold mt-1 ${daysLeft !== null && daysLeft < 0 ? 'text-rose-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                        <p className={`text-xs font-bold inline-block mt-1 ${daysLeft !== null && daysLeft < 0 ? 'text-rose-500' : 'text-gray-500 dark:text-gray-400'}`}>
                                                             {daysLeft !== null && daysLeft < 0 ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days remaining`} • {goal.deadline}
                                                         </p>
                                                     )}
@@ -284,14 +293,19 @@ export default function WealthGoalsPage() {
                                             </div>
                                         </div>
 
-                                        <div className="relative mb-4">
-                                            <div className="flex items-center justify-between text-xs font-bold mb-2">
-                                                <span className={complete ? 'text-emerald-500' : 'text-primary'}>{pct}% Funded</span>
-                                                <span className="text-gray-400">{fmt(remaining)} left</span>
+                                        <div className="relative mb-4 flex items-center justify-between bg-gray-50 dark:bg-white/5 p-4 rounded-2xl">
+                                            <div>
+                                                <div className="text-xs font-bold text-gray-500 mb-1">Target Funding</div>
+                                                <div className="font-black text-gray-900 dark:text-white flex items-baseline gap-1">
+                                                    {fmt(remaining)} <span className="text-xs font-medium text-gray-400">left</span>
+                                                </div>
                                             </div>
-                                            <div className="h-4 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800 shadow-inner">
-                                                <div className={`h-full rounded-full transition-all duration-1000 relative ${complete ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-gradient-to-r from-blue-500 to-primary shadow-[0_0_10px_rgba(19,109,236,0.5)]'}`} style={{ width: `${pct}%` }}>
-                                                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                                            <div 
+                                                className="relative w-[52px] h-[52px] rounded-full flex items-center justify-center shrink-0" 
+                                                style={{ background: `conic-gradient(${complete ? '#10b981' : '#136dec'} ${pct}%, ${complete ? 'rgba(16,185,129,0.1)' : 'rgba(19,109,236,0.1)'} ${pct}%)` }}
+                                            >
+                                                <div className="absolute inset-[3px] bg-white dark:bg-[#1a1f2e] rounded-full flex items-center justify-center">
+                                                    <span className={`text-[11px] font-black ${complete ? 'text-emerald-500' : 'text-primary'}`}>{pct}%</span>
                                                 </div>
                                             </div>
                                         </div>

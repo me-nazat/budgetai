@@ -5,25 +5,51 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import useSWR from 'swr';
 
-const navItems = [
-    { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
-    { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
-    { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
-    { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
-    { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
-    { href: '/reports', icon: 'bar_chart', label: 'Reports' },
-    { href: '/overview', icon: 'analytics', label: 'Overview' },
-    { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
-    { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
-    { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
-    { href: '/recurring-subscriptions', icon: 'repeat', label: 'Recurring & Subs' },
-    { href: '/notifications', icon: 'notifications', label: 'Alerts' },
+const navGroups = [
+    {
+        label: null, // Core — no label needed, it's obvious
+        items: [
+            { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
+            { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
+            { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
+            { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
+        ],
+    },
+    {
+        label: 'Analytics',
+        items: [
+            { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
+            { href: '/reports', icon: 'bar_chart', label: 'Reports' },
+            { href: '/overview', icon: 'analytics', label: 'Overview' },
+            { href: '/spending-heatmap', icon: 'calendar_view_month', label: 'Activity Heatmap' },
+        ],
+    },
+    {
+        label: 'Financial Tools',
+        items: [
+            { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
+            { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
+            { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
+            { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
+        ],
+    },
+    {
+        label: 'System',
+        items: [
+            { href: '/recurring-subscriptions', icon: 'repeat', label: 'Recurring & Subs' },
+            { href: '/notifications', icon: 'notifications', label: 'Alerts' },
+        ],
+    },
 ];
+
 
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
+    const { data: notificationsData } = useSWR('/api/notifications');
+    const unreadCount = notificationsData?.unreadCount || 0;
     const [user, setUser] = useState<{ name: string; email: string } | null>(null);
     const [isDark, setIsDark] = useState(() => {
         if (typeof window === 'undefined') return true;
@@ -83,39 +109,58 @@ export default function Sidebar() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto px-3 lg:px-4 pb-6 space-y-1 custom-scrollbar min-h-0 relative">
-                    {navItems.map((item) => {
-                        const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 relative group overflow-hidden ${isActive
-                                    ? 'text-primary font-bold shadow-sm'
-                                    : 'text-gray-600 dark:text-text-secondary hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                {isActive && (
-                                    <motion.div 
-                                        layoutId="sidebar-active"
-                                        className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-xl nav-glow-pill"
-                                        initial={false}
-                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                    />
-                                )}
-                                {isActive && (
-                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_rgba(19,109,236,0.9)] z-10" />
-                                )}
-                                
-                                <span className={`material-symbols-outlined relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:-rotate-3'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
-                                    {item.icon}
-                                </span>
-                                <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
-                                    {item.label}
-                                </span>
-                            </Link>
-                        );
-                    })}
+                <nav className="flex-1 overflow-y-auto px-3 lg:px-4 pb-6 custom-scrollbar min-h-0 relative">
+                    {navGroups.map((group, groupIdx) => (
+                        <div key={groupIdx} className={groupIdx > 0 ? 'mt-4 pt-3 border-t border-gray-200/40 dark:border-white/5' : ''}>
+                            {group.label && (
+                                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 select-none">
+                                    {group.label}
+                                </p>
+                            )}
+                            <div className="space-y-0.5">
+                                {group.items.map((item) => {
+                                    const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 relative group overflow-hidden ${isActive
+                                                ? 'text-primary font-bold shadow-sm'
+                                                : 'text-gray-600 dark:text-text-secondary hover:text-gray-900 dark:hover:text-white'
+                                                }`}
+                                        >
+                                            {isActive && (
+                                                <motion.div 
+                                                    layoutId="sidebar-active"
+                                                    className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-xl nav-glow-pill"
+                                                    initial={false}
+                                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                />
+                                            )}
+                                            {isActive && (
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_rgba(19,109,236,0.9)] z-10" />
+                                            )}
+                                            
+                                            <div className="flex items-center gap-3">
+                                                <span className={`material-symbols-outlined relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:-rotate-3'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                                                    {item.icon}
+                                                </span>
+                                                <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
+                                                    {item.label}
+                                                </span>
+                                            </div>
+
+                                            {item.href === '/notifications' && unreadCount > 0 && (
+                                                <div className="relative z-10 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse-slow">
+                                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                                </div>
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
                 </nav>
                 
                 {/* Bottom section (Settings & Profile) */}

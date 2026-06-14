@@ -342,6 +342,21 @@ export async function clearSessionCookies(): Promise<void> {
 }
 
 /**
+ * Retrieves the current session, or attempts to refresh if only the refresh token is present.
+ * Suitable for middleware where we want to ensure a session exists before passing the request.
+ */
+export async function getSessionOrRefresh(): Promise<SessionPayload | null> {
+  const session = await getSession();
+  if (session) return session;
+
+  // If no access token but refresh token exists, we might need a refresh.
+  // Note: in edge runtime, we rely on the route /api/auth/refresh to handle this securely, 
+  // but if needed locally in edge, we'd do a fetch to origin.
+  // We'll return null here and let the middleware handle the fetch.
+  return null;
+}
+
+/**
  * Computes the expiration date for a new refresh token.
  *
  * @returns ISO-8601 date string for the expiration timestamp.

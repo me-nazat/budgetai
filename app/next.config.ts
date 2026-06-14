@@ -44,7 +44,6 @@ const securityHeaders = [
 const isVercel = process.env.VERCEL === '1';
 
 const nextConfig: NextConfig = {
-    ...(isVercel ? {} : { output: 'export' }),
     outputFileTracingRoot: process.cwd(),
     poweredByHeader: false,
     productionBrowserSourceMaps: false,

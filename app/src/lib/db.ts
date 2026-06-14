@@ -217,6 +217,10 @@ export async function ensureDbInitialized(): Promise<void> {
     await getClient().execute('ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT \'BDT\' ');
   } catch { /* Ignore */ }
 
+  try {
+    await getClient().execute('ALTER TABLE savings_goals ADD COLUMN linked_account TEXT DEFAULT \'\' ');
+  } catch { /* Ignore */ }
+
   initialized = true;
 }
 
