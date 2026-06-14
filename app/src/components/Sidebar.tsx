@@ -23,7 +23,6 @@ const navGroups = [
             { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
             { href: '/reports', icon: 'bar_chart', label: 'Reports' },
             { href: '/overview', icon: 'analytics', label: 'Overview' },
-            { href: '/spending-heatmap', icon: 'calendar_view_month', label: 'Activity Heatmap' },
         ],
     },
     {

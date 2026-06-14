@@ -14,6 +14,8 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
+import { tourGroups, tourParticipants } from './bill-splits';
+
 
 /**
  * Transactions table — records individual income and expense entries.
@@ -85,6 +87,16 @@ export const transactions = sqliteTable('transactions', {
    * Defaults to the current date at insertion time.
    */
   date: text('date').notNull().default(sql`(date('now'))`),
+
+
+  /** Reference to a tour group if this is a shared expense */
+  tourId: integer('tour_id').references(() => tourGroups.id, { onDelete: 'cascade' }),
+
+  /** Reference to the participant who paid for this shared expense */
+  paidBy: integer('paid_by').references(() => tourParticipants.id, { onDelete: 'set null' }),
+
+  /** Split type for shared expenses */
+  splitType: text('split_type', { enum: ['equal', 'percentage', 'exact'] }).default('equal'),
 
   /** Record creation timestamp (UTC ISO-8601). */
   createdAt: text('created_at').default(sql`(datetime('now'))`),

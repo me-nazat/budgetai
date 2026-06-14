@@ -14,7 +14,6 @@ const menuItems = [
     { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
     { href: '/reports', icon: 'bar_chart', label: 'Reports' },
     { href: '/overview', icon: 'analytics', label: 'Overview' },
-    { href: '/spending-heatmap', icon: 'calendar_view_month', label: 'Activity Heatmap' },
     { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
     { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
     { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },

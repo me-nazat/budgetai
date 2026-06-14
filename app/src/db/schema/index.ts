@@ -48,6 +48,20 @@ export {
   type NewOAuthAccount,
 } from './sessions';
 
+
+/* ═══════════════════════════════════════════════════════════════
+   BILL SPLITS / TOUR GROUPS
+   ═══════════════════════════════════════════════════════════════ */
+
+export {
+  tourGroups,
+  type TourGroup,
+  type NewTourGroup,
+  tourParticipants,
+  type TourParticipant,
+  type NewTourParticipant,
+} from './bill-splits';
+
 /* ═══════════════════════════════════════════════════════════════
    CHAT MESSAGES
    ═══════════════════════════════════════════════════════════════ */

@@ -133,3 +133,25 @@ export function getClientIP(request: Request): string {
     if (real) return real.trim();
     return 'unknown';
 }
+
+import { z } from "zod";
+
+export const TourParticipantSchema = z.object({
+    id: z.number().optional(),
+    name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+    user_id: z.number().optional().nullable(),
+});
+
+export const TourGroupSchema = z.object({
+    name: z.string().min(1, "Tour name is required").max(100, "Tour name is too long"),
+    participants: z.array(TourParticipantSchema).min(1, "At least one participant is required"),
+});
+
+export const TourTransactionSchema = z.object({
+    amount: z.number().positive("Amount must be positive"),
+    description: z.string().max(500, "Description is too long").default(""),
+    category: z.string().max(50, "Category is too long").default("Other"),
+    date: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Invalid date format"),
+    paidBy: z.number().positive("Paid By is required"),
+    splitType: z.enum(["equal", "percentage", "exact"]).default("equal"),
+});
