@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useSta
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import { getCategoryHex } from '@/lib/categoryUtils';
 import { useHaptics } from '@/hooks/useHaptics';
 
 interface Participant {
@@ -17,6 +18,16 @@ interface TourAddCostModalProps {
   participants: Participant[];
   tourId: number;
   onSaveSuccess: () => void;
+  initialTransaction?: {
+    id: number;
+    amount: number;
+    description: string;
+    category: string;
+    date: string;
+    paidByParticipantId?: number;
+    paidBy?: number;
+    splitType: string;
+  } | null;
 }
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 };
@@ -28,6 +39,7 @@ export default function TourAddCostModal({
   participants,
   tourId,
   onSaveSuccess,
+  initialTransaction,
 }: TourAddCostModalProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -43,6 +55,58 @@ export default function TourAddCostModal({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const haptics = useHaptics();
+
+  const [customCategories, setCustomCategories] = useState<{ name: string; color: string }[]>([]);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialTransaction) {
+        setAmount(initialTransaction.amount.toString());
+        setDescription(initialTransaction.description);
+        setCategory(initialTransaction.category);
+        setDate(initialTransaction.date);
+        setPaidBy(initialTransaction.paidByParticipantId ?? initialTransaction.paidBy ?? participants[0]?.id ?? 0);
+        setSplitType(initialTransaction.splitType as SplitType);
+        setIncludeInMainLedger(false);
+      } else {
+        setAmount('');
+        setDescription('');
+        setCategory('Travel');
+        setDate(new Date().toISOString().split('T')[0]);
+        setPaidBy(participants[0]?.id ?? 0);
+        setSplitType('equal');
+        setIncludeInMainLedger(false);
+        setReceipt(null);
+        setReceiptPreview(null);
+      }
+
+      fetch('/api/categories?type=expense')
+        .then(res => res.json())
+        .then(data => {
+           if (data.categories) setCustomCategories(data.categories);
+        })
+        .catch(console.error);
+    }
+  }, [isOpen]);
+
+  const allCategories = useMemo(() => {
+    const base = [
+      { label: 'Travel', icon: 'flight_takeoff', color: 'blue' },
+      { label: 'Food', icon: 'restaurant', color: 'orange' },
+      { label: 'Hotel', icon: 'hotel', color: 'indigo' },
+      { label: 'Transport', icon: 'directions_car', color: 'emerald' },
+      { label: 'Tickets', icon: 'local_activity', color: 'rose' }
+    ];
+    const custom = customCategories.map(c => ({
+      label: c.name,
+      icon: 'label',
+      color: c.color || 'gray'
+    }));
+    return [...base, ...custom];
+  }, [customCategories]);
+
+
 
   const amountNumber = useMemo(() => Number.parseFloat(amount), [amount]);
   const canSubmit = Number.isFinite(amountNumber) && amountNumber > 0 && description.trim().length > 0 && paidBy > 0 && !isSubmitting;
@@ -112,8 +176,13 @@ export default function TourAddCostModal({
     setError(null);
 
     try {
-      const res = await fetch(`/api/bill-splits/tours/${tourId}/spendings`, {
-        method: 'POST',
+      const url = initialTransaction 
+        ? `/api/bill-splits/tours/${tourId}/spendings/${initialTransaction.id}`
+        : `/api/bill-splits/tours/${tourId}/spendings`;
+      const method = initialTransaction ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amountNumber,
@@ -172,7 +241,7 @@ export default function TourAddCostModal({
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Tour Ledger</p>
-                  <h2 id="tour-add-cost-title" className="mt-1 text-2xl font-black tracking-tight text-white">Add Cost</h2>
+                  <h2 id="tour-add-cost-title" className="mt-1 text-2xl font-black tracking-tight text-white">{initialTransaction ? 'Save Changes' : 'Add Cost'}</h2>
                 </div>
                 <motion.button
                   type="button"
@@ -235,13 +304,34 @@ export default function TourAddCostModal({
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
                     <label htmlFor="tour-cost-category" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
-                    <input
-                      id="tour-cost-category"
-                      value={category}
-                      onChange={(event) => setCategory(event.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                      placeholder="Travel"
-                    />
+                    <div className="relative">
+                      <input
+                        id="tour-cost-category"
+                        value={category}
+                        onChange={(event) => setCategory(event.target.value)}
+                        onFocus={() => setShowCategoryDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                        placeholder="Travel"
+                        autoComplete="off"
+                      />
+                      {showCategoryDropdown && (
+                        <div className="absolute z-10 mt-2 max-h-48 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#111827] shadow-xl custom-scrollbar">
+                           {allCategories.map((c) => (
+                              <button
+                                key={c.label}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => { setCategory(c.label); setShowCategoryDropdown(false); }}
+                                className="flex w-full items-center gap-3 px-4 py-3 hover:bg-white/5 text-left transition-colors"
+                              >
+                                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: getCategoryHex(c.label, customCategories) }} />
+                                <span className="text-sm font-semibold text-gray-200">{c.label}</span>
+                              </button>
+                           ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div>
@@ -273,8 +363,10 @@ export default function TourAddCostModal({
                   </div>
                 </div>
 
+                                {!initialTransaction && (
                 <div>
                   <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05] transition-colors">
+
                     <input
                       type="checkbox"
                       checked={includeInMainLedger}
@@ -287,9 +379,13 @@ export default function TourAddCostModal({
                     </div>
                   </label>
                 </div>
+                )}
 
+                
+                {!initialTransaction && (
                 <div>
                   <label className="mb-2 ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Receipt Proof</label>
+
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -347,6 +443,7 @@ export default function TourAddCostModal({
                     )}
                   </button>
                 </div>
+                )}
 
                 <AnimatePresence>
                   {error && (

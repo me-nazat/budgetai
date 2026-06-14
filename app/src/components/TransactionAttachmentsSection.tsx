@@ -13,8 +13,9 @@ import {
 } from '@/lib/transaction-attachments';
 
 interface TransactionAttachmentsSectionProps {
-  transactionId: number;
+  transactionId?: number;
   transactionDescription: string;
+  apiEndpoint?: string;
 }
 
 type NoticeTone = 'error' | 'success' | 'info';
@@ -70,6 +71,7 @@ const noticeClasses: Record<NoticeTone, string> = {
 export default function TransactionAttachmentsSection({
   transactionId,
   transactionDescription,
+  apiEndpoint,
 }: TransactionAttachmentsSectionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
@@ -93,7 +95,8 @@ export default function TransactionAttachmentsSection({
     async (silent?: boolean) => {
       if (!silent) setIsLoading(true);
       try {
-        const res = await fetch(`/api/transactions/${transactionId}/attachments`, { cache: 'no-store' });
+        const url = apiEndpoint || `/api/transactions/${transactionId || 0}/attachments`;
+        const res = await fetch(url, { cache: 'no-store' });
         const payload = (await res.json().catch(() => null)) as AttachmentsResponse | { error?: string } | null;
         if (!res.ok) throw new Error(payload && 'error' in payload ? payload.error || 'Unable to load.' : 'Unable to load.');
         if (payload && 'files' in payload) setAttachments(payload.files);
@@ -103,7 +106,7 @@ export default function TransactionAttachmentsSection({
         if (!silent) setIsLoading(false);
       }
     },
-    [showNotice, transactionId],
+    [showNotice, transactionId, apiEndpoint],
   );
 
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function TransactionAttachmentsSection({
     setNotice(null);
     setProgress(null);
     void fetchAttachments();
-  }, [fetchAttachments, transactionId]);
+  }, [fetchAttachments, transactionId, apiEndpoint]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -148,7 +151,8 @@ export default function TransactionAttachmentsSection({
         form.append('files', file);
 
         try {
-          const res = await fetch(`/api/transactions/${transactionId}/attachments`, { method: 'POST', body: form });
+          const url = apiEndpoint || `/api/transactions/${transactionId || 0}/attachments`;
+          const res = await fetch(url, { method: 'POST', body: form });
           const payload = (await res.json().catch(() => null)) as (AttachmentsResponse & { error?: string }) | { error?: string } | null;
           if (!res.ok) throw new Error(payload && 'error' in payload ? payload.error || `Upload failed: ${file.name}` : `Upload failed: ${file.name}`);
 
@@ -175,14 +179,15 @@ export default function TransactionAttachmentsSection({
         showNotice('error', failed[0]);
       }
     },
-    [attachments.length, fetchAttachments, showNotice, transactionId],
+    [attachments.length, fetchAttachments, showNotice, transactionId, apiEndpoint],
   );
 
   const handleDeleteFile = useCallback(async (fileId: string, fileName: string) => {
     if (!confirm(`Are you sure you want to delete "${fileName}"?`)) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/transactions/${transactionId}/attachments?fileId=${fileId}`, {
+      const url = apiEndpoint || `/api/transactions/${transactionId || 0}/attachments`;
+      const res = await fetch(`${url}?fileId=${fileId}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
@@ -196,7 +201,7 @@ export default function TransactionAttachmentsSection({
     } finally {
       setIsLoading(false);
     }
-  }, [transactionId, showNotice]);
+  }, [transactionId, showNotice, apiEndpoint]);
 
   const handleFileChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -346,7 +351,7 @@ export default function TransactionAttachmentsSection({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {attachments.map((file) => {
                   const icon = pickFileIcon(file.mimeType, file.name);
-                  const href = buildAttachmentViewerHref(transactionDescription, transactionId, file.id);
+                  const href = buildAttachmentViewerHref(transactionDescription, transactionId || 0, file.id);
                   const isImage = file.mimeType?.startsWith('image/');
                   return (
                     <div

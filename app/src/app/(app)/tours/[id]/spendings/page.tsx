@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import TourAddCostModal from '@/components/TourAddCostModal';
+import TourTransactionDetailModal from '@/components/TourTransactionDetailModal';
 import Skeleton from '@/components/ui/Skeleton';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -22,7 +23,7 @@ interface TourTransaction {
   category: string;
   description: string;
   date: string;
-  paidBy: number;
+  paidBy?: number;
   paidByParticipantId?: number;
   paidByName?: string | null;
   splitType: string;
@@ -80,6 +81,16 @@ export default function TourSpendingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<TourTransaction | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [customCategories, setCustomCategories] = useState<{name: string, color: string}[]>([]);
+
+  useEffect(() => {
+    fetch('/api/categories?type=expense').then(res => res.json()).then(data => {
+      if (data.categories) setCustomCategories(data.categories);
+    }).catch(console.error);
+  }, []);
+
   const { fmt } = useCurrency();
   const params = useParams<{ id: string }>();
   const tourId = params.id;
@@ -130,7 +141,19 @@ export default function TourSpendingsPage() {
     return Array.from(groups.entries());
   }, [transactions]);
 
-  const getParticipantName = useCallback((id: number) => {
+
+  const handleDeleteTransaction = async (tx: TourTransaction) => {
+    if (!confirm('Are you sure you want to delete this cost?')) return;
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tour?.id}/spendings/${tx.id}`, { method: 'DELETE' });
+      if (res.ok) void fetchTourData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const getParticipantName = useCallback((id?: number) => {
+    if (id === undefined) return 'Unknown';
     return participantMap.get(id) ?? 'Unknown';
   }, [participantMap]);
 
@@ -254,14 +277,15 @@ export default function TourSpendingsPage() {
                       const payerName = transaction.paidByName ?? getParticipantName(payerId);
 
                       return (
-                        <motion.article
+                                                <motion.article
                           layoutId={`tour-transaction-${transaction.id}`}
                           key={transaction.id}
+                          onClick={() => { setSelectedTransaction(transaction); setIsDetailModalOpen(true); }}
                           initial={{ opacity: 0, x: -14 }}
                           animate={{ opacity: 1, x: 0 }}
                           whileHover={{ y: -2 }}
                           transition={{ ...spring, delay: index * 0.025 }}
-                          className="group relative overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white/78 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/72"
+                          className="group relative cursor-pointer overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white/78 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/72"
                         >
                           <div className="flex items-center justify-between gap-4">
                             <div className="flex min-w-0 items-center gap-4">
@@ -298,14 +322,26 @@ export default function TourSpendingsPage() {
         </AnimatePresence>
       </div>
 
-      <TourAddCostModal
+            <TourAddCostModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => { setIsAddModalOpen(false); setSelectedTransaction(null); }}
         participants={participants}
         tourId={tour.id}
+        initialTransaction={selectedTransaction}
         onSaveSuccess={() => {
+          setIsAddModalOpen(false);
+          setSelectedTransaction(null);
           void fetchTourData();
         }}
+      />
+
+      <TourTransactionDetailModal
+        transaction={selectedTransaction}
+        customCategories={customCategories}
+        tourId={tour.id}
+        onClose={() => { setIsDetailModalOpen(false); setSelectedTransaction(null); }}
+        onEdit={(tx) => { setIsDetailModalOpen(false); setSelectedTransaction(tx); setIsAddModalOpen(true); }}
+        onDelete={(tx) => { setIsDetailModalOpen(false); void handleDeleteTransaction(tx); }}
       />
     </>
   );
