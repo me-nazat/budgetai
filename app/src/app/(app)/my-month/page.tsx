@@ -233,52 +233,44 @@ export default function MyMonthPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 bg-white/70 shadow-sm dark:border-white/10 dark:bg-white/5 backdrop-blur-xl">
-                    <div className="p-4 border-b border-gray-200 dark:border-white/10">
-                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-gray-500">Timeline View</h2>
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white/70 shadow-sm dark:border-white/10 dark:bg-white/5">
+                    <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/80 dark:border-white/10 dark:bg-white/5">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                            <div key={day} className="px-3 py-4 text-center text-xs font-black uppercase tracking-[0.25em] text-gray-500 dark:text-text-muted">{day}</div>
+                        ))}
                     </div>
-                    <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-4 p-6 custom-scrollbar">
+                    <div className="grid grid-cols-7">
                         {days.map((item, index) => {
-                            if (!item) return null; // Skip padding days for horizontal timeline
+                            if (!item) return <div key={`blank-${index}`} className="min-h-[132px] border-b border-r border-gray-200/80 bg-gray-50/35 dark:border-white/10 dark:bg-white/[0.02]" />;
                             const dayTx = transactionsByDate[item.date] || [];
                             const expense = dayTx.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
                             const income = dayTx.filter(tx => tx.type === 'earning').reduce((sum, tx) => sum + tx.amount, 0);
                             const recurringCount = recurringThisMonth.filter(rec => rec.next_date === item.date).length;
                             const isSelected = activeSelectedDay === item.date;
                             const isToday = item.date === new Date().toISOString().split('T')[0];
-                            const dayOfWeek = new Date(item.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short' });
-
                             return (
                                 <motion.button
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ duration: 0.3, delay: index * 0.02 }}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.2, delay: index * 0.01 }}
                                     key={item.date}
                                     onClick={(e) => {
                                         setSelectedDay(item.date);
                                         setPopupAnchor(e.currentTarget);
                                     }}
-                                    className={`min-w-[140px] flex-shrink-0 snap-center rounded-2xl border p-4 text-left transition-all hover:scale-[1.02] 
-                                        ${isSelected ? 'border-primary bg-primary/10 text-primary shadow-lg shadow-primary/10' : 'border-gray-200/80 bg-white/55 dark:border-white/10 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10'} 
-                                        ${isToday && !isSelected ? 'ring-2 ring-inset ring-primary/40' : ''}`}
+                                    className={`min-h-[132px] border-b border-r border-gray-200/80 p-3 text-left transition-all hover:bg-primary/5 dark:border-white/10 dark:hover:bg-primary/10 ${isSelected ? 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20' : 'bg-white/55 dark:bg-transparent'} ${isToday && !isSelected ? 'ring-2 ring-inset ring-primary/40' : ''}`}
                                 >
-                                    <div className="mb-4 flex items-start justify-between">
-                                        <div>
-                                            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{dayOfWeek}</p>
-                                            <span className={`text-3xl font-black ${isSelected ? 'text-primary dark:text-white' : 'text-gray-900 dark:text-white'}`}>{String(item.day).padStart(2, '0')}</span>
-                                        </div>
-                                        {recurringCount > 0 && <span className={`material-symbols-outlined text-[18px] ${isSelected ? 'text-white' : 'text-primary'}`}>repeat</span>}
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <span className={`text-2xl font-bold ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{String(item.day).padStart(2, '0')}</span>
+                                        {recurringCount > 0 && <span className={`material-symbols-outlined text-[17px] ${isSelected ? 'text-white' : 'text-primary'}`}>repeat</span>}
                                     </div>
-                                    <div className="space-y-1.5 mt-auto">
-                                        {income > 0 && <p className={`text-xs font-bold ${isSelected ? 'text-emerald-500 dark:text-emerald-400' : 'text-emerald-600'}`}>+{fmt(income)}</p>}
-                                        {expense > 0 && <p className={`text-xs font-bold ${isSelected ? 'text-rose-500 dark:text-rose-400' : 'text-rose-600'}`}>-{fmt(expense)}</p>}
-                                        {income === 0 && expense === 0 && <p className="text-xs font-medium text-gray-400 dark:text-gray-600">No activity</p>}
-                                        
-                                        <div className="flex flex-wrap gap-1.5 pt-2">
-                                            {dayTx.slice(0, 5).map(tx => (
+                                    <div className="space-y-1">
+                                        {income > 0 && <p className={`truncate text-xs font-bold ${isSelected ? 'text-emerald-100' : 'text-emerald-600'}`}>+{fmt(income)}</p>}
+                                        {expense > 0 && <p className={`truncate text-xs font-bold ${isSelected ? 'text-rose-100' : 'text-rose-600'}`}>-{fmt(expense)}</p>}
+                                        <div className="flex flex-wrap gap-1 pt-1">
+                                            {dayTx.slice(0, 4).map(tx => (
                                                 <span key={tx.id} className="h-2 w-2 rounded-full" style={{ backgroundColor: getCategoryHex(tx.category, customCategories) }} />
                                             ))}
-                                            {dayTx.length > 5 && <span className="text-[10px] text-gray-400 font-bold">+{dayTx.length - 5}</span>}
                                         </div>
                                     </div>
                                 </motion.button>

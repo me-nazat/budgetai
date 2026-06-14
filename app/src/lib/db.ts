@@ -205,6 +205,20 @@ export async function ensureDbInitialized(): Promise<void> {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE(user_id, badge_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS tour_spendings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tour_id INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Travel',
+      description TEXT NOT NULL DEFAULT '',
+      date TEXT NOT NULL DEFAULT (date('now')),
+      paid_by_participant_id INTEGER NOT NULL,
+      split_type TEXT DEFAULT 'equal',
+      linked_transaction_id INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE,
+      FOREIGN KEY (paid_by_participant_id) REFERENCES tour_participants(id) ON DELETE CASCADE
+    )`,
     `CREATE TABLE IF NOT EXISTS coach_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

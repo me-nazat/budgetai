@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 
@@ -31,3 +31,23 @@ export type NewTourGroup = NewTour;
 
 export type TourParticipant = typeof tourParticipants.$inferSelect;
 export type NewTourParticipant = typeof tourParticipants.$inferInsert;
+
+export const tourSpendings = sqliteTable('tour_spendings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tourId: integer('tour_id')
+    .notNull()
+    .references(() => tours.id, { onDelete: 'cascade' }),
+  amount: real('amount').notNull(),
+  category: text('category').notNull().default('Travel'),
+  description: text('description').notNull().default(''),
+  date: text('date').notNull().default(sql`(date('now'))`),
+  paidByParticipantId: integer('paid_by_participant_id')
+    .notNull()
+    .references(() => tourParticipants.id, { onDelete: 'cascade' }),
+  splitType: text('split_type', { enum: ['equal', 'percentage', 'exact'] }).default('equal'),
+  linkedTransactionId: integer('linked_transaction_id'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+export type TourSpending = typeof tourSpendings.$inferSelect;
+export type NewTourSpending = typeof tourSpendings.$inferInsert;

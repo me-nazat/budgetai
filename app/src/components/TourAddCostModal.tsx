@@ -35,6 +35,7 @@ export default function TourAddCostModal({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [paidBy, setPaidBy] = useState<number>(participants[0]?.id ?? 0);
   const [splitType, setSplitType] = useState<SplitType>('equal');
+  const [includeInMainLedger, setIncludeInMainLedger] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function TourAddCostModal({
     setDate(new Date().toISOString().split('T')[0]);
     setPaidBy(participants[0]?.id ?? 0);
     setSplitType('equal');
+    setIncludeInMainLedger(false);
     setReceipt(null);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -121,6 +123,7 @@ export default function TourAddCostModal({
           paidBy,
           paidByParticipantId: paidBy,
           splitType,
+          includeInMainLedger,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -268,6 +271,21 @@ export default function TourAddCostModal({
                       <option value="exact">Exact</option>
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05] transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={includeInMainLedger}
+                      onChange={(e) => setIncludeInMainLedger(e.target.checked)}
+                      className="size-5 rounded-md border border-white/20 bg-[#111827] text-primary accent-primary outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-white">Add to main transactions</p>
+                      <p className="mt-0.5 text-xs text-gray-400 font-medium">Link this cost to your global dashboard & transactions</p>
+                    </div>
+                  </label>
                 </div>
 
                 <div>

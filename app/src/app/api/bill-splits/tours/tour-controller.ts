@@ -114,18 +114,18 @@ async function getTourTransactions(userId: number, tourId: number): Promise<Tour
        t.description,
        t.date,
        t.tour_id,
-       COALESCE(t.paid_by_participant_id, t.paid_by) AS paidBy,
+       t.paid_by_participant_id AS paidBy,
        t.paid_by_participant_id,
-       t.paid_by,
+       t.paid_by_participant_id AS paid_by,
        t.split_type,
        t.created_at,
        p.name AS paid_by_name
-     FROM transactions t
+     FROM tour_spendings t
      LEFT JOIN tour_participants p
-       ON p.id = COALESCE(t.paid_by_participant_id, t.paid_by)
-     WHERE t.user_id = ? AND t.tour_id = ?
+       ON p.id = t.paid_by_participant_id
+     WHERE t.tour_id = ?
      ORDER BY t.date DESC, t.created_at DESC, t.id DESC`,
-    [userId, tourId]
+    [tourId]
   );
 
   return rows.map(normalizeTransaction);
@@ -134,9 +134,9 @@ async function getTourTransactions(userId: number, tourId: number): Promise<Tour
 async function getTourTotal(userId: number, tourId: number): Promise<number> {
   const row = await queryOne<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) AS total
-     FROM transactions
-     WHERE user_id = ? AND tour_id = ?`,
-    [userId, tourId]
+     FROM tour_spendings
+     WHERE tour_id = ?`,
+    [tourId]
   );
 
   return toNumber(row?.total);
@@ -269,7 +269,7 @@ export async function deleteTour(
     return NextResponse.json({ success: false, error: 'Tour not found' }, { status: 404 });
   }
 
-  await run('DELETE FROM transactions WHERE user_id = ? AND tour_id = ?', [userId, tourId]);
+  await run('DELETE FROM tour_spendings WHERE tour_id = ?', [tourId]);
   await run('DELETE FROM tour_participants WHERE tour_id = ?', [tourId]);
   await run('DELETE FROM tours WHERE id = ? AND created_by = ?', [tourId, userId]);
   await run('DELETE FROM tour_groups WHERE id = ? AND user_id = ?', [tourId, userId]).catch(() => undefined);
@@ -316,29 +316,49 @@ export async function addTourSpending(
     return NextResponse.json({ success: false, error: 'Paid by must be one of this tour\'s participants' }, { status: 400 });
   }
 
+  let linkedTransactionId: number | null = null;
+  
+  if (data.includeInMainLedger) {
+    const mainTxResult = await run(
+      `INSERT INTO transactions (
+         user_id,
+         type,
+         amount,
+         category,
+         description,
+         date
+       ) VALUES (?, 'expense', ?, ?, ?, ?)`,
+      [
+        userId,
+        data.amount,
+        data.category,
+        data.description,
+        data.date,
+      ]
+    );
+    linkedTransactionId = mainTxResult.lastInsertRowid;
+  }
+
   const result = await run(
-    `INSERT INTO transactions (
-       user_id,
-       type,
+    `INSERT INTO tour_spendings (
+       tour_id,
        amount,
        category,
        description,
        date,
-       tour_id,
-       paid_by,
        paid_by_participant_id,
-       split_type
-     ) VALUES (?, 'expense', ?, ?, ?, ?, ?, ?, ?, ?)`,
+       split_type,
+       linked_transaction_id
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      userId,
+      tourId,
       data.amount,
       data.category,
       data.description,
       data.date,
-      tourId,
-      data.paidBy,
       data.paidBy,
       data.splitType,
+      linkedTransactionId
     ]
   );
 
@@ -350,18 +370,18 @@ export async function addTourSpending(
        t.description,
        t.date,
        t.tour_id,
-       COALESCE(t.paid_by_participant_id, t.paid_by) AS paidBy,
+       t.paid_by_participant_id AS paidBy,
        t.paid_by_participant_id,
-       t.paid_by,
+       t.paid_by_participant_id AS paid_by,
        t.split_type,
        t.created_at,
        p.name AS paid_by_name
-     FROM transactions t
+     FROM tour_spendings t
      LEFT JOIN tour_participants p
-       ON p.id = COALESCE(t.paid_by_participant_id, t.paid_by)
-     WHERE t.id = ? AND t.user_id = ?
+       ON p.id = t.paid_by_participant_id
+     WHERE t.id = ?
      LIMIT 1`,
-    [result.lastInsertRowid, userId]
+    [result.lastInsertRowid]
   );
 
   return NextResponse.json({

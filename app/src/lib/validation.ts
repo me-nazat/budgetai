@@ -180,6 +180,7 @@ export const TourTransactionSchema = z.object({
     paidBy: z.coerce.number().int().positive("Paid By is required"),
     paidByParticipantId: z.coerce.number().int().positive().optional(),
     splitType: z.enum(["equal", "percentage", "exact"]).default("equal"),
+    includeInMainLedger: z.boolean().optional(),
 }).strict().transform((value) => ({
     ...value,
     paidBy: value.paidByParticipantId ?? value.paidBy,
