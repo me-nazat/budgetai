@@ -47,8 +47,9 @@ export default function Skeleton({
   const h = typeof height === 'number' ? `${height}px` : height;
   const radius = circle ? '50%' : borderRadius;
 
-  const ShimmerBlock = ({ itemWidth }: { itemWidth: string | number }) => (
+  const renderShimmerBlock = (itemWidth: string | number, key?: number) => (
     <div
+      key={key}
       className={`relative overflow-hidden bg-gray-200/50 dark:bg-white/5 ${className}`}
       style={{ width: itemWidth, height: h, borderRadius: radius }}
       aria-hidden="true"
@@ -64,7 +65,7 @@ export default function Skeleton({
   );
 
   if (count === 1) {
-    return <ShimmerBlock itemWidth={w} />;
+    return renderShimmerBlock(w);
   }
 
   return (
@@ -74,7 +75,7 @@ export default function Skeleton({
       role="presentation"
     >
       {Array.from({ length: count }, (_, i) => (
-        <ShimmerBlock key={i} itemWidth={i === count - 1 ? '70%' : w} />
+        renderShimmerBlock(i === count - 1 ? '70%' : w, i)
       ))}
     </div>
   );

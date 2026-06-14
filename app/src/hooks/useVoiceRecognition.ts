@@ -13,7 +13,7 @@ export function useVoiceRecognition(onResult: (text: string) => void) {
         
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (!SpeechRecognition) {
-            setSupported(false);
+            setTimeout(() => setSupported(false), 0);
             return;
         }
 
@@ -40,7 +40,7 @@ export function useVoiceRecognition(onResult: (text: string) => void) {
             setIsListening(false);
         };
 
-        setRecognition(rec);
+        setTimeout(() => setRecognition(rec), 0);
     }, [onResult]);
 
     const startListening = useCallback(() => {

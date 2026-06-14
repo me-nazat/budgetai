@@ -35,7 +35,7 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     if (isInView && data) {
-      let start = 0;
+      const start = 0;
       const end = data.score;
       if (start === end) return;
       const duration = 1500;

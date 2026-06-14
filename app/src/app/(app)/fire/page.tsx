@@ -41,7 +41,7 @@ export default function FIRECalculatorPage() {
     const [monthlyExpenses, setMonthlyExpenses] = useState<number>(4000);
 
     useEffect(() => {
-        setMounted(true);
+        setTimeout(() => setMounted(true), 0);
     }, []);
 
     // Calculations

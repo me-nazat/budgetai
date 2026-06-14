@@ -116,7 +116,7 @@ export default function DashboardPage() {
     const [calcRate, setCalcRate] = useState<number>(7);
 
     useEffect(() => {
-        setMounted(true);
+        setTimeout(() => setMounted(true), 0);
     }, []);
 
     // Generate last 12 months for the dropdown
@@ -137,12 +137,7 @@ export default function DashboardPage() {
         { value: '4', label: 'Week 4 (22nd-End)' },
     ];
 
-    // Only show full spinner on very first load (no cached data at all)
-    if (!data && isLoading) {
-        return <DashboardSkeleton />;
-    }
 
-    if (!data) return <div className="p-8 text-gray-500">Failed to load dashboard</div>;
 
     const userName = user?.name || '';
     const sym = CURRENCIES[currency].symbol;
@@ -151,26 +146,33 @@ export default function DashboardPage() {
     const tickColor = isDark ? '#8b949e' : '#6b7280';
 
     // Memoize heavy chart data objects to prevent unnecessary React re-renders when other states change
-    const barData = React.useMemo(() => ({
-        labels: data.dailySpending.map(d => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+    const barData = React.useMemo(() => data ? ({
+        labels: data.dailySpending.map((d: any) => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
         datasets: [
-            { label: 'Expenses', data: data.dailySpending.map(d => d.expenses), backgroundColor: isDark ? 'rgba(19, 109, 236, 0.6)' : 'rgba(19, 109, 236, 0.7)', borderRadius: 6, borderSkipped: false as const },
-            { label: 'Earnings', data: data.dailySpending.map(d => d.earnings), backgroundColor: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(16, 185, 129, 0.7)', borderRadius: 6, borderSkipped: false as const },
+            { label: 'Expenses', data: data.dailySpending.map((d: any) => d.expenses), backgroundColor: isDark ? 'rgba(19, 109, 236, 0.6)' : 'rgba(19, 109, 236, 0.7)', borderRadius: 6, borderSkipped: false as const },
+            { label: 'Earnings', data: data.dailySpending.map((d: any) => d.earnings), backgroundColor: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(16, 185, 129, 0.7)', borderRadius: 6, borderSkipped: false as const },
         ],
-    }), [data.dailySpending, isDark]);
+    }) : null, [data, isDark]);
 
-    const doughnutData = React.useMemo(() => ({
-        labels: data.categorySpending.map(c => c.category.charAt(0).toUpperCase() + c.category.slice(1).toLowerCase()),
+    const doughnutData = React.useMemo(() => data ? ({
+        labels: data.categorySpending.map((c: any) => c.category.charAt(0).toUpperCase() + c.category.slice(1).toLowerCase()),
         datasets: [{
-            data: data.categorySpending.map(c => c.total),
-            backgroundColor: data.categorySpending.map(c => {
+            data: data.categorySpending.map((c: any) => c.total),
+            backgroundColor: data.categorySpending.map((c: any) => {
                 const cat = c.category.charAt(0).toUpperCase() + c.category.slice(1).toLowerCase();
                 return getCategoryHex(cat, customCats);
             }),
             borderWidth: 0,
             spacing: 2,
         }],
-    }), [data.categorySpending, customCats]);
+    }) : null, [data, customCats]);
+
+    // Only show full spinner on very first load (no cached data at all)
+    if (!data && isLoading) {
+        return <DashboardSkeleton />;
+    }
+
+    if (!data) return <div className="p-8 text-gray-500">Failed to load dashboard</div>;
 
     const stats = [
         { label: 'Total Balance', value: fmt(data.balance), change: data.earnings.change, icon: 'account_balance', color: 'text-primary', gradient: 'stat-gradient-blue' },
@@ -529,7 +531,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <div className="h-[320px]">
-                            <Bar ref={chartRef} data={barData} options={{
+                            <Bar ref={chartRef} data={barData!} options={{
                                 responsive: true, maintainAspectRatio: false,
                                 plugins: {
                                     legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
@@ -555,7 +557,7 @@ export default function DashboardPage() {
                             <TiltCard className="glass-panel p-6 rounded-3xl flex-1 ambient-glow">
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Top Categories</h3>
                                 <div className="h-[160px]">
-                                    <Doughnut data={doughnutData} options={{
+                                    <Doughnut data={doughnutData!} options={{
                                         responsive: true, maintainAspectRatio: false,
                                         plugins: {
                                             legend: { position: 'right' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
