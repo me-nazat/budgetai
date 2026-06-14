@@ -219,15 +219,15 @@ export default function MyMonthPage() {
                 </div>
 
                 <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div className="card-premium rounded-2xl p-5">
+                    <div className="glass-panel rounded-2xl p-5">
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Income</p>
                         <p className="mt-3 text-3xl font-black text-emerald-600">{fmt(monthIncome)}</p>
                     </div>
-                    <div className="card-premium rounded-2xl p-5">
+                    <div className="glass-panel rounded-2xl p-5">
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Expenses</p>
                         <p className="mt-3 text-3xl font-black text-rose-600">{fmt(monthExpense)}</p>
                     </div>
-                    <div className="card-premium rounded-2xl p-5">
+                    <div className="glass-panel rounded-2xl p-5">
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Net</p>
                         <p className={`mt-3 text-3xl font-black ${monthIncome - monthExpense >= 0 ? 'text-primary' : 'text-rose-600'}`}>{fmt(monthIncome - monthExpense)}</p>
                     </div>
@@ -281,7 +281,7 @@ export default function MyMonthPage() {
 
                 {/* 50/50 Section */}
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
-                    <div className="card-premium rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[400px] flex flex-col">
+                    <div className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[400px] flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Monthly Cash Flow</h3>

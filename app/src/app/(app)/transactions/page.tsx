@@ -569,15 +569,15 @@ export default function TransactionsPage() {
 
             {/* Summary Bar */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
-                <div className="card-premium p-4 rounded-xl stat-gradient-emerald lg:col-span-1">
+                <div className="glass-panel p-4 rounded-xl stat-gradient-emerald lg:col-span-1">
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Earnings</p>
                     <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">{fmt(totalEarnings)}</p>
                 </div>
-                <div className="card-premium p-4 rounded-xl stat-gradient-orange lg:col-span-1">
+                <div className="glass-panel p-4 rounded-xl stat-gradient-orange lg:col-span-1">
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Expenses</p>
                     <p className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-1">{fmt(totalExpenses)}</p>
                 </div>
-                <div className="card-premium p-4 rounded-xl stat-gradient-blue col-span-2 lg:col-span-1 border-r border-transparent lg:border-gray-200 lg:dark:border-[#30363d]">
+                <div className="glass-panel p-4 rounded-xl stat-gradient-blue col-span-2 lg:col-span-1 border-r border-transparent lg:border-gray-200 lg:dark:border-[#30363d]">
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Net</p>
                     <p className={`text-lg font-bold mt-1 ${totalEarnings - totalExpenses >= 0 ? 'text-primary' : 'text-rose-500'}`}>
                         {totalEarnings - totalExpenses >= 0 ? '+' : ''}{fmt(totalEarnings - totalExpenses)}
@@ -585,7 +585,7 @@ export default function TransactionsPage() {
                 </div>
 
                 {/* Wealth Insights Widget */}
-                <div className="card-premium p-4 rounded-xl col-span-2 lg:col-span-2 flex gap-4 bg-gradient-to-r from-teal-500/5 to-cyan-500/5 items-center justify-around border-teal-100 dark:border-teal-500/10 border">
+                <div className="glass-panel p-4 rounded-xl col-span-2 lg:col-span-2 flex gap-4 bg-gradient-to-r from-teal-500/5 to-cyan-500/5 items-center justify-around border-teal-100 dark:border-teal-500/10 border">
                     <div className="flex flex-col items-center justify-center text-center w-1/2">
                         <span className="material-symbols-outlined text-teal-500 text-sm mb-0.5">warning</span>
                         <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Largest Expense</p>
@@ -606,7 +606,7 @@ export default function TransactionsPage() {
 
             {/* Quick Add Form */}
             {showQuickAdd && (
-                <form onSubmit={e => { e.preventDefault(); submitQuickAdd(); }} className="card-premium mb-5 overflow-hidden rounded-2xl animate-slide-up">
+                <form onSubmit={e => { e.preventDefault(); submitQuickAdd(); }} className="glass-panel mb-5 overflow-hidden rounded-2xl animate-slide-up">
                     <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
                         <div className={`relative p-4 lg:p-5 ${qaType === 'expense' ? 'stat-gradient-orange' : 'stat-gradient-emerald'}`}>
                             <div className="mb-4 flex items-center justify-between gap-3">
@@ -897,7 +897,7 @@ export default function TransactionsPage() {
             )}
 
             {/* Filters */}
-            <div className="card-premium flex flex-wrap gap-3 mb-5 p-3 rounded-xl">
+            <div className="glass-panel flex flex-wrap gap-3 mb-5 p-3 rounded-xl">
                 <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-[#30363d]">
                     <div className="flex items-center gap-1.5 px-3 py-1.5">
                         <span className="material-symbols-outlined text-[16px] text-gray-500">calendar_month</span>
@@ -964,7 +964,7 @@ export default function TransactionsPage() {
                         </div>
                     ))
                 ) : sorted.length === 0 ? (
-                    <div className="card-premium rounded-3xl p-8 text-center">
+                    <div className="glass-panel rounded-3xl p-8 text-center">
                         <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gray-100 dark:bg-surface-dark">
                             <span className="material-symbols-outlined text-3xl text-gray-400 dark:text-gray-500">search_off</span>
                         </div>
@@ -1012,7 +1012,7 @@ export default function TransactionsPage() {
             </div>
 
             {/* Table */}
-            <div className="card-premium hidden rounded-2xl md:block" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+            <div className="glass-panel hidden rounded-2xl md:block" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left border-collapse">
                         <thead>

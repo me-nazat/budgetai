@@ -95,7 +95,7 @@ export default function SettingsPage() {
                 {/* Settings Groups */}
                 <div className="space-y-4">
                     {/* Account */}
-                    <motion.div variants={itemVariants} className="card-premium rounded-2xl overflow-hidden shadow-sm">
+                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
                         <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
                             <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Account</p>
                         </div>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
                     </motion.div>
 
                     {/* Preferences */}
-                    <motion.div variants={itemVariants} className="card-premium rounded-2xl overflow-hidden shadow-sm">
+                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
                         <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
                             <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Preferences</p>
                         </div>
@@ -156,7 +156,7 @@ export default function SettingsPage() {
                     </motion.div>
 
                     {/* Notifications */}
-                    <motion.div variants={itemVariants} className="card-premium rounded-2xl overflow-hidden shadow-sm">
+                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
                         <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
                             <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Notifications</p>
                         </div>
@@ -189,7 +189,7 @@ export default function SettingsPage() {
                     <motion.div variants={itemVariants}>
                         <button
                             onClick={handleSignOut}
-                            className="w-full card-premium rounded-2xl p-4 text-rose-500 font-bold text-sm text-center active:scale-[0.98] transition-transform shadow-sm flex items-center justify-center gap-2"
+                            className="w-full glass-panel rounded-2xl p-4 text-rose-500 font-bold text-sm text-center active:scale-[0.98] transition-transform shadow-sm flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[18px]">logout</span> Sign Out
                         </button>
@@ -215,7 +215,7 @@ export default function SettingsPage() {
                     {/* Left Column */}
                     <div className="col-span-8 space-y-6">
                         {/* Profile Card */}
-                        <motion.div variants={itemVariants} className="card-premium rounded-3xl p-8 relative overflow-hidden group">
+                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-8 relative overflow-hidden group">
                             {/* Decorative Background */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-transform duration-700 group-hover:scale-110" />
                             
@@ -259,7 +259,7 @@ export default function SettingsPage() {
                         </motion.div>
 
                         {/* Notifications */}
-                        <motion.div variants={itemVariants} className="card-premium rounded-3xl p-8">
+                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-8">
                             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">notifications_active</span>Notification Preferences
                             </h2>
@@ -290,7 +290,7 @@ export default function SettingsPage() {
                     {/* Right Column */}
                     <div className="col-span-4 space-y-6">
                         {/* Appearance / Theme */}
-                        <motion.div variants={itemVariants} className="card-premium rounded-3xl p-6 relative overflow-hidden group cursor-pointer" onClick={toggleTheme}>
+                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6 relative overflow-hidden group cursor-pointer" onClick={toggleTheme}>
                             <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-colors duration-500 ${isDark ? 'bg-amber-500/10' : 'bg-primary/10'}`} />
                             
                             <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2 relative z-10">
@@ -308,7 +308,7 @@ export default function SettingsPage() {
                         </motion.div>
 
                         {/* Currency */}
-                        <motion.div variants={itemVariants} className="card-premium rounded-3xl p-6">
+                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
                             <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">payments</span>Currency
                             </h2>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
     AreaChart, Area, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip,
@@ -16,23 +17,30 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
     if (!active || !payload?.length) return null;
 
     return (
-        <div className="rounded-xl border border-white/20 bg-white/90 dark:bg-[#161b22]/90 backdrop-blur-xl p-3 shadow-xl text-xs min-w-[140px]">
-            <p className="font-bold text-gray-900 dark:text-white mb-1.5">{label}</p>
-            {payload.map((entry) => (
-                <div key={entry.dataKey} className="flex items-center justify-between gap-4">
-                    <span className="flex items-center gap-1.5">
-                        <span
-                            className="w-2 h-2 rounded-full"
-                            style={{ background: entry.dataKey === 'expenses' ? '#ef4444' : '#22c55e' }}
-                        />
-                        <span className="text-gray-500 dark:text-gray-400 capitalize">{entry.dataKey}</span>
-                    </span>
-                    <span className="font-bold text-gray-900 dark:text-white">
-                        {entry.value?.toLocaleString()}
-                    </span>
-                </div>
-            ))}
-        </div>
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className="rounded-2xl border border-white/20 bg-white/90 dark:bg-[#161b22]/90 backdrop-blur-2xl p-3 shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-xs min-w-[150px]"
+        >
+            <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
+            <div className="space-y-2">
+                {payload.map((entry) => (
+                    <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-1.5">
+                            <span
+                                className="w-2 h-2 rounded-full shadow-sm"
+                                style={{ background: entry.dataKey === 'expenses' ? '#ff2a5f' : '#00e5ff', boxShadow: `0 0 8px ${entry.dataKey === 'expenses' ? '#ff2a5f' : '#00e5ff'}` }}
+                            />
+                            <span className="text-gray-500 dark:text-gray-400 capitalize">{entry.dataKey}</span>
+                        </span>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                            {entry.value?.toLocaleString()}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </motion.div>
     );
 }
 

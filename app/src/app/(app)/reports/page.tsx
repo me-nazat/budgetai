@@ -387,7 +387,7 @@ export default function ReportsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                 <div className="lg:col-span-1 flex flex-col gap-6 h-fit">
-                    <div className="card-premium rounded-3xl p-6 border border-gray-200/50 dark:border-white/5">
+                    <div className="glass-panel rounded-3xl p-6 border border-gray-200/50 dark:border-white/5">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm shadow-inner">1</span>
                         Configure View
@@ -478,15 +478,15 @@ export default function ReportsPage() {
                     {liveData && chartData ? (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
-                                <div className="card-premium rounded-3xl p-5 border border-gray-100 dark:border-white/5">
+                                <div className="glass-panel rounded-3xl p-5 border border-gray-100 dark:border-white/5">
                                     <p className="text-xs font-bold uppercase tracking-wider text-rose-500 mb-1">Total Expenses</p>
                                     <p className="text-3xl font-black text-gray-900 dark:text-white">{fmt(liveData.totalExp)}</p>
                                 </div>
-                                <div className="card-premium rounded-3xl p-5 border border-gray-100 dark:border-white/5">
+                                <div className="glass-panel rounded-3xl p-5 border border-gray-100 dark:border-white/5">
                                     <p className="text-xs font-bold uppercase tracking-wider text-emerald-500 mb-1">Total Earnings</p>
                                     <p className="text-3xl font-black text-gray-900 dark:text-white">{fmt(liveData.totalEarn)}</p>
                                 </div>
-                                <div className="card-premium rounded-3xl p-5 border border-gray-100 dark:border-white/5 relative overflow-hidden">
+                                <div className="glass-panel rounded-3xl p-5 border border-gray-100 dark:border-white/5 relative overflow-hidden">
                                     <div className={`absolute top-0 right-0 w-16 h-16 rounded-bl-full opacity-20 ${(liveData.totalEarn - liveData.totalExp) >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                     <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${(liveData.totalEarn - liveData.totalExp) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>Net Balance</p>
                                     <p className="text-3xl font-black text-gray-900 dark:text-white">{fmt(Math.abs(liveData.totalEarn - liveData.totalExp))}</p>
@@ -494,13 +494,13 @@ export default function ReportsPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                                <div className="card-premium rounded-3xl p-6 border border-gray-100 dark:border-white/5 h-[320px] flex flex-col">
+                                <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5 h-[320px] flex flex-col">
                                     <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Cash Flow Ratio</h3>
                                     <div className="flex-1 relative flex justify-center pb-2">
                                         <Doughnut data={chartData.expVsInc} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '75%' }} />
                                     </div>
                                 </div>
-                                <div className="card-premium rounded-3xl p-6 border border-gray-100 dark:border-white/5 h-[320px] flex flex-col">
+                                <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5 h-[320px] flex flex-col">
                                     <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Top Categories</h3>
                                     <div className="flex-1">
                                         <Bar data={chartData.catBar} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }, y: { display: false } } }} />
@@ -508,7 +508,7 @@ export default function ReportsPage() {
                                 </div>
                             </div>
 
-                            <div className="card-premium rounded-3xl p-6 border border-gray-100 dark:border-white/5 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                            <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5 animate-slide-up" style={{ animationDelay: '0.2s' }}>
                                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Recent Transactions in Period</h3>
                                 <div className="divide-y divide-gray-100 dark:divide-white/5 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                                     {liveData.transactions.slice(0, 50).map(t => (
@@ -534,7 +534,7 @@ export default function ReportsPage() {
                             </div>
                         </>
                     ) : (
-                        <div className="h-full min-h-[400px] card-premium rounded-3xl border border-dashed border-gray-300 dark:border-white/10 flex flex-col items-center justify-center text-center p-8">
+                        <div className="h-full min-h-[400px] glass-panel rounded-3xl border border-dashed border-gray-300 dark:border-white/10 flex flex-col items-center justify-center text-center p-8">
                             <div className="w-20 h-20 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center mb-6">
                                 <span className="material-symbols-outlined text-4xl text-gray-400">query_stats</span>
                             </div>

@@ -22,18 +22,22 @@ const serverEnvSchema = z.object({
   /** Turso authentication token. */
   TURSO_AUTH_TOKEN: z.string().min(1, 'TURSO_AUTH_TOKEN is required').optional(),
 
-  /** Secret used to sign JWTs. Must be 32+ characters in production. */
+  /** Secret used to sign JWTs. Must be 32+ characters. */
   JWT_SECRET: z
     .string()
-    .min(1, 'JWT_SECRET is required')
+    .min(32, 'JWT_SECRET must be at least 32 characters')
     .refine(
-      (val) => {
-        if (process.env.NODE_ENV === 'production') {
-          return val.length >= 32 && val !== 'budget-savings-ai-default-secret';
-        }
-        return true;
-      },
-      'JWT_SECRET must be at least 32 characters and not the default value in production'
+      (val) => val !== 'budget-savings-ai-default-secret' && val !== 'wealth-ai-default-secret-dev-only-not-for-production',
+      'JWT_SECRET must not be a default insecure value'
+    ),
+
+  /** Master key for field-level encryption. Must be 32+ characters. */
+  ENCRYPTION_MASTER_KEY: z
+    .string()
+    .min(32, 'ENCRYPTION_MASTER_KEY must be at least 32 characters')
+    .refine(
+      (val) => val !== 'change-this-in-production' && val !== 'wealth-ai-dev-encryption-key-not-for-production-use',
+      'ENCRYPTION_MASTER_KEY must not be a default insecure value'
     ),
 
   /** Google Gemini API key for AI features. */
@@ -59,17 +63,13 @@ function validateEnv(): ServerEnv {
     // Never log the actual values — only which keys are missing/invalid
     const message = `\n╔══════════════════════════════════════════╗\n║  ENVIRONMENT VALIDATION FAILED           ║\n╚══════════════════════════════════════════╝\n\n${errors}\n\nPlease check your .env.local file or Vercel environment variables.\n`;
 
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV !== 'test') {
       throw new Error(message);
-    } else {
-      console.warn(message);
     }
   }
 
   return (result.success ? result.data : serverEnvSchema.parse({
     ...process.env,
-    // Provide development fallbacks for optional fields
-    JWT_SECRET: process.env.JWT_SECRET || 'wealth-ai-default-secret-dev-only-not-for-production',
     TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL || 'file:local.db',
   })) as ServerEnv;
 }

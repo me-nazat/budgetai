@@ -1,48 +1,37 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/security/session-manager';
+import { NextRequest, NextResponse } from 'next/server';
+import { apiHandler } from '@/lib/middleware/api-handler';
+import { withAuth } from '@/lib/middleware/with-auth';
 import { queryOne, run } from '@/lib/db';
-import { sanitizeName, isValidCurrency } from '@/lib/validation';
+import { validateInput } from '@/lib/types/api';
+import { UpdateSettingsDTO } from '@/lib/types/dto';
 
-export async function GET() {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const user = await queryOne<{ id: number; name: string; email: string; currency: string; notify_budget: number; notify_overspend: number }>(
+export const GET = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
+        const user = await queryOne<{ id: number; name: string; email: string; currency: string; notifyBudget: number; notifyOverspend: number }>(
             'SELECT id, name, email, currency, notify_budget, notify_overspend FROM users WHERE id = ?',
-            [session.userId]
+            [userId]
         );
         return NextResponse.json({ user });
-    } catch (error) {
-        console.error('Settings error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    })
+);
 
-export async function PUT(request: Request) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const PUT = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
         const body = await request.json();
+        const data = validateInput(UpdateSettingsDTO, body);
 
-        const name = body.name !== undefined ? sanitizeName(body.name) : null;
-        const currency = body.currency !== undefined ? (typeof body.currency === 'string' ? body.currency.toUpperCase().trim() : null) : null;
-        const notify_budget = body.notify_budget !== undefined ? (body.notify_budget ? 1 : 0) : null;
-        const notify_overspend = body.notify_overspend !== undefined ? (body.notify_overspend ? 1 : 0) : null;
-
-        // Validate currency if provided
-        if (currency && !isValidCurrency(currency)) {
-            return NextResponse.json({ error: 'Invalid currency code' }, { status: 400 });
-        }
+        // data.name, data.currency, data.notifyBudget, data.notifyOverspend are all validated and sanitized
+        const name = data.name !== undefined ? data.name : null;
+        const currency = data.currency !== undefined ? data.currency : null;
+        const notify_budget = data.notifyBudget !== undefined ? data.notifyBudget : null;
+        const notify_overspend = data.notifyOverspend !== undefined ? data.notifyOverspend : null;
 
         await run(
             'UPDATE users SET name = COALESCE(?, name), currency = COALESCE(?, currency), notify_budget = COALESCE(?, notify_budget), notify_overspend = COALESCE(?, notify_overspend) WHERE id = ?',
-            [name, currency, notify_budget, notify_overspend, session.userId]
+            [name, currency, notify_budget, notify_overspend, userId]
         );
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Settings update error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    })
+);

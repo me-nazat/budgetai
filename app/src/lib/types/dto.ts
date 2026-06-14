@@ -138,7 +138,7 @@ export const LoginDTO = z.object({
   password: passwordSchema,
   /** Optional TOTP code for 2FA-enabled accounts. */
   totpCode: z.string().length(6, 'TOTP code must be 6 digits').optional(),
-});
+}).strict();
 export type LoginDTO = z.infer<typeof LoginDTO>;
 
 /** Registration request body. */
@@ -146,7 +146,7 @@ export const RegisterDTO = z.object({
   name: nameSchema,
   email: emailSchema,
   password: passwordSchema,
-});
+}).strict();
 export type RegisterDTO = z.infer<typeof RegisterDTO>;
 
 /** User profile in API responses (excludes sensitive fields). */
@@ -155,18 +155,18 @@ export const UserProfileDTO = z.object({
   name: z.string(),
   email: z.string(),
   currency: z.string().default('BDT'),
-  notifyBudget: z.number().default(1),
-  notifyOverspend: z.number().default(1),
+  notify_budget: z.number().default(1),
+  notify_overspend: z.number().default(1),
   totpEnabled: z.boolean().default(false),
   createdAt: z.string().optional(),
-});
+}).strict();
 export type UserProfileDTO = z.infer<typeof UserProfileDTO>;
 
 /** 2FA setup request. */
 export const TwoFactorSetupDTO = z.object({
   /** The TOTP code to verify the setup is correct. */
   verificationCode: z.string().length(6, 'Verification code must be 6 digits'),
-});
+}).strict();
 export type TwoFactorSetupDTO = z.infer<typeof TwoFactorSetupDTO>;
 
 /** 2FA verification during login. */
@@ -177,7 +177,7 @@ export const TwoFactorVerifyDTO = z.object({
   code: z.string().min(1, 'Code is required'),
   /** Whether this is a backup code (longer format). */
   isBackupCode: z.boolean().default(false),
-});
+}).strict();
 export type TwoFactorVerifyDTO = z.infer<typeof TwoFactorVerifyDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -191,7 +191,8 @@ export const CreateTransactionDTO = z.object({
   category: categorySchema,
   description: descriptionSchema,
   date: optionalDateSchema,
-});
+  notes: z.string().max(1000).optional().default(''),
+}).strict();
 export type CreateTransactionDTO = z.infer<typeof CreateTransactionDTO>;
 
 /** Update transaction request body. */
@@ -202,7 +203,8 @@ export const UpdateTransactionDTO = z.object({
   category: categorySchema,
   description: descriptionSchema,
   date: optionalDateSchema,
-});
+  notes: z.string().max(1000).optional().default(''),
+}).strict();
 export type UpdateTransactionDTO = z.infer<typeof UpdateTransactionDTO>;
 
 /** Transaction query filters. */
@@ -213,7 +215,7 @@ export const TransactionQueryDTO = z.object({
   type: transactionTypeSchema.optional(),
   limit: paginationLimitSchema,
   offset: paginationOffsetSchema,
-});
+}).strict();
 export type TransactionQueryDTO = z.infer<typeof TransactionQueryDTO>;
 
 /** Single transaction in API responses. */
@@ -225,7 +227,7 @@ export const TransactionResponseDTO = z.object({
   description: z.string(),
   date: z.string(),
   createdAt: z.string().optional(),
-});
+}).strict();
 export type TransactionResponseDTO = z.infer<typeof TransactionResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -238,7 +240,7 @@ export const CreateBudgetDTO = z.object({
   monthlyLimit: amountSchema,
   month: z.number().int().min(1).max(12, 'Month must be 1–12'),
   year: z.number().int().min(2000).max(2100, 'Invalid year'),
-});
+}).strict();
 export type CreateBudgetDTO = z.infer<typeof CreateBudgetDTO>;
 
 /** Budget in API responses. */
@@ -250,7 +252,7 @@ export const BudgetResponseDTO = z.object({
   year: z.number(),
   spent: z.number().optional(),
   percentage: z.number().optional(),
-});
+}).strict();
 export type BudgetResponseDTO = z.infer<typeof BudgetResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -261,7 +263,7 @@ export type BudgetResponseDTO = z.infer<typeof BudgetResponseDTO>;
 export const CreateNetWorthDTO = z.object({
   amount: amountSchema,
   note: descriptionSchema,
-});
+}).strict();
 export type CreateNetWorthDTO = z.infer<typeof CreateNetWorthDTO>;
 
 /** Net worth entry in API responses. */
@@ -270,7 +272,7 @@ export const NetWorthResponseDTO = z.object({
   amount: z.number(),
   note: z.string(),
   createdAt: z.string().optional(),
-});
+}).strict();
 export type NetWorthResponseDTO = z.infer<typeof NetWorthResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -283,7 +285,7 @@ export const CreateGoalDTO = z.object({
   targetAmount: amountSchema,
   savedAmount: amountSchema.optional().default(0),
   deadline: dateSchema.optional(),
-});
+}).strict();
 export type CreateGoalDTO = z.infer<typeof CreateGoalDTO>;
 
 /** Update savings goal request body. */
@@ -293,7 +295,7 @@ export const UpdateGoalDTO = z.object({
   targetAmount: amountSchema.optional(),
   savedAmount: amountSchema.optional(),
   deadline: dateSchema.optional().nullable(),
-});
+}).strict();
 export type UpdateGoalDTO = z.infer<typeof UpdateGoalDTO>;
 
 /** Savings goal in API responses. */
@@ -305,7 +307,7 @@ export const GoalResponseDTO = z.object({
   deadline: z.string().nullable().optional(),
   progress: z.number().optional(),
   createdAt: z.string().optional(),
-});
+}).strict();
 export type GoalResponseDTO = z.infer<typeof GoalResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -320,7 +322,7 @@ export const CreateRecurringDTO = z.object({
   category: categorySchema,
   frequency: frequencySchema,
   nextDate: optionalDateSchema,
-});
+}).strict();
 export type CreateRecurringDTO = z.infer<typeof CreateRecurringDTO>;
 
 /** Recurring transaction in API responses. */
@@ -334,7 +336,7 @@ export const RecurringResponseDTO = z.object({
   nextDate: z.string(),
   active: z.number(),
   createdAt: z.string().optional(),
-});
+}).strict();
 export type RecurringResponseDTO = z.infer<typeof RecurringResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -349,7 +351,7 @@ export const NotificationResponseDTO = z.object({
   message: z.string(),
   read: z.number(),
   createdAt: z.string().optional(),
-});
+}).strict();
 export type NotificationResponseDTO = z.infer<typeof NotificationResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -362,7 +364,7 @@ export const UpdateSettingsDTO = z.object({
   currency: currencySchema.optional(),
   notifyBudget: z.union([z.number(), z.boolean()]).transform((v) => (v ? 1 : 0)).optional(),
   notifyOverspend: z.union([z.number(), z.boolean()]).transform((v) => (v ? 1 : 0)).optional(),
-});
+}).strict();
 export type UpdateSettingsDTO = z.infer<typeof UpdateSettingsDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -373,7 +375,7 @@ export type UpdateSettingsDTO = z.infer<typeof UpdateSettingsDTO>;
 export const DashboardQueryDTO = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be in YYYY-MM format'),
   week: z.string().default('all'),
-});
+}).strict();
 export type DashboardQueryDTO = z.infer<typeof DashboardQueryDTO>;
 
 /** Dashboard data response. */
@@ -405,7 +407,7 @@ export const DashboardResponseDTO = z.object({
     percentage: z.number(),
   })),
   netWorth: z.number(),
-});
+}).strict();
 export type DashboardResponseDTO = z.infer<typeof DashboardResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -420,11 +422,11 @@ export const PaginatedResponseDTO = <T extends z.ZodType>(itemSchema: T) =>
     limit: z.number(),
     offset: z.number(),
     hasMore: z.boolean(),
-  });
+  }).strict();
 
 /** Delete by ID request (query parameter). */
 export const DeleteByIdDTO = z.object({
   id: z.union([z.number(), z.string().transform(Number)])
     .pipe(z.number().int().positive('Invalid ID')),
-});
+}).strict();
 export type DeleteByIdDTO = z.infer<typeof DeleteByIdDTO>;

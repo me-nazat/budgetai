@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { apiHandler } from '@/lib/middleware/api-handler';
+import { withAuth } from '@/lib/middleware/with-auth';
 import { getSession } from '@/lib/security/session-manager';
 import { run } from '@/lib/db';
 import { AttachmentInput, processMessage } from '@/lib/ai';
@@ -92,13 +94,8 @@ async function parseChatRequest(request: Request) {
     };
 }
 
-export async function POST(request: Request) {
-    try {
-        const session = await getSession();
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
+export const POST = apiHandler(
+    withAuth(async (request: NextRequest, { userId }) => {
         const { message, mode, sessionId, attachments, rawFiles, hasAttachments } = await parseChatRequest(request);
         if (!message && attachments.length === 0) {
             return NextResponse.json({ error: 'Message or attachment is required' }, { status: 400 });
@@ -111,17 +108,17 @@ export async function POST(request: Request) {
 
         await run(
             'INSERT INTO chat_messages (user_id, role, content, mode, session_id) VALUES (?, ?, ?, ?, ?)',
-            [session.userId, 'user', userContent, mode, chatSessionId]
+            [userId, 'user', userContent, mode, chatSessionId]
         );
 
-        const contextBundle = await getFinancialContextBundle(session.userId, chatSessionId);
+        const contextBundle = await getFinancialContextBundle(userId, chatSessionId);
         
         let driveUploadInfo = '';
         // Background upload to Gemini -> User -> Session in Google Drive
         if (hasAttachments && rawFiles.length > 0) {
             try {
                 const uploadResult = await uploadChatAttachmentsToGemini({
-                    userId: session.userId,
+                    userId: userId,
                     userName: contextBundle.profile?.name,
                     sessionId: chatSessionId,
                     files: rawFiles,
@@ -134,8 +131,11 @@ export async function POST(request: Request) {
             }
         }
 
+        const safeUserMessage = message || 'Analyze the attached files and extract financial actions.';
+        const enrichedUserMessage = `<user_input>\n${safeUserMessage}\n</user_input>\n\n<system_notes>\n${driveUploadInfo}\n</system_notes>\n\n<chat_history>\n${contextBundle.historyContext}\n</chat_history>`;
+
         const aiResponse = await processMessage(
-            `${message || 'Analyze the attached files and extract financial actions.'}${driveUploadInfo}${contextBundle.historyContext}`,
+            enrichedUserMessage,
             contextBundle.context,
             contextBundle.budgetContext,
             today,
@@ -148,10 +148,10 @@ export async function POST(request: Request) {
 
         if (!hasAttachments) {
             if (aiResponse.actions?.length) {
-                actionResults = await processDataActions(aiResponse.actions, session.userId);
+                actionResults = await processDataActions(aiResponse.actions, userId);
             }
             if (aiResponse.financialData?.length) {
-                storedTransactions = await storeFinancialData(aiResponse.financialData, session.userId, today, contextBundle.currencySymbol);
+                storedTransactions = await storeFinancialData(aiResponse.financialData, userId, today, contextBundle.currencySymbol);
             }
         }
 
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
             aiMessage = aiResponse.message;
             await run(
                 'INSERT INTO chat_messages (user_id, role, content, mode, session_id) VALUES (?, ?, ?, ?, ?)',
-                [session.userId, 'assistant', aiMessage, mode, chatSessionId]
+                [userId, 'assistant', aiMessage, mode, chatSessionId]
             );
         } else if (!hasAttachments && (storedTransactions.length > 0 || actionResults.length > 0)) {
             const parts: string[] = [];
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
             aiMessage = `Saved: ${parts.join(' | ')}`;
             await run(
                 'INSERT INTO chat_messages (user_id, role, content, mode, session_id) VALUES (?, ?, ?, ?, ?)',
-                [session.userId, 'system', aiMessage, mode, chatSessionId]
+                [userId, 'system', aiMessage, mode, chatSessionId]
             );
         }
 
@@ -197,8 +197,6 @@ export async function POST(request: Request) {
             sessionId: chatSessionId,
             mode,
         });
-    } catch (error) {
-        console.error('Chat error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}
+    }),
+    { rateLimit: 'aiChat' }
+);

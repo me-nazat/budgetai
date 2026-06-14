@@ -88,35 +88,16 @@ function deriveKey(masterKey: string, context: string = 'default'): Buffer {
     .digest();
 }
 
+import { env } from '@/lib/env';
+
 /**
  * Retrieves and validates the master encryption key from environment variables.
  *
  * @throws {Error} If `ENCRYPTION_MASTER_KEY` is not set or is the insecure default.
  * @returns The master encryption key string.
- *
- * @security
- * - In production, rejects weak or default keys.
- * - In development, logs a warning but allows a default key for convenience.
  */
 function getMasterKey(): string {
-  const key = process.env.ENCRYPTION_MASTER_KEY;
-
-  if (!key || key === 'change-this-in-production') {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(
-        'CRITICAL: ENCRYPTION_MASTER_KEY is missing or using the insecure default. ' +
-        'Set a strong, unique key (32+ characters) before deploying to production.'
-      );
-    }
-    // Development fallback — NOT secure for production use
-    console.warn(
-      '[crypto] WARNING: Using default encryption key. ' +
-      'Set ENCRYPTION_MASTER_KEY env var for production.'
-    );
-    return 'wealth-ai-dev-encryption-key-not-for-production-use';
-  }
-
-  return key;
+  return env.ENCRYPTION_MASTER_KEY;
 }
 
 /**

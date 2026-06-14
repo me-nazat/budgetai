@@ -150,7 +150,7 @@ export default function BudgetPage() {
                 ].map((c, i) => {
                     const style = SUMMARY_STYLES[c.color] || CATEGORY_COLOR_STYLES.gray;
                     return (
-                    <div key={i} className="card-premium rounded-xl p-6 relative overflow-hidden group animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
+                    <div key={i} className="glass-panel rounded-xl p-6 relative overflow-hidden group animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
                         <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-all duration-500 group-hover:scale-110">
                             <span className={`material-symbols-outlined text-6xl ${style.text}`}>{c.icon}</span>
                         </div>
@@ -165,7 +165,7 @@ export default function BudgetPage() {
 
             {/* Add Budget Form */}
             {showAdd && (
-                <div className="card-premium rounded-xl p-6 mb-6 animate-slide-up">
+                <div className="glass-panel rounded-xl p-6 mb-6 animate-slide-up">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Add Budget Category</h3>
                     <div className="flex flex-wrap gap-4 items-center">
                         {isAddingCustom ? (
@@ -213,7 +213,7 @@ export default function BudgetPage() {
             )}
 
             {/* Budget Table */}
-            <div className="card-premium rounded-xl overflow-hidden animate-slide-up" style={{ animationDelay: '0.3s' }}>
+            <div className="glass-panel rounded-xl overflow-hidden animate-slide-up" style={{ animationDelay: '0.3s' }}>
                 {loading ? (
                     <div className="p-12 text-center text-gray-400 font-medium flex flex-col items-center justify-center gap-3"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>Loading budgets...</div>
                 ) : budgets.length === 0 ? (

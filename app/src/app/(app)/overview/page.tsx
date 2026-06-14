@@ -134,7 +134,7 @@ export default function OverviewPage() {
             {/* KPI CARDS */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3 mb-3">
                 {kpis.map((kpi, index) => (
-                    <div key={kpi.label} className="card-premium rounded-xl p-4 animate-slide-up hover:-translate-y-1 transition-all border border-gray-100 dark:border-white/5" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <div key={kpi.label} className="glass-panel rounded-xl p-4 animate-slide-up hover:-translate-y-1 transition-all border border-gray-100 dark:border-white/5" style={{ animationDelay: `${index * 0.1}s` }}>
                         <div className="flex items-start justify-between mb-2">
                             <div>
                                 <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-1">{kpi.label}</p>
@@ -153,7 +153,7 @@ export default function OverviewPage() {
 
             {/* MAIN CHARTS SECTION */}
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 mb-3">
-                <div className="card-premium rounded-xl p-4 lg:col-span-2 border border-gray-100 dark:border-white/5 flex flex-col">
+                <div className="glass-panel rounded-xl p-4 lg:col-span-2 border border-gray-100 dark:border-white/5 flex flex-col">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h2 className="text-xl font-black text-gray-900 dark:text-white">Monthly Cash Flow</h2>
@@ -178,7 +178,7 @@ export default function OverviewPage() {
                     </div>
                 </div>
 
-                <div className="card-premium rounded-xl p-4 border border-gray-100 dark:border-white/5 flex flex-col">
+                <div className="glass-panel rounded-xl p-4 border border-gray-100 dark:border-white/5 flex flex-col">
                     <div className="mb-3">
                         <h2 className="text-xl font-black text-gray-900 dark:text-white">Expense Distribution</h2>
                         <p className="text-xs text-gray-500 font-medium">Where your money goes</p>
@@ -231,7 +231,7 @@ export default function OverviewPage() {
             </div>
 
             {/* AI INSIGHTS */}
-            <div className="mb-3 card-premium rounded-xl p-4 border border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-primary/5 dark:from-bg-dark dark:to-primary/10 transition-colors">
+            <div className="mb-3 glass-panel rounded-xl p-4 border border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-primary/5 dark:from-bg-dark dark:to-primary/10 transition-colors">
                 <div className="flex items-center gap-2 mb-2">
                     <span className="material-symbols-outlined text-2xl text-primary animate-pulse">auto_awesome</span>
                     <h2 className="text-xl font-black text-gray-900 dark:text-white">AI Financial Insights</h2>

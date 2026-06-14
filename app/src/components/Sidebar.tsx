@@ -88,7 +88,7 @@ export default function Sidebar() {
     return (
         <aside className={`
         hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col justify-between
-        bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl border-r border-gray-200/50 dark:border-[#30363d]/50
+        bg-white/80 dark:bg-surface-dark/80 backdrop-blur-2xl border-r border-gray-200/50 dark:border-white/5
         transition-transform duration-300 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)]
       `}>
             <div className="flex flex-col h-full">
@@ -132,13 +132,13 @@ export default function Sidebar() {
                                             {isActive && (
                                                 <motion.div 
                                                     layoutId="sidebar-active"
-                                                    className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-xl nav-glow-pill"
+                                                    className="absolute inset-0 bg-primary/10 dark:bg-primary/15 rounded-xl border border-primary/20"
                                                     initial={false}
-                                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                                 />
                                             )}
                                             {isActive && (
-                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_rgba(19,109,236,0.9)] z-10" />
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_var(--color-primary)] z-10" />
                                             )}
                                             
                                             <div className="flex items-center gap-3">

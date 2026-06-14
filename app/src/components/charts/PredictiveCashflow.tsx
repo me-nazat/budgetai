@@ -90,15 +90,36 @@ export default function PredictiveCashflow({ dailySpending, monthlyIncome }: Pre
                 </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <p className="text-xs font-semibold opacity-70 mb-1">Current Burn Rate</p>
+            <div className="grid grid-cols-2 gap-4 group">
+                <div className="relative">
+                    <p className="text-xs font-semibold opacity-70 mb-1 cursor-help flex items-center gap-1">
+                        Current Burn Rate
+                        <span className="material-symbols-outlined text-[14px] opacity-50">info</span>
+                    </p>
                     <p className="text-lg font-black">{dailyAverage.toLocaleString(undefined, { maximumFractionDigits: 0 })}/day</p>
+                    
+                    {/* Tooltip */}
+                    <div className="absolute top-[-30px] left-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-10 bg-black/90 dark:bg-white/90 text-white dark:text-black text-[10px] py-1 px-2 rounded-md whitespace-nowrap shadow-xl">
+                        Average amount spent per day this month
+                    </div>
                 </div>
-                <div>
-                    <p className="text-xs font-semibold opacity-70 mb-1">Safe to Spend</p>
+                <div className="relative">
+                    <p className="text-xs font-semibold opacity-70 mb-1 cursor-help flex items-center gap-1">
+                        Safe to Spend
+                        <span className="material-symbols-outlined text-[14px] opacity-50">info</span>
+                    </p>
                     <p className="text-lg font-black">{safeDailySpend.toLocaleString(undefined, { maximumFractionDigits: 0 })}/day</p>
                 </div>
+            </div>
+
+            {/* Animated Burn Rate Bar */}
+            <div className="mt-4 h-2 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, (dailyAverage / (safeDailySpend || 1)) * 50)}%` }}
+                    transition={{ type: "spring", stiffness: 50, damping: 20, delay: 0.2 }}
+                    className={`h-full rounded-full ${dailyAverage > safeDailySpend ? "bg-rose-500" : "bg-emerald-500"}`}
+                />
             </div>
 
             <div className="mt-4 pt-4 border-t border-current/10 flex items-center justify-between">

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useUser } from '@/hooks/useApi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
@@ -738,7 +739,7 @@ export default function ChatPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                             {getSuggestions().map((s, i) => (
                                 <button key={i} onClick={() => setInput(s.t)}
-                                    className={`card-premium p-4 rounded-xl text-left hover:-translate-y-1 transition-all group flex items-center gap-3 border ${s.border}`}
+                                    className={`glass-panel p-4 rounded-xl text-left hover:-translate-y-1 transition-all group flex items-center gap-3 border ${s.border}`}
                                     style={{ animation: `slideUp 0.4s ease-out ${0.1 + i * 0.08}s both` }}
                                 >
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.c}`}>
@@ -755,9 +756,12 @@ export default function ChatPage() {
                     </div>
                 )}
 
+                <AnimatePresence initial={false}>
                 {messages.map((msg, i) => (
-                    <div key={i} className={`flex gap-3 max-w-3xl ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
-                        style={{ animation: 'slideUp 0.3s ease-out both' }}
+                    <motion.div key={i} className={`flex gap-3 max-w-3xl ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     >
                         {/* Avatar */}
                         <div className={`w-8 h-8 lg:w-9 lg:h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${msg.role === 'user'
@@ -788,15 +792,21 @@ export default function ChatPage() {
                             <div className={`relative group px-4 py-3 leading-relaxed text-sm ${msg.role === 'user'
                                 ? 'bg-primary text-white rounded-2xl rounded-tr-sm shadow-[0_4px_16px_-4px_rgba(19,109,236,0.35)]'
                                 : msg.role === 'system'
-                                    ? 'card-premium border-emerald-200/30 dark:border-emerald-800/30 text-emerald-800 dark:text-emerald-200 rounded-2xl rounded-tl-sm'
-                                    : 'card-premium text-gray-800 dark:text-gray-200 rounded-2xl rounded-tl-sm'
+                                    ? 'glass-panel border-emerald-200/30 dark:border-emerald-800/30 text-emerald-800 dark:text-emerald-200 rounded-2xl rounded-tl-sm'
+                                    : 'glass-panel text-gray-800 dark:text-gray-200 rounded-2xl rounded-tl-sm'
                                 }`}>
                                 {msg.role === 'user' ? (
                                     <p className="whitespace-pre-wrap">{msg.content}</p>
                                 ) : (
                                     <div className="space-y-1.5">{renderContent(msg.content)}</div>
                                 )}
-                                {msg.isTyping && <span className="inline-block w-1.5 h-4 bg-primary/60 rounded-full ml-0.5 animate-pulse" />}
+                                {msg.isTyping && (
+    <div className="flex gap-1 items-center h-4 ml-1">
+        <motion.div className="w-1.5 h-1.5 bg-primary rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} />
+        <motion.div className="w-1.5 h-1.5 bg-primary rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} />
+        <motion.div className="w-1.5 h-1.5 bg-primary rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} />
+    </div>
+)}
 
                                 {/* Copy button — appears on hover for AI messages */}
                                 {msg.role !== 'user' && msg.content && !msg.isTyping && (
@@ -919,8 +929,9 @@ export default function ChatPage() {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
+                </AnimatePresence>
 
                 {/* Loading indicator with elapsed timer */}
                 {loading && (
@@ -928,7 +939,7 @@ export default function ChatPage() {
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-teal-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
                             <span className="material-symbols-outlined text-lg text-white">smart_toy</span>
                         </div>
-                        <div className="card-premium px-5 py-3.5 rounded-2xl rounded-tl-sm">
+                        <div className="glass-panel px-5 py-3.5 rounded-2xl rounded-tl-sm">
                             <div className="flex gap-1.5 items-center">
                                 <span className="w-2 h-2 bg-primary/60 rounded-full typing-dot" />
                                 <span className="w-2 h-2 bg-primary/60 rounded-full typing-dot" />
@@ -966,7 +977,7 @@ export default function ChatPage() {
                         ))}
                     </div>
                 )}
-                <div className="relative card-premium rounded-2xl focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all max-w-3xl mx-auto">
+                <div className="relative glass-panel rounded-2xl focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all max-w-3xl mx-auto">
                     <input
                         ref={fileInputRef}
                         type="file"

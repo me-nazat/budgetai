@@ -50,16 +50,14 @@ const nextConfig: NextConfig = {
     typescript: {
         ignoreBuildErrors: true,
     },
-    ...(isVercel && {
-        async headers() {
-            return [
-                {
-                    source: '/(.*)',
-                    headers: securityHeaders,
-                },
-            ];
-        },
-    }),
+    async headers() {
+        return [
+            {
+                source: '/(.*)',
+                headers: securityHeaders,
+            },
+        ];
+    },
 };
 
 export default nextConfig;

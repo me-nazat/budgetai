@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Geist, Outfit } from "next/font/google";
 import "./globals.css";
 
 import "material-symbols/outlined.css";
+import { SmoothScroll } from "@/components/ui/SmoothScroll";
 
-const inter = Inter({
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-geist",
   display: "swap",
 });
 
@@ -33,9 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${outfit.variable} font-[Inter,sans-serif] antialiased`}>
+      <body className={`${geist.variable} ${outfit.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
         <ThemeScript />
-        {children}
+        <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
   );

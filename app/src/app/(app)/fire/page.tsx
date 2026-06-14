@@ -151,7 +151,7 @@ export default function FIRECalculatorPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 {/* Inputs Sidebar */}
                 <div className="lg:col-span-1 space-y-6">
-                    <div className="card-premium p-6 rounded-3xl border border-gray-100 dark:border-white/5">
+                    <div className="glass-panel p-6 rounded-3xl border border-gray-100 dark:border-white/5">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary">tune</span>
                             Simulation Parameters
@@ -222,7 +222,7 @@ export default function FIRECalculatorPage() {
                 <div className="lg:col-span-2 space-y-6">
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="card-premium rounded-3xl p-6 border-2 border-orange-500/20 bg-gradient-to-br from-white to-orange-50 dark:from-bg-dark dark:to-orange-500/5 shadow-[0_0_30px_rgba(249,115,22,0.05)]">
+                        <div className="glass-panel rounded-3xl p-6 border-2 border-orange-500/20 bg-gradient-to-br from-white to-orange-50 dark:from-bg-dark dark:to-orange-500/5 shadow-[0_0_30px_rgba(249,115,22,0.05)]">
                             <div className="flex items-start justify-between">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-1">Your FIRE Number</p>
@@ -237,7 +237,7 @@ export default function FIRECalculatorPage() {
                             </div>
                         </div>
 
-                        <div className={`card-premium rounded-3xl p-6 border-2 ${isOnTrack ? 'border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50 dark:from-bg-dark dark:to-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.05)]' : 'border-rose-500/20 bg-gradient-to-br from-white to-rose-50 dark:from-bg-dark dark:to-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.05)]'}`}>
+                        <div className={`glass-panel rounded-3xl p-6 border-2 ${isOnTrack ? 'border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50 dark:from-bg-dark dark:to-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.05)]' : 'border-rose-500/20 bg-gradient-to-br from-white to-rose-50 dark:from-bg-dark dark:to-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.05)]'}`}>
                             <div className="flex items-start justify-between">
                                 <div>
                                     <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${isOnTrack ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>Projected Net Worth</p>
@@ -254,7 +254,7 @@ export default function FIRECalculatorPage() {
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="card-premium rounded-3xl p-6 border border-gray-100 dark:border-white/5">
+                    <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5">
                         <div className="flex justify-between items-end mb-4">
                             <div>
                                 <h3 className="text-base font-bold text-gray-900 dark:text-white">FIRE Progress</h3>
@@ -292,7 +292,7 @@ export default function FIRECalculatorPage() {
                     </div>
 
                     {/* Projection Chart */}
-                    <div className="card-premium rounded-3xl p-6 border border-gray-100 dark:border-white/5">
+                    <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5">
                         <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6">Growth Projection</h3>
                         <div className="h-[350px] w-full">
                             <Line data={chartData} options={chartOptions} />

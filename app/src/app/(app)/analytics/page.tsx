@@ -88,7 +88,7 @@ export default function AnalyticsPage() {
 
             {/* Summary Cards Row */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="card-premium p-4 rounded-2xl">
+                <div className="glass-panel p-4 rounded-2xl">
                     <div className="flex items-center gap-2 mb-1">
                         <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
                             <span className="material-symbols-outlined text-emerald-500 text-lg">trending_up</span>
@@ -97,7 +97,7 @@ export default function AnalyticsPage() {
                     </div>
                     <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{fmt(totalIncome)}</p>
                 </div>
-                <div className="card-premium p-4 rounded-2xl">
+                <div className="glass-panel p-4 rounded-2xl">
                     <div className="flex items-center gap-2 mb-1">
                         <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center">
                             <span className="material-symbols-outlined text-rose-500 text-lg">trending_down</span>
@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Net Savings + Savings Rate */}
-            <div className="card-premium p-4 rounded-2xl mb-6 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-500/5">
+            <div className="glass-panel p-4 rounded-2xl mb-6 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-500/5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{sym}</span>
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Bar Chart */}
-            <div className="card-premium p-5 rounded-2xl mb-6">
+            <div className="glass-panel p-5 rounded-2xl mb-6">
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Income vs Expense</h3>
                 <p className="text-xs text-gray-500 dark:text-text-muted mb-4">Daily breakdown for current period</p>
                 <div className="h-[220px] lg:h-[300px]">
@@ -150,7 +150,7 @@ export default function AnalyticsPage() {
 
             {/* Doughnut Chart */}
             {data.categorySpending.length > 0 && (
-                <div className="card-premium p-5 rounded-2xl mb-6">
+                <div className="glass-panel p-5 rounded-2xl mb-6">
                     <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">Spending by Category</h3>
                     <div className="h-[220px] lg:h-[280px]">
                         <Doughnut data={doughnutData} options={{
@@ -177,7 +177,7 @@ export default function AnalyticsPage() {
 
             {/* Top Expenses */}
             {topExpenses.length > 0 && (
-                <div className="card-premium rounded-2xl overflow-hidden mb-6">
+                <div className="glass-panel rounded-2xl overflow-hidden mb-6">
                     <div className="p-5 border-b border-gray-200 dark:border-[#30363d]">
                         <h3 className="text-base font-bold text-gray-900 dark:text-white">Top Expenses</h3>
                     </div>

@@ -7,10 +7,10 @@ import { queryAll, queryOne, run } from '@/lib/db';
 import { maybeCreateBudgetAlert } from '@/lib/alerts';
 import { isStandardCategory, resolveColor, resolveIcon } from '@/lib/categoryUtils';
 import {
-    isValidAmount, isValidType, isValidDate,
-    sanitizeCategory, sanitizeDescription, sanitizeNotes,
-    clampPaginationLimit, clampPaginationOffset
+    clampPaginationLimit, clampPaginationOffset, isValidDate, isValidType
 } from '@/lib/validation';
+import { validateInput } from '@/lib/types/api';
+import { CreateTransactionDTO, UpdateTransactionDTO } from '@/lib/types/dto';
 
 async function ensureCustomCategory(userId: number, type: string, categoryName: string) {
     const name = categoryName.trim().replace(/\s+/g, ' ');
@@ -92,23 +92,8 @@ export const GET = apiHandler(
 export const POST = apiHandler(
     withAuth(async (request: NextRequest, { userId }) => {
         const body = await request.json();
-        const type = body.type;
-        const amount = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
-        const description = sanitizeDescription(body.description);
-        const notes = sanitizeNotes(body.notes || '');
-        const date = body.date || new Date().toISOString().split('T')[0];
-
-        if (!isValidType(type)) {
-            return NextResponse.json({ error: 'Type must be "expense" or "earning"' }, { status: 400 });
-        }
-        if (!isValidAmount(amount)) {
-            return NextResponse.json({ error: 'Amount must be a positive number (max 999,999,999)' }, { status: 400 });
-        }
-        if (date && !isValidDate(date)) {
-            return NextResponse.json({ error: 'Invalid date format (YYYY-MM-DD)' }, { status: 400 });
-        }
-
-        const categoryName = sanitizeCategory(body.category);
+        const data = validateInput(CreateTransactionDTO, body);
+        const { type, amount, description, notes, date, category: categoryName } = data;
         await ensureCustomCategory(userId, type, categoryName);
 
         const result = await run(
@@ -147,27 +132,8 @@ export const DELETE = apiHandler(
 export const PUT = apiHandler(
     withAuth(async (request: NextRequest, { userId }) => {
         const body = await request.json();
-        const id = body.id;
-        const type = body.type;
-        const amount = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
-        const description = sanitizeDescription(body.description);
-        const notes = sanitizeNotes(body.notes || '');
-        const date = body.date || new Date().toISOString().split('T')[0];
-
-        if (!id || typeof id !== 'number') {
-            return NextResponse.json({ error: 'Valid ID is required' }, { status: 400 });
-        }
-        if (!isValidType(type)) {
-            return NextResponse.json({ error: 'Type must be "expense" or "earning"' }, { status: 400 });
-        }
-        if (!isValidAmount(amount)) {
-            return NextResponse.json({ error: 'Amount must be a positive number (max 999,999,999)' }, { status: 400 });
-        }
-        if (date && !isValidDate(date)) {
-            return NextResponse.json({ error: 'Invalid date format (YYYY-MM-DD)' }, { status: 400 });
-        }
-
-        const categoryName = sanitizeCategory(body.category);
+        const data = validateInput(UpdateTransactionDTO, body);
+        const { id, type, amount, description, notes, date, category: categoryName } = data;
         await ensureCustomCategory(userId, type, categoryName);
 
         const result = await run(

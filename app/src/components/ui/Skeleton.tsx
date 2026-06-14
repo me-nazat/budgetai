@@ -9,6 +9,8 @@
 
 'use client';
 
+import { motion } from 'framer-motion';
+
 /**
  * Props for the Skeleton component.
  */
@@ -31,18 +33,6 @@ interface SkeletonProps {
 
 /**
  * Skeleton — shimmer loading placeholder.
- *
- * @example
- * ```tsx
- * // Single line
- * <Skeleton width="200px" height="16px" />
- *
- * // Multiple lines
- * <Skeleton count={3} height="14px" />
- *
- * // Avatar circle
- * <Skeleton circle width={48} height={48} />
- * ```
  */
 export default function Skeleton({
   width = '100%',
@@ -57,15 +47,24 @@ export default function Skeleton({
   const h = typeof height === 'number' ? `${height}px` : height;
   const radius = circle ? '50%' : borderRadius;
 
-  if (count === 1) {
-    return (
-      <div
-        className={`skeleton-shimmer ${className}`}
-        style={{ width: w, height: h, borderRadius: radius }}
-        aria-hidden="true"
-        role="presentation"
+  const ShimmerBlock = ({ itemWidth }: { itemWidth: string | number }) => (
+    <div
+      className={`relative overflow-hidden bg-gray-200/50 dark:bg-white/5 ${className}`}
+      style={{ width: itemWidth, height: h, borderRadius: radius }}
+      aria-hidden="true"
+      role="presentation"
+    >
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent"
+        initial={{ x: "-100%" }}
+        animate={{ x: "100%" }}
+        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
       />
-    );
+    </div>
+  );
+
+  if (count === 1) {
+    return <ShimmerBlock itemWidth={w} />;
   }
 
   return (
@@ -75,15 +74,7 @@ export default function Skeleton({
       role="presentation"
     >
       {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className={`skeleton-shimmer ${className}`}
-          style={{
-            width: i === count - 1 ? '70%' : w,
-            height: h,
-            borderRadius: radius,
-          }}
-        />
+        <ShimmerBlock key={i} itemWidth={i === count - 1 ? '70%' : w} />
       ))}
     </div>
   );
@@ -95,20 +86,14 @@ export default function Skeleton({
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`skeleton-card ${className}`}
-      style={{
-        padding: '20px',
-        borderRadius: '16px',
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
-      }}
+      className={`glass-panel p-5 rounded-2xl ${className}`}
       aria-hidden="true"
     >
       <Skeleton width="60%" height="16px" />
-      <div style={{ height: '12px' }} />
-      <Skeleton width="40%" height="32px" />
       <div style={{ height: '16px' }} />
-      <Skeleton count={2} height="12px" />
+      <Skeleton width="40%" height="36px" />
+      <div style={{ height: '24px' }} />
+      <Skeleton count={2} height="12px" gap="12px" />
     </div>
   );
 }
@@ -124,15 +109,14 @@ export function SkeletonChart({
   className?: string;
 }) {
   return (
-    <div
-      className={`skeleton-shimmer ${className}`}
-      style={{
-        width: '100%',
-        height,
-        borderRadius: '16px',
-      }}
-      aria-hidden="true"
-    />
+    <div className={`w-full relative overflow-hidden rounded-2xl bg-gray-200/50 dark:bg-white/5 ${className}`} style={{ height }}>
+       <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent"
+        initial={{ x: "-100%" }}
+        animate={{ x: "100%" }}
+        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+      />
+    </div>
   );
 }
 
@@ -157,8 +141,8 @@ export function SkeletonTable({
             display: 'grid',
             gridTemplateColumns: `repeat(${columns}, 1fr)`,
             gap: '12px',
-            padding: '12px 0',
-            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            padding: '16px 0',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
           }}
         >
           {Array.from({ length: columns }, (_, colIdx) => (

@@ -13,7 +13,7 @@ export default function SpendingHeatmapPage() {
                 </p>
             </header>
 
-            <div className="card-premium rounded-3xl p-2 sm:p-6 border border-gray-100 dark:border-white/5 bg-surface dark:bg-surface-dark shadow-sm">
+            <div className="glass-panel rounded-3xl p-2 sm:p-6 border border-gray-100 dark:border-white/5 bg-surface dark:bg-surface-dark shadow-sm">
                 <YearlyHeatmap />
             </div>
         </div>

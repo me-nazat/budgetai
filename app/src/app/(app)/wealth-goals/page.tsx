@@ -163,7 +163,7 @@ export default function WealthGoalsPage() {
             {/* QUICK STATS CARDS */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
                 {summaryCards.map((card, index) => (
-                    <div key={card.label} className="card-premium rounded-3xl p-6 animate-slide-up border border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-colors" style={{ animationDelay: `${index * 0.05}s` }}>
+                    <div key={card.label} className="glass-panel rounded-3xl p-6 animate-slide-up border border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-colors" style={{ animationDelay: `${index * 0.05}s` }}>
                         <div className={`mb-6 grid h-14 w-14 place-items-center rounded-2xl border ${card.tone}`}>
                             <span className="material-symbols-outlined text-[28px]">{card.icon}</span>
                         </div>
@@ -177,7 +177,7 @@ export default function WealthGoalsPage() {
             {(showWorthForm || showGoalForm) && (
                 <div className="mb-6 grid grid-cols-1 gap-4 animate-fade-in">
                     {showWorthForm && (
-                        <form onSubmit={e => { e.preventDefault(); void addEntry(); }} className="card-premium rounded-3xl p-6 lg:p-8 border-2 border-primary/20 shadow-[0_0_40px_rgba(19,109,236,0.08)]">
+                        <form onSubmit={e => { e.preventDefault(); void addEntry(); }} className="glass-panel rounded-3xl p-6 lg:p-8 border-2 border-primary/20 shadow-[0_0_40px_rgba(19,109,236,0.08)]">
                             <h2 className="mb-6 text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">monitoring</span>
                                 Log Net Worth Update
@@ -190,7 +190,7 @@ export default function WealthGoalsPage() {
                         </form>
                     )}
                     {showGoalForm && (
-                        <form onSubmit={e => { e.preventDefault(); void addGoal(); }} className="card-premium rounded-3xl p-6 lg:p-8 border-2 border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.08)]">
+                        <form onSubmit={e => { e.preventDefault(); void addGoal(); }} className="glass-panel rounded-3xl p-6 lg:p-8 border-2 border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.08)]">
                             <h2 className="mb-6 text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-emerald-500">flag</span>
                                 Define Savings Target
@@ -233,11 +233,11 @@ export default function WealthGoalsPage() {
                     </div>
                     
                     {loading ? (
-                        <div className="flex-1 card-premium rounded-3xl p-12 flex items-center justify-center">
+                        <div className="flex-1 glass-panel rounded-3xl p-12 flex items-center justify-center">
                             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
                         </div>
                     ) : goals.length === 0 ? (
-                        <div className="flex-1 card-premium rounded-3xl p-12 text-center flex flex-col items-center justify-center border border-dashed border-gray-300 dark:border-white/10">
+                        <div className="flex-1 glass-panel rounded-3xl p-12 text-center flex flex-col items-center justify-center border border-dashed border-gray-300 dark:border-white/10">
                             <div className="w-20 h-20 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
                                 <span className="material-symbols-outlined text-4xl text-gray-400">flag</span>
                             </div>
@@ -254,7 +254,7 @@ export default function WealthGoalsPage() {
                                 const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86400000) : null;
                                 
                                 return (
-                                    <div key={goal.id} className={`card-premium relative overflow-hidden rounded-3xl p-6 transition-all hover:-translate-y-1 hover:shadow-xl ${complete ? 'border-2 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] bg-gradient-to-b from-emerald-50/50 to-white dark:from-emerald-900/10 dark:to-bg-dark' : 'border border-gray-100 dark:border-white/5 hover:border-primary/30'}`}>
+                                    <div key={goal.id} className={`glass-panel relative overflow-hidden rounded-3xl p-6 transition-all hover:-translate-y-1 hover:shadow-xl ${complete ? 'border-2 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] bg-gradient-to-b from-emerald-50/50 to-white dark:from-emerald-900/10 dark:to-bg-dark' : 'border border-gray-100 dark:border-white/5 hover:border-primary/30'}`}>
                                         {/* Background Progress watermark */}
                                         <div className="absolute right-0 bottom-0 pointer-events-none opacity-[0.03] dark:opacity-[0.02]">
                                             <span className="material-symbols-outlined text-[150px] -mr-10 -mb-10">{complete ? 'verified' : 'savings'}</span>
@@ -339,7 +339,7 @@ export default function WealthGoalsPage() {
 
                 {/* SIDEBAR ANALYTICS */}
                 <div className="space-y-6">
-                    <div className="card-premium rounded-3xl p-6 border border-gray-100 dark:border-white/5">
+                    <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5">
                         <div className="mb-6 flex flex-col">
                             <h2 className="text-xl font-black text-gray-900 dark:text-white">Net Worth Trend</h2>
                             <p className="text-sm font-medium text-gray-500 mt-1">
@@ -375,7 +375,7 @@ export default function WealthGoalsPage() {
                         </div>
                     </div>
 
-                    <div className="card-premium rounded-3xl p-6 border border-gray-100 dark:border-white/5 bg-gradient-to-br from-white to-gray-50 dark:from-bg-dark dark:to-white/5">
+                    <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5 bg-gradient-to-br from-white to-gray-50 dark:from-bg-dark dark:to-white/5">
                         <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary">auto_awesome</span>
                             Smart Strategy

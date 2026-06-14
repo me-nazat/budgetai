@@ -123,7 +123,7 @@ export default function BillSplitPage() {
             </div>
 
             {isCreating && (
-                <div className="card-premium rounded-3xl p-6 mb-8 animate-fade-in-up border border-gray-200 dark:border-white/10">
+                <div className="glass-panel rounded-3xl p-6 mb-8 animate-fade-in-up border border-gray-200 dark:border-white/10">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Create New Split</h2>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -194,7 +194,7 @@ export default function BillSplitPage() {
             )}
 
             {settlementSuggestions.length > 0 && !isCreating && (
-                <div className="card-premium rounded-3xl p-6 mb-8 animate-fade-in-up border border-gray-200 dark:border-white/10">
+                <div className="glass-panel rounded-3xl p-6 mb-8 animate-fade-in-up border border-gray-200 dark:border-white/10">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                         <span className="material-symbols-outlined text-green-500">account_balance_wallet</span>
                         Settlement Suggestions
@@ -229,7 +229,7 @@ export default function BillSplitPage() {
                     </div>
                 ) : (
                     splits?.map(split => (
-                        <div key={split.id} className="card-premium rounded-3xl p-6 border border-gray-200 dark:border-white/10 relative overflow-hidden group">
+                        <div key={split.id} className="glass-panel rounded-3xl p-6 border border-gray-200 dark:border-white/10 relative overflow-hidden group">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <h3 className="font-bold text-gray-900 dark:text-white text-lg">{split.description}</h3>

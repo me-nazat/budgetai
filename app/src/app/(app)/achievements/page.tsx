@@ -61,7 +61,7 @@ function AchievementCard({ achievement, onClick }: { achievement: Achievement, o
     const progress = achievement.target > 0 ? (achievement.progress / achievement.target) * 100 : 0;
 
     return (
-        <div onClick={onClick} className={`card-premium rounded-2xl p-5 relative overflow-hidden transition-all duration-300 group cursor-pointer
+        <div onClick={onClick} className={`glass-panel rounded-2xl p-5 relative overflow-hidden transition-all duration-300 group cursor-pointer
             ${achievement.unlocked ? `border ${tier.border} ${tier.bg}` : 'opacity-70 grayscale-[30%]'}
             hover:scale-[1.02] hover:shadow-lg`}
         >
@@ -141,7 +141,7 @@ export default function AchievementsPage() {
                     { label: 'Savings Streak', value: `${stats.savingsStreak} mo`, icon: 'local_fire_department', color: 'text-rose-500 bg-rose-50 dark:bg-rose-500/10' },
                     { label: 'Budget Streak', value: `${stats.budgetStreak} mo`, icon: 'shield', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
                 ].map((s, i) => (
-                    <div key={i} className="card-premium rounded-2xl p-4 lg:p-5" style={{ animation: `slideUp 0.4s ease-out ${i * 0.08}s both` }}>
+                    <div key={i} className="glass-panel rounded-2xl p-4 lg:p-5" style={{ animation: `slideUp 0.4s ease-out ${i * 0.08}s both` }}>
                         <div className={`w-9 h-9 rounded-xl ${s.color} flex items-center justify-center mb-3`}>
                             <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
                         </div>
@@ -152,7 +152,7 @@ export default function AchievementsPage() {
             </div>
 
             {/* Overall progress */}
-            <div className="card-premium rounded-2xl p-6 mb-8" style={{ animation: 'slideUp 0.4s ease-out 0.35s both' }}>
+            <div className="glass-panel rounded-2xl p-6 mb-8" style={{ animation: 'slideUp 0.4s ease-out 0.35s both' }}>
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-base font-bold text-gray-900 dark:text-white">Overall Progress</h3>
                     <span className="text-sm font-bold text-primary">{Math.round((stats.unlocked / stats.total) * 100)}%</span>

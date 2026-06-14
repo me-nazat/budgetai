@@ -93,7 +93,7 @@ export default function NotificationsPage() {
                             return (
                                 <div key={n.id} onClick={() => !n.read && markRead(n.id)}
                                     className={`flex gap-4 p-5 rounded-xl border transition-all cursor-pointer animate-slide-up group ${n.read ? 'bg-gray-50/50 dark:bg-surface-dark/50 border-gray-200/50 dark:border-[#30363d]/50 opacity-60 hover:opacity-100'
-                                        : `card-premium border-l-[3px] ${cfg.border} hover:-translate-y-1 hover:shadow-lg`
+                                        : `glass-panel border-l-[3px] ${cfg.border} hover:-translate-y-1 hover:shadow-lg`
                                         }`}>
                                     <div className={`flex-shrink-0 mt-1 ${cfg.text}`}>
                                         <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{cfg.icon}</span>

@@ -94,34 +94,16 @@ export interface SessionPayload extends JWTPayload {
    JWT KEY MANAGEMENT
    ═══════════════════════════════════════════════════════════════ */
 
+import { env } from '@/lib/env';
+
 /**
  * Gets the JWT signing key, encoded for use with jose.
  *
  * @throws {Error} In production if JWT_SECRET is missing or is the insecure default.
  * @returns The encoded secret key.
- *
- * @security
- * - Rejects weak/default secrets in production.
- * - Minimum recommended key length: 32 characters.
  */
 function getJwtSecret(): Uint8Array {
-  const rawSecret = process.env.JWT_SECRET;
-
-  if (!rawSecret || rawSecret === 'budget-savings-ai-default-secret') {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(
-        'CRITICAL: JWT_SECRET is missing or using the insecure default. ' +
-        'Set a strong, unique JWT_SECRET (32+ characters) before deploying.'
-      );
-    }
-    console.warn(
-      '[session] WARNING: Using default JWT secret. Set JWT_SECRET env var for production.'
-    );
-  }
-
-  return new TextEncoder().encode(
-    rawSecret || 'wealth-ai-default-secret-dev-only-not-for-production'
-  );
+  return new TextEncoder().encode(env.JWT_SECRET);
 }
 
 /* ═══════════════════════════════════════════════════════════════
