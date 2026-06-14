@@ -23,7 +23,7 @@ export function TiltCard({ children, className, tiltIntensity = 15, style }: Til
   const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], [-tiltIntensity, tiltIntensity]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return;
+    if (!ref.current || window.matchMedia("(pointer: coarse)").matches) return;
     const rect = ref.current.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
@@ -49,11 +49,12 @@ export function TiltCard({ children, className, tiltIntensity = 15, style }: Til
         rotateX,
         rotateY,
         transformStyle: "preserve-3d",
+        willChange: "transform",
         ...style
       }}
       className={cn("relative transition-all duration-300", className)}
     >
-      <div style={{ transform: "translateZ(30px)" }} className="w-full h-full">
+      <div style={{ transform: "translateZ(20px)" }} className="w-full h-full">
         {children}
       </div>
     </motion.div>

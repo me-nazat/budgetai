@@ -174,10 +174,10 @@ export default function SWRProvider({ children }: { children: React.ReactNode })
             revalidateOnFocus: false,
             revalidateOnReconnect: true,
             shouldRetryOnError: false,
-            dedupingInterval: 10000,
-            focusThrottleInterval: 60000,
+            dedupingInterval: 30000, // Increased to 30s to prevent rapid firing
+            focusThrottleInterval: 120000, // Only refetch on focus every 2 mins max
             keepPreviousData: true,
-            errorRetryCount: 2,
+            errorRetryCount: 1,
         }}>
             {children}
         </SWRConfig>

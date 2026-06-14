@@ -9,17 +9,18 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import { useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
-import {
-    Chart as ChartJS,
-    CategoryScale, LinearScale, BarElement, LineElement, PointElement,
-    Title, Tooltip, Legend, Filler, ArcElement,
-} from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
+import dynamic from 'next/dynamic';
+import React from 'react';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
-import PredictiveCashflow from '@/components/charts/PredictiveCashflow';
 import AnimatedCounter from '@/components/AnimatedCounter';
+
+// Dynamically import charts and predictive cashflow to eliminate heavy main-thread blocking
+const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), { ssr: false });
+const Doughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), { ssr: false });
+const PredictiveCashflow = dynamic(() => import('@/components/charts/PredictiveCashflow'), { ssr: false });
 import { TiltCard } from '@/components/ui/TiltCard';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
@@ -149,15 +150,16 @@ export default function DashboardPage() {
     const gridColor = isDark ? '#21262d' : '#e5e7eb';
     const tickColor = isDark ? '#8b949e' : '#6b7280';
 
-    const barData = {
+    // Memoize heavy chart data objects to prevent unnecessary React re-renders when other states change
+    const barData = React.useMemo(() => ({
         labels: data.dailySpending.map(d => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
         datasets: [
             { label: 'Expenses', data: data.dailySpending.map(d => d.expenses), backgroundColor: isDark ? 'rgba(19, 109, 236, 0.6)' : 'rgba(19, 109, 236, 0.7)', borderRadius: 6, borderSkipped: false as const },
             { label: 'Earnings', data: data.dailySpending.map(d => d.earnings), backgroundColor: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(16, 185, 129, 0.7)', borderRadius: 6, borderSkipped: false as const },
         ],
-    };
+    }), [data.dailySpending, isDark]);
 
-    const doughnutData = {
+    const doughnutData = React.useMemo(() => ({
         labels: data.categorySpending.map(c => c.category.charAt(0).toUpperCase() + c.category.slice(1).toLowerCase()),
         datasets: [{
             data: data.categorySpending.map(c => c.total),
@@ -168,7 +170,7 @@ export default function DashboardPage() {
             borderWidth: 0,
             spacing: 2,
         }],
-    };
+    }), [data.categorySpending, customCats]);
 
     const stats = [
         { label: 'Total Balance', value: fmt(data.balance), change: data.earnings.change, icon: 'account_balance', color: 'text-primary', gradient: 'stat-gradient-blue' },

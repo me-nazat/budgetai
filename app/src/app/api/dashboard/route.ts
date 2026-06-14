@@ -47,57 +47,30 @@ export const GET = apiHandler(
         const prevStartDate = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-${String(startDayPrev).padStart(2, '0')}`;
         const prevEndDate = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-${String(endDayPrev).padStart(2, '0')}`;
 
-        // Current period totals
-        const currentExpenses = await queryOne<{ total: number }>(
-            "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ?",
-            [userId, currentStartDate, currentEndDate]
-        );
-        const currentEarnings = await queryOne<{ total: number }>(
-            "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?",
-            [userId, currentStartDate, currentEndDate]
-        );
-
-        // Previous period totals
-        const lastExpenses = await queryOne<{ total: number }>(
-            "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ?",
-            [userId, prevStartDate, prevEndDate]
-        );
-        const lastEarnings = await queryOne<{ total: number }>(
-            "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?",
-            [userId, prevStartDate, prevEndDate]
-        );
-
-        // Spending by category this period
-        const categorySpending = await queryAll<{ category: string; total: number }>(
-            "SELECT category, SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ? GROUP BY category ORDER BY total DESC",
-            [userId, currentStartDate, currentEndDate]
-        );
-
-        // Daily spending for chart 
-        const dailySpending = await queryAll<{ date: string; expenses: number; earnings: number }>(
-            `SELECT date, 
-        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expenses,
-        COALESCE(SUM(CASE WHEN type = 'earning' THEN amount ELSE 0 END), 0) as earnings
-       FROM transactions WHERE user_id = ? AND date >= ? AND date <= ? GROUP BY date ORDER BY date ASC`,
-            [userId, currentStartDate, currentEndDate]
-        );
-
-        const totalTxs = await queryOne<{ count: number }>(
-            'SELECT COUNT(*) as count FROM transactions WHERE user_id = ?',
-            [userId]
-        );
-
-        // Recent transactions
-        const recentTransactions = await queryAll(
-            'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 7',
-            [userId]
-        );
-
-        // Budget alerts
-        const budgets = await queryAll<{ category: string; monthly_limit: number }>(
-            'SELECT category, monthly_limit FROM budgets WHERE user_id = ? AND month = ? AND year = ?',
-            [userId, currentMonth, currentYear]
-        );
+        // Run all independent queries in parallel to eliminate database waterfalls
+        const [
+            currentExpenses,
+            currentEarnings,
+            lastExpenses,
+            lastEarnings,
+            categorySpending,
+            dailySpending,
+            totalTxs,
+            recentTransactions,
+            budgets,
+            netWorth
+        ] = await Promise.all([
+            queryOne<{ total: number }>("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ?", [userId, currentStartDate, currentEndDate]),
+            queryOne<{ total: number }>("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?", [userId, currentStartDate, currentEndDate]),
+            queryOne<{ total: number }>("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ?", [userId, prevStartDate, prevEndDate]),
+            queryOne<{ total: number }>("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = ? AND type = 'earning' AND date >= ? AND date <= ?", [userId, prevStartDate, prevEndDate]),
+            queryAll<{ category: string; total: number }>("SELECT category, SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date <= ? GROUP BY category ORDER BY total DESC", [userId, currentStartDate, currentEndDate]),
+            queryAll<{ date: string; expenses: number; earnings: number }>(`SELECT date, COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expenses, COALESCE(SUM(CASE WHEN type = 'earning' THEN amount ELSE 0 END), 0) as earnings FROM transactions WHERE user_id = ? AND date >= ? AND date <= ? GROUP BY date ORDER BY date ASC`, [userId, currentStartDate, currentEndDate]),
+            queryOne<{ count: number }>('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?', [userId]),
+            queryAll('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 7', [userId]),
+            queryAll<{ category: string; monthly_limit: number }>('SELECT category, monthly_limit FROM budgets WHERE user_id = ? AND month = ? AND year = ?', [userId, currentMonth, currentYear]),
+            queryOne<{ amount: number }>('SELECT amount FROM net_worth WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', [userId])
+        ]);
 
         const budgetAlerts = budgets.map(b => {
             const s = categorySpending.find(c => c.category.toLowerCase() === b.category.toLowerCase());
@@ -106,12 +79,6 @@ export const GET = apiHandler(
             return { category: b.category, limit: b.monthly_limit, spent, percentage: Math.round(pct) };
         }).filter(b => b.percentage >= 50)
             .sort((a, b) => b.percentage - a.percentage);
-
-        // Net worth
-        const netWorth = await queryOne<{ amount: number }>(
-            'SELECT amount FROM net_worth WHERE user_id = ? ORDER BY created_at DESC LIMIT 1',
-            [userId]
-        );
 
         const expChange = lastExpenses?.total ? ((currentExpenses!.total - lastExpenses.total) / lastExpenses.total * 100) : 0;
         const earnChange = lastEarnings?.total ? ((currentEarnings!.total - lastEarnings.total) / lastEarnings.total * 100) : 0;
