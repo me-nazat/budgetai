@@ -38,7 +38,8 @@ const serverEnvSchema = z.object({
     .refine(
       (val) => val !== 'change-this-in-production' && val !== 'wealth-ai-dev-encryption-key-not-for-production-use',
       'ENCRYPTION_MASTER_KEY must not be a default insecure value'
-    ),
+    )
+    .optional(),
 
   /** Google Gemini API key for AI features. */
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required').optional(),
@@ -68,10 +69,19 @@ function validateEnv(): ServerEnv {
     }
   }
 
-  return (result.success ? result.data : serverEnvSchema.parse({
+  const parsed = result.success ? result.data : serverEnvSchema.parse({
     ...process.env,
     TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL || 'file:local.db',
-  })) as ServerEnv;
+  });
+
+  // Automatically fallback to JWT_SECRET if ENCRYPTION_MASTER_KEY is missing
+  // This prevents Vercel build crashes and allows existing users to upgrade seamlessly
+  // without needing to configure a brand new 32-character key immediately.
+  if (!parsed.ENCRYPTION_MASTER_KEY) {
+    parsed.ENCRYPTION_MASTER_KEY = parsed.JWT_SECRET;
+  }
+
+  return parsed as ServerEnv & { ENCRYPTION_MASTER_KEY: string };
 }
 
 /** Validated server environment. Import this instead of reading process.env directly. */
