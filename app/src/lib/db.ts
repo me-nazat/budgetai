@@ -175,6 +175,28 @@ export async function ensureDbInitialized(): Promise<void> {
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )`,
+    `CREATE TABLE IF NOT EXISTS tours (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_by INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS tour_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS tour_participants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tour_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      user_id INTEGER,
+      FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    )`,
     `CREATE TABLE IF NOT EXISTS user_badges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -193,6 +215,9 @@ export async function ensureDbInitialized(): Promise<void> {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_bill_splits_user ON bill_splits(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_tours_created_by ON tours(created_by, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_tour_groups_user ON tour_groups(user_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_tour_participants_tour ON tour_participants(tour_id)`,
     `CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_coach_messages_user ON coach_messages(user_id)`
   ], 'write');
@@ -214,11 +239,55 @@ export async function ensureDbInitialized(): Promise<void> {
   } catch { /* Ignore */ }
 
   try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN tour_id INTEGER ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN paid_by INTEGER ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN paid_by_participant_id INTEGER ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN split_type TEXT DEFAULT \'equal\' ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN encrypted_amount TEXT ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN encrypted_description TEXT ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_tour ON transactions(user_id, tour_id, date)');
+  } catch { /* Ignore */ }
+
+  try {
     await getClient().execute('ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT \'BDT\' ');
   } catch { /* Ignore */ }
 
   try {
     await getClient().execute('ALTER TABLE savings_goals ADD COLUMN linked_account TEXT DEFAULT \'\' ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute(`
+      INSERT OR IGNORE INTO tours (id, created_by, name, created_at)
+      SELECT id, user_id, name, created_at
+      FROM tour_groups
+    `);
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute(`
+      INSERT OR IGNORE INTO tour_groups (id, user_id, name, created_at)
+      SELECT id, created_by, name, created_at
+      FROM tours
+    `);
   } catch { /* Ignore */ }
 
   initialized = true;

@@ -14,7 +14,7 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
-import { tourGroups, tourParticipants } from './bill-splits';
+import { tours, tourParticipants } from './bill-splits';
 
 
 /**
@@ -90,10 +90,13 @@ export const transactions = sqliteTable('transactions', {
 
 
   /** Reference to a tour group if this is a shared expense */
-  tourId: integer('tour_id').references(() => tourGroups.id, { onDelete: 'cascade' }),
+  tourId: integer('tour_id').references(() => tours.id, { onDelete: 'cascade' }),
 
   /** Reference to the participant who paid for this shared expense */
   paidBy: integer('paid_by').references(() => tourParticipants.id, { onDelete: 'set null' }),
+
+  /** Explicit participant payer column for the tour spending workflow. */
+  paidByParticipantId: integer('paid_by_participant_id').references(() => tourParticipants.id, { onDelete: 'set null' }),
 
   /** Split type for shared expenses */
   splitType: text('split_type', { enum: ['equal', 'percentage', 'exact'] }).default('equal'),

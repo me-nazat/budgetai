@@ -30,7 +30,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
                         <span className="flex items-center gap-1.5">
                             <span
                                 className="w-2 h-2 rounded-full shadow-sm"
-                                style={{ background: entry.dataKey === 'expenses' ? '#ff2a5f' : '#00e5ff', boxShadow: `0 0 8px ${entry.dataKey === 'expenses' ? '#ff2a5f' : '#00e5ff'}` }}
+                                style={{ background: entry.dataKey === 'expenses' ? '#ff2a5f' : '#136dec', boxShadow: `0 0 8px ${entry.dataKey === 'expenses' ? '#ff2a5f' : '#136dec'}` }}
                             />
                             <span className="text-gray-500 dark:text-gray-400 capitalize">{entry.dataKey}</span>
                         </span>

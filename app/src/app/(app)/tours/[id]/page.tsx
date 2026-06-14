@@ -1,185 +1,225 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
-import PageTransition from '@/components/PageTransition';
+import AnimatedCounter from '@/components/AnimatedCounter';
+import { SkeletonCard } from '@/components/ui/Skeleton';
+import { TiltCard } from '@/components/ui/TiltCard';
+import { getApiErrorMessage } from '@/lib/api-errors';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface TourParticipant {
-    id: number;
-    name: string;
-    userId: string;
+  id: number;
+  name: string;
+  userId: number | null;
 }
 
 interface TourTransaction {
-    id: number;
-    amount: number;
-    category: string;
-    description: string;
-    date: string;
-    paidBy: number;
-    splitType: string;
+  id: number;
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  paidBy: number;
+  paidByParticipantId?: number;
+  splitType: string;
 }
 
 interface Tour {
-    id: number;
-    name: string;
-    createdAt: string;
+  id: number;
+  name: string;
+  createdAt: string | null;
 }
 
-export default function TourDashboard({ params }: { params: { id: string } }) {
-    const [tour, setTour] = useState<Tour | null>(null);
-    const [participants, setParticipants] = useState<TourParticipant[]>([]);
-    const [transactions, setTransactions] = useState<TourTransaction[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const { fmt } = useCurrency();
-    const router = useRouter();
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 };
 
-    // 3D Tilt Effect Values
-    const x = useMotionValue(0);
-    const y = useMotionValue(0);
-    const rotateX = useTransform(y, [-100, 100], [10, -10]);
-    const rotateY = useTransform(x, [-100, 100], [-10, 10]);
+export default function TourDashboard() {
+  const [tour, setTour] = useState<Tour | null>(null);
+  const [participants, setParticipants] = useState<TourParticipant[]>([]);
+  const [transactions, setTransactions] = useState<TourTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { fmt } = useCurrency();
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const tourId = params.id;
 
-    useEffect(() => {
-        fetch(`/api/bill-splits/tours/${params.id}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    setTour(data.tour);
-                    setParticipants(data.participants);
-                    setTransactions(data.transactions);
-                } else {
-                    router.push('/tours');
-                }
-                setIsLoading(false);
-            })
-            .catch(() => {
-                setIsLoading(false);
-                router.push('/tours');
-            });
-    }, [params.id, router]);
+  useEffect(() => {
+    if (!tourId) return;
+    let isMounted = true;
 
-    // Analytics Math Memoized for Performance
-    const { totalSpent, perPerson, balances } = useMemo(() => {
-        const total = transactions.reduce((sum, tx) => sum + tx.amount, 0);
-        const pp = participants.length > 0 ? total / participants.length : 0;
-        
-        const bal = participants.map(p => {
-            const paid = transactions.filter(tx => tx.paidBy === p.id).reduce((sum, tx) => sum + tx.amount, 0);
-            return { ...p, paid, balance: paid - pp };
-        });
+    fetch(`/api/bill-splits/tours/${tourId}`, { cache: 'no-store' })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) throw new Error(getApiErrorMessage(data, 'Unable to load tour.'));
+        return data;
+      })
+      .then((data) => {
+        if (!isMounted) return;
+        setTour(data.tour);
+        setParticipants(data.participants ?? []);
+        setTransactions(data.transactions ?? []);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setError(err instanceof Error ? err.message : 'Unable to load tour.');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
 
-        return { totalSpent: total, perPerson: pp, balances: bal };
-    }, [transactions, participants]);
+    return () => {
+      isMounted = false;
+    };
+  }, [tourId]);
 
-    if (isLoading) {
-        return (
-            <div className="p-8 max-w-7xl mx-auto min-h-screen flex items-center justify-center bg-[#0d1117]">
-                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
-    }
+  const { totalSpent, perPerson, balances, averageCost } = useMemo(() => {
+    const total = transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const perHead = participants.length > 0 ? total / participants.length : 0;
+    const avg = transactions.length > 0 ? total / transactions.length : 0;
 
-    if (!tour) return null;
+    const settlement = participants.map((participant) => {
+      const paid = transactions
+        .filter((tx) => (tx.paidByParticipantId ?? tx.paidBy) === participant.id)
+        .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
+      return { ...participant, paid, balance: paid - perHead };
+    });
+
+    return { totalSpent: total, perPerson: perHead, averageCost: avg, balances: settlement };
+  }, [transactions, participants]);
+
+  if (isLoading) {
     return (
-        <PageTransition>
-            <div className="p-4 lg:p-8 max-w-7xl mx-auto min-h-screen pb-24 bg-[#0d1117] text-white">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-                    <div>
-                        <Link href="/tours" className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-white mb-4 transition-colors w-fit">
-                            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                            Back to Tours
-                        </Link>
-                        <p className="text-xs font-black uppercase tracking-[0.24em] text-blue-500 mb-2">Tour Dashboard</p>
-                        <h1 className="text-4xl lg:text-6xl font-black uppercase tracking-tight text-white">
-                            {tour.name}
-                        </h1>
-                    </div>
-                </div>
-
-                {/* Bento Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
-                    {/* Total Spent Card */}
-                    <div className="p-8 rounded-[2rem] md:col-span-2 border border-white/10 bg-[#161b22] relative overflow-hidden flex flex-col justify-between group shadow-xl">
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                        <div className="relative z-10">
-                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Total Trip Expenses</p>
-                            <h2 className="text-6xl font-black text-white">{fmt(totalSpent)}</h2>
-                        </div>
-                        <div className="relative z-10 mt-8 flex gap-8">
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Per Person ({participants.length})</p>
-                                <p className="text-2xl font-bold text-gray-300">{fmt(perPerson)}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Transactions</p>
-                                <p className="text-2xl font-bold text-gray-300">{transactions.length}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3D Spendings Portal */}
-                    <motion.div
-                        style={{ perspective: 1000 }}
-                        onMouseMove={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const xVal = e.clientX - rect.left - rect.width / 2;
-                            const yVal = e.clientY - rect.top - rect.height / 2;
-                            x.set(xVal);
-                            y.set(yVal);
-                        }}
-                        onMouseLeave={() => { x.set(0); y.set(0); }}
-                        className="h-full"
-                    >
-                        <motion.div
-                            style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}
-                            className="h-full rounded-[2rem] bg-gradient-to-br from-blue-600 to-indigo-800 p-[1px] shadow-2xl cursor-pointer"
-                            onClick={() => router.push(`/tours/${tour.id}/spendings`)}
-                        >
-                            <div className="h-full w-full rounded-[2rem] bg-[#0d1117] relative overflow-hidden flex flex-col items-center justify-center p-8 group transition-colors hover:bg-[#161b22]">
-                                {/* Portal Effect Background */}
-                                <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 to-transparent opacity-50" />
-                                <motion.div 
-                                    className="absolute w-32 h-32 bg-blue-600/20 rounded-full blur-3xl group-hover:bg-blue-600/40 transition-colors"
-                                    style={{ translateZ: 50 }}
-                                />
-                                
-                                <span className="material-symbols-outlined text-5xl text-blue-400 mb-4 relative z-10 group-hover:scale-110 transition-transform" style={{ transform: 'translateZ(30px)' }}>receipt_long</span>
-                                <h3 className="text-xl font-bold text-white relative z-10" style={{ transform: 'translateZ(20px)' }}>View Spendings</h3>
-                                <p className="text-sm font-medium text-gray-400 mt-2 text-center relative z-10" style={{ transform: 'translateZ(10px)' }}>Manage transactions and add new expenses</p>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-
-                    {/* Balances / Settlement Card */}
-                    <div className="p-8 rounded-[2rem] md:col-span-3 border border-white/10 bg-[#161b22] shadow-xl">
-                        <div className="mb-6 flex justify-between items-end">
-                            <div>
-                                <h3 className="text-2xl font-bold text-white">Balances</h3>
-                                <p className="text-sm font-medium text-gray-400 mt-1">Who paid what & who owes whom.</p>
-                            </div>
-                            <button className="text-sm font-bold text-blue-500 hover:text-blue-400 transition-colors hover:underline">Settle Up</button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {balances.map(p => (
-                                <div key={p.id} className="p-4 rounded-2xl bg-[#0d1117] border border-white/5 hover:border-white/10 transition-colors">
-                                    <h4 className="text-lg font-bold text-white truncate">{p.name}</h4>
-                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-2">Paid Total: {fmt(p.paid)}</p>
-                                    <div className={`mt-3 text-lg font-black ${p.balance > 0 ? 'text-emerald-500' : p.balance < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
-                                        {p.balance > 0 ? `Gets back ${fmt(p.balance)}` : p.balance < 0 ? `Owes ${fmt(Math.abs(p.balance))}` : 'Settled'}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </PageTransition>
+      <div className="mx-auto min-h-dvh max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8 h-28 max-w-3xl rounded-[2rem] shimmer-skeleton" />
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <SkeletonCard className="h-72 rounded-[2rem] md:col-span-2" />
+          <SkeletonCard className="h-72 rounded-[2rem]" />
+          <SkeletonCard className="h-72 rounded-[2rem] md:col-span-3" />
+        </div>
+      </div>
     );
+  }
+
+  if (error || !tour) {
+    return (
+      <div className="mx-auto flex min-h-dvh max-w-3xl items-center px-4 py-8 sm:px-6">
+        <div className="glass-panel w-full rounded-[2rem] p-8 text-center">
+          <span className="material-symbols-outlined mb-3 text-5xl text-rose-400">travel_explore</span>
+          <h1 className="text-2xl font-black text-gray-950 dark:text-white">Tour could not load</h1>
+          <p className="mt-2 text-sm font-medium text-gray-500 dark:text-gray-400">{error ?? 'Tour not found.'}</p>
+          <Link href="/tours" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white">
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            Back to Tours
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto min-h-dvh max-w-7xl px-4 py-8 pb-28 sm:px-6 lg:px-8">
+      <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+          <Link href="/tours" className="mb-4 inline-flex items-center gap-2 rounded-2xl text-sm font-bold text-gray-500 hover:text-gray-950 dark:hover:text-white">
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            Back to Tours
+          </Link>
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-primary">Tour Dashboard</p>
+          <h1 className="max-w-4xl text-balance text-4xl font-black tracking-tight text-gray-950 dark:text-white lg:text-6xl">
+            {tour.name}
+          </h1>
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.03 }}
+          className="relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/72 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)] md:col-span-2"
+        >
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-500">Total Trip Expenses</p>
+          <h2 className="mt-4 text-5xl font-black tracking-tight text-gray-950 dark:text-white lg:text-7xl">
+            <AnimatedCounter value={Math.round(totalSpent)} formatter={fmt} className="tabular-nums" />
+          </h2>
+
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">Per Person</p>
+              <p className="mt-2 text-xl font-black text-gray-950 dark:text-white">{fmt(perPerson)}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">Transactions</p>
+              <p className="mt-2 text-xl font-black text-gray-950 dark:text-white">{transactions.length}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">Avg Cost</p>
+              <p className="mt-2 text-xl font-black text-gray-950 dark:text-white">{fmt(averageCost)}</p>
+            </div>
+          </div>
+        </motion.section>
+
+        <TiltCard tiltIntensity={8} className="min-h-72">
+          <motion.button
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ ...spring, delay: 0.06 }}
+            onClick={() => router.push(`/tours/${tour.id}/spendings`)}
+            className="group relative flex h-full min-h-72 w-full flex-col justify-between overflow-hidden rounded-[2rem] border border-primary/20 bg-[#0d1b2a] p-7 text-left text-white shadow-[0_24px_75px_rgba(13,27,42,0.34)]"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.12),transparent_28%),linear-gradient(135deg,rgba(19,109,236,0.28),transparent_55%)]" />
+            <div className="relative z-10 flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
+              <span className="material-symbols-outlined text-3xl">receipt_long</span>
+            </div>
+            <div className="relative z-10">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-blue-200/80">Spendings</p>
+              <h2 className="text-3xl font-black tracking-tight">Open trip ledger</h2>
+              <p className="mt-3 text-sm font-semibold leading-6 text-blue-100/75">
+                Add costs, view the feed, and keep payer details attached to this tour only.
+              </p>
+            </div>
+          </motion.button>
+        </TiltCard>
+
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.09 }}
+          className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/72 md:col-span-3"
+        >
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-black text-gray-950 dark:text-white">Balances</h2>
+              <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">Who paid what and how the equal split currently settles.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {balances.map((participant) => (
+              <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
+                <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                  Paid {fmt(participant.paid)}
+                </p>
+                <p className={`mt-3 text-lg font-black ${participant.balance > 0 ? 'text-emerald-500' : participant.balance < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                  {participant.balance > 0
+                    ? `Gets back ${fmt(participant.balance)}`
+                    : participant.balance < 0
+                      ? `Owes ${fmt(Math.abs(participant.balance))}`
+                      : 'Settled'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+      </div>
+    </div>
+  );
 }

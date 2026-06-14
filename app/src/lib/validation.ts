@@ -3,6 +3,8 @@
  * All API routes MUST use these before processing user input.
  */
 
+import { z } from "zod";
+
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const DATE_REGEX = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const VALID_TYPES = ['expense', 'earning'] as const;
@@ -134,24 +136,55 @@ export function getClientIP(request: Request): string {
     return 'unknown';
 }
 
-import { z } from "zod";
+const CleanTextSchema = (min: number, max: number, message: string) =>
+    z.string()
+        .trim()
+        .min(min, message)
+        .max(max, `${message.replace(' is required', '')} is too long`)
+        .transform((value) => value.replace(/\s+/g, ' '));
 
 export const TourParticipantSchema = z.object({
-    id: z.number().optional(),
-    name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-    user_id: z.number().optional().nullable(),
-});
+    id: z.coerce.number().int().positive().optional(),
+    name: CleanTextSchema(1, 100, "Name is required"),
+    userId: z.coerce.number().int().positive().optional().nullable(),
+}).strict();
 
-export const TourGroupSchema = z.object({
-    name: z.string().min(1, "Tour name is required").max(100, "Tour name is too long"),
-    participants: z.array(TourParticipantSchema).min(1, "At least one participant is required"),
-});
+export const CreateTourSchema = z.object({
+    name: CleanTextSchema(1, 100, "Tour name is required"),
+    participants: z.array(CleanTextSchema(1, 100, "Participant name is required"))
+        .min(2, "Add at least two participants")
+        .max(25, "A tour can include up to 25 participants")
+        .superRefine((participants, ctx) => {
+            const seen = new Set<string>();
+            participants.forEach((participant, index) => {
+                const key = participant.toLocaleLowerCase();
+                if (seen.has(key)) {
+                    ctx.addIssue({
+                        code: "custom",
+                        path: [index],
+                        message: "Participant names must be unique",
+                    });
+                }
+                seen.add(key);
+            });
+        }),
+}).strict();
+
+export const TourGroupSchema = CreateTourSchema;
 
 export const TourTransactionSchema = z.object({
-    amount: z.number().positive("Amount must be positive"),
-    description: z.string().max(500, "Description is too long").default(""),
-    category: z.string().max(50, "Category is too long").default("Other"),
+    amount: z.coerce.number().positive("Amount must be positive").max(MAX_AMOUNT, "Amount is too large"),
+    description: CleanTextSchema(1, 500, "Description is required"),
+    category: z.string().trim().max(50, "Category is too long").default("Travel").transform((value) => value || "Travel"),
     date: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Invalid date format"),
-    paidBy: z.number().positive("Paid By is required"),
+    paidBy: z.coerce.number().int().positive("Paid By is required"),
+    paidByParticipantId: z.coerce.number().int().positive().optional(),
     splitType: z.enum(["equal", "percentage", "exact"]).default("equal"),
-});
+}).strict().transform((value) => ({
+    ...value,
+    paidBy: value.paidByParticipantId ?? value.paidBy,
+}));
+
+export const TourIdParamSchema = z.object({
+    id: z.coerce.number().int().positive("Invalid tour ID"),
+}).strict();

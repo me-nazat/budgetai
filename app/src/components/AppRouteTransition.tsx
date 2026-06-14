@@ -32,7 +32,7 @@ export default function AppRouteTransition() {
     return (
         <div className="pointer-events-none fixed top-0 left-0 lg:left-64 right-0 z-[45] h-1">
             <div
-                className="h-full bg-gradient-to-r from-[#136dec] via-[#06b6d4] to-[#10b981] rounded-full shadow-[0_0_12px_rgba(6,182,212,0.6)]"
+                className="h-full bg-gradient-to-r from-[#0f2f5f] via-[#136dec] to-[#1d4ed8] rounded-full shadow-[0_0_12px_rgba(19,109,236,0.45)]"
                 style={{
                     backgroundSize: '200% 100%',
                     animation: 'routeProgress 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards, progressGradient 2s linear infinite',

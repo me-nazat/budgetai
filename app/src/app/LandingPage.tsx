@@ -327,12 +327,12 @@ function DashboardMockup() {
                         <svg className="w-full h-24" viewBox="0 0 400 100" preserveAspectRatio="none">
                             <defs>
                                 <linearGradient id="chart-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#00E5FF]" stopOpacity="0.3" />
-                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#00E5FF]" stopOpacity="0" />
+                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.3" />
+                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0" />
                                 </linearGradient>
                                 <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#00E5FF]" stopOpacity="0.4" />
-                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#00E5FF]" stopOpacity="1" />
+                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.4" />
+                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="1" />
                                 </linearGradient>
                             </defs>
                             <path d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10 L400,100 L0,100 Z" fill="url(#chart-gradient)" />

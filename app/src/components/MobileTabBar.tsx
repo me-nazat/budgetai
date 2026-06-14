@@ -44,7 +44,7 @@ export default function MobileTabBar() {
                                         aria-label="Quick Add Transaction"
                                     >
                                         <div className="absolute inset-0 rounded-3xl bg-primary/30 blur-xl breathe" />
-                                        <div className="grid h-[60px] w-[60px] place-items-center rounded-3xl border border-white/30 bg-gradient-to-tr from-primary via-[#00B8D4] to-accent-emerald shadow-[0_14px_34px_rgba(0,229,255,0.34)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_42px_rgba(0,229,255,0.48)] breathe">
+                                        <div className="grid h-[60px] w-[60px] place-items-center rounded-3xl border border-white/30 bg-gradient-to-tr from-[#0f2f5f] via-primary to-[#1d4ed8] shadow-[0_14px_34px_rgba(19,109,236,0.30)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_42px_rgba(19,109,236,0.42)] breathe">
                                             <span className="material-symbols-outlined text-white text-3xl font-bold">add</span>
                                         </div>
                                     </button>

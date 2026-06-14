@@ -54,6 +54,9 @@ export {
    ═══════════════════════════════════════════════════════════════ */
 
 export {
+  tours,
+  type Tour,
+  type NewTour,
   tourGroups,
   type TourGroup,
   type NewTourGroup,

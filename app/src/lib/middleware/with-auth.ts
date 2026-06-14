@@ -38,15 +38,19 @@ export interface AuthContext {
   session: SessionPayload;
 }
 
+type NextRouteContext = {
+  params: Promise<Record<string, string>>;
+};
+
 /**
  * Type for route handler functions that require authentication.
  *
  * @template T Optional Next.js route handler params (e.g., `{ params: { id: string } }`).
  */
-export type AuthenticatedHandler<T = Record<string, never>> = (
+export type AuthenticatedHandler<T = NextRouteContext> = (
   request: NextRequest,
   context: AuthContext,
-  routeContext?: T
+  routeContext: T
 ) => Promise<NextResponse>;
 
 /**
@@ -74,12 +78,12 @@ export type AuthenticatedHandler<T = Record<string, never>> = (
  * - Failed auth returns a generic message to prevent user enumeration.
  * - The handler never executes if authentication fails.
  */
-export function withAuth<T = Record<string, never>>(
+export function withAuth<T extends NextRouteContext = NextRouteContext>(
   handler: AuthenticatedHandler<T>
 ) {
   return async (
     request: NextRequest,
-    routeContext?: T
+    routeContext: T
   ): Promise<NextResponse> => {
     try {
       const session = await getSession();

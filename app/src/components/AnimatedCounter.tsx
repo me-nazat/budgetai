@@ -8,11 +8,13 @@ export default function AnimatedCounter({
     direction = 'up',
     delay = 0,
     className = '',
+    formatter,
 }: {
     value: number;
     direction?: 'up' | 'down';
     delay?: number;
     className?: string;
+    formatter?: (value: number) => string;
 }) {
     const ref = useRef<HTMLSpanElement>(null);
     const motionValue = useMotionValue(direction === 'down' ? value : 0);
@@ -34,12 +36,16 @@ export default function AnimatedCounter({
     useEffect(() => {
         return springValue.on('change', (latest) => {
             if (ref.current) {
-                ref.current.textContent = Intl.NumberFormat('en-US', {
-                    maximumFractionDigits: 0
-                }).format(Math.round(latest));
+                const rounded = Math.round(latest);
+                ref.current.textContent = formatter
+                    ? formatter(rounded)
+                    : Intl.NumberFormat('en-US', {
+                        maximumFractionDigits: 0
+                    }).format(rounded);
             }
         });
-    }, [springValue]);
+    }, [formatter, springValue]);
 
-    return <span ref={ref} className={className}>{value}</span>;
+    const initialValue = direction === 'down' ? value : 0;
+    return <span ref={ref} className={className}>{formatter ? formatter(initialValue) : initialValue}</span>;
 }

@@ -52,8 +52,9 @@ const serverEnvSchema = z.object({
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
+export type ValidatedServerEnv = ServerEnv & { ENCRYPTION_MASTER_KEY: string };
 
-function validateEnv(): ServerEnv {
+function validateEnv(): ValidatedServerEnv {
   const result = serverEnvSchema.safeParse(process.env);
 
   if (!result.success) {
@@ -81,7 +82,7 @@ function validateEnv(): ServerEnv {
     parsed.ENCRYPTION_MASTER_KEY = parsed.JWT_SECRET;
   }
 
-  return parsed as ServerEnv & { ENCRYPTION_MASTER_KEY: string };
+  return parsed as ValidatedServerEnv;
 }
 
 /** Validated server environment. Import this instead of reading process.env directly. */

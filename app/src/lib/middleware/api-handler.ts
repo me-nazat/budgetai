@@ -53,6 +53,10 @@ export interface ApiHandlerOptions {
   rateLimitIdentifier?: (request: NextRequest) => string;
 }
 
+type NextRouteContext = {
+  params: Promise<Record<string, string>>;
+};
+
 /**
  * Wraps an API route handler with error handling, rate limiting, and logging.
  *
@@ -86,11 +90,11 @@ export interface ApiHandlerOptions {
  * - Rate limiting is enforced before the handler executes.
  * - Request duration is logged for performance monitoring.
  */
-export function apiHandler(
-  handler: (request: NextRequest) => Promise<NextResponse>,
+export function apiHandler<TContext extends NextRouteContext = NextRouteContext>(
+  handler: (request: NextRequest, routeContext: TContext) => Promise<NextResponse>,
   options: ApiHandlerOptions = {}
-): (request: NextRequest) => Promise<NextResponse> {
-  return async (request: NextRequest): Promise<NextResponse> => {
+): (request: NextRequest, routeContext: TContext) => Promise<NextResponse> {
+  return async (request: NextRequest, routeContext: TContext): Promise<NextResponse> => {
     const startTime = performance.now();
     const method = request.method;
     const url = new URL(request.url);
@@ -118,7 +122,7 @@ export function apiHandler(
       }
 
       // ── Execute Handler ──
-      const response = await handler(request);
+      const response = await handler(request, routeContext);
 
       // ── Logging ──
       const duration = (performance.now() - startTime).toFixed(1);
