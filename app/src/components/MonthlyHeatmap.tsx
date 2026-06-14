@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
 import AsyncDayDetailPopup from './AsyncDayDetailPopup';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface DayData {
     date: string;
@@ -133,42 +132,38 @@ export default function MonthlyHeatmap({
 
                     {/* Calendar Grid */}
                     <div className="grid grid-cols-7 gap-2">
-                        <AnimatePresence>
-                            {grid.map((day, i) => (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ duration: 0.4, delay: i * 0.01, ease: "backOut" }}
-                                    key={i}
-                                    className={`aspect-square rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-300 shadow-sm border border-black/5 dark:border-white/5 group relative cursor-pointer z-0
-                                        ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
-                                        ${day.isToday ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#111114]' : ''}
-                                        hover:ring-2 hover:ring-primary/40 hover:scale-110 hover:shadow-xl hover:z-20`}
-                                    onClick={(e) => {
-                                        if (day.date) {
-                                            setPopupTarget({ element: e.currentTarget, date: day.date });
-                                        }
-                                    }}
-                                >
-                                    {day.dayNum}
-                                    
-                                    {/* Pure CSS Tooltip (Zero lag) */}
-                                    {day.date && (
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none z-50">
-                                            <p className="font-bold mb-1 text-center text-gray-300">
-                                                {new Date(day.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </p>
-                                            <div className="px-2 py-1 rounded-md bg-white/10 font-medium flex flex-col items-center">
-                                                <span className="text-white/70 text-[10px] uppercase tracking-wider">{mode === 'earnings' ? 'Total Income' : 'Total Expense'}</span>
-                                                <span className={`text-sm font-black ${mode === 'earnings' ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(day.amount)}</span>
-                                            </div>
-                                            {/* Tooltip triangle pointer */}
-                                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900 dark:border-t-[#21262d]"></div>
+                        {grid.map((day, i) => (
+                            <div
+                                key={i}
+                                className={`aspect-square rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-300 shadow-sm border border-black/5 dark:border-white/5 group relative cursor-pointer z-0
+                                    ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
+                                    ${day.isToday ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#111114]' : ''}
+                                    hover:ring-2 hover:ring-primary/40 hover:scale-110 hover:shadow-xl hover:z-20`}
+                                style={{ animationDelay: `${i * 15}ms` }}
+                                onClick={(e) => {
+                                    if (day.date) {
+                                        setPopupTarget({ element: e.currentTarget, date: day.date });
+                                    }
+                                }}
+                            >
+                                {day.dayNum}
+                                
+                                {/* Pure CSS Tooltip (Zero lag) */}
+                                {day.date && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none z-50">
+                                        <p className="font-bold mb-1 text-center text-gray-300">
+                                            {new Date(day.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </p>
+                                        <div className="px-2 py-1 rounded-md bg-white/10 font-medium flex flex-col items-center">
+                                            <span className="text-white/70 text-[10px] uppercase tracking-wider">{mode === 'earnings' ? 'Total Income' : 'Total Expense'}</span>
+                                            <span className={`text-sm font-black ${mode === 'earnings' ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(day.amount)}</span>
                                         </div>
-                                    )}
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                                        {/* Tooltip triangle pointer */}
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900 dark:border-t-[#21262d]"></div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

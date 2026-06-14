@@ -1,6 +1,5 @@
 "use client";
 
-import { ReactLenis } from "lenis/react";
 import { ReactNode } from "react";
 
 interface SmoothScrollProps {
@@ -8,9 +7,7 @@ interface SmoothScrollProps {
 }
 
 export function SmoothScroll({ children }: SmoothScrollProps) {
-  return (
-    <ReactLenis root options={{ lerp: 0.08, duration: 1.2, smoothWheel: true }}>
-      {children}
-    </ReactLenis>
-  );
+  // We removed ReactLenis to fix low scroll sensitivity and jittering issues.
+  // Native OS scroll physics (like Mac trackpads) are far superior and 60fps locked.
+  return <>{children}</>;
 }

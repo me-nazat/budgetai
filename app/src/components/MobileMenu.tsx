@@ -15,6 +15,7 @@ const menuItems = [
     { href: '/reports', icon: 'bar_chart', label: 'Reports' },
     { href: '/overview', icon: 'analytics', label: 'Overview' },
     { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
+    { href: '/tours', icon: 'flight_takeoff', label: 'Tour Manager' },
     { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
     { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
     { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },

@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { useCurrency } from '@/hooks/useCurrency';
 import AsyncDayDetailPopup from './AsyncDayDetailPopup';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
