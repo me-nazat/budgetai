@@ -319,6 +319,77 @@ export async function getTour(
   });
 }
 
+const UpdateTourSchema = z.object({
+  name: z.string().min(1, 'Tour name is required').max(100),
+  participants: z.array(z.object({
+    id: z.number().optional(),
+    name: z.string().min(1).max(100),
+    isDeleted: z.boolean().optional()
+  })).min(1, 'At least one participant is required')
+});
+
+export async function updateTour(
+  request: NextRequest,
+  userId: number,
+  routeContext?: RouteContextWithId
+) {
+  const tourId = await resolveTourId(routeContext);
+  const body = await request.json().catch(() => ({}));
+  const validationResult = UpdateTourSchema.safeParse(body);
+
+  if (!validationResult.success) {
+    return NextResponse.json(
+      { success: false, error: 'Validation failed', details: validationResult.error.errors },
+      { status: 400 }
+    );
+  }
+
+  const { name, participants } = validationResult.data;
+
+  // Verify ownership
+  const tour = await queryOne<DbRow>(
+    'SELECT id FROM tours WHERE id = ? AND created_by = ?',
+    [tourId, userId]
+  );
+
+  if (!tour) {
+    return NextResponse.json({ success: false, error: 'Tour not found or not authorized' }, { status: 403 });
+  }
+
+  try {
+    // Update name
+    await run('UPDATE tours SET name = ? WHERE id = ?', [name, tourId]);
+
+    // Handle participants
+    for (const p of participants) {
+      if (p.id) {
+        if (p.isDeleted) {
+          // Check if they have transactions
+          const countRow = await queryOne<DbRow>(
+            'SELECT COUNT(*) as count FROM tour_spendings WHERE tour_id = ? AND paid_by_participant_id = ?',
+            [tourId, p.id]
+          );
+          if (toNumber(countRow?.count) > 0) {
+            return NextResponse.json(
+              { success: false, error: `Cannot delete participant "${p.name}" because they are involved in existing transactions.` },
+              { status: 400 }
+            );
+          }
+          await run('DELETE FROM tour_participants WHERE id = ? AND tour_id = ?', [p.id, tourId]);
+        } else {
+          await run('UPDATE tour_participants SET name = ? WHERE id = ? AND tour_id = ?', [p.name, p.id, tourId]);
+        }
+      } else if (!p.isDeleted) {
+        await run('INSERT INTO tour_participants (tour_id, name) VALUES (?, ?)', [tourId, p.name]);
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message || 'Internal error' }, { status: 500 });
+  }
+}
+
 export async function deleteTour(
   _request: NextRequest,
   userId: number,

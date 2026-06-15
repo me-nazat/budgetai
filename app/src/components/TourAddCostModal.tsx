@@ -284,26 +284,10 @@ export default function TourAddCostModal({
 
     const swrKey = `/api/bill-splits/tours/${tourId}`;
 
-    // Mutate SWR optimistically
-    mutate(
-      swrKey,
-      (currentData: any) => {
-        if (!currentData?.transactions) return currentData;
-        const currentTxs = currentData.transactions;
-        if (isEdit) {
-          return {
-            ...currentData,
-            transactions: currentTxs.map((t: any) => t.id === txId ? { ...t, ...optimisticTx } : t),
-          };
-        } else {
-          return {
-            ...currentData,
-            transactions: [optimisticTx, ...currentTxs],
-          };
-        }
-      },
-      { revalidate: false }
-    );
+    // Prepare optimistic payload for visual consistency (optional)
+    // We intentionally skip partial optimistic mutation of just transactions
+    // because it causes the Balances metrics (totalSpent, etc.) to drift from the ledger
+    // until the full revalidation finishes. Wait for the server.
 
     try {
       const url = isEdit 
@@ -341,26 +325,8 @@ export default function TourAddCostModal({
         });
       }
 
-      // Mutate SWR again with actual server response data
-      mutate(
-        swrKey,
-        (currentData: any) => {
-          if (!currentData?.transactions) return currentData;
-          const currentTxs = currentData.transactions;
-          if (isEdit) {
-            return {
-              ...currentData,
-              transactions: currentTxs.map((t: any) => t.id === txId ? data.transaction : t),
-            };
-          } else {
-            return {
-              ...currentData,
-              transactions: currentTxs.map((t: any) => t.id === optimisticTx.id ? data.transaction : t),
-            };
-          }
-        },
-        { revalidate: true }
-      );
+      // Trigger a full revalidation of the tour endpoint so balances and metrics refresh
+      mutate(swrKey);
 
       mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
 
@@ -383,7 +349,7 @@ export default function TourAddCostModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 sm:items-center sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <motion.button
             type="button"
             aria-label="Close add cost modal"
@@ -391,7 +357,7 @@ export default function TourAddCostModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeModal}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-40"
           />
 
           <motion.div

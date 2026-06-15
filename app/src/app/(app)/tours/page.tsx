@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useCurrency } from '@/hooks/useCurrency';
+import JoinTourModal from '@/components/JoinTourModal';
 
 interface Tour {
   id: number;
@@ -22,6 +23,7 @@ export default function ToursPage() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const router = useRouter();
   const { fmt } = useCurrency();
 
@@ -65,14 +67,25 @@ export default function ToursPage() {
           </p>
         </motion.div>
 
-        <motion.div whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} transition={spring}>
-          <Link
-            href="/tours/new"
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.22)] hover:bg-primary-hover"
+        <motion.div className="flex items-center gap-3" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.1 }}>
+          <motion.button
+            onClick={() => setIsJoinModalOpen(true)}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            className="hidden sm:inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-5 py-3.5 text-sm font-black text-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
           >
-            <span className="material-symbols-outlined text-[20px]">add</span>
-            Create New Tour
-          </Link>
+            <span className="material-symbols-outlined text-[20px]">group_add</span>
+            Join Tour Plan
+          </motion.button>
+          <motion.div whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}>
+            <Link
+              href="/tours/new"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.22)] hover:bg-primary-hover"
+            >
+              <span className="material-symbols-outlined text-[20px]">add</span>
+              Create New Tour
+            </Link>
+          </motion.div>
         </motion.div>
       </div>
 
@@ -151,6 +164,8 @@ export default function ToursPage() {
           ))}
         </div>
       )}
+
+      <JoinTourModal isOpen={isJoinModalOpen} onClose={() => setIsJoinModalOpen(false)} />
     </div>
   );
 }

@@ -54,7 +54,7 @@ export default function TourTransactionDetailModal({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="bg-black/40 backdrop-blur-sm z-40 fixed inset-0"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-md z-40"
                 />
 
                 <motion.div

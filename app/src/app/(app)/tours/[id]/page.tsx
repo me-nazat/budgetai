@@ -13,6 +13,7 @@ import TourAddCostModal from '@/components/TourAddCostModal';
 import TourTransactionDetailModal from '@/components/TourTransactionDetailModal';
 import { getCategoryIcon } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
+import TourEditModal from '@/components/TourEditModal';
 
 interface TourParticipant {
   id: number;
@@ -91,6 +92,7 @@ export default function TourDashboard() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TourTransaction | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { categories: customCategories } = useCustomCategories('expense');
 
   // Destructure computed metrics out of the API response to save client CPU
@@ -217,6 +219,19 @@ export default function TourDashboard() {
           </motion.div>
 
           <div className="flex items-center gap-3">
+            {tour.createdBy === currentUserId && (
+              <motion.button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.97 }}
+                transition={spring}
+                className="hidden md:inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-5 py-3.5 text-sm font-black text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
+              >
+                <span className="material-symbols-outlined text-[20px]">edit</span>
+                Edit Tour
+              </motion.button>
+            )}
             <motion.button
               type="button"
               onClick={handleShareClick}
@@ -442,8 +457,17 @@ export default function TourDashboard() {
         customCategories={customCategories}
         tourId={tour.id}
         onClose={() => { setIsDetailModalOpen(false); setSelectedTransaction(null); }}
-        onEdit={(tx) => { setIsDetailModalOpen(false); setSelectedTransaction(tx); setIsAddModalOpen(true); }}
+        onEdit={(tx) => { setIsDetailModalOpen(false); setTimeout(() => { setSelectedTransaction(tx); setIsAddModalOpen(true); }, 250); }}
         onDelete={(tx) => { setIsDetailModalOpen(false); void handleDeleteTransaction(tx); }}
+      />
+
+      <TourEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        tourId={Number(tourId)}
+        initialName={tour.name}
+        initialParticipants={participants.map(p => ({ id: p.id, name: p.name, userId: p.userId }))}
+        onSaveSuccess={() => { void mutateTour(); }}
       />
 
       {/* Share / Invite Modal */}
@@ -455,7 +479,7 @@ export default function TourDashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => { setIsShareModalOpen(false); setCopied(false); }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm z-40"
+              className="absolute inset-0 bg-black/60 backdrop-blur-md z-40"
             />
             <motion.div
               initial={{ opacity: 0, y: 30, scale: 0.97 }}

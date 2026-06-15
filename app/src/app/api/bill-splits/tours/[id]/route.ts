@@ -13,6 +13,13 @@ export const GET = apiHandler(
   })
 );
 
+export const PUT = apiHandler(
+  withAuth<TourRouteContext>(async (request: NextRequest, { userId }, routeContext) => {
+    const { updateTour } = await import('../tour-controller');
+    return updateTour(request, userId, routeContext);
+  })
+);
+
 export const DELETE = apiHandler(
   withAuth<TourRouteContext>(async (request: NextRequest, { userId }, routeContext) => {
     return deleteTour(request, userId, routeContext);
