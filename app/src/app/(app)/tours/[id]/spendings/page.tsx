@@ -140,7 +140,7 @@ export default function TourSpendingsPage() {
     if (!confirm('Are you sure you want to delete this cost?')) return;
 
     // Optimistic cache mutation
-    const updatedTransactions = rawTransactions.filter((t) => t.id !== tx.id);
+    const updatedTransactions = (rawTransactions ?? []).filter((t) => t.id !== tx.id);
     const expectedData = {
       ...tourData,
       transactions: updatedTransactions,
