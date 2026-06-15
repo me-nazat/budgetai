@@ -6,6 +6,9 @@ import Image from 'next/image';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { getCategoryHex } from '@/lib/categoryUtils';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useCustomCategories } from '@/hooks/useCustomCategories';
+import { mutate } from 'swr';
 
 interface Participant {
   id: number;
@@ -55,8 +58,9 @@ export default function TourAddCostModal({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const haptics = useHaptics();
+  const { currency } = useCurrency();
+  const { categories: customCategories } = useCustomCategories('expense');
 
-  const [customCategories, setCustomCategories] = useState<{ name: string; color: string }[]>([]);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   useEffect(() => {
@@ -80,15 +84,8 @@ export default function TourAddCostModal({
         setReceipt(null);
         setReceiptPreview(null);
       }
-
-      fetch('/api/categories?type=expense')
-        .then(res => res.json())
-        .then(data => {
-           if (data.categories) setCustomCategories(data.categories);
-        })
-        .catch(console.error);
     }
-  }, [isOpen]);
+  }, [isOpen, initialTransaction, participants]);
 
   const allCategories = useMemo(() => {
     const base = [
@@ -211,6 +208,10 @@ export default function TourAddCostModal({
         });
       }
 
+      // Mutate local caches to prevent duplicate or stale data display
+      mutate((key) => typeof key === 'string' && key.startsWith(`/api/bill-splits/tours/${tourId}`));
+      mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
+
       haptics.success();
       reset();
       onSaveSuccess();
@@ -270,7 +271,7 @@ export default function TourAddCostModal({
                   <div>
                     <label htmlFor="tour-cost-amount" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost</label>
                     <div className="relative mt-1">
-                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">$</span>
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">{currency.symbol}</span>
                       <input
                         id="tour-cost-amount"
                         type="number"
