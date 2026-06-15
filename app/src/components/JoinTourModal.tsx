@@ -240,15 +240,15 @@ export default function JoinTourModal({ isOpen, onClose }: JoinTourModalProps) {
                             key={p.id}
                             disabled={!isSelectable}
                             onClick={() => setSelectedParticipant(p.id)}
-                            className={\`w-full flex items-center justify-between p-4 rounded-2xl border transition-all \${
+                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
                               isSelected
                                 ? 'border-primary bg-primary/10 dark:bg-primary/5'
                                 : isSelectable
                                   ? 'border-gray-200 bg-white hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]'
                                   : 'border-transparent bg-gray-50 opacity-60 dark:bg-white/[0.02]'
-                            }\`}
+                            }`}
                           >
-                            <span className={\`font-bold \${isSelected ? 'text-primary' : 'text-gray-900 dark:text-white'}\`}>
+                            <span className={`font-bold ${isSelected ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
                               {p.name}
                             </span>
                             {p.isCurrentUser ? (

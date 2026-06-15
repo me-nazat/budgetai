@@ -186,7 +186,7 @@ export default function TourEditModal({
                     {participants.map((p, index) => {
                       if (p.isDeleted) return null;
                       return (
-                        <div key={p.id ?? \`new-\${index}\`} className="flex items-center gap-3">
+                        <div key={p.id ?? `new-${index}`} className="flex items-center gap-3">
                           <div className="relative flex-1">
                             <input
                               type="text"
