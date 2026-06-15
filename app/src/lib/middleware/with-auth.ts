@@ -85,6 +85,7 @@ export function withAuth<T extends NextRouteContext = NextRouteContext>(
     request: NextRequest,
     routeContext: T
   ): Promise<NextResponse> => {
+    let authContext: AuthContext;
     try {
       const session = await getSession();
 
@@ -97,13 +98,11 @@ export function withAuth<T extends NextRouteContext = NextRouteContext>(
         );
       }
 
-      const authContext: AuthContext = {
+      authContext = {
         userId: session.userId,
         email: session.email as string,
         session,
       };
-
-      return await handler(request, authContext, routeContext);
     } catch (error) {
       // JWT verification errors
       if (error instanceof AuthenticationError) {
@@ -119,6 +118,8 @@ export function withAuth<T extends NextRouteContext = NextRouteContext>(
         )
       );
     }
+
+    return await handler(request, authContext, routeContext);
   };
 }
 

@@ -305,7 +305,7 @@ export async function ensureDbInitialized(): Promise<void> {
   } catch { /* Ignore */ }
 
   try {
-    await getClient().execute('ALTER TABLE tours ADD COLUMN invite_code TEXT UNIQUE');
+    await getClient().execute('ALTER TABLE tours ADD COLUMN invite_code TEXT');
   } catch { /* Ignore — column already exists */ }
 
   try {
