@@ -278,8 +278,6 @@ export default function MyMonthPage() {
                         })}
                     </div>
                 </div>
-
-                </div>
             </section>
 
             {/* Sidebar Section */}

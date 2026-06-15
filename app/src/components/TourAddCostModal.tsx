@@ -7,6 +7,7 @@ import { getApiErrorMessage } from '@/lib/api-errors';
 import { getCategoryHex } from '@/lib/categoryUtils';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useCurrency } from '@/hooks/useCurrency';
+import { CURRENCIES } from '@/lib/currency';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { mutate } from 'swr';
 
@@ -280,7 +281,7 @@ export default function TourAddCostModal({
                   <div>
                     <label htmlFor="tour-cost-amount" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost</label>
                     <div className="relative mt-1">
-                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">{currency.symbol}</span>
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">{CURRENCIES[currency].symbol}</span>
                       <input
                         id="tour-cost-amount"
                         type="number"
