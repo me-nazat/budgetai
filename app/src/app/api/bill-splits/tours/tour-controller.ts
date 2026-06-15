@@ -488,7 +488,41 @@ export async function updateTourSpending(
     );
   }
 
-  return NextResponse.json({ success: true });
+  const transactionRows = await queryAll<DbRow>(
+    `SELECT
+       t.id,
+       t.amount,
+       t.category,
+       t.description,
+       t.date,
+       t.tour_id,
+       t.paid_by_participant_id AS paidBy,
+       t.paid_by_participant_id,
+       t.paid_by_participant_id AS paid_by,
+       t.split_type,
+       t.created_at,
+       p.name AS paid_by_name
+     FROM tour_spendings t
+     LEFT JOIN tour_participants p
+       ON p.id = t.paid_by_participant_id
+     WHERE t.id = ?
+     LIMIT 1`,
+    [txId]
+  );
+
+  return NextResponse.json({
+    success: true,
+    transaction: normalizeTransaction(transactionRows[0] ?? {
+      id: txId,
+      amount: data.amount,
+      category: data.category,
+      description: data.description,
+      date: data.date,
+      tour_id: tourId,
+      paidBy: data.paidBy,
+      split_type: data.splitType,
+    })
+  });
 }
 
 export async function deleteTourSpending(

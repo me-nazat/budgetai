@@ -219,7 +219,35 @@ export default function TourAddCostModal({
       }
 
       // Mutate local caches to prevent duplicate or stale data display
-      mutate((key) => typeof key === 'string' && key.startsWith(`/api/bill-splits/tours/${tourId}`));
+      // Update the specific item in the local cache to prevent duplicate
+      if (initialTransaction) {
+        mutate(
+          (key) => typeof key === 'string' && key.startsWith(`/api/bill-splits/tours/${tourId}`),
+          (currentData: any) => {
+            if (!currentData?.transactions) return currentData;
+            return {
+              ...currentData,
+              transactions: currentData.transactions.map((tx: any) =>
+                tx.id === initialTransaction.id ? { ...tx, ...data.transaction } : tx
+              )
+            };
+          },
+          { revalidate: true }
+        );
+      } else {
+        mutate(
+          (key) => typeof key === 'string' && key.startsWith(`/api/bill-splits/tours/${tourId}`),
+          (currentData: any) => {
+            if (!currentData?.transactions) return currentData;
+            return {
+              ...currentData,
+              transactions: [data.transaction, ...currentData.transactions]
+            };
+          },
+          { revalidate: true }
+        );
+      }
+      
       mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
 
       haptics.success();
