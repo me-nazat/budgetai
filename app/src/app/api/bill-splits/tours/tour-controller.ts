@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { CreateTourSchema, TourIdParamSchema, TourTransactionSchema } from '@/lib/validation';
 import { randomBytes } from 'crypto';
+import { z } from 'zod';
 
 type RouteContextWithId = {
   params?: Promise<{ id: string }> | { id: string };
