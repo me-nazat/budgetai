@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
+import { useParams, notFound } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
+import { getCategoryIcon } from '@/lib/categoryUtils';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import TourAddCostModal from '@/components/TourAddCostModal';
 import TourTransactionDetailModal from '@/components/TourTransactionDetailModal';
@@ -83,7 +84,7 @@ export default function TourSpendingsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TourTransaction | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [customCategories, setCustomCategories] = useState<{name: string, color: string}[]>([]);
+  const [customCategories, setCustomCategories] = useState<{ name: string; color: string; icon: string }[]>([]);
 
   useEffect(() => {
     fetch('/api/categories?type=expense').then(res => res.json()).then(data => {
@@ -291,10 +292,7 @@ export default function TourSpendingsPage() {
                             <div className="flex min-w-0 items-center gap-4">
                               <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
                                 <span className="material-symbols-outlined">
-                                  {transaction.category.toLowerCase().includes('food') ? 'restaurant' :
-                                    transaction.category.toLowerCase().includes('hotel') ? 'hotel' :
-                                      transaction.category.toLowerCase().includes('flight') || transaction.category.toLowerCase().includes('travel') ? 'flight' :
-                                        'receipt_long'}
+                                  {getCategoryIcon(transaction.category, customCategories)}
                                 </span>
                               </div>
                               <div className="min-w-0">
@@ -304,11 +302,31 @@ export default function TourSpendingsPage() {
                                 </p>
                               </div>
                             </div>
-                            <div className="shrink-0 text-right">
-                              <p className="text-xl font-black tabular-nums text-rose-500">-{fmt(transaction.amount)}</p>
-                              <span className="mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
-                                {transaction.splitType}
-                              </span>
+                            <div className="shrink-0 flex items-center gap-4">
+                              <div className="text-right">
+                                <p className="text-xl font-black tabular-nums text-rose-500">-{fmt(transaction.amount)}</p>
+                                <span className="mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
+                                  {transaction.splitType}
+                                </span>
+                              </div>
+                              <div className="hidden sm:flex items-center gap-1 border-l border-gray-200 dark:border-white/10 pl-4">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); setIsAddModalOpen(true); }}
+                                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:bg-white/[0.04] dark:hover:bg-white/10 dark:hover:text-white"
+                                  title="Edit"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void handleDeleteTransaction(transaction); }}
+                                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-400 transition-colors hover:bg-rose-100 hover:text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
+                                  title="Delete"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </motion.article>

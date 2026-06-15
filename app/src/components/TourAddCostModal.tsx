@@ -198,7 +198,17 @@ export default function TourAddCostModal({
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.success) {
-        throw new Error(getApiErrorMessage(data, 'Failed to add this tour cost.'));
+        throw new Error(getApiErrorMessage(data, 'Failed to save this tour cost.'));
+      }
+
+      // Upload receipt if one was selected
+      if (data.transaction?.id && receipt) {
+        const formData = new FormData();
+        formData.append('attachments', receipt);
+        await fetch(`/api/bill-splits/tours/${tourId}/spendings/${data.transaction.id}/attachments`, {
+          method: 'POST',
+          body: formData,
+        });
       }
 
       haptics.success();
@@ -382,7 +392,7 @@ export default function TourAddCostModal({
                 )}
 
                 
-                {!initialTransaction && (
+                {!initialTransaction ? (
                 <div>
                   <label className="mb-2 ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Receipt Proof</label>
 
@@ -443,6 +453,16 @@ export default function TourAddCostModal({
                     )}
                   </button>
                 </div>
+                ) : (
+                  <div className="p-4 rounded-2xl border border-white/10 bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">attachment</span>
+                      <div>
+                        <p className="text-sm font-bold text-white">Manage Attachments</p>
+                        <p className="mt-0.5 text-xs font-medium text-gray-400">Save your edits and click on the transaction card to manage multiple attachments.</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 <AnimatePresence>

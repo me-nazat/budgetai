@@ -1,0 +1,117 @@
+export async function updateTourSpending(
+  request: NextRequest,
+  userId: number,
+  routeContext?: RouteContextWithId & { params: Promise<{ spendingId: string }> }
+) {
+  const tourId = await resolveTourId(routeContext);
+  const { spendingId } = await (routeContext?.params ?? { spendingId: '' });
+  const txId = parseInt(spendingId, 10);
+  
+  if (!Number.isFinite(txId)) {
+    return NextResponse.json({ success: false, error: 'Invalid spending ID' }, { status: 400 });
+  }
+
+  const body = await request.json();
+  const data = TourTransactionSchema.parse(body);
+  const tour = await getTourPayload(userId, tourId);
+
+  if (!tour) {
+    return NextResponse.json({ success: false, error: 'Tour not found' }, { status: 404 });
+  }
+
+  const existingTx = await queryOne<{ id: number; linked_transaction_id: number | null }>(
+    'SELECT id, linked_transaction_id FROM tour_spendings WHERE id = ? AND tour_id = ?',
+    [txId, tourId]
+  );
+
+  if (!existingTx) {
+    return NextResponse.json({ success: false, error: 'Transaction not found' }, { status: 404 });
+  }
+
+  const participant = await queryOne<{ id: number }>(
+    'SELECT id FROM tour_participants WHERE id = ? AND tour_id = ?',
+    [data.paidBy, tourId]
+  );
+
+  if (!participant) {
+    return NextResponse.json({ success: false, error: 'Paid by must be one of this tour\'s participants' }, { status: 400 });
+  }
+
+  await run(
+    `UPDATE tour_spendings SET
+       amount = ?,
+       category = ?,
+       description = ?,
+       date = ?,
+       paid_by_participant_id = ?,
+       split_type = ?
+     WHERE id = ? AND tour_id = ?`,
+    [
+      data.amount,
+      data.category,
+      data.description,
+      data.date,
+      data.paidBy,
+      data.splitType,
+      txId,
+      tourId
+    ]
+  );
+
+  if (existingTx.linked_transaction_id) {
+    await run(
+      `UPDATE transactions SET
+         amount = ?,
+         category = ?,
+         description = ?,
+         date = ?
+       WHERE id = ? AND user_id = ?`,
+      [
+        data.amount,
+        data.category,
+        data.description,
+        data.date,
+        existingTx.linked_transaction_id,
+        userId
+      ]
+    );
+  }
+
+  return NextResponse.json({ success: true });
+}
+
+export async function deleteTourSpending(
+  _request: NextRequest,
+  userId: number,
+  routeContext?: RouteContextWithId & { params: Promise<{ spendingId: string }> }
+) {
+  const tourId = await resolveTourId(routeContext);
+  const { spendingId } = await (routeContext?.params ?? { spendingId: '' });
+  const txId = parseInt(spendingId, 10);
+  
+  if (!Number.isFinite(txId)) {
+    return NextResponse.json({ success: false, error: 'Invalid spending ID' }, { status: 400 });
+  }
+
+  const tour = await getTourPayload(userId, tourId);
+  if (!tour) {
+    return NextResponse.json({ success: false, error: 'Tour not found' }, { status: 404 });
+  }
+
+  const existingTx = await queryOne<{ id: number; linked_transaction_id: number | null }>(
+    'SELECT id, linked_transaction_id FROM tour_spendings WHERE id = ? AND tour_id = ?',
+    [txId, tourId]
+  );
+
+  if (!existingTx) {
+    return NextResponse.json({ success: false, error: 'Transaction not found' }, { status: 404 });
+  }
+
+  await run('DELETE FROM tour_spendings WHERE id = ? AND tour_id = ?', [txId, tourId]);
+
+  if (existingTx.linked_transaction_id) {
+    await run('DELETE FROM transactions WHERE id = ? AND user_id = ?', [existingTx.linked_transaction_id, userId]);
+  }
+
+  return NextResponse.json({ success: true });
+}
