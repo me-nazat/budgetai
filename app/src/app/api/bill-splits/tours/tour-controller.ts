@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { CreateTourSchema, TourIdParamSchema, TourTransactionSchema } from '@/lib/validation';
+import { randomBytes } from 'crypto';
 
 type RouteContextWithId = {
   params?: Promise<{ id: string }> | { id: string };
@@ -147,11 +148,14 @@ async function getTourPayload(
   tourId: number,
   includeTransactions = false
 ): Promise<TourResponse | null> {
+  // Allow access if user is the creator OR a bound participant
   const tour = await queryOne<DbRow>(
-    `SELECT id, created_by, name, created_at
-     FROM tours
-     WHERE id = ? AND created_by = ?`,
-    [tourId, userId]
+    `SELECT DISTINCT t.id, t.created_by, t.name, t.created_at, t.invite_code
+     FROM tours t
+     LEFT JOIN tour_participants tp ON tp.tour_id = t.id
+     WHERE t.id = ?
+       AND (t.created_by = ? OR tp.user_id = ?)`,
+    [tourId, userId, userId]
   );
 
   if (!tour) return null;
@@ -169,12 +173,14 @@ async function getTourPayload(
 }
 
 export async function listTours(_request: NextRequest, userId: number) {
+  // Show tours where user is creator OR a bound participant
   const tours = await queryAll<DbRow>(
-    `SELECT id, created_by, name, created_at
-     FROM tours
-     WHERE created_by = ?
-     ORDER BY datetime(created_at) DESC, id DESC`,
-    [userId]
+    `SELECT DISTINCT t.id, t.created_by, t.name, t.created_at
+     FROM tours t
+     LEFT JOIN tour_participants tp ON tp.tour_id = t.id
+     WHERE t.created_by = ? OR tp.user_id = ?
+     ORDER BY datetime(t.created_at) DESC, t.id DESC`,
+    [userId, userId]
   );
 
   const hydratedTours = await Promise.all(
@@ -263,10 +269,15 @@ export async function deleteTour(
   routeContext?: RouteContextWithId
 ) {
   const tourId = await resolveTourId(routeContext);
-  const tour = await getTourPayload(userId, tourId);
+
+  // Only the creator can delete a tour
+  const tour = await queryOne<DbRow>(
+    'SELECT id FROM tours WHERE id = ? AND created_by = ?',
+    [tourId, userId]
+  );
 
   if (!tour) {
-    return NextResponse.json({ success: false, error: 'Tour not found' }, { status: 404 });
+    return NextResponse.json({ success: false, error: 'Tour not found or not authorized' }, { status: 404 });
   }
 
   await run('DELETE FROM tour_spendings WHERE tour_id = ?', [tourId]);
@@ -514,4 +525,174 @@ export async function deleteTourSpending(
   }
 
   return NextResponse.json({ success: true });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INVITE & JOIN FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
+function generateUrlSafeCode(length = 12): string {
+  return randomBytes(length)
+    .toString('base64url')
+    .slice(0, length);
+}
+
+export async function generateInviteCode(
+  _request: NextRequest,
+  userId: number,
+  routeContext?: RouteContextWithId
+) {
+  const tourId = await resolveTourId(routeContext);
+
+  // Only the creator can generate invite codes
+  const tour = await queryOne<{ id: number; invite_code: string | null }>(
+    'SELECT id, invite_code FROM tours WHERE id = ? AND created_by = ?',
+    [tourId, userId]
+  );
+
+  if (!tour) {
+    return NextResponse.json({ success: false, error: 'Tour not found or not authorized' }, { status: 404 });
+  }
+
+  // If an invite code already exists, return it
+  if (tour.invite_code) {
+    return NextResponse.json({
+      success: true,
+      inviteCode: tour.invite_code,
+      inviteUrl: `/tours/join/${tour.invite_code}`,
+    });
+  }
+
+  // Generate a new unique code
+  let code = generateUrlSafeCode();
+  let attempts = 0;
+  while (attempts < 5) {
+    const existing = await queryOne<{ id: number }>(
+      'SELECT id FROM tours WHERE invite_code = ?',
+      [code]
+    );
+    if (!existing) break;
+    code = generateUrlSafeCode();
+    attempts++;
+  }
+
+  await run('UPDATE tours SET invite_code = ? WHERE id = ? AND created_by = ?', [code, tourId, userId]);
+
+  return NextResponse.json({
+    success: true,
+    inviteCode: code,
+    inviteUrl: `/tours/join/${code}`,
+  });
+}
+
+export async function getInviteCode(
+  _request: NextRequest,
+  userId: number,
+  routeContext?: RouteContextWithId
+) {
+  const tourId = await resolveTourId(routeContext);
+
+  const tour = await queryOne<{ id: number; invite_code: string | null }>(
+    'SELECT id, invite_code FROM tours WHERE id = ? AND created_by = ?',
+    [tourId, userId]
+  );
+
+  if (!tour) {
+    return NextResponse.json({ success: false, error: 'Tour not found or not authorized' }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    inviteCode: tour.invite_code ?? null,
+    inviteUrl: tour.invite_code ? `/tours/join/${tour.invite_code}` : null,
+  });
+}
+
+export async function getTourByInviteCode(code: string, userId: number) {
+  const tour = await queryOne<DbRow>(
+    'SELECT id, name, created_by, created_at FROM tours WHERE invite_code = ?',
+    [code]
+  );
+
+  if (!tour) return null;
+
+  const tourId = toNumber(tour.id);
+  const participants = await getParticipants(tourId);
+
+  // Check if user is already joined
+  const alreadyJoined = participants.some(p => p.userId === userId);
+  const isCreator = toNumber(tour.created_by) === userId;
+
+  return {
+    id: tourId,
+    name: String(tour.name ?? ''),
+    createdAt: tour.created_at ? String(tour.created_at) : null,
+    participants: participants.map(p => ({
+      id: p.id,
+      name: p.name,
+      isClaimed: p.userId !== null,
+      isCurrentUser: p.userId === userId,
+    })),
+    alreadyJoined: alreadyJoined || isCreator,
+    isCreator,
+  };
+}
+
+export async function joinTour(
+  request: NextRequest,
+  userId: number
+) {
+  const body = await request.json();
+  const { code, participantId } = body;
+
+  if (!code || typeof code !== 'string') {
+    return NextResponse.json({ success: false, error: 'Invite code is required' }, { status: 400 });
+  }
+
+  if (!participantId || typeof participantId !== 'number') {
+    return NextResponse.json({ success: false, error: 'Participant selection is required' }, { status: 400 });
+  }
+
+  const tour = await queryOne<{ id: number }>(
+    'SELECT id FROM tours WHERE invite_code = ?',
+    [code]
+  );
+
+  if (!tour) {
+    return NextResponse.json({ success: false, error: 'Invalid invite code' }, { status: 404 });
+  }
+
+  const tourId = toNumber(tour.id);
+
+  // Check if user is already bound to a participant in this tour
+  const existingBinding = await queryOne<{ id: number }>(
+    'SELECT id FROM tour_participants WHERE tour_id = ? AND user_id = ?',
+    [tourId, userId]
+  );
+
+  if (existingBinding) {
+    return NextResponse.json({ success: false, error: 'You are already a member of this tour' }, { status: 409 });
+  }
+
+  // Verify the participant exists and isn't already claimed
+  const participant = await queryOne<{ id: number; user_id: number | null }>(
+    'SELECT id, user_id FROM tour_participants WHERE id = ? AND tour_id = ?',
+    [participantId, tourId]
+  );
+
+  if (!participant) {
+    return NextResponse.json({ success: false, error: 'Participant not found in this tour' }, { status: 404 });
+  }
+
+  if (participant.user_id !== null) {
+    return NextResponse.json({ success: false, error: 'This participant slot is already claimed' }, { status: 409 });
+  }
+
+  // Bind the user to the participant
+  await run(
+    'UPDATE tour_participants SET user_id = ? WHERE id = ? AND tour_id = ?',
+    [userId, participantId, tourId]
+  );
+
+  return NextResponse.json({ success: true, tourId });
 }

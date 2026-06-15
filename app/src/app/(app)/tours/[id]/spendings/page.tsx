@@ -37,7 +37,7 @@ interface Tour {
   createdAt: string | null;
 }
 
-const spring = { type: 'spring' as const, stiffness: 420, damping: 28 };
+const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
 function TourSpendingsSkeleton() {
   return (
@@ -85,10 +85,16 @@ export default function TourSpendingsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<TourTransaction | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [customCategories, setCustomCategories] = useState<{ name: string; color: string; icon: string }[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     fetch('/api/categories?type=expense').then(res => res.json()).then(data => {
       if (data.categories) setCustomCategories(data.categories);
+    }).catch(console.error);
+
+    // Fetch current user ID for default Paid By
+    fetch('/api/auth/me').then(res => res.json()).then(data => {
+      if (data.user?.id) setCurrentUserId(data.user.id);
     }).catch(console.error);
   }, []);
 
@@ -340,11 +346,12 @@ export default function TourSpendingsPage() {
         </AnimatePresence>
       </div>
 
-            <TourAddCostModal
+      <TourAddCostModal
         isOpen={isAddModalOpen}
         onClose={() => { setIsAddModalOpen(false); setSelectedTransaction(null); }}
         participants={participants}
         tourId={tour.id}
+        currentUserId={currentUserId}
         initialTransaction={selectedTransaction}
         onSaveSuccess={() => {
           setIsAddModalOpen(false);

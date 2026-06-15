@@ -16,7 +16,7 @@ interface Tour {
   totalSpent?: number;
 }
 
-const spring = { type: 'spring' as const, stiffness: 420, damping: 28 };
+const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
 export default function ToursPage() {
   const [tours, setTours] = useState<Tour[]>([]);

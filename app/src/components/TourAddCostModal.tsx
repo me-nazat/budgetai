@@ -13,6 +13,7 @@ import { mutate } from 'swr';
 interface Participant {
   id: number;
   name: string;
+  userId?: number | null;
 }
 
 interface TourAddCostModalProps {
@@ -21,6 +22,7 @@ interface TourAddCostModalProps {
   participants: Participant[];
   tourId: number;
   onSaveSuccess: () => void;
+  currentUserId?: number;
   initialTransaction?: {
     id: number;
     amount: number;
@@ -33,7 +35,7 @@ interface TourAddCostModalProps {
   } | null;
 }
 
-const spring = { type: 'spring' as const, stiffness: 420, damping: 28 };
+const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 type SplitType = 'equal' | 'percentage' | 'exact';
 
 export default function TourAddCostModal({
@@ -42,13 +44,20 @@ export default function TourAddCostModal({
   participants,
   tourId,
   onSaveSuccess,
+  currentUserId,
   initialTransaction,
 }: TourAddCostModalProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Travel');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paidBy, setPaidBy] = useState<number>(participants[0]?.id ?? 0);
+  const [paidBy, setPaidBy] = useState<number>(() => {
+    if (currentUserId) {
+      const match = participants.find(p => p.userId === currentUserId);
+      if (match) return match.id;
+    }
+    return participants[0]?.id ?? 0;
+  });
   const [splitType, setSplitType] = useState<SplitType>('equal');
   const [includeInMainLedger, setIncludeInMainLedger] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -227,7 +236,7 @@ export default function TourAddCostModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 sm:items-center sm:p-6">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-4 sm:items-center sm:p-6">
           <motion.button
             type="button"
             aria-label="Close add cost modal"
@@ -235,7 +244,7 @@ export default function TourAddCostModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeModal}
-            className="fixed inset-0 bg-black/70 backdrop-blur-xl"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99]"
           />
 
           <motion.div
@@ -246,7 +255,7 @@ export default function TourAddCostModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 55, scale: 0.98 }}
             transition={spring}
-            className="relative z-10 max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/10 bg-[#0d1117]/95 shadow-[0_28px_100px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:rounded-[2rem]"
+            className="relative z-[100] max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-2xl sm:rounded-[2rem]"
           >
             <div className="p-5 sm:p-6">
               <div className="mb-6 flex items-center justify-between gap-4">
@@ -494,8 +503,8 @@ export default function TourAddCostModal({
                     </>
                   ) : (
                     <>
-                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add_card</span>
-                      Add Cost
+                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">{initialTransaction ? 'save' : 'add_card'}</span>
+                      {initialTransaction ? 'Save Changes' : 'Add Cost'}
                     </>
                   )}
                 </motion.button>

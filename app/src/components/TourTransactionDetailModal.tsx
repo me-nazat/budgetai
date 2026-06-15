@@ -46,20 +46,20 @@ export default function TourTransactionDetailModal({
 
     return createPortal(
         <AnimatePresence>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                    className="absolute inset-0 bg-black/40 backdrop-blur-sm z-40"
                 />
 
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="relative w-full max-w-4xl card-premium-v2 rounded-[2rem] shadow-2xl shadow-primary/20 overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 max-h-[90vh] ambient-glow"
+                    className="relative w-full max-w-4xl bg-background/95 backdrop-blur-xl z-50 shadow-2xl rounded-[2rem] overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 max-h-[90vh]"
                 >
                     {/* Left Column: Details */}
                     <div className="flex-1 p-6 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 overflow-y-auto scrollbar-thin">
@@ -111,14 +111,14 @@ export default function TourTransactionDetailModal({
                         {/* Icons-only action bar */}
                         <div className="flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-white/5 mt-auto">
                             <button
-                                onClick={() => { onClose(); onEdit(transaction); }}
+                                onClick={() => onEdit(transaction)}
                                 className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-[#0d1117] dark:hover:bg-[#21262d] text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
                                 title="Edit"
                             >
                                 <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">edit</span>
                             </button>
                             <button
-                                onClick={() => { onClose(); onDelete(transaction); }}
+                                onClick={() => onDelete(transaction)}
                                 className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 rounded-xl flex justify-center items-center transition-colors"
                                 title="Delete"
                             >

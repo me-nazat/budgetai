@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -33,7 +33,7 @@ interface Tour {
   createdAt: string | null;
 }
 
-const spring = { type: 'spring' as const, stiffness: 420, damping: 28 };
+const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
 export default function TourDashboard() {
   const [tour, setTour] = useState<Tour | null>(null);
@@ -41,6 +41,10 @@ export default function TourDashboard() {
   const [transactions, setTransactions] = useState<TourTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { fmt } = useCurrency();
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -92,6 +96,44 @@ export default function TourDashboard() {
     return { totalSpent: total, perPerson: perHead, averageCost: avg, balances: settlement };
   }, [transactions, participants]);
 
+  const handleShareClick = useCallback(async () => {
+    setIsShareModalOpen(true);
+    if (inviteUrl) return; // Already have the URL
+
+    setIsGeneratingInvite(true);
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/invite`, { method: 'POST' });
+      const data = await res.json().catch(() => null);
+      if (data?.success && data.inviteUrl) {
+        setInviteUrl(data.inviteUrl);
+      }
+    } catch {
+      // Silently fail — user can retry
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  }, [tourId, inviteUrl]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!inviteUrl) return;
+    const fullUrl = `${window.location.origin}${inviteUrl}`;
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = fullUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  }, [inviteUrl]);
+
   if (isLoading) {
     return (
       <div className="mx-auto min-h-dvh max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -134,6 +176,18 @@ export default function TourDashboard() {
             {tour.name}
           </h1>
         </motion.div>
+
+          <motion.button
+            type="button"
+            onClick={handleShareClick}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            transition={spring}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-3.5 text-sm font-black text-primary hover:bg-primary/15 dark:border-primary/30"
+          >
+            <span className="material-symbols-outlined text-[20px]">share</span>
+            Share Trip
+          </motion.button>
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -220,6 +274,88 @@ export default function TourDashboard() {
           </div>
         </motion.section>
       </div>
+
+      {/* Share / Invite Modal */}
+      <AnimatePresence>
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setIsShareModalOpen(false); setCopied(false); }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[99]"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.97 }}
+              transition={spring}
+              className="relative z-[100] w-full max-w-lg rounded-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-2xl p-6 sm:p-8"
+            >
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Invite</p>
+                  <h2 className="mt-1 text-2xl font-black tracking-tight text-gray-950 dark:text-white">Share This Trip</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setIsShareModalOpen(false); setCopied(false); }}
+                  className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+
+              {isGeneratingInvite ? (
+                <div className="flex items-center justify-center py-8">
+                  <span className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                </div>
+              ) : inviteUrl ? (
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Share this link with your trip members so they can join and track expenses together.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 truncate rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm font-mono font-bold text-gray-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
+                      {typeof window !== 'undefined' ? `${window.location.origin}${inviteUrl}` : inviteUrl}
+                    </div>
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.93 }}
+                      transition={spring}
+                      onClick={handleCopyLink}
+                      className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-white transition-colors ${
+                        copied ? 'bg-emerald-500' : 'bg-primary hover:bg-primary-hover'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{copied ? 'check' : 'content_copy'}</span>
+                      {copied ? 'Copied!' : 'Copy'}
+                    </motion.button>
+                  </div>
+                  <p className="text-xs font-medium text-gray-400">
+                    Anyone with this link can join by selecting their participant name.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Generate an invite link to share with your trip members.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleShareClick}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">link</span>
+                    Generate Invite Link
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

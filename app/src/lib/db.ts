@@ -304,6 +304,14 @@ export async function ensureDbInitialized(): Promise<void> {
     `);
   } catch { /* Ignore */ }
 
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN invite_code TEXT UNIQUE');
+  } catch { /* Ignore — column already exists */ }
+
+  try {
+    await getClient().execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_tours_invite_code ON tours(invite_code)');
+  } catch { /* Ignore */ }
+
   initialized = true;
 }
 

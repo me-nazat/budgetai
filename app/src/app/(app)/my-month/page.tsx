@@ -189,8 +189,8 @@ export default function MyMonthPage() {
 
 
     return (
-        <div className="grid min-h-screen grid-cols-1">
-            <section className="border-r border-gray-200/70 p-4 lg:p-8 dark:border-[#30363d]">
+        <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
+            <section className="border-r border-gray-200/70 p-4 lg:p-8 dark:border-[#30363d] pb-24">
                 <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Monthly command center</p>
@@ -279,17 +279,22 @@ export default function MyMonthPage() {
                     </div>
                 </div>
 
-                {/* 50/50 Section */}
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
-                    <div className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[400px] flex flex-col">
+                </div>
+            </section>
+
+            {/* Sidebar Section */}
+            <aside className="bg-gray-50/50 p-4 lg:p-6 xl:p-8 dark:bg-[#0d1117]/30 pb-24">
+                <div className="flex flex-col gap-6 sticky top-8">
+                    {/* Monthly Cash Flow */}
+                    <div className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[380px] flex flex-col shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Monthly Cash Flow</h3>
-                                <p className="text-xs text-gray-500 font-medium">Income vs Expenses over time</p>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cash Flow</h3>
+                                <p className="text-xs text-gray-500 font-medium mt-0.5">Income vs Expenses</p>
                             </div>
-                            <div className="flex items-center gap-4 text-xs font-bold bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-xl">
-                                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> Income</span>
-                                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" /> Expenses</span>
+                            <div className="flex flex-col gap-1.5 text-[10px] font-bold bg-gray-50 dark:bg-white/5 px-3 py-2 rounded-xl">
+                                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> Income</span>
+                                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" /> Expenses</span>
                             </div>
                         </div>
                         <div className="flex-1 min-h-0 relative">
@@ -299,8 +304,8 @@ export default function MyMonthPage() {
                                     maintainAspectRatio: false, 
                                     plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
                                     scales: {
-                                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-                                        y: { grid: { color: 'rgba(148, 163, 184, 0.1)', tickLength: 0 }, border: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 }, callback: value => fmt(Number(value)) } },
+                                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 0 } },
+                                        y: { grid: { color: 'rgba(148, 163, 184, 0.1)', tickLength: 0 }, border: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 }, callback: value => fmt(Number(value)) } },
                                     },
                                     interaction: { mode: 'nearest', axis: 'x', intersect: false }
                                 }} 
@@ -308,11 +313,12 @@ export default function MyMonthPage() {
                         </div>
                     </div>
                     
-                    <div className="h-[400px]">
+                    {/* Heatmap */}
+                    <div className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] shadow-sm">
                         <MonthlyHeatmap year={range.year} month={range.month} dailySpending={heatmapData} />
                     </div>
                 </div>
-            </section>
+            </aside>
 
             {popupAnchor && (
                 <DayDetailPopup
