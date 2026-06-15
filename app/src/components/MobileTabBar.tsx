@@ -22,6 +22,15 @@ export default function MobileTabBar() {
     const [showMenu, setShowMenu] = useState(false);
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
+    const { data: userData } = useSWR('/api/auth/me');
+    const user = userData?.user;
+
+    const navItems = user?.isGuest
+        ? [
+            { href: '/tours', icon: 'flight_takeoff', label: 'Tours' },
+            { href: '__menu__', icon: 'menu', label: 'Menu' },
+          ]
+        : mobileNavItems;
 
     return (
         <>
@@ -31,7 +40,7 @@ export default function MobileTabBar() {
             >
                 <div className="pointer-events-none absolute inset-x-8 -top-px h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
                 <nav className="relative flex h-[72px] items-center justify-around px-2">
-                    {mobileNavItems.map((item) => {
+                    {navItems.map((item) => {
                         const isQuickAdd = item.href === '__quick_add__';
                         const isActive = !isQuickAdd && (pathname === item.href || pathname?.startsWith(item.href + '/'));
 

@@ -340,7 +340,7 @@ export async function updateTour(
 
   if (!validationResult.success) {
     return NextResponse.json(
-      { success: false, error: 'Validation failed', details: validationResult.error.errors },
+      { success: false, error: 'Validation failed', details: validationResult.error.issues },
       { status: 400 }
     );
   }

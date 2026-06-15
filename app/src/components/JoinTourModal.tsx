@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -31,6 +32,7 @@ interface JoinTourModalProps {
 export default function JoinTourModal({ isOpen, onClose }: JoinTourModalProps) {
   const router = useRouter();
   const haptics = useHaptics();
+  const [mounted, setMounted] = useState(false);
 
   const [step, setStep] = useState<'input' | 'loading' | 'select'>('input');
   const [inviteUrl, setInviteUrl] = useState('');
@@ -39,6 +41,10 @@ export default function JoinTourModal({ isOpen, onClose }: JoinTourModalProps) {
   const [tourInfo, setTourInfo] = useState<JoinTourInfo | null>(null);
   const [selectedParticipant, setSelectedParticipant] = useState<number | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Extract code from URL or text
   const extractCode = (input: string) => {
@@ -134,176 +140,178 @@ export default function JoinTourModal({ isOpen, onClose }: JoinTourModalProps) {
     onClose();
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          <motion.button
-            type="button"
-            aria-label="Close modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeModal}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-40"
-          />
+  if (!isOpen || !mounted) return null;
 
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            initial={{ opacity: 0, y: 30, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 25, scale: 0.98 }}
-            transition={spring}
-            className="relative z-50 max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
-          >
-            <div className="p-6 sm:p-8">
-              <div className="mb-6 flex items-start justify-between gap-4">
+  return createPortal(
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <motion.button
+          type="button"
+          aria-label="Close modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={closeModal}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-lg z-40"
+        />
+
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          initial={{ opacity: 0, y: 30, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 25, scale: 0.98 }}
+          transition={spring}
+          className="relative z-50 max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
+        >
+          <div className="p-6 sm:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Join Tour</p>
+                <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
+                  {step === 'select' && tourInfo ? tourInfo.name : 'Enter Invite Link'}
+                </h2>
+              </div>
+              <motion.button
+                type="button"
+                onClick={closeModal}
+                whileTap={{ scale: 0.92 }}
+                transition={spring}
+                className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </motion.button>
+            </div>
+
+            {step === 'input' && (
+              <div className="space-y-5">
+                <p className="text-sm font-medium text-gray-400">
+                  Paste the invite link shared by the tour organizer to join the budget plan.
+                </p>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Join Tour</p>
-                  <h2 className="mt-1 text-2xl font-black tracking-tight text-gray-950 dark:text-white">
-                    {step === 'select' && tourInfo ? tourInfo.name : 'Enter Invite Link'}
-                  </h2>
+                  <input
+                    type="url"
+                    value={inviteUrl}
+                    onChange={(e) => setInviteUrl(e.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="https://.../tours/join/..."
+                    required
+                  />
                 </div>
+
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-300"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <motion.button
                   type="button"
-                  onClick={closeModal}
-                  whileTap={{ scale: 0.92 }}
-                  transition={spring}
-                  className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
+                  onClick={handleLookup}
+                  disabled={!inviteUrl.trim()}
+                  whileTap={inviteUrl.trim() ? { scale: 0.97 } : undefined}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50"
                 >
-                  <span className="material-symbols-outlined text-[20px]">close</span>
+                  Find Tour
                 </motion.button>
               </div>
+            )}
 
-              {step === 'input' && (
-                <div className="space-y-5">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Paste the invite link shared by the tour organizer to join the budget plan.
+            {step === 'loading' && (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <span className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                <p className="text-sm font-bold text-gray-400">Looking up tour...</p>
+              </div>
+            )}
+
+            {step === 'select' && tourInfo && (
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-400 mb-4">
+                    Which participant are you? Choose your profile to sync your transactions.
                   </p>
-                  <div>
-                    <input
-                      type="url"
-                      value={inviteUrl}
-                      onChange={(e) => setInviteUrl(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-                      placeholder="https://.../tours/join/..."
-                      required
-                    />
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-2 scrollbar-thin">
+                    {tourInfo.participants.map((p) => {
+                      const isSelectable = !p.isClaimed && !p.isCurrentUser;
+                      const isSelected = selectedParticipant === p.id;
+
+                      return (
+                        <button
+                          key={p.id}
+                          disabled={!isSelectable}
+                          type="button"
+                          onClick={() => setSelectedParticipant(p.id)}
+                          className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                            isSelected
+                              ? 'border-primary bg-primary/10 dark:bg-primary/5'
+                              : isSelectable
+                                ? 'border-gray-200 bg-white hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]'
+                                : 'border-transparent bg-gray-50 opacity-60 dark:bg-white/[0.02]'
+                          }`}
+                        >
+                          <span className={`font-bold ${isSelected ? 'text-primary' : 'text-white'}`}>
+                            {p.name}
+                          </span>
+                          {p.isCurrentUser ? (
+                            <span className="text-xs font-black uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">You</span>
+                          ) : p.isClaimed ? (
+                            <span className="text-xs font-black uppercase tracking-wider text-gray-400">Claimed</span>
+                          ) : isSelected && (
+                            <span className="material-symbols-outlined text-primary">check_circle</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-500 dark:text-rose-400"
-                      >
-                        {error}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-300"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                  <motion.button
+                <div className="flex gap-3">
+                  <button
                     type="button"
-                    onClick={handleLookup}
-                    disabled={!inviteUrl.trim()}
-                    whileTap={inviteUrl.trim() ? { scale: 0.97 } : undefined}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50"
+                    onClick={() => setStep('input')}
+                    className="flex-1 rounded-2xl bg-gray-100 py-4 font-black text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 transition-colors"
                   >
-                    Find Tour
-                  </motion.button>
-                </div>
-              )}
-
-              {step === 'loading' && (
-                <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <span className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                  <p className="text-sm font-bold text-gray-500">Looking up tour...</p>
-                </div>
-              )}
-
-              {step === 'select' && tourInfo && (
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
-                      Which participant are you? Choose your profile to sync your transactions.
-                    </p>
-                    <div className="max-h-60 overflow-y-auto space-y-2 pr-2 scrollbar-thin">
-                      {tourInfo.participants.map((p) => {
-                        const isSelectable = !p.isClaimed && !p.isCurrentUser;
-                        const isSelected = selectedParticipant === p.id;
-
-                        return (
-                          <button
-                            key={p.id}
-                            disabled={!isSelectable}
-                            onClick={() => setSelectedParticipant(p.id)}
-                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                              isSelected
-                                ? 'border-primary bg-primary/10 dark:bg-primary/5'
-                                : isSelectable
-                                  ? 'border-gray-200 bg-white hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]'
-                                  : 'border-transparent bg-gray-50 opacity-60 dark:bg-white/[0.02]'
-                            }`}
-                          >
-                            <span className={`font-bold ${isSelected ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
-                              {p.name}
-                            </span>
-                            {p.isCurrentUser ? (
-                              <span className="text-xs font-black uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">You</span>
-                            ) : p.isClaimed ? (
-                              <span className="text-xs font-black uppercase tracking-wider text-gray-400">Claimed</span>
-                            ) : isSelected && (
-                              <span className="material-symbols-outlined text-primary">check_circle</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-500 dark:text-rose-400"
-                      >
-                        {error}
-                      </motion.div>
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleJoin}
+                    disabled={selectedParticipant === null || isJoining}
+                    className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {isJoining ? (
+                      <span className="size-5 rounded-full border-2 border-white/35 border-t-white animate-spin" />
+                    ) : (
+                      'Confirm & Join'
                     )}
-                  </AnimatePresence>
-
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStep('input')}
-                      className="flex-1 rounded-2xl bg-gray-100 py-4 font-black text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 transition-colors"
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleJoin}
-                      disabled={selectedParticipant === null || isJoining}
-                      className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      {isJoining ? (
-                        <span className="size-5 rounded-full border-2 border-white/35 border-t-white animate-spin" />
-                      ) : (
-                        'Confirm & Join'
-                      )}
-                    </button>
-                  </div>
+                  </button>
                 </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>,
+    document.body
   );
 }

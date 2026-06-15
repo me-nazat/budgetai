@@ -21,7 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession, type SessionPayload } from '@/lib/security/session-manager';
 import { apiError } from '@/lib/types/api';
-import { AuthenticationError, ErrorCode } from '@/lib/types/errors';
+import { AuthenticationError, AuthorizationError, ErrorCode } from '@/lib/types/errors';
 
 /**
  * Context injected into authenticated route handlers.
@@ -103,6 +103,36 @@ export function withAuth<T extends NextRouteContext = NextRouteContext>(
         email: session.email as string,
         session,
       };
+
+      // Sandboxed workspace isolation check for guests
+      const pathname = request.nextUrl.pathname;
+      if (pathname.startsWith('/api/')) {
+        const allowedPrefixes = ['/api/auth', '/api/bill-splits', '/api/categories', '/api/settings'];
+        const isAllowed = allowedPrefixes.some(prefix => pathname.startsWith(prefix));
+        if (!isAllowed) {
+          const { queryOne } = await import('@/lib/db');
+          const owned = await queryOne<{ count: number }>(
+            'SELECT COUNT(*) as count FROM tours WHERE created_by = ?',
+            [session.userId]
+          );
+          const ownedCount = owned?.count ?? 0;
+          if (ownedCount === 0) {
+            const joined = await queryOne<{ count: number }>(
+              'SELECT COUNT(*) as count FROM tour_participants WHERE user_id = ?',
+              [session.userId]
+            );
+            const joinedCount = joined?.count ?? 0;
+            if (joinedCount > 0) {
+              return apiError(
+                new AuthorizationError(
+                  'Access Denied: Guest workspace isolation restricts access to peripheral modules.',
+                  ErrorCode.INSUFFICIENT_PERMISSIONS
+                )
+              );
+            }
+          }
+        }
+      }
     } catch (error) {
       // JWT verification errors
       if (error instanceof AuthenticationError) {

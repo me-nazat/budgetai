@@ -514,6 +514,22 @@ export class AuthService {
     const user = await UserRepository.findById(userId);
     if (!user) throw new NotFoundError('User not found', ErrorCode.USER_NOT_FOUND);
 
+    const { queryOne } = await import('@/lib/db');
+    const owned = await queryOne<{ count: number }>(
+      'SELECT COUNT(*) as count FROM tours WHERE created_by = ?',
+      [userId]
+    );
+    const ownedCount = owned?.count ?? 0;
+    let isGuest = false;
+    if (ownedCount === 0) {
+      const joined = await queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM tour_participants WHERE user_id = ?',
+        [userId]
+      );
+      const joinedCount = joined?.count ?? 0;
+      isGuest = joinedCount > 0;
+    }
+
     return {
       id: user.id,
       name: user.name,
@@ -523,6 +539,7 @@ export class AuthService {
       notifyOverspend: user.notifyOverspend ?? 1,
       totpEnabled: user.totpEnabled === 1,
       createdAt: user.createdAt,
+      isGuest,
     };
   }
 

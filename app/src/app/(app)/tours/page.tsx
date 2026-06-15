@@ -72,7 +72,7 @@ export default function ToursPage() {
             onClick={() => setIsJoinModalOpen(true)}
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.97 }}
-            className="hidden sm:inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-5 py-3.5 text-sm font-black text-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-5 py-3.5 text-sm font-black text-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
           >
             <span className="material-symbols-outlined text-[20px]">group_add</span>
             Join Tour Plan

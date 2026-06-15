@@ -27,7 +27,7 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
     const pathname = usePathname();
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
-    const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+    const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
 
     useEffect(() => {
         fetch('/api/auth/me').then(r => r.json()).then(d => {
@@ -84,7 +84,7 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                 {/* Navigation Links */}
                 <div className="flex-1 overflow-y-auto px-5 pb-4 custom-scrollbar">
                     <div className="grid grid-cols-2 gap-2.5 stagger-children">
-                    {menuItems.map((item) => {
+                    {menuItems.filter(item => !user?.isGuest || item.href === '/tours').map((item) => {
                         const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                         return (
                             <Link

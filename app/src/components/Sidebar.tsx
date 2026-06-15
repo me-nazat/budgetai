@@ -50,7 +50,7 @@ export default function Sidebar() {
     const router = useRouter();
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
-    const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+    const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
     const [isDark, setIsDark] = useState(() => {
         if (typeof window === 'undefined') return true;
 
@@ -110,15 +110,22 @@ export default function Sidebar() {
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto px-3 lg:px-4 pb-6 custom-scrollbar min-h-0 relative">
-                    {navGroups.map((group, groupIdx) => (
-                        <div key={groupIdx} className={groupIdx > 0 ? 'mt-4 pt-3 border-t border-gray-200/40 dark:border-white/5' : ''}>
-                            {group.label && (
-                                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 select-none">
-                                    {group.label}
-                                </p>
-                            )}
-                            <div className="space-y-0.5">
-                                {group.items.map((item) => {
+                    {navGroups.map((group, groupIdx) => {
+                        const filteredItems = user?.isGuest
+                            ? group.items.filter((item) => item.href === '/tours')
+                            : group.items;
+
+                        if (filteredItems.length === 0) return null;
+
+                        return (
+                            <div key={groupIdx} className={groupIdx > 0 ? 'mt-4 pt-3 border-t border-gray-200/40 dark:border-white/5' : ''}>
+                                {group.label && !user?.isGuest && (
+                                    <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 select-none">
+                                        {group.label}
+                                    </p>
+                                )}
+                                <div className="space-y-0.5">
+                                    {filteredItems.map((item) => {
                                     const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                                     return (
                                         <Link
@@ -160,7 +167,7 @@ export default function Sidebar() {
                                 })}
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </nav>
                 
                 {/* Bottom section (Settings & Profile) */}

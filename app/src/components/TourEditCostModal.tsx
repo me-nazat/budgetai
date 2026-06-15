@@ -3,7 +3,6 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import {
   getCategoryHex,
@@ -26,7 +25,19 @@ interface Participant {
   userId?: number | null;
 }
 
-interface TourAddCostModalProps {
+interface TourTransaction {
+  id: number;
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  paidByParticipantId?: number;
+  paidBy: number;
+  splitType: string;
+  paidByName?: string | null;
+}
+
+interface TourEditCostModalProps {
   isOpen: boolean;
   onClose: () => void;
   participants: Participant[];
@@ -34,12 +45,13 @@ interface TourAddCostModalProps {
   onSaveSuccess: () => void;
   currentUserId?: number;
   isCreator?: boolean;
+  transaction: TourTransaction | null;
 }
 
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 type SplitType = 'equal' | 'percentage' | 'exact';
 
-export default function TourAddCostModal({
+export default function TourEditCostModal({
   isOpen,
   onClose,
   participants,
@@ -47,29 +59,19 @@ export default function TourAddCostModal({
   onSaveSuccess,
   currentUserId,
   isCreator = false,
-}: TourAddCostModalProps) {
+  transaction,
+}: TourEditCostModalProps) {
   const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Travel');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paidBy, setPaidBy] = useState<number>(() => {
-    if (currentUserId) {
-      const match = participants.find(p => p.userId === currentUserId);
-      if (match) return match.id;
-    }
-    return participants[0]?.id ?? 0;
-  });
+  const [date, setDate] = useState('');
+  const [paidBy, setPaidBy] = useState<number>(0);
   const [splitType, setSplitType] = useState<SplitType>('equal');
-  const [includeInMainLedger, setIncludeInMainLedger] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [receipt, setReceipt] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const haptics = useHaptics();
-  const { currency } = useCurrency();
+  const { currency, fmt } = useCurrency();
   const { categories: customCategories } = useCustomCategories('expense');
 
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -88,22 +90,18 @@ export default function TourAddCostModal({
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      setAmount('');
-      setDescription('');
-      setCategory('Travel');
-      setDate(new Date().toISOString().split('T')[0]);
-      const match = currentUserId ? participants.find(p => p.userId === currentUserId) : null;
-      setPaidBy(match ? match.id : (participants[0]?.id ?? 0));
-      setSplitType('equal');
-      setIncludeInMainLedger(false);
-      setReceipt(null);
-      setReceiptPreview(null);
+    if (isOpen && transaction) {
+      setAmount(transaction.amount.toString());
+      setDescription(transaction.description);
+      setCategory(transaction.category);
+      setDate(transaction.date);
+      setPaidBy(transaction.paidByParticipantId ?? transaction.paidBy ?? participants[0]?.id ?? 0);
+      setSplitType(transaction.splitType as SplitType);
       setIsCreatingCustom(false);
       setCustomName('');
       setError(null);
     }
-  }, [isOpen, participants, currentUserId]);
+  }, [isOpen, transaction, participants]);
 
   const allCategories = useMemo(() => {
     const base = [
@@ -135,72 +133,20 @@ export default function TourAddCostModal({
   const amountNumber = useMemo(() => Number.parseFloat(amount), [amount]);
   const canSubmit = Number.isFinite(amountNumber) && amountNumber > 0 && description.trim().length > 0 && paidBy > 0 && !isSubmitting;
 
-  useEffect(() => {
-    if (!participants.length) return;
-    setPaidBy((current) => {
-      if (current && participants.some((p) => p.id === current)) return current;
-      if (currentUserId) {
-        const match = participants.find((p) => p.userId === currentUserId);
-        if (match) return match.id;
-      }
-      return participants[0].id;
-    });
-  }, [participants, currentUserId]);
-
-  useEffect(() => {
-    if (!receipt) {
-      setReceiptPreview(null);
-      return undefined;
-    }
-
-    const url = URL.createObjectURL(receipt);
-    setReceiptPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [receipt]);
-
   const reset = useCallback(() => {
     setAmount('');
     setDescription('');
     setCategory('Travel');
     setDate(new Date().toISOString().split('T')[0]);
-    const match = currentUserId ? participants.find(p => p.userId === currentUserId) : null;
-    setPaidBy(match ? match.id : (participants[0]?.id ?? 0));
-    setSplitType('equal');
-    setIncludeInMainLedger(false);
-    setReceipt(null);
     setError(null);
     setIsCreatingCustom(false);
     setCustomName('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [participants, currentUserId]);
+  }, []);
 
   const closeModal = useCallback(() => {
     haptics.tap();
     onClose();
   }, [haptics, onClose]);
-
-  const chooseReceipt = useCallback((file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Receipt proof must be an image file.');
-      haptics.error();
-      return;
-    }
-
-    setReceipt(file);
-    setError(null);
-    haptics.tap();
-  }, [haptics]);
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    chooseReceipt(event.target.files?.[0]);
-  };
-
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(false);
-    chooseReceipt(event.dataTransfer.files?.[0]);
-  };
 
   const handleSaveCustomCategory = async () => {
     const trimmedName = customName.trim().replace(/\s+/g, ' ');
@@ -243,18 +189,19 @@ export default function TourAddCostModal({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || !transaction) return;
 
     setIsSubmitting(true);
     setError(null);
 
     const amountNum = amountNumber;
+    const txId = transaction.id;
     const swrKey = `/api/bill-splits/tours/${tourId}`;
 
     try {
-      const url = `/api/bill-splits/tours/${tourId}/spendings`;
+      const url = `/api/bill-splits/tours/${tourId}/spendings/${txId}`;
       const res = await fetch(url, {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amountNum,
@@ -264,23 +211,12 @@ export default function TourAddCostModal({
           paidBy,
           paidByParticipantId: paidBy,
           splitType,
-          includeInMainLedger,
         }),
       });
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.success) {
-        throw new Error(getApiErrorMessage(data, 'Failed to save this tour cost.'));
-      }
-
-      // Upload receipt if one was selected
-      if (data.transaction?.id && receipt) {
-        const formData = new FormData();
-        formData.append('attachments', receipt);
-        await fetch(`/api/bill-splits/tours/${tourId}/spendings/${data.transaction.id}/attachments`, {
-          method: 'POST',
-          body: formData,
-        });
+        throw new Error(getApiErrorMessage(data, 'Failed to save changes.'));
       }
 
       // Trigger a full revalidation of the tour endpoint so balances and metrics refresh
@@ -292,7 +228,7 @@ export default function TourAddCostModal({
       onSaveSuccess();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add this tour cost.');
+      setError(err instanceof Error ? err.message : 'Failed to update this cost.');
       haptics.error();
       mutate(swrKey);
     } finally {
@@ -319,7 +255,7 @@ export default function TourAddCostModal({
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="tour-add-cost-title"
+            aria-labelledby="tour-edit-cost-title"
             initial={{ opacity: 0, y: 30, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
@@ -330,10 +266,10 @@ export default function TourAddCostModal({
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-                    {isCreatingCustom ? 'Custom Category' : 'Tour Ledger'}
+                    {isCreatingCustom ? 'Custom Category' : 'Your Ledger: Update Cost'}
                   </p>
-                  <h2 id="tour-add-cost-title" className="mt-1 text-2xl font-black tracking-tight text-white">
-                    {isCreatingCustom ? 'Create New Category' : 'Add Cost'}
+                  <h2 id="tour-edit-cost-title" className="mt-1 text-2xl font-black tracking-tight text-white">
+                    {isCreatingCustom ? 'Create New Category' : 'Edit Cost'}
                   </h2>
                 </div>
                 <motion.button
@@ -440,11 +376,11 @@ export default function TourAddCostModal({
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.2fr_0.8fr]">
                     <div>
-                      <label htmlFor="tour-cost-amount" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost</label>
+                      <label htmlFor="tour-edit-cost-amount" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost</label>
                       <div className="relative mt-1">
                         <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">{symbol}</span>
                         <input
-                          id="tour-cost-amount"
+                          id="tour-edit-cost-amount"
                           type="number"
                           inputMode="decimal"
                           min="0"
@@ -460,9 +396,9 @@ export default function TourAddCostModal({
                     </div>
 
                     <div>
-                      <label htmlFor="tour-cost-date" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Date</label>
+                      <label htmlFor="tour-edit-cost-date" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Date</label>
                       <input
-                        id="tour-cost-date"
+                        id="tour-edit-cost-date"
                         type="date"
                         value={date}
                         onChange={(event) => setDate(event.target.value)}
@@ -473,23 +409,23 @@ export default function TourAddCostModal({
                   </div>
 
                   <div>
-                    <label htmlFor="tour-cost-description" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description</label>
+                    <label htmlFor="tour-edit-cost-description" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description</label>
                     <textarea
-                      id="tour-cost-description"
+                      id="tour-edit-cost-description"
                       value={description}
                       onChange={(event) => setDescription(event.target.value)}
                       className="mt-1 min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                      placeholder="Dinner at the restaurant, ferry tickets, hotel deposit..."
+                      placeholder="Dinner at the restaurant..."
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                      <label htmlFor="tour-cost-category" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
+                      <label htmlFor="tour-edit-cost-category" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
                       <div className="relative">
                         <input
-                          id="tour-cost-category"
+                          id="tour-edit-cost-category"
                           value={category}
                           onChange={(event) => setCategory(event.target.value)}
                           onFocus={() => setShowCategoryDropdown(true)}
@@ -528,9 +464,9 @@ export default function TourAddCostModal({
                     </div>
 
                     <div>
-                      <label htmlFor="tour-cost-paid-by" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Paid By</label>
+                      <label htmlFor="tour-edit-cost-paid-by" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Paid By</label>
                       <select
-                        id="tour-cost-paid-by"
+                        id="tour-edit-cost-paid-by"
                         value={paidBy}
                         onChange={(event) => setPaidBy(Number(event.target.value))}
                         disabled={isPaidByLocked}
@@ -543,9 +479,9 @@ export default function TourAddCostModal({
                     </div>
 
                     <div>
-                      <label htmlFor="tour-cost-split" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Split</label>
+                      <label htmlFor="tour-edit-cost-split" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Split</label>
                       <select
-                        id="tour-cost-split"
+                        id="tour-edit-cost-split"
                         value={splitType}
                         onChange={(event) => setSplitType(event.target.value as SplitType)}
                         className="mt-1 w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
@@ -557,79 +493,14 @@ export default function TourAddCostModal({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05] transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={includeInMainLedger}
-                        onChange={(e) => setIncludeInMainLedger(e.target.checked)}
-                        className="size-5 rounded-md border border-white/20 bg-[#111827] text-primary accent-primary outline-none focus:ring-2 focus:ring-primary/50"
-                      />
+                  <div className="p-4 rounded-2xl border border-white/10 bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">attachment</span>
                       <div>
-                        <p className="text-sm font-bold text-white">Add to main transactions</p>
-                        <p className="mt-0.5 text-xs text-gray-400 font-medium">Link this cost to your global dashboard & transactions</p>
+                        <p className="text-sm font-bold text-white">Manage Attachments</p>
+                        <p className="mt-0.5 text-xs font-medium text-gray-400">Save your changes and click on the transaction card to manage multiple attachments.</p>
                       </div>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Receipt Proof</label>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        setIsDragging(true);
-                      }}
-                      onDragLeave={() => setIsDragging(false)}
-                      onDrop={handleDrop}
-                      className={`w-full rounded-2xl border border-dashed p-4 text-left transition-colors ${
-                        isDragging
-                          ? 'border-primary/70 bg-primary/10'
-                          : 'border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05]'
-                      }`}
-                    >
-                      {receipt ? (
-                        <div className="flex items-center gap-3">
-                          {receiptPreview ? (
-                            <Image
-                              src={receiptPreview}
-                              alt="Receipt preview"
-                              width={56}
-                              height={56}
-                              unoptimized
-                              className="size-14 shrink-0 rounded-2xl border border-white/10 object-cover"
-                            />
-                          ) : (
-                            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                              <span className="material-symbols-outlined text-emerald-400">image</span>
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-black text-white">{receipt.name}</p>
-                            <p className="mt-1 text-xs font-semibold text-gray-500">Receipt proof attached locally</p>
-                          </div>
-                          <span className="material-symbols-outlined text-emerald-400">check_circle</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400">
-                            <span className="material-symbols-outlined">cloud_upload</span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-gray-200">Drop receipt image or browse</p>
-                            <p className="mt-1 text-xs font-semibold text-gray-500">JPG, PNG, or WebP proof for this cost</p>
-                          </div>
-                        </div>
-                      )}
-                    </button>
+                    </div>
                   </div>
 
                   <AnimatePresence>
@@ -660,8 +531,8 @@ export default function TourAddCostModal({
                       </>
                     ) : (
                       <>
-                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add_card</span>
-                        Add Cost
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">save</span>
+                        Update Cost
                       </>
                     )}
                   </motion.button>

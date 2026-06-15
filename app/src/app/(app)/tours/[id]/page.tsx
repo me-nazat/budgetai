@@ -5,11 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import useSWR, { mutate } from 'swr';
+import { createPortal } from 'react-dom';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useCurrency } from '@/hooks/useCurrency';
 import TourAddCostModal from '@/components/TourAddCostModal';
+import TourEditCostModal from '@/components/TourEditCostModal';
 import TourTransactionDetailModal from '@/components/TourTransactionDetailModal';
 import { getCategoryIcon } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
@@ -62,7 +64,12 @@ export default function TourDashboard() {
   const params = useParams<{ id: string }>();
   const tourId = params.id;
 
-  const { data: tourData, error: tourError, isLoading: tourLoading, mutate: mutateTour } = useSWR(`/api/bill-splits/tours/${tourId}`);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const { data: tourData, error: tourError, isLoading: tourLoading, mutate: mutateTour } = useSWR(tourId ? `/api/bill-splits/tours/${tourId}` : null);
   const { data: userData } = useSWR('/api/auth/me');
 
   const tour = tourData?.tour as Tour | null;
@@ -79,7 +86,7 @@ export default function TourDashboard() {
   }, [rawTransactions]);
 
   const currentUserId = userData?.user?.id as number | undefined;
-  const isLoading = tourLoading;
+  const isLoading = tourLoading || (!tourData && !tourError);
   const error = tourError ? (tourError.message || 'Unable to load tour.') : (tourData && !tourData.success ? tourData.error : null);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -90,6 +97,7 @@ export default function TourDashboard() {
   const router = useRouter();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditCostOpen, setIsEditCostOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TourTransaction | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -226,7 +234,7 @@ export default function TourDashboard() {
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.97 }}
                 transition={spring}
-                className="hidden md:inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-5 py-3.5 text-sm font-black text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-5 py-3.5 text-sm font-black text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
               >
                 <span className="material-symbols-outlined text-[20px]">edit</span>
                 Edit Tour
@@ -408,7 +416,7 @@ export default function TourDashboard() {
                                 <div className="hidden sm:flex items-center gap-1 border-l border-gray-200 dark:border-white/10 pl-4">
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); setIsAddModalOpen(true); }}
+                                    onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); setIsEditCostOpen(true); }}
                                     className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:bg-white/[0.04] dark:hover:bg-white/10 dark:hover:text-white"
                                     title="Edit"
                                   >
@@ -444,9 +452,23 @@ export default function TourDashboard() {
         tourId={Number(tourId)}
         currentUserId={currentUserId}
         isCreator={tour.createdBy === currentUserId}
-        initialTransaction={selectedTransaction}
         onSaveSuccess={() => {
           setIsAddModalOpen(false);
+          setSelectedTransaction(null);
+          void mutateTour();
+        }}
+      />
+
+      <TourEditCostModal
+        isOpen={isEditCostOpen}
+        onClose={() => { setIsEditCostOpen(false); setSelectedTransaction(null); }}
+        participants={participants}
+        tourId={Number(tourId)}
+        currentUserId={currentUserId}
+        isCreator={tour.createdBy === currentUserId}
+        transaction={selectedTransaction}
+        onSaveSuccess={() => {
+          setIsEditCostOpen(false);
           setSelectedTransaction(null);
           void mutateTour();
         }}
@@ -457,7 +479,7 @@ export default function TourDashboard() {
         customCategories={customCategories}
         tourId={tour.id}
         onClose={() => { setIsDetailModalOpen(false); setSelectedTransaction(null); }}
-        onEdit={(tx) => { setIsDetailModalOpen(false); setTimeout(() => { setSelectedTransaction(tx); setIsAddModalOpen(true); }, 250); }}
+        onEdit={(tx) => { setIsDetailModalOpen(false); setTimeout(() => { setSelectedTransaction(tx); setIsEditCostOpen(true); }, 250); }}
         onDelete={(tx) => { setIsDetailModalOpen(false); void handleDeleteTransaction(tx); }}
       />
 
@@ -471,86 +493,89 @@ export default function TourDashboard() {
       />
 
       {/* Share / Invite Modal */}
-      <AnimatePresence>
-        {isShareModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => { setIsShareModalOpen(false); setCopied(false); }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md z-40"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.97 }}
-              transition={spring}
-              className="relative z-50 w-full max-w-lg rounded-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl p-6 sm:p-8"
-            >
-              <div className="flex items-start justify-between gap-4 mb-6">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Invite</p>
-                  <h2 className="mt-1 text-2xl font-black tracking-tight text-gray-950 dark:text-white">Share This Trip</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setIsShareModalOpen(false); setCopied(false); }}
-                  className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
-                >
-                  <span className="material-symbols-outlined text-[20px]">close</span>
-                </button>
-              </div>
-
-              {isGeneratingInvite ? (
-                <div className="flex items-center justify-center py-8">
-                  <span className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                </div>
-              ) : inviteUrl ? (
-                <div className="space-y-4">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Share this link with your trip members so they can join and track expenses together.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 truncate rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm font-mono font-bold text-gray-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
-                      {typeof window !== 'undefined' ? `${window.location.origin}${inviteUrl}` : inviteUrl}
-                    </div>
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.93 }}
-                      transition={spring}
-                      onClick={handleCopyLink}
-                      className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-white transition-colors ${
-                        copied ? 'bg-emerald-500' : 'bg-primary hover:bg-primary-hover'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">{copied ? 'check' : 'content_copy'}</span>
-                      {copied ? 'Copied!' : 'Copy'}
-                    </motion.button>
+      {mounted && createPortal(
+        <AnimatePresence>
+          {isShareModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => { setIsShareModalOpen(false); setCopied(false); }}
+                className="absolute inset-0 bg-slate-950/80 backdrop-blur-lg z-40"
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 30, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.97 }}
+                transition={spring}
+                className="relative z-50 w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] border border-white/10 bg-[#0d1117]/95 shadow-2xl backdrop-blur-xl p-6 sm:p-8"
+              >
+                <div className="flex items-start justify-between gap-4 mb-6">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Invite</p>
+                    <h2 className="mt-1 text-2xl font-black tracking-tight text-white">Share This Trip</h2>
                   </div>
-                  <p className="text-xs font-medium text-gray-400">
-                    Anyone with this link can join by selecting their participant name.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Generate an invite link to share with your trip members.
-                  </p>
                   <button
                     type="button"
-                    onClick={handleShareClick}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover"
+                    onClick={() => { setIsShareModalOpen(false); setCopied(false); }}
+                    className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-[20px]">link</span>
-                    Generate Invite Link
+                    <span className="material-symbols-outlined text-[20px]">close</span>
                   </button>
                 </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                {isGeneratingInvite ? (
+                  <div className="flex items-center justify-center py-8">
+                    <span className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                  </div>
+                ) : inviteUrl ? (
+                  <div className="space-y-4">
+                    <p className="text-sm font-medium text-gray-400">
+                      Share this link with your trip members so they can join and track expenses together.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 truncate rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-mono font-bold text-white">
+                        {typeof window !== 'undefined' ? `${window.location.origin}${inviteUrl}` : inviteUrl}
+                      </div>
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.93 }}
+                        transition={spring}
+                        onClick={handleCopyLink}
+                        className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-white transition-colors ${
+                          copied ? 'bg-emerald-500' : 'bg-primary hover:bg-primary-hover'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{copied ? 'check' : 'content_copy'}</span>
+                        {copied ? 'Copied!' : 'Copy'}
+                      </motion.button>
+                    </div>
+                    <p className="text-xs font-medium text-gray-400">
+                      Anyone with this link can join by selecting their participant name.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm font-medium text-gray-400">
+                      Generate an invite link to share with your trip members.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleShareClick}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">link</span>
+                      Generate Invite Link
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }

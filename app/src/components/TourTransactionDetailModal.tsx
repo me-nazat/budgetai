@@ -38,9 +38,14 @@ export default function TourTransactionDetailModal({
     onEdit,
     onDelete,
 }: TourTransactionDetailModalProps) {
+    const [mounted, setMounted] = useState(false);
     const { fmt } = useCurrency();
 
-    if (!transaction) return null;
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!transaction || !mounted) return null;
 
     const isExpense = true; // Tours are expenses currently
     const amountColor = isExpense ? 'text-rose-600' : 'text-emerald-600';
@@ -54,7 +59,7 @@ export default function TourTransactionDetailModal({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="fixed inset-0 bg-black/60 backdrop-blur-md z-40"
+                    className="fixed inset-0 bg-slate-950/80 backdrop-blur-lg z-40"
                 />
 
                 <motion.div

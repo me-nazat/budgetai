@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useHaptics } from '@/hooks/useHaptics';
 import { mutate } from 'swr';
@@ -32,11 +33,16 @@ export default function TourEditModal({
   initialParticipants,
   onSaveSuccess,
 }: TourEditModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState(initialName);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const haptics = useHaptics();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -125,18 +131,18 @@ export default function TourEditModal({
     onClose();
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          <motion.button
-            type="button"
-            aria-label="Close edit tour modal"
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeModal}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-40"
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-lg z-40"
           />
 
           <motion.div
@@ -147,7 +153,7 @@ export default function TourEditModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
             transition={spring}
-            className="relative z-50 max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
+            className="relative z-50 max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border border-white/10 bg-[#0d1117]/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
           >
             <div className="p-5 sm:p-7">
               <div className="mb-6 flex items-start justify-between gap-4">
@@ -255,6 +261,7 @@ export default function TourEditModal({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
