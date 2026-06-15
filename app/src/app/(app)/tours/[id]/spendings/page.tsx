@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, notFound } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getCategoryIcon } from '@/lib/categoryUtils';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import TourAddCostModal from '@/components/TourAddCostModal';
 import TourTransactionDetailModal from '@/components/TourTransactionDetailModal';
 import Skeleton from '@/components/ui/Skeleton';
-import { getApiErrorMessage } from '@/lib/api-errors';
 import { useCurrency } from '@/hooks/useCurrency';
+import useSWR, { mutate } from 'swr';
 
 interface TourParticipant {
   id: number;
@@ -35,6 +35,7 @@ interface Tour {
   id: number;
   name: string;
   createdAt: string | null;
+  createdBy: number;
 }
 
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
@@ -76,57 +77,44 @@ function TourSpendingsSkeleton() {
 }
 
 export default function TourSpendingsPage() {
-  const [tour, setTour] = useState<Tour | null>(null);
-  const [participants, setParticipants] = useState<TourParticipant[]>([]);
-  const [transactions, setTransactions] = useState<TourTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const params = useParams<{ id: string }>();
+  const tourId = params.id;
+
+  const { data: tourData, error: tourError, isLoading: tourLoading, mutate: mutateTour } = useSWR(`/api/bill-splits/tours/${tourId}`);
+  const { data: userData } = useSWR('/api/auth/me');
+
+  const tour = tourData?.tour as Tour | null;
+  const rawParticipants = tourData?.participants as TourParticipant[] | undefined;
+  const rawTransactions = tourData?.transactions as TourTransaction[] | undefined;
+
+  const participants = useMemo(() => rawParticipants ?? [], [rawParticipants]);
+  const transactions = useMemo(() => {
+    const list = rawTransactions ?? [];
+    return [...list].sort((a: TourTransaction, b: TourTransaction) => {
+      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      return dateDiff || Number(b.id) - Number(a.id);
+    });
+  }, [rawTransactions]);
+
+  const currentUserId = userData?.user?.id as number | undefined;
+  const isLoading = tourLoading;
+  const error = tourError ? (tourError.message || 'Unable to load tour spendings.') : (tourData && !tourData.success ? tourData.error : null);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TourTransaction | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [customCategories, setCustomCategories] = useState<{ name: string; color: string; icon: string }[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
-    fetch('/api/categories?type=expense').then(res => res.json()).then(data => {
-      if (data.categories) setCustomCategories(data.categories);
-    }).catch(console.error);
-
-    // Fetch current user ID for default Paid By
-    fetch('/api/auth/me').then(res => res.json()).then(data => {
-      if (data.user?.id) setCurrentUserId(data.user.id);
-    }).catch(console.error);
+    fetch('/api/categories?type=expense')
+      .then(res => res.json())
+      .then(data => {
+        if (data.categories) setCustomCategories(data.categories);
+      })
+      .catch(console.error);
   }, []);
 
   const { fmt } = useCurrency();
-  const params = useParams<{ id: string }>();
-  const tourId = params.id;
-
-  const fetchTourData = useCallback(async () => {
-    if (!tourId) return;
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/bill-splits/tours/${tourId}`, { cache: 'no-store' });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) throw new Error(getApiErrorMessage(data, 'Unable to load tour spendings.'));
-
-      setTour(data.tour);
-      setParticipants(data.participants ?? []);
-      setTransactions([...(data.transactions ?? [])].sort((a: TourTransaction, b: TourTransaction) => {
-        const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
-        return dateDiff || Number(b.id) - Number(a.id);
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load tour spendings.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tourId]);
-
-  useEffect(() => {
-    void fetchTourData();
-  }, [fetchTourData]);
 
   const participantMap = useMemo(() => {
     return new Map(participants.map((participant) => [participant.id, participant.name]));
@@ -148,12 +136,32 @@ export default function TourSpendingsPage() {
     return Array.from(groups.entries());
   }, [transactions]);
 
-
   const handleDeleteTransaction = async (tx: TourTransaction) => {
     if (!confirm('Are you sure you want to delete this cost?')) return;
+
+    // Optimistic cache mutation
+    const updatedTransactions = rawTransactions.filter((t) => t.id !== tx.id);
+    const expectedData = {
+      ...tourData,
+      transactions: updatedTransactions,
+    };
+
     try {
-      const res = await fetch(`/api/bill-splits/tours/${tour?.id}/spendings/${tx.id}`, { method: 'DELETE' });
-      if (res.ok) void fetchTourData();
+      await mutateTour(
+        fetch(`/api/bill-splits/tours/${tour?.id}/spendings/${tx.id}`, { method: 'DELETE' })
+          .then(async (res) => {
+            if (!res.ok) throw new Error('Delete failed');
+            return expectedData;
+          }),
+        {
+          optimisticData: expectedData,
+          rollbackOnError: true,
+          populateCache: true,
+          revalidate: true,
+        }
+      );
+      // Invalidate global transactions cache
+      mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
     } catch (e) {
       console.error(e);
     }
@@ -284,7 +292,7 @@ export default function TourSpendingsPage() {
                       const payerName = transaction.paidByName ?? getParticipantName(payerId);
 
                       return (
-                                                <motion.article
+                        <motion.article
                           layoutId={`tour-transaction-${transaction.id}`}
                           key={transaction.id}
                           onClick={() => { setSelectedTransaction(transaction); setIsDetailModalOpen(true); }}
@@ -350,13 +358,14 @@ export default function TourSpendingsPage() {
         isOpen={isAddModalOpen}
         onClose={() => { setIsAddModalOpen(false); setSelectedTransaction(null); }}
         participants={participants}
-        tourId={tour.id}
+        tourId={Number(tourId)}
         currentUserId={currentUserId}
+        isCreator={tour.createdBy === currentUserId}
         initialTransaction={selectedTransaction}
         onSaveSuccess={() => {
           setIsAddModalOpen(false);
           setSelectedTransaction(null);
-          void fetchTourData();
+          void mutateTour();
         }}
       />
 

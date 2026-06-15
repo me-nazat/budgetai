@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
+import useSWR from 'swr';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { TiltCard } from '@/components/ui/TiltCard';
@@ -36,49 +37,27 @@ interface Tour {
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
 export default function TourDashboard() {
-  const [tour, setTour] = useState<Tour | null>(null);
-  const [participants, setParticipants] = useState<TourParticipant[]>([]);
-  const [transactions, setTransactions] = useState<TourTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const params = useParams<{ id: string }>();
+  const tourId = params.id;
+
+  const { data: tourData, error: tourError, isLoading: tourLoading } = useSWR(`/api/bill-splits/tours/${tourId}`);
+
+  const tour = tourData?.tour as Tour | null;
+  const rawParticipants = tourData?.participants as TourParticipant[] | undefined;
+  const rawTransactions = tourData?.transactions as TourTransaction[] | undefined;
+
+  const participants = useMemo(() => rawParticipants ?? [], [rawParticipants]);
+  const transactions = useMemo(() => rawTransactions ?? [], [rawTransactions]);
+
+  const isLoading = tourLoading;
+  const error = tourError ? (tourError.message || 'Unable to load tour.') : (tourData && !tourData.success ? tourData.error : null);
+
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [copied, setCopied] = useState(false);
   const { fmt } = useCurrency();
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const tourId = params.id;
-
-  useEffect(() => {
-    if (!tourId) return;
-    let isMounted = true;
-
-    fetch(`/api/bill-splits/tours/${tourId}`, { cache: 'no-store' })
-      .then(async (res) => {
-        const data = await res.json().catch(() => null);
-        if (!res.ok || !data?.success) throw new Error(getApiErrorMessage(data, 'Unable to load tour.'));
-        return data;
-      })
-      .then((data) => {
-        if (!isMounted) return;
-        setTour(data.tour);
-        setParticipants(data.participants ?? []);
-        setTransactions(data.transactions ?? []);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Unable to load tour.');
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [tourId]);
 
   const { totalSpent, perPerson, balances, averageCost } = useMemo(() => {
     const total = transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);

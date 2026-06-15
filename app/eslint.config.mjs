@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "public/sw.js",
     "public/sw.js.map",
+    "*.js",
   ]),
   {
     rules: {

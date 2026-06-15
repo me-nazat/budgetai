@@ -4,7 +4,15 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useSta
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { getApiErrorMessage } from '@/lib/api-errors';
-import { getCategoryHex } from '@/lib/categoryUtils';
+import {
+  getCategoryHex,
+  CUSTOM_COLORS,
+  CUSTOM_CATEGORY_ICONS,
+  getColorStyle,
+  getIconCandidates,
+  resolveIcon,
+  resolveColor
+} from '@/lib/categoryUtils';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
@@ -24,6 +32,7 @@ interface TourAddCostModalProps {
   tourId: number;
   onSaveSuccess: () => void;
   currentUserId?: number;
+  isCreator?: boolean;
   initialTransaction?: {
     id: number;
     amount: number;
@@ -46,6 +55,7 @@ export default function TourAddCostModal({
   tourId,
   onSaveSuccess,
   currentUserId,
+  isCreator = false,
   initialTransaction,
 }: TourAddCostModalProps) {
   const [amount, setAmount] = useState('');
@@ -73,6 +83,17 @@ export default function TourAddCostModal({
 
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
+  // Custom Category Creator states
+  const [isCreatingCustom, setIsCreatingCustom] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customIcon, setCustomIcon] = useState(CUSTOM_CATEGORY_ICONS[0]);
+  const [customColor, setCustomColor] = useState(CUSTOM_COLORS[0]);
+  const [generatedIcons, setGeneratedIcons] = useState(CUSTOM_CATEGORY_ICONS.slice(0, 40));
+
+  const isEditing = !!initialTransaction;
+  const transactionId = initialTransaction?.id;
+  const isPaidByLocked = !isCreator && participants.some(p => p.userId === currentUserId);
+
   useEffect(() => {
     if (isOpen) {
       if (initialTransaction) {
@@ -88,14 +109,17 @@ export default function TourAddCostModal({
         setDescription('');
         setCategory('Travel');
         setDate(new Date().toISOString().split('T')[0]);
-        setPaidBy(participants[0]?.id ?? 0);
+        const match = currentUserId ? participants.find(p => p.userId === currentUserId) : null;
+        setPaidBy(match ? match.id : (participants[0]?.id ?? 0));
         setSplitType('equal');
         setIncludeInMainLedger(false);
         setReceipt(null);
         setReceiptPreview(null);
+        setIsCreatingCustom(false);
+        setCustomName('');
       }
     }
-  }, [isOpen, initialTransaction, participants]);
+  }, [isOpen, initialTransaction, participants, currentUserId]);
 
   const allCategories = useMemo(() => {
     const base = [
@@ -107,21 +131,37 @@ export default function TourAddCostModal({
     ];
     const custom = customCategories.map(c => ({
       label: c.name,
-      icon: 'label',
+      icon: c.icon || 'label',
       color: c.color || 'gray'
     }));
     return [...base, ...custom];
   }, [customCategories]);
 
-
+  // Smart auto-resolve custom category icons & colors
+  useEffect(() => {
+    if (customName.trim()) {
+      const suggestedIcon = resolveIcon(customName);
+      const suggestedColor = resolveColor(customName);
+      setCustomIcon(suggestedIcon);
+      setCustomColor(suggestedColor);
+      setGeneratedIcons(getIconCandidates(customName));
+    }
+  }, [customName]);
 
   const amountNumber = useMemo(() => Number.parseFloat(amount), [amount]);
   const canSubmit = Number.isFinite(amountNumber) && amountNumber > 0 && description.trim().length > 0 && paidBy > 0 && !isSubmitting;
 
   useEffect(() => {
     if (!participants.length) return;
-    setPaidBy((current) => participants.some((participant) => participant.id === current) ? current : participants[0].id);
-  }, [participants]);
+    setPaidBy((current) => {
+      if (current && participants.some((p) => p.id === current)) return current;
+      if (currentUserId) {
+        const match = participants.find((p) => p.userId === currentUserId);
+        if (match) return match.id;
+      }
+      return participants[0].id;
+    });
+  }, [participants, currentUserId]);
 
   useEffect(() => {
     if (!receipt) {
@@ -139,13 +179,16 @@ export default function TourAddCostModal({
     setDescription('');
     setCategory('Travel');
     setDate(new Date().toISOString().split('T')[0]);
-    setPaidBy(participants[0]?.id ?? 0);
+    const match = currentUserId ? participants.find(p => p.userId === currentUserId) : null;
+    setPaidBy(match ? match.id : (participants[0]?.id ?? 0));
     setSplitType('equal');
     setIncludeInMainLedger(false);
     setReceipt(null);
     setError(null);
+    setIsCreatingCustom(false);
+    setCustomName('');
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [participants]);
+  }, [participants, currentUserId]);
 
   const closeModal = useCallback(() => {
     haptics.tap();
@@ -175,6 +218,45 @@ export default function TourAddCostModal({
     chooseReceipt(event.dataTransfer.files?.[0]);
   };
 
+  const handleSaveCustomCategory = async () => {
+    const trimmedName = customName.trim().replace(/\s+/g, ' ');
+    if (!trimmedName) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: trimmedName,
+          type: 'expense',
+          icon: customIcon,
+          color: customColor
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await mutate((key) => typeof key === 'string' && key.startsWith('/api/categories'));
+        setCategory(data.name || trimmedName);
+        setIsCreatingCustom(false);
+        setCustomName('');
+      } else if (data.error === 'Category already exists') {
+        await fetch('/api/categories', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmedName, type: 'expense', icon: customIcon, color: customColor })
+        });
+        await mutate((key) => typeof key === 'string' && key.startsWith('/api/categories'));
+        setCategory(trimmedName);
+        setIsCreatingCustom(false);
+        setCustomName('');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!canSubmit) return;
@@ -182,17 +264,58 @@ export default function TourAddCostModal({
     setIsSubmitting(true);
     setError(null);
 
+    const amountNum = amountNumber;
+    const isEdit = isEditing;
+    const txId = transactionId;
+
+    // Prepare optimistic payload
+    const optimisticTx = {
+      id: isEdit ? txId! : Date.now(),
+      amount: amountNum,
+      category: category.trim() || 'Travel',
+      description: description.trim(),
+      date,
+      paidByParticipantId: paidBy,
+      paidBy,
+      paidByName: participants.find(p => p.id === paidBy)?.name || 'Unknown',
+      splitType,
+      createdAt: new Date().toISOString(),
+    };
+
+    const swrKey = `/api/bill-splits/tours/${tourId}`;
+
+    // Mutate SWR optimistically
+    mutate(
+      swrKey,
+      (currentData: any) => {
+        if (!currentData?.transactions) return currentData;
+        const currentTxs = currentData.transactions;
+        if (isEdit) {
+          return {
+            ...currentData,
+            transactions: currentTxs.map((t: any) => t.id === txId ? { ...t, ...optimisticTx } : t),
+          };
+        } else {
+          return {
+            ...currentData,
+            transactions: [optimisticTx, ...currentTxs],
+          };
+        }
+      },
+      { revalidate: false }
+    );
+
     try {
-      const url = initialTransaction 
-        ? `/api/bill-splits/tours/${tourId}/spendings/${initialTransaction.id}`
+      const url = isEdit 
+        ? `/api/bill-splits/tours/${tourId}/spendings/${txId}`
         : `/api/bill-splits/tours/${tourId}/spendings`;
-      const method = initialTransaction ? 'PUT' : 'POST';
+      const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: amountNumber,
+          amount: amountNum,
           description: description.trim(),
           category: category.trim() || 'Travel',
           date,
@@ -218,36 +341,27 @@ export default function TourAddCostModal({
         });
       }
 
-      // Mutate local caches to prevent duplicate or stale data display
-      // Update the specific item in the local cache to prevent duplicate
-      if (initialTransaction) {
-        mutate(
-          (key) => typeof key === 'string' && key.startsWith(`/api/bill-splits/tours/${tourId}`),
-          (currentData: any) => {
-            if (!currentData?.transactions) return currentData;
+      // Mutate SWR again with actual server response data
+      mutate(
+        swrKey,
+        (currentData: any) => {
+          if (!currentData?.transactions) return currentData;
+          const currentTxs = currentData.transactions;
+          if (isEdit) {
             return {
               ...currentData,
-              transactions: currentData.transactions.map((tx: any) =>
-                tx.id === initialTransaction.id ? { ...tx, ...data.transaction } : tx
-              )
+              transactions: currentTxs.map((t: any) => t.id === txId ? data.transaction : t),
             };
-          },
-          { revalidate: true }
-        );
-      } else {
-        mutate(
-          (key) => typeof key === 'string' && key.startsWith(`/api/bill-splits/tours/${tourId}`),
-          (currentData: any) => {
-            if (!currentData?.transactions) return currentData;
+          } else {
             return {
               ...currentData,
-              transactions: [data.transaction, ...currentData.transactions]
+              transactions: currentTxs.map((t: any) => t.id === optimisticTx.id ? data.transaction : t),
             };
-          },
-          { revalidate: true }
-        );
-      }
-      
+          }
+        },
+        { revalidate: true }
+      );
+
       mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
 
       haptics.success();
@@ -257,10 +371,14 @@ export default function TourAddCostModal({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add this tour cost.');
       haptics.error();
+      // Rollback SWR
+      mutate(swrKey);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const symbol = CURRENCIES[currency]?.symbol ?? '$';
 
   return (
     <AnimatePresence>
@@ -273,7 +391,7 @@ export default function TourAddCostModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeModal}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
           />
 
           <motion.div
@@ -284,260 +402,363 @@ export default function TourAddCostModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 55, scale: 0.98 }}
             transition={spring}
-            className="relative z-[100] max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-2xl sm:rounded-[2rem]"
+            className="relative z-[100] max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-2xl sm:rounded-[2rem] ring-1 ring-white/10"
           >
             <div className="p-5 sm:p-6">
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Tour Ledger</p>
-                  <h2 id="tour-add-cost-title" className="mt-1 text-2xl font-black tracking-tight text-white">{initialTransaction ? 'Save Changes' : 'Add Cost'}</h2>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+                    {isCreatingCustom ? 'Custom Category' : 'Tour Ledger'}
+                  </p>
+                  <h2 id="tour-add-cost-title" className="mt-1 text-2xl font-black tracking-tight text-white">
+                    {isCreatingCustom ? 'Create New Category' : isEditing ? 'Save Changes' : 'Add Cost'}
+                  </h2>
                 </div>
                 <motion.button
                   type="button"
-                  onClick={closeModal}
+                  onClick={() => isCreatingCustom ? setIsCreatingCustom(false) : closeModal()}
                   whileTap={{ scale: 0.92 }}
                   transition={spring}
-                  aria-label="Close"
+                  aria-label={isCreatingCustom ? 'Back' : 'Close'}
                   className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
                 >
-                  <span className="material-symbols-outlined text-[20px]">close</span>
+                  <span className="material-symbols-outlined text-[20px]">
+                    {isCreatingCustom ? 'arrow_back' : 'close'}
+                  </span>
                 </motion.button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.2fr_0.8fr]">
-                  <div>
-                    <label htmlFor="tour-cost-amount" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost</label>
-                    <div className="relative mt-1">
-                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">{CURRENCIES[currency].symbol}</span>
+              {isCreatingCustom ? (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="space-y-2">
+                    <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category Name</label>
+                    <div className="relative">
                       <input
-                        id="tour-cost-amount"
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.01"
-                        value={amount}
-                        onChange={(event) => setAmount(event.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-4 pl-9 pr-4 font-mono text-2xl font-black tabular-nums text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                        placeholder="0.00"
+                        type="text"
+                        value={customName}
+                        onChange={e => setCustomName(e.target.value)}
+                        placeholder="e.g. Coffee, Gym, Pets"
+                        className="w-full pl-12 pr-4 py-4 text-base font-bold text-white bg-white/[0.04] border border-white/10 rounded-2xl outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                        autoFocus
+                      />
+                      <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${customName.trim() ? getColorStyle(customColor).bg : 'bg-white/[0.08]'}`}>
+                        <span className="material-symbols-outlined text-white text-[16px]">
+                          {customName.trim() ? customIcon : 'edit'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Color</label>
+                    <div className="flex flex-wrap gap-2.5">
+                      {CUSTOM_COLORS.map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setCustomColor(color)}
+                          className={`w-8 h-8 rounded-full ${getColorStyle(color).bg} flex items-center justify-center transition-all ${
+                            customColor === color ? 'ring-2 ring-offset-2 ring-offset-black ring-white scale-110' : 'hover:scale-110'
+                          }`}
+                        >
+                          {customColor === color && <span className="material-symbols-outlined text-white text-[16px]">check</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Icon</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const candidates = getIconCandidates(customName || 'Travel');
+                          setGeneratedIcons(candidates);
+                          setCustomIcon(candidates[0]);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
+                        Generate icon
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-6 gap-2.5 max-h-40 overflow-y-auto p-1 custom-scrollbar">
+                      {generatedIcons.map(icon => (
+                        <button
+                          key={icon}
+                          type="button"
+                          onClick={() => setCustomIcon(icon)}
+                          className={`aspect-square rounded-xl flex items-center justify-center text-xl transition-all ${
+                            customIcon === icon 
+                              ? `${getColorStyle(customColor).bg} text-white shadow-md scale-110`
+                              : 'bg-white/[0.04] text-gray-400 hover:bg-white/[0.08]'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined">{icon}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <motion.button
+                    type="button"
+                    onClick={handleSaveCustomCategory}
+                    disabled={isSubmitting || !customName.trim()}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {isSubmitting ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      'Create Category'
+                    )}
+                  </motion.button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.2fr_0.8fr]">
+                    <div>
+                      <label htmlFor="tour-cost-amount" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost</label>
+                      <div className="relative mt-1">
+                        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">{symbol}</span>
+                        <input
+                          id="tour-cost-amount"
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.01"
+                          value={amount}
+                          onChange={(event) => setAmount(event.target.value)}
+                          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-4 pr-4 font-mono text-2xl font-black tabular-nums text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                          style={{ paddingLeft: `${symbol.length * 0.75 + 1.5}rem` }}
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="tour-cost-date" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Date</label>
+                      <input
+                        id="tour-cost-date"
+                        type="date"
+                        value={date}
+                        onChange={(event) => setDate(event.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-primary focus:ring-4 focus:ring-primary/10"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="tour-cost-date" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Date</label>
-                    <input
-                      id="tour-cost-date"
-                      type="date"
-                      value={date}
-                      onChange={(event) => setDate(event.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    <label htmlFor="tour-cost-description" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description</label>
+                    <textarea
+                      id="tour-cost-description"
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      className="mt-1 min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      placeholder="Dinner at the restaurant, ferry tickets, hotel deposit..."
                       required
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label htmlFor="tour-cost-description" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description</label>
-                  <textarea
-                    id="tour-cost-description"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    className="mt-1 min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="Dinner at the restaurant, ferry tickets, hotel deposit..."
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div>
-                    <label htmlFor="tour-cost-category" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
-                    <div className="relative">
-                      <input
-                        id="tour-cost-category"
-                        value={category}
-                        onChange={(event) => setCategory(event.target.value)}
-                        onFocus={() => setShowCategoryDropdown(true)}
-                        onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
-                        className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                        placeholder="Travel"
-                        autoComplete="off"
-                      />
-                      {showCategoryDropdown && (
-                        <div className="absolute z-10 mt-2 max-h-48 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#111827] shadow-xl custom-scrollbar">
-                           {allCategories.map((c) => (
-                              <button
-                                key={c.label}
-                                type="button"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => { setCategory(c.label); setShowCategoryDropdown(false); }}
-                                className="flex w-full items-center gap-3 px-4 py-3 hover:bg-white/5 text-left transition-colors"
-                              >
-                                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: getCategoryHex(c.label, customCategories) }} />
-                                <span className="text-sm font-semibold text-gray-200">{c.label}</span>
-                              </button>
-                           ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="tour-cost-paid-by" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Paid By</label>
-                    <select
-                      id="tour-cost-paid-by"
-                      value={paidBy}
-                      onChange={(event) => setPaidBy(Number(event.target.value))}
-                      className="mt-1 w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    >
-                      {participants.map((participant) => (
-                        <option key={participant.id} value={participant.id}>{participant.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="tour-cost-split" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Split</label>
-                    <select
-                      id="tour-cost-split"
-                      value={splitType}
-                      onChange={(event) => setSplitType(event.target.value as SplitType)}
-                      className="mt-1 w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    >
-                      <option value="equal">Equal</option>
-                      <option value="percentage">Percentage</option>
-                      <option value="exact">Exact</option>
-                    </select>
-                  </div>
-                </div>
-
-                                {!initialTransaction && (
-                <div>
-                  <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05] transition-colors">
-
-                    <input
-                      type="checkbox"
-                      checked={includeInMainLedger}
-                      onChange={(e) => setIncludeInMainLedger(e.target.checked)}
-                      className="size-5 rounded-md border border-white/20 bg-[#111827] text-primary accent-primary outline-none focus:ring-2 focus:ring-primary/50"
-                    />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                      <p className="text-sm font-bold text-white">Add to main transactions</p>
-                      <p className="mt-0.5 text-xs text-gray-400 font-medium">Link this cost to your global dashboard & transactions</p>
-                    </div>
-                  </label>
-                </div>
-                )}
-
-                
-                {!initialTransaction ? (
-                <div>
-                  <label className="mb-2 ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Receipt Proof</label>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    className={`w-full rounded-2xl border border-dashed p-4 text-left transition-colors ${
-                      isDragging
-                        ? 'border-primary/70 bg-primary/10'
-                        : 'border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    {receipt ? (
-                      <div className="flex items-center gap-3">
-                        {receiptPreview ? (
-                          <Image
-                            src={receiptPreview}
-                            alt="Receipt preview"
-                            width={56}
-                            height={56}
-                            unoptimized
-                            className="size-14 shrink-0 rounded-2xl border border-white/10 object-cover"
-                          />
-                        ) : (
-                          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                            <span className="material-symbols-outlined text-emerald-400">image</span>
+                      <label htmlFor="tour-cost-category" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
+                      <div className="relative">
+                        <input
+                          id="tour-cost-category"
+                          value={category}
+                          onChange={(event) => setCategory(event.target.value)}
+                          onFocus={() => setShowCategoryDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
+                          className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                          placeholder="Travel"
+                          autoComplete="off"
+                        />
+                        {showCategoryDropdown && (
+                          <div className="absolute z-[110] mt-2 max-h-56 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#111827] shadow-2xl p-1 flex flex-col gap-0.5 custom-scrollbar">
+                             {allCategories.map((c) => (
+                                <button
+                                  key={c.label}
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => { setCategory(c.label); setShowCategoryDropdown(false); }}
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-white/5 rounded-lg text-left transition-colors"
+                                >
+                                  <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: getCategoryHex(c.label, customCategories) }} />
+                                  <span className="text-sm font-semibold text-gray-200 truncate">{c.label}</span>
+                                </button>
+                             ))}
+                             <div className="h-px bg-white/10 my-1" />
+                             <button
+                               type="button"
+                               onMouseDown={(e) => e.preventDefault()}
+                               onClick={() => { setIsCreatingCustom(true); setShowCategoryDropdown(false); }}
+                               className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-primary/20 text-primary rounded-lg text-left transition-colors font-bold"
+                             >
+                               <span className="material-symbols-outlined text-[18px]">add</span>
+                               <span className="text-sm">Custom...</span>
+                             </button>
                           </div>
                         )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-black text-white">{receipt.name}</p>
-                          <p className="mt-1 text-xs font-semibold text-gray-500">Receipt proof attached locally</p>
-                        </div>
-                        <span className="material-symbols-outlined text-emerald-400">check_circle</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400">
-                          <span className="material-symbols-outlined">cloud_upload</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-gray-200">Drop receipt image or browse</p>
-                          <p className="mt-1 text-xs font-semibold text-gray-500">JPG, PNG, or WebP proof for this cost</p>
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                </div>
-                ) : (
-                  <div className="p-4 rounded-2xl border border-white/10 bg-white/[0.03]">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-primary">attachment</span>
-                      <div>
-                        <p className="text-sm font-bold text-white">Manage Attachments</p>
-                        <p className="mt-0.5 text-xs font-medium text-gray-400">Save your edits and click on the transaction card to manage multiple attachments.</p>
                       </div>
                     </div>
+
+                    <div>
+                      <label htmlFor="tour-cost-paid-by" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Paid By</label>
+                      <select
+                        id="tour-cost-paid-by"
+                        value={paidBy}
+                        onChange={(event) => setPaidBy(Number(event.target.value))}
+                        disabled={isPaidByLocked}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-60"
+                      >
+                        {participants.map((participant) => (
+                          <option key={participant.id} value={participant.id}>{participant.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="tour-cost-split" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Split</label>
+                      <select
+                        id="tour-cost-split"
+                        value={splitType}
+                        onChange={(event) => setSplitType(event.target.value as SplitType)}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      >
+                        <option value="equal">Equal</option>
+                        <option value="percentage">Percentage</option>
+                        <option value="exact">Exact</option>
+                      </select>
+                    </div>
                   </div>
-                )}
 
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={spring}
-                      className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-300"
-                    >
-                      {error}
-                    </motion.div>
+                  {!isEditing && (
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05] transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={includeInMainLedger}
+                          onChange={(e) => setIncludeInMainLedger(e.target.checked)}
+                          className="size-5 rounded-md border border-white/20 bg-[#111827] text-primary accent-primary outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                        <div>
+                          <p className="text-sm font-bold text-white">Add to main transactions</p>
+                          <p className="mt-0.5 text-xs text-gray-400 font-medium">Link this cost to your global dashboard & transactions</p>
+                        </div>
+                      </label>
+                    </div>
                   )}
-                </AnimatePresence>
 
-                <motion.button
-                  type="submit"
-                  disabled={!canSubmit}
-                  whileTap={canSubmit ? { scale: 0.97 } : undefined}
-                  transition={spring}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="size-5 rounded-full border-2 border-white/35 border-t-white animate-spin" />
-                      Saving...
-                    </>
+                  {!isEditing ? (
+                    <div>
+                      <label className="mb-2 ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Receipt Proof</label>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setIsDragging(true);
+                        }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={handleDrop}
+                        className={`w-full rounded-2xl border border-dashed p-4 text-left transition-colors ${
+                          isDragging
+                            ? 'border-primary/70 bg-primary/10'
+                            : 'border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05]'
+                        }`}
+                      >
+                        {receipt ? (
+                          <div className="flex items-center gap-3">
+                            {receiptPreview ? (
+                              <Image
+                                src={receiptPreview}
+                                alt="Receipt preview"
+                                width={56}
+                                height={56}
+                                unoptimized
+                                className="size-14 shrink-0 rounded-2xl border border-white/10 object-cover"
+                              />
+                            ) : (
+                              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                                <span className="material-symbols-outlined text-emerald-400">image</span>
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-black text-white">{receipt.name}</p>
+                              <p className="mt-1 text-xs font-semibold text-gray-500">Receipt proof attached locally</p>
+                            </div>
+                            <span className="material-symbols-outlined text-emerald-400">check_circle</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400">
+                              <span className="material-symbols-outlined">cloud_upload</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-gray-200">Drop receipt image or browse</p>
+                              <p className="mt-1 text-xs font-semibold text-gray-500">JPG, PNG, or WebP proof for this cost</p>
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    </div>
                   ) : (
-                    <>
-                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">{initialTransaction ? 'save' : 'add_card'}</span>
-                      {initialTransaction ? 'Save Changes' : 'Add Cost'}
-                    </>
+                    <div className="p-4 rounded-2xl border border-white/10 bg-white/[0.03]">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-primary">attachment</span>
+                        <div>
+                          <p className="text-sm font-bold text-white">Manage Attachments</p>
+                          <p className="mt-0.5 text-xs font-medium text-gray-400">Save your edits and click on the transaction card to manage multiple attachments.</p>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </motion.button>
-              </form>
+
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={spring}
+                        className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-300"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <motion.button
+                    type="submit"
+                    disabled={!canSubmit}
+                    whileTap={canSubmit ? { scale: 0.97 } : undefined}
+                    transition={spring}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="size-5 rounded-full border-2 border-white/35 border-t-white animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">{isEditing ? 'save' : 'add_card'}</span>
+                        {isEditing ? 'Save Changes' : 'Add Cost'}
+                      </>
+                    )}
+                  </motion.button>
+                </form>
+              )}
             </div>
           </motion.div>
         </div>

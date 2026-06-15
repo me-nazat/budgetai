@@ -31,11 +31,13 @@ function buildFolderLabel(tourName: string, tx: { category: string; description?
 
 async function getAuthorizedTourSpending(spendingId: number, tourId: number, userId: number) {
   // First verify user is the creator of the tour or a participant.
-  // Actually, the simplest check is just to see if the user created the tour (for now) or is a participant.
-  // The tour_controller usually checks created_by = userId.
   const tour = await queryOne<{ id: number; name: string }>(
-    'SELECT id, name FROM tours WHERE id = ? AND created_by = ?',
-    [tourId, userId]
+    `SELECT DISTINCT t.id, t.name
+     FROM tours t
+     LEFT JOIN tour_participants tp ON tp.tour_id = t.id
+     WHERE t.id = ?
+       AND (t.created_by = ? OR tp.user_id = ?)`,
+    [tourId, userId, userId]
   );
 
   if (!tour) return null;
