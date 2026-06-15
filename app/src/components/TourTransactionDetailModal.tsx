@@ -16,7 +16,7 @@ interface TourTransaction {
     description: string;
     date: string;
     paidByParticipantId?: number;
-    paidBy?: number;
+    paidBy: number;
     splitType: string;
     paidByName?: string | null;
 }
@@ -48,7 +48,7 @@ export default function TourTransactionDetailModal({
 
     return createPortal(
         <AnimatePresence>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -62,7 +62,7 @@ export default function TourTransactionDetailModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                     transition={spring}
-                    className="relative w-full max-w-4xl bg-background/95 backdrop-blur-2xl z-[100] shadow-2xl rounded-[2rem] overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 max-h-[90vh] ring-1 ring-white/10"
+                    className="relative w-full max-w-4xl bg-background/95 backdrop-blur-xl z-50 shadow-2xl rounded-[2rem] overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 max-h-[90vh] ring-1 ring-white/10"
                 >
                     {/* Left Column: Details */}
                     <div className="flex-1 p-6 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 overflow-y-auto scrollbar-thin">

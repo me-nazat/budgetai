@@ -9,14 +9,14 @@ type RouteContextWithId = {
 
 type DbRow = Record<string, unknown>;
 
-interface TourParticipantResponse {
+export interface TourParticipantResponse {
   id: number;
   tourId: number;
   name: string;
   userId: number | null;
 }
 
-interface TourTransactionResponse {
+export interface TourTransactionResponse {
   id: number;
   amount: number;
   category: string;
@@ -29,15 +29,29 @@ interface TourTransactionResponse {
   splitType: 'equal' | 'percentage' | 'exact';
   createdAt: string | null;
 }
+interface TourParticipantWithBalance extends TourParticipantResponse {
+  paid: number;
+  balance: number;
+}
+
+interface TourMetrics {
+  totalSpent: number;
+  transactionCount: number;
+  averageCost: number;
+}
 
 interface TourResponse {
   id: number;
   name: string;
   createdAt: string | null;
   createdBy: number;
-  participants: TourParticipantResponse[];
+  participants: TourParticipantResponse[] | TourParticipantWithBalance[];
   transactions?: TourTransactionResponse[];
-  totalSpent?: number;
+  totalSpent: number;
+  perPerson: number;
+  averageCost: number;
+  transactionCount: number;
+  balances?: TourParticipantWithBalance[];
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -78,14 +92,27 @@ function normalizeTransaction(row: DbRow): TourTransactionResponse {
   };
 }
 
-function normalizeTour(row: DbRow, participants: TourParticipantResponse[], totalSpent = 0): TourResponse {
+function normalizeTour(
+  row: DbRow, 
+  participants: TourParticipantResponse[], 
+  metrics: TourMetrics,
+  balances: TourParticipantWithBalance[],
+  transactions?: TourTransactionResponse[]
+): TourResponse {
+  const perPerson = participants.length > 0 ? metrics.totalSpent / participants.length : 0;
+  
   return {
     id: toNumber(row.id),
     name: String(row.name ?? ''),
     createdAt: row.created_at ? String(row.created_at) : null,
     createdBy: toNumber(row.created_by ?? row.user_id),
     participants,
-    totalSpent,
+    totalSpent: metrics.totalSpent,
+    perPerson,
+    averageCost: metrics.averageCost,
+    transactionCount: metrics.transactionCount,
+    balances,
+    ...(transactions ? { transactions } : {}),
   };
 }
 
@@ -132,15 +159,39 @@ async function getTourTransactions(userId: number, tourId: number): Promise<Tour
   return rows.map(normalizeTransaction);
 }
 
-async function getTourTotal(userId: number, tourId: number): Promise<number> {
-  const row = await queryOne<{ total: number }>(
-    `SELECT COALESCE(SUM(amount), 0) AS total
+async function getTourMetrics(tourId: number): Promise<TourMetrics> {
+  const row = await queryOne<{ total: number; count: number; avg: number }>(
+    `SELECT COALESCE(SUM(amount), 0) AS total,
+            COUNT(id) AS count,
+            COALESCE(AVG(amount), 0) AS avg
      FROM tour_spendings
      WHERE tour_id = ?`,
     [tourId]
   );
 
-  return toNumber(row?.total);
+  return {
+    totalSpent: toNumber(row?.total),
+    transactionCount: toNumber(row?.count),
+    averageCost: toNumber(row?.avg),
+  };
+}
+
+async function getTourBalances(tourId: number, participants: TourParticipantResponse[], totalSpent: number): Promise<TourParticipantWithBalance[]> {
+  const rows = await queryAll<{ participant_id: number; paid: number }>(
+    `SELECT paid_by_participant_id as participant_id, COALESCE(SUM(amount), 0) as paid
+     FROM tour_spendings
+     WHERE tour_id = ?
+     GROUP BY paid_by_participant_id`,
+    [tourId]
+  );
+  
+  const paidMap = new Map(rows.map(r => [r.participant_id, toNumber(r.paid)]));
+  const perPerson = participants.length > 0 ? totalSpent / participants.length : 0;
+  
+  return participants.map(p => {
+    const paid = paidMap.get(p.id) ?? 0;
+    return { ...p, paid, balance: paid - perPerson };
+  });
 }
 
 async function getTourPayload(
@@ -160,16 +211,15 @@ async function getTourPayload(
 
   if (!tour) return null;
 
-  const [participants, totalSpent, transactions] = await Promise.all([
+  const [participants, metrics, transactions] = await Promise.all([
     getParticipants(tourId),
-    getTourTotal(userId, tourId),
+    getTourMetrics(tourId),
     includeTransactions ? getTourTransactions(userId, tourId) : Promise.resolve(undefined),
   ]);
 
-  return {
-    ...normalizeTour(tour, participants, totalSpent),
-    ...(transactions ? { transactions } : {}),
-  };
+  const balances = await getTourBalances(tourId, participants, metrics.totalSpent);
+
+  return normalizeTour(tour, participants, metrics, balances, transactions);
 }
 
 export async function listTours(_request: NextRequest, userId: number) {
@@ -186,12 +236,14 @@ export async function listTours(_request: NextRequest, userId: number) {
   const hydratedTours = await Promise.all(
     tours.map(async (tour) => {
       const tourId = toNumber(tour.id);
-      const [participants, totalSpent] = await Promise.all([
+      const [participants, metrics] = await Promise.all([
         getParticipants(tourId),
-        getTourTotal(userId, tourId),
+        getTourMetrics(tourId),
       ]);
 
-      return normalizeTour(tour, participants, totalSpent);
+      const balances = await getTourBalances(tourId, participants, metrics.totalSpent);
+
+      return normalizeTour(tour, participants, metrics, balances);
     })
   );
 
@@ -259,7 +311,11 @@ export async function getTour(
     },
     participants: tour.participants,
     transactions: tour.transactions ?? [],
-    totalSpent: tour.totalSpent ?? 0,
+    totalSpent: tour.totalSpent,
+    perPerson: tour.perPerson,
+    averageCost: tour.averageCost,
+    transactionCount: tour.transactionCount,
+    balances: tour.balances ?? [],
   });
 }
 

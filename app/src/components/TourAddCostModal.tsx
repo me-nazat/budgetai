@@ -40,7 +40,7 @@ interface TourAddCostModalProps {
     category: string;
     date: string;
     paidByParticipantId?: number;
-    paidBy?: number;
+    paidBy: number;
     splitType: string;
   } | null;
 }
@@ -383,7 +383,7 @@ export default function TourAddCostModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-4 sm:items-center sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 sm:items-center sm:p-6">
           <motion.button
             type="button"
             aria-label="Close add cost modal"
@@ -391,7 +391,7 @@ export default function TourAddCostModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeModal}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
           />
 
           <motion.div
@@ -402,7 +402,7 @@ export default function TourAddCostModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 55, scale: 0.98 }}
             transition={spring}
-            className="relative z-[100] max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-2xl sm:rounded-[2rem] ring-1 ring-white/10"
+            className="relative z-50 max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
           >
             <div className="p-5 sm:p-6">
               <div className="mb-6 flex items-center justify-between gap-4">
