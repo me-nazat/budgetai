@@ -4,11 +4,11 @@
 
 @theme inline {
   /* Extreme Dark Mode (OLED) */
-  --color-bg-dark: #000000;
-  --color-surface-dark: #0A0A0C;
-  --color-surface-dark-2: #111114;
-  --color-surface-hover: #18181C;
-  --color-surface-border: rgba(255, 255, 255, 0.05);
+  --color-bg-dark: #0A0E1B;
+  --color-surface-dark: #12182B;
+  --color-surface-dark-2: #1A2238;
+  --color-surface-hover: #1E293B;
+  --color-surface-border: rgba(255, 255, 255, 0.08);
   
   /* Wealth AI Accents */
   --color-primary: #136dec;
@@ -30,9 +30,9 @@
   /* Landing page colors */
   --color-lp-cyan: #5b8ff9;
   --color-lp-cyan-dark: #136dec;
-  --color-lp-bg-dark: #000000;
-  --color-lp-card-dark: #0A0A0C;
-  --color-lp-navy: #111114;
+  --color-lp-bg-dark: #0A0E1B;
+  --color-lp-card-dark: #12182B;
+  --color-lp-navy: #1A2238;
   --color-lp-navy-light: #f0f2f8;
 
   /* Premium gradient palette */
@@ -67,7 +67,7 @@
   }
 
   :where(.dark) body {
-    background: #0d1117;
+    background: #0A0E1B;
   }
 
   /* Custom scrollbar — Dark */
@@ -374,7 +374,7 @@
 
 /* Glass Card for Landing */
 .lp-glass-card {
-  background: rgba(10, 10, 10, 0.85);
+  background: rgba(14, 20, 38, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -390,7 +390,7 @@
 
 .lp-glass-card:hover {
   border-color: rgba(19, 109, 236, 0.3);
-  background: rgba(15, 15, 15, 0.95);
+  background: rgba(20, 28, 50, 0.95);
   transform: translateY(-4px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
@@ -51,6 +51,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
     const [attachments, setAttachments] = useState<File[]>([]);
     const [qaScanningId, setQaScanningId] = useState<number | null>(null);
     const invalidateFinancialData = useInvalidateFinancialData();
+    const isSavingRef = useRef(false);
     
     // Custom Categories State
     const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -161,7 +162,8 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
 
     const handleSaveCustomCategory = async () => {
         const trimmedName = customName.trim().replace(/\s+/g, ' ');
-        if (!trimmedName) return;
+        if (!trimmedName || isSavingRef.current) return;
+        isSavingRef.current = true;
         setSubmitting(true);
         try {
             const res = await fetch('/api/categories', {
@@ -194,6 +196,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
         } catch (e) {
             console.error(e);
         } finally {
+            isSavingRef.current = false;
             setSubmitting(false);
         }
     };
@@ -233,6 +236,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
     };
 
     const handleSave = async () => {
+        if (isSavingRef.current) return;
         const parsed = parseFloat(amount);
         if (!description.trim()) {
             setDescriptionError(true);
@@ -240,6 +244,8 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
         }
         setDescriptionError(false);
         if (!amount || isNaN(parsed) || parsed <= 0 || !category) return;
+        
+        isSavingRef.current = true;
         setSubmitting(true);
 
         const payload = {
@@ -290,6 +296,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
         } catch {
             alert('Failed to save. Please try again.');
         } finally {
+            isSavingRef.current = false;
             setSubmitting(false);
         }
     };
@@ -317,7 +324,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
 
             {/* Modal Sheet */}
             <div
-                className="relative w-full lg:max-w-xl max-h-[90dvh] card-premium-v2 rounded-t-[2rem] lg:rounded-[2rem] overflow-y-auto shadow-2xl shadow-primary/20 border border-white/20 dark:border-white/10"
+                className="relative w-full lg:max-w-xl max-h-[85dvh] lg:max-h-[90dvh] card-premium-v2 rounded-t-[2rem] lg:rounded-[2rem] overflow-y-auto overscroll-contain shadow-2xl shadow-primary/20 border border-white/20 dark:border-white/10"
                 style={{ animation: 'sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}
             >
                 {/* Handle bar (Mobile Only) */}
@@ -325,7 +332,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                     <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
                 </div>
 
-                <div className="px-6 pb-8 pt-2">
+                <div className="px-6 pb-12 lg:pb-8 pt-2">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">

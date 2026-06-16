@@ -107,18 +107,18 @@ function LoginForm() {
             <div className="flex w-full z-10 relative">
                 
                 {/* Left Panel - Testimonial/Feature Carousel */}
-                <div className="hidden lg:flex flex-col justify-between w-1/2 p-16 text-white">
+                <div className="hidden lg:flex flex-col justify-between w-1/2 p-16 text-gray-900 dark:text-white">
                     <div className="flex items-center gap-3 animate-fade-in-up">
                         <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20">
                             <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={32} height={32} className="object-contain filter invert-0" />
                         </div>
-                        <span className="text-2xl font-bold tracking-tight">Wealth AI</span>
+                        <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Wealth AI</span>
                     </div>
 
                     <div className="flex-1 flex flex-col justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                        <h1 className="text-5xl font-black leading-tight mb-8">
+                        <h1 className="text-5xl font-black leading-tight mb-8 text-gray-900 dark:text-white">
                             Master your money,<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">effortlessly.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600 dark:from-emerald-400 dark:to-cyan-400">effortlessly.</span>
                         </h1>
                         
                         {/* Carousel */}
@@ -128,14 +128,14 @@ function LoginForm() {
                                     key={idx}
                                     className={`absolute top-0 left-0 transition-all duration-700 ${idx === activeTestimonial ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
                                 >
-                                    <p className="text-xl text-gray-300 italic mb-4">"{test.quote}"</p>
+                                    <p className="text-xl text-gray-700 dark:text-gray-300 italic mb-4">"{test.quote}"</p>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-sm">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-sm text-white">
                                             {test.author.charAt(0)}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-white">{test.author}</p>
-                                            <p className="text-sm text-gray-400">{test.role}</p>
+                                            <p className="font-bold text-gray-900 dark:text-white">{test.author}</p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">{test.role}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -272,7 +272,7 @@ function LoginForm() {
 export default function LoginPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-[#0b0f19]">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0A0E1B]">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
         }>

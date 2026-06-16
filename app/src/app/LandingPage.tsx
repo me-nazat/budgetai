@@ -589,7 +589,7 @@ function FeaturesSection() {
     ];
 
     return (
-        <section id="features" className="py-32 relative">
+        <section id="features" className="py-20 relative">
             <motion.div 
                 initial="hidden"
                 whileInView="show"
@@ -619,7 +619,7 @@ function FeaturesSection() {
                                 <span className="material-symbols-outlined text-3xl">{f.icon}</span>
                             </div>
                             <h3 className="text-2xl font-medium text-gray-900 dark:text-white mb-4" style={{ fontFamily: 'var(--font-playfair), serif' }}>{f.title}</h3>
-                            <p className="text-gray-500 dark:text-slate-400 leading-relaxed font-light">{f.description}</p>
+                            <p className="text-gray-500 dark:text-gray-200 leading-relaxed font-light">{f.description}</p>
                         </motion.div>
                     ))}
                 </div>
@@ -630,36 +630,78 @@ function FeaturesSection() {
 
 function DataVizSection() {
     return (
-        <section id="how-it-works" className="py-32 relative">
-            <div className="lp-section-divider mb-32" />
+        <section id="how-it-works" className="py-16 relative">
+            <div className="lp-section-divider mb-16" />
             <motion.div 
                 initial="hidden"
                 whileInView="show"
-                viewport={{ once: true, margin: "-100px" }}
+                viewport={{ once: true, margin: "-50px" }}
                 variants={staggerContainer}
                 className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                    <div className="space-y-6">
-                        <motion.div variants={fadeInUp} whileHover={{ x: 10 }} className="lp-glass-card p-6 rounded-2xl flex items-center gap-5 cursor-pointer transition-all">
-                            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-blue-500/10 dark:from-lp-cyan/20 dark:to-blue-500/10 flex items-center justify-center flex-shrink-0">
-                                <span className="material-symbols-outlined text-3xl text-primary dark:text-lp-cyan">area_chart</span>
-                            </div>
+                    {/* High-Fidelity Data Visualization Component */}
+                    <motion.div variants={fadeInUp} className="relative w-full h-[400px] lp-glass-card rounded-3xl p-6 overflow-hidden flex flex-col justify-between border border-gray-200 dark:border-white/10 shadow-2xl">
+                        <div className="flex justify-between items-center mb-4">
                             <div>
-                                <h4 className="font-bold text-gray-900 dark:text-white text-lg" style={{ fontFamily: 'var(--font-playfair), serif' }}>Asset Growth</h4>
-                                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Track assets and liabilities over time with precision and historical data.</p>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Total Net Worth</h4>
+                                <div className="text-3xl font-medium text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-playfair), serif' }}>$2,845,910.00</div>
                             </div>
-                        </motion.div>
-                        <motion.div variants={fadeInUp} whileHover={{ x: 10 }} className="lp-glass-card p-6 rounded-2xl flex items-center gap-5 cursor-pointer transition-all">
-                            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/10 flex items-center justify-center flex-shrink-0">
-                                <span className="material-symbols-outlined text-3xl text-teal-500">wallet</span>
+                            <div className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">trending_up</span>
+                                +14.2%
                             </div>
-                            <div>
-                                <h4 className="font-bold text-gray-900 dark:text-white text-lg" style={{ fontFamily: 'var(--font-playfair), serif' }}>Spend Analysis</h4>
-                                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Understand your spending patterns with detailed, auto-categorized transactions.</p>
+                        </div>
+                        
+                        {/* Realistic Multi-Axis Chart */}
+                        <div className="flex-1 w-full relative">
+                            {/* Gridlines */}
+                            <div className="absolute inset-0 flex flex-col justify-between pt-4 pb-6 border-b border-gray-200 dark:border-white/10">
+                                {[1,2,3,4].map(i => (
+                                    <div key={i} className="w-full h-[1px] bg-gray-100 dark:bg-white/5" />
+                                ))}
                             </div>
-                        </motion.div>
-                    </div>
+                            
+                            {/* SVG Area Chart */}
+                            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 200">
+                                <defs>
+                                    <linearGradient id="chart-grad-1" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.4"/>
+                                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
+                                    </linearGradient>
+                                    <linearGradient id="chart-grad-2" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.4"/>
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                {/* Primary Line (Net Worth) */}
+                                <path d="M0,180 Q50,170 100,160 T200,120 T300,90 T400,60 T500,40 L500,200 L0,200 Z" fill="url(#chart-grad-1)"/>
+                                <path d="M0,180 Q50,170 100,160 T200,120 T300,90 T400,60 T500,40" fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                                
+                                {/* Secondary Line (S&P 500 Benchmark) */}
+                                <path d="M0,190 Q60,185 120,170 T240,150 T360,130 T500,100 L500,200 L0,200 Z" fill="url(#chart-grad-2)"/>
+                                <path d="M0,190 Q60,185 120,170 T240,150 T360,130 T500,100" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeDasharray="6,4"/>
+                            </svg>
+                            
+                            {/* Axis Labels */}
+                            <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[10px] text-gray-400 dark:text-gray-500 font-medium px-2">
+                                <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
+                            </div>
+                        </div>
+                        
+                        {/* Hover UI Tooltip (Static rendering for visual fidelity) */}
+                        <div className="absolute top-[35%] left-[65%] -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 shadow-xl rounded-lg p-3 z-10 hidden sm:block pointer-events-none">
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">September 14, 2025</div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="w-2 h-2 rounded-full bg-primary" />
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">$2,104,200</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Benchmark: +8.4%</span>
+                            </div>
+                        </div>
+                    </motion.div>
 
                     <div>
                         <motion.p variants={fadeInUp} className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-4">Data Visualization</motion.p>
@@ -696,17 +738,17 @@ function DataVizSection() {
 
 function TestimonialSection() {
     return (
-        <section className="py-32 relative">
-            <div className="lp-section-divider mb-32" />
+        <section className="py-16 relative">
+            <div className="lp-section-divider mb-16" />
             <motion.div 
                 initial="hidden"
                 whileInView="show"
                 viewport={{ once: true }}
                 variants={staggerContainer}
-                className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center"
+                className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center"
             >
-                <motion.span variants={fadeInUp} className="material-symbols-outlined text-5xl text-gray-200 dark:text-slate-700 mb-8 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
-                <motion.blockquote variants={fadeInUp} className="text-2xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-10" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                <motion.span variants={fadeInUp} className="material-symbols-outlined text-5xl text-primary/30 dark:text-lp-cyan/30 mb-8 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
+                <motion.blockquote variants={fadeInUp} className="text-3xl sm:text-5xl font-medium text-gray-900 dark:text-white leading-tight mb-12" style={{ fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontStyle: 'italic', letterSpacing: '-0.02em' }}>
                     &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
                 </motion.blockquote>
                 <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">

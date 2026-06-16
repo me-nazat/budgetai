@@ -559,6 +559,7 @@ export default function DashboardPage() {
                                 <div className="h-[160px]">
                                     <Doughnut data={doughnutData!} options={{
                                         responsive: true, maintainAspectRatio: false,
+                                        animation: { duration: 800, easing: 'easeOutQuart' },
                                         plugins: {
                                             legend: { position: 'right' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
                                             tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },

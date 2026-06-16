@@ -21,16 +21,16 @@ interface Tour {
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
 const TOUR_GRADIENTS = [
-  'from-zinc-950 via-slate-900 to-neutral-950',
-  'from-slate-950 via-zinc-900 to-stone-950',
-  'from-gray-900 via-emerald-950/40 to-zinc-950',
-  'from-slate-900 via-neutral-900 to-stone-950',
-  'from-neutral-950 via-rose-950/30 to-zinc-950',
-  'from-zinc-950 via-sky-950/35 to-slate-950',
-  'from-gray-950 via-stone-900 to-gray-950',
-  'from-slate-950 via-teal-950/40 to-neutral-900',
-  'from-gray-950 via-orange-950/25 to-stone-950',
-  'from-zinc-950 via-cyan-950/35 to-slate-950',
+  'from-[#0f172a] via-[#1e1b4b] to-[#020617]',
+  'from-[#020617] via-[#064e3b] to-[#022c22]',
+  'from-[#171717] via-[#4c1d95] to-[#0a0a0a]',
+  'from-[#052e16] via-[#14532d] to-[#020617]',
+  'from-[#1e1b4b] via-[#312e81] to-[#0f172a]',
+  'from-[#0a0a0a] via-[#450a0a] to-[#000000]',
+  'from-[#0f172a] via-[#0c4a6e] to-[#020617]',
+  'from-[#2e1065] via-[#4c1d95] to-[#171717]',
+  'from-[#022c22] via-[#065f46] to-[#020617]',
+  'from-[#171717] via-[#7f1d1d] to-[#0a0a0a]',
 ];
 
 const TOUR_ICONS = [
@@ -42,8 +42,9 @@ export default function ToursPage() {
   const router = useRouter();
   const { fmt } = useCurrency();
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
-  const { data: responseData, error: swrError, isLoading: swrLoading } = useSWR('/api/bill-splits/tours', {
+  const { data: responseData, error: swrError, isLoading: swrLoading, mutate } = useSWR('/api/bill-splits/tours', {
     keepPreviousData: true,
     revalidateOnFocus: false,
   });
@@ -53,6 +54,23 @@ export default function ToursPage() {
   const error = swrError
     ? (swrError.message || 'Unable to load tours.')
     : (responseData && !responseData.success ? getApiErrorMessage(responseData, 'Unable to load tours.') : null);
+
+  const deleteTour = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this tour? This cannot be undone.')) return;
+    
+    setIsDeleting(id);
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete tour');
+      await mutate();
+    } catch (err) {
+      console.error(err);
+      alert('Unable to delete tour at this time.');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   return (
     <div className="mx-auto min-h-dvh max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -132,9 +150,9 @@ export default function ToursPage() {
               whileTap={{ scale: 0.98 }}
               transition={{ ...spring, delay: index * 0.04 }}
               onClick={() => router.push(`/tours/${tour.id}`)}
-              className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)]"
+              className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)] hover:saturate-150 hover:brightness-125 transition-all duration-500"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-50 dark:opacity-30 group-hover:opacity-100 transition-opacity duration-500`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-70 dark:opacity-50 group-hover:opacity-100 transition-opacity duration-500`} />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/20" />
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex size-12 items-center justify-center rounded-2xl border border-white/40 bg-white/60 dark:border-white/10 dark:bg-white/5 backdrop-blur-md shadow-sm">
@@ -142,9 +160,20 @@ export default function ToursPage() {
                     {TOUR_ICONS[index % TOUR_ICONS.length]}
                   </span>
                 </div>
-                <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-black text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
-                  {tour.createdAt ? new Date(tour.createdAt).toLocaleDateString() : 'New'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-black text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
+                    {tour.createdAt ? new Date(tour.createdAt).toLocaleDateString() : 'New'}
+                  </span>
+                  <button
+                    onClick={(e) => deleteTour(e, tour.id)}
+                    disabled={isDeleting === tour.id}
+                    className="p-1.5 rounded-full bg-rose-500/10 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/20 disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {isDeleting === tour.id ? 'hourglass_empty' : 'delete'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               <h2 className="relative z-10 mt-7 line-clamp-2 min-h-16 text-2xl font-black tracking-tight text-gray-950 dark:text-white">

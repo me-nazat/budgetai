@@ -70,6 +70,7 @@ export default function TourEditCostModal({
   const [splitType, setSplitType] = useState<SplitType>('equal');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSavingRef = useRef(false);
   const haptics = useHaptics();
   const { currency, fmt } = useCurrency();
   const { categories: customCategories } = useCustomCategories('expense');
@@ -150,7 +151,8 @@ export default function TourEditCostModal({
 
   const handleSaveCustomCategory = async () => {
     const trimmedName = customName.trim().replace(/\s+/g, ' ');
-    if (!trimmedName) return;
+    if (!trimmedName || isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/categories', {
@@ -183,14 +185,16 @@ export default function TourEditCostModal({
     } catch (e) {
       console.error(e);
     } finally {
+      isSavingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!canSubmit || !transaction) return;
+    if (!canSubmit || !transaction || isSavingRef.current) return;
 
+    isSavingRef.current = true;
     setIsSubmitting(true);
     setError(null);
 
@@ -230,6 +234,7 @@ export default function TourEditCostModal({
       haptics.error();
       await mutate(swrKey);
     } finally {
+      isSavingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -258,7 +263,7 @@ export default function TourEditCostModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
             transition={spring}
-            className="relative z-50 max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
+            className="relative z-50 max-h-[85dvh] sm:max-h-[92dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
           >
             <div className="p-5 sm:p-6">
               <div className="mb-6 flex items-center justify-between gap-4">

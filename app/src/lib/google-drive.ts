@@ -16,7 +16,9 @@ const DRIVE_SCOPE = ['https://www.googleapis.com/auth/drive'];
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 const APP_PROP_TYPE = 'budgetAiType';
 const APP_PROP_USER_ID = 'budgetAiUserId';
+const APP_PROP_TOUR_ID = 'budgetAiTourId';
 const USER_FOLDER_TYPE = 'user-folder';
+const TOUR_FOLDER_TYPE = 'tour-folder';
 const LOCAL_ENV_FILES = ['.env.local', '.env'];
 
 type DriveAppProperties = Record<string, string>;
@@ -290,7 +292,7 @@ function resolveDriveUsername(identity: DriveUserIdentity) {
 async function resolveUserFolder(drive: drive_v3.Drive, identity: DriveUserIdentity, create: boolean) {
   const rootId = getDriveRootFolderId();
   const rootFolders = await listFoldersIn(drive, rootId);
-  const existing = rootFolders.find((f) => getFolderUserId(f.appProperties) === String(identity.userId));
+  const existing = rootFolders.find((f) => getFolderUserId(f.appProperties) === String(identity.userId) && f.appProperties?.[APP_PROP_TYPE] === USER_FOLDER_TYPE);
 
   if (existing) return existing;
 
@@ -308,6 +310,23 @@ async function resolveUserFolder(drive: drive_v3.Drive, identity: DriveUserIdent
   return await createFolder(drive, rootId, safeName, buildUserFolderProps(identity.userId));
 }
 
+function buildTourFolderProps(tourId: number): DriveAppProperties {
+  return { [APP_PROP_TYPE]: TOUR_FOLDER_TYPE, [APP_PROP_TOUR_ID]: String(tourId) };
+}
+
+async function resolveTourFolder(drive: drive_v3.Drive, tourId: number, create: boolean) {
+  const rootId = getDriveRootFolderId();
+  const rootFolders = await listFoldersIn(drive, rootId);
+  const existing = rootFolders.find((f) => f.appProperties?.[APP_PROP_TOUR_ID] === String(tourId) && f.appProperties?.[APP_PROP_TYPE] === TOUR_FOLDER_TYPE);
+
+  if (existing) return existing;
+
+  if (!create) return null;
+
+  const folderName = `Tour ${tourId} Attachments`;
+  return await createFolder(drive, rootId, folderName, buildTourFolderProps(tourId));
+}
+
 async function ensureSubFolder(drive: drive_v3.Drive, parentId: string, name: string, create: boolean) {
   const siblings = await listFoldersIn(drive, parentId);
   const match = siblings.find((f) => normalizeFolderKey(f.folderName) === normalizeFolderKey(name));
@@ -321,12 +340,20 @@ async function resolveTransactionFolder(
   identity: DriveUserIdentity,
   folderLabel: string,
   create: boolean,
+  tourId?: number,
 ) {
-  const userFolder = await resolveUserFolder(drive, identity, create);
-  if (!userFolder) return { folderId: null, folderUrl: null };
+  let parentFolder: DriveFolderRecord | null = null;
+  
+  if (tourId) {
+    parentFolder = await resolveTourFolder(drive, tourId, create);
+  } else {
+    parentFolder = await resolveUserFolder(drive, identity, create);
+  }
+  
+  if (!parentFolder) return { folderId: null, folderUrl: null };
   const normalized = normalizeFolderName(folderLabel, 'Receipts');
-  const txFolder = await ensureSubFolder(drive, userFolder.folderId, normalized, create);
-  if (!txFolder) return { folderId: null, folderUrl: userFolder.folderUrl };
+  const txFolder = await ensureSubFolder(drive, parentFolder.folderId, normalized, create);
+  if (!txFolder) return { folderId: null, folderUrl: parentFolder.folderUrl };
   return { folderId: txFolder.folderId, folderUrl: txFolder.folderUrl };
 }
 
@@ -337,6 +364,7 @@ export async function listTransactionAttachments(params: {
   userName?: string | null;
   userEmail?: string | null;
   folderLabel: string;
+  tourId?: number;
 }) {
   const drive = await getDriveClient();
   const folder = await resolveTransactionFolder(
@@ -344,6 +372,7 @@ export async function listTransactionAttachments(params: {
     { userId: params.userId, name: params.userName, email: params.userEmail },
     params.folderLabel,
     false,
+    params.tourId,
   );
 
   if (!folder.folderId) {
@@ -380,6 +409,7 @@ export async function uploadFilesToTransaction(params: {
   userEmail?: string | null;
   folderLabel: string;
   files: File[];
+  tourId?: number;
 }) {
   const drive = await getDriveClient();
   const folder = await resolveTransactionFolder(
@@ -387,6 +417,7 @@ export async function uploadFilesToTransaction(params: {
     { userId: params.userId, name: params.userName, email: params.userEmail },
     params.folderLabel,
     true,
+    params.tourId,
   );
 
   if (!folder.folderId || !folder.folderUrl) throw new Error('Unable to resolve the Drive folder.');
@@ -413,8 +444,9 @@ async function resolveAttachment(
   identity: DriveUserIdentity,
   folderLabel: string,
   fileId: string,
+  tourId?: number,
 ) {
-  const folder = await resolveTransactionFolder(drive, identity, folderLabel, false);
+  const folder = await resolveTransactionFolder(drive, identity, folderLabel, false, tourId);
   if (!folder.folderId) throw new Error('This transaction does not have an attachment folder.');
 
   try {
@@ -437,6 +469,7 @@ export async function getAttachmentMetadata(params: {
   userEmail?: string | null;
   folderLabel: string;
   fileId: string;
+  tourId?: number;
 }) {
   const drive = await getDriveClient();
   const attachment = await resolveAttachment(
@@ -444,6 +477,7 @@ export async function getAttachmentMetadata(params: {
     { userId: params.userId, name: params.userName, email: params.userEmail },
     params.folderLabel,
     params.fileId,
+    params.tourId,
   );
 
   return {
@@ -460,6 +494,7 @@ export async function getAttachmentContent(params: {
   folderLabel: string;
   fileId: string;
   range?: string | null;
+  tourId?: number;
 }): Promise<AttachmentContentResult> {
   const drive = await getDriveClient();
   const attachment = await resolveAttachment(
@@ -467,6 +502,7 @@ export async function getAttachmentContent(params: {
     { userId: params.userId, name: params.userName, email: params.userEmail },
     params.folderLabel,
     params.fileId,
+    params.tourId,
   );
 
   try {
@@ -494,6 +530,7 @@ export async function deleteTransactionAttachment(params: {
   userEmail?: string | null;
   folderLabel: string;
   fileId: string;
+  tourId?: number;
 }): Promise<void> {
   const drive = await getDriveClient();
   // Ensure the user actually owns the file via resolveAttachment
@@ -502,6 +539,7 @@ export async function deleteTransactionAttachment(params: {
     { userId: params.userId, name: params.userName, email: params.userEmail },
     params.folderLabel,
     params.fileId,
+    params.tourId,
   );
 
   try {

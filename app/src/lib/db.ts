@@ -285,6 +285,14 @@ export async function ensureDbInitialized(): Promise<void> {
   } catch { /* Ignore */ }
 
   try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_type_date ON transactions(user_id, type, date)');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_cat_date ON transactions(user_id, category, date)');
+  } catch { /* Ignore */ }
+
+  try {
     await getClient().execute('ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT \'BDT\' ');
   } catch { /* Ignore */ }
 

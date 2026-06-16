@@ -13,9 +13,17 @@ import { useCurrency } from '@/hooks/useCurrency';
 import TourAddCostModal from '@/components/TourAddCostModal';
 import TourEditCostModal from '@/components/TourEditCostModal';
 import TourTransactionDetailModal from '@/components/TourTransactionDetailModal';
-import { getCategoryIcon } from '@/lib/categoryUtils';
+import { getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import TourEditModal from '@/components/TourEditModal';
+import { TiltCard } from '@/components/ui/TiltCard';
+import dynamic from 'next/dynamic';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend, ArcElement } from 'chart.js';
+
+const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), { ssr: false });
+const Doughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), { ssr: false });
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, ArcElement);
 
 interface TourParticipant {
   id: number;
@@ -113,6 +121,46 @@ export default function TourDashboard() {
   const perPerson = Number(tourData?.perPerson || 0);
   const averageCost = Number(tourData?.averageCost || 0);
   const balances = (tourData?.balances ?? []) as TourParticipant[];
+
+  const currentUserBalanceObj = balances.find(b => b.userId === currentUserId);
+  const myBalance = currentUserBalanceObj?.balance || 0;
+
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const tickColor = isDark ? '#8b949e' : '#6b7280';
+  const gridColor = isDark ? '#21262d' : '#e5e7eb';
+
+  const barData = useMemo(() => {
+    const dailyMap = new Map<string, number>();
+    transactions.forEach(t => {
+      const date = t.date || 'Unknown';
+      if (date !== 'Unknown') dailyMap.set(date, (dailyMap.get(date) || 0) + Number(t.amount));
+    });
+    const sortedDates = Array.from(dailyMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    
+    return {
+        labels: sortedDates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+        datasets: [
+            { label: 'Expenses', data: sortedDates.map(d => dailyMap.get(d)), backgroundColor: isDark ? 'rgba(19, 109, 236, 0.6)' : 'rgba(19, 109, 236, 0.7)', borderRadius: 6, borderSkipped: false as const }
+        ]
+    };
+  }, [transactions, isDark]);
+
+  const doughnutData = useMemo(() => {
+    const catMap = new Map<string, number>();
+    transactions.forEach(t => {
+      catMap.set(t.category, (catMap.get(t.category) || 0) + Number(t.amount));
+    });
+    const labels = Array.from(catMap.keys());
+    return {
+        labels: labels.map(c => c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()),
+        datasets: [{
+            data: labels.map(l => catMap.get(l)),
+            backgroundColor: labels.map(c => getCategoryHex ? getCategoryHex(c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(), customCategories) : '#136dec'),
+            borderWidth: 0,
+            spacing: 2,
+        }],
+    };
+  }, [transactions, customCategories]);
 
   const participantMap = useMemo(() => {
     return new Map(participants.map((participant) => [participant.id, participant.name]));
@@ -271,67 +319,108 @@ export default function TourDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...spring, delay: 0.03 }}
-            className="relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)] md:col-span-3"
-          >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-500">Total Trip Expenses</p>
-            <h2 className="mt-4 text-5xl font-black tracking-tight text-gray-950 dark:text-white lg:text-7xl">
-              <AnimatedCounter value={Math.round(totalSpent)} formatter={fmt} className="tabular-nums" />
-            </h2>
-
-            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">Per Person</p>
-                <p className="mt-2 text-xl font-black text-gray-950 dark:text-white">{fmt(perPerson)}</p>
-              </div>
-              <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">Transactions</p>
-                <p className="mt-2 text-xl font-black text-gray-950 dark:text-white">{transactions.length}</p>
-              </div>
-              <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">Avg Cost</p>
-                <p className="mt-2 text-xl font-black text-gray-950 dark:text-white">{fmt(averageCost)}</p>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8 stagger-children">
+          <TiltCard className="glass-panel stat-gradient-blue p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
+            <div className="flex flex-col gap-1 relative z-10">
+                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">Total Spent</p>
+                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(totalSpent)}</h3>
             </div>
-          </motion.section>
-
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...spring, delay: 0.09 }}
-            className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] md:col-span-3"
-          >
-            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-black text-gray-950 dark:text-white">Balances</h2>
-                <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">Who paid what and how the equal split currently settles.</p>
-              </div>
+          </TiltCard>
+          <TiltCard className="glass-panel stat-gradient-emerald p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
+            <div className="flex flex-col gap-1 relative z-10">
+                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">Per Person</p>
+                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(perPerson)}</h3>
             </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {balances.map((participant) => (
-                <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-                  <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
-                  <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
-                    Paid {fmt(participant.paid || 0)}
-                  </p>
-                  <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
-                    {(participant.balance || 0) > 0
-                      ? `Gets back ${fmt(participant.balance || 0)}`
-                      : (participant.balance || 0) < 0
-                        ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
-                        : 'Settled'}
-                  </p>
-                </div>
-              ))}
+          </TiltCard>
+          <TiltCard className="glass-panel stat-gradient-orange p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe" style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
+            <div className="flex flex-col gap-1 relative z-10">
+                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">Avg Cost</p>
+                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(averageCost)}</h3>
             </div>
-          </motion.section>
+          </TiltCard>
+          <TiltCard className={`glass-panel ${myBalance >= 0 ? 'stat-gradient-blue' : 'stat-gradient-rose'} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
+            <div className="flex flex-col gap-1 relative z-10">
+                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">My Balance</p>
+                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">
+                  {myBalance > 0 ? '+' : myBalance < 0 ? '-' : ''}{fmt(Math.abs(myBalance))}
+                </h3>
+            </div>
+          </TiltCard>
         </div>
+
+        {/* Split-Screen Analytics: Spending Trends & Expense Distribution */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
+            <TiltCard className="lg:col-span-2 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.35s both' }}>
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
+                        <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Tour expenses over time</p>
+                    </div>
+                </div>
+                <div className="h-[320px]">
+                    <Bar data={barData!} options={{
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
+                            tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8 },
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
+                            y: { beginAtZero: true, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => fmt(Number(v)), font: { size: 11 }, padding: 8 }, border: { display: false } },
+                        },
+                    }} />
+                </div>
+            </TiltCard>
+
+            <div className="flex flex-col gap-5" style={{ animation: 'slideUp 0.5s ease-out 0.45s both' }}>
+                <TiltCard className="glass-panel p-6 rounded-3xl flex-1 ambient-glow">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
+                    <div className="h-[250px] lg:h-full min-h-[160px]">
+                        <Doughnut data={doughnutData!} options={{
+                            responsive: true, maintainAspectRatio: false,
+                            animation: { duration: 800, easing: 'easeOutQuart' },
+                            plugins: {
+                                legend: { position: 'right' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
+                                tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
+                            },
+                            cutout: '68%',
+                        }} />
+                    </div>
+                </TiltCard>
+            </div>
+        </div>
+
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.09 }}
+          className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] mb-10"
+        >
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-black text-gray-950 dark:text-white">Balances</h2>
+              <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">Who paid what and how the equal split currently settles.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {balances.map((participant) => (
+              <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
+                <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                  Paid {fmt(participant.paid || 0)}
+                </p>
+                <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                  {(participant.balance || 0) > 0
+                    ? `Gets back ${fmt(participant.balance || 0)}`
+                    : (participant.balance || 0) < 0
+                      ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
+                      : 'Settled'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
 
         <div className="mt-10">
           <h2 className="mb-6 text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>

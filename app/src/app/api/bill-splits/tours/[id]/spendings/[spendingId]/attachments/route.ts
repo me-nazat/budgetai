@@ -85,6 +85,7 @@ export async function GET(_request: Request, context: ExtendedRouteContext) {
       userName: user?.name ?? null,
       userEmail: user?.email ?? session.email,
       folderLabel: buildFolderLabel(tx.tourName, tx),
+      tourId,
     });
 
     const payload: AttachmentsResponse = { files: result.files, limit: result.limit };
@@ -126,6 +127,7 @@ export async function POST(request: Request, context: ExtendedRouteContext) {
       userName: user?.name ?? null,
       userEmail: user?.email ?? session.email,
       folderLabel,
+      tourId,
     });
 
     if (existing.files.length + files.length > MAX_ATTACHMENT_FILES) {
@@ -138,6 +140,7 @@ export async function POST(request: Request, context: ExtendedRouteContext) {
       userEmail: user?.email ?? session.email,
       folderLabel,
       files,
+      tourId,
     });
 
     return NextResponse.json({
@@ -179,6 +182,7 @@ export async function DELETE(request: Request, context: ExtendedRouteContext) {
       userEmail: user?.email ?? session.email,
       folderLabel,
       fileId,
+      tourId,
     });
     return NextResponse.json({ success: true });
   } catch (error) {

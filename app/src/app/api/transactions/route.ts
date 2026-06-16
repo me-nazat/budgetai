@@ -101,13 +101,15 @@ export const POST = apiHandler(
             [userId, type, amount, categoryName, description, date, notes]
         );
 
-        await maybeCreateBudgetAlert({
-            userId: userId,
-            type,
-            amount,
-            category: categoryName,
-            date,
-        });
+        Promise.resolve().then(() => {
+            return maybeCreateBudgetAlert({
+                userId: userId,
+                type,
+                amount,
+                category: categoryName,
+                date,
+            });
+        }).catch(err => console.error('Budget alert failed:', err));
 
         return NextResponse.json({ id: result.lastInsertRowid });
     })
@@ -145,13 +147,15 @@ export const PUT = apiHandler(
             return NextResponse.json({ error: 'Transaction not found or unauthorized' }, { status: 404 });
         }
 
-        await maybeCreateBudgetAlert({
-            userId: userId,
-            type,
-            amount,
-            category: categoryName,
-            date,
-        });
+        Promise.resolve().then(() => {
+            return maybeCreateBudgetAlert({
+                userId: userId,
+                type,
+                amount,
+                category: categoryName,
+                date,
+            });
+        }).catch(err => console.error('Budget alert failed:', err));
 
         return NextResponse.json({ success: true });
     })
