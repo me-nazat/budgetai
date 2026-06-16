@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -19,40 +20,39 @@ interface Tour {
 
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
+const TOUR_GRADIENTS = [
+  'from-zinc-950 via-slate-900 to-neutral-950',
+  'from-slate-950 via-indigo-950 to-gray-950',
+  'from-gray-900 via-emerald-950 to-zinc-950',
+  'from-slate-900 via-neutral-900 to-stone-950',
+  'from-neutral-950 via-fuchsia-950 to-zinc-950',
+  'from-zinc-950 via-sky-950 to-slate-950',
+  'from-gray-950 via-rose-950 to-gray-950',
+  'from-slate-950 via-teal-950 to-neutral-900',
+  'from-gray-950 via-orange-950 to-stone-950',
+  'from-zinc-950 via-cyan-950 to-slate-950',
+];
+
+const TOUR_ICONS = [
+  'map', 'flight', 'directions_car', 'sailing', 'hiking',
+  'landscape', 'explore', 'public', 'luggage', 'train'
+];
+
 export default function ToursPage() {
-  const [tours, setTours] = useState<Tour[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const router = useRouter();
   const { fmt } = useCurrency();
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const { data: responseData, error: swrError, isLoading: swrLoading } = useSWR('/api/bill-splits/tours', {
+    keepPreviousData: true,
+    revalidateOnFocus: false,
+  });
 
-    fetch('/api/bill-splits/tours', { cache: 'no-store' })
-      .then(async (res) => {
-        const data = await res.json().catch(() => null);
-        if (!res.ok || !data?.success) throw new Error(getApiErrorMessage(data, 'Unable to load tours.'));
-        return data.tours as Tour[];
-      })
-      .then((nextTours) => {
-        if (!isMounted) return;
-        setTours(nextTours);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Unable to load tours.');
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const tours = (responseData?.tours as Tour[]) || [];
+  const isLoading = swrLoading || (!responseData && !swrError);
+  const error = swrError
+    ? (swrError.message || 'Unable to load tours.')
+    : (responseData && !responseData.success ? getApiErrorMessage(responseData, 'Unable to load tours.') : null);
 
   return (
     <div className="mx-auto min-h-dvh max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -134,10 +134,13 @@ export default function ToursPage() {
               onClick={() => router.push(`/tours/${tour.id}`)}
               className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)]"
             >
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
+              <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[tour.id % TOUR_GRADIENTS.length]} opacity-50 dark:opacity-30 group-hover:opacity-100 transition-opacity duration-500`} />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/20" />
               <div className="relative z-10 flex items-start justify-between gap-4">
-                <div className="flex size-12 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
-                  <span className="material-symbols-outlined">map</span>
+                <div className="flex size-12 items-center justify-center rounded-2xl border border-white/40 bg-white/60 dark:border-white/10 dark:bg-white/5 backdrop-blur-md shadow-sm">
+                  <span className="material-symbols-outlined text-gray-700 dark:text-gray-300">
+                    {TOUR_ICONS[tour.id % TOUR_ICONS.length]}
+                  </span>
                 </div>
                 <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-black text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
                   {tour.createdAt ? new Date(tour.createdAt).toLocaleDateString() : 'New'}

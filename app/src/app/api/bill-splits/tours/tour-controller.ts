@@ -3,6 +3,7 @@ import { queryAll, queryOne, run } from '@/lib/db';
 import { CreateTourSchema, TourIdParamSchema, TourTransactionSchema } from '@/lib/validation';
 import { randomBytes } from 'crypto';
 import { z } from 'zod';
+import { TransactionRepository } from '@/repositories/transaction.repository';
 
 type RouteContextWithId = {
   params?: Promise<{ id: string }> | { id: string };
@@ -27,6 +28,8 @@ export interface TourTransactionResponse {
   paidBy: number;
   paidByParticipantId: number;
   paidByName: string | null;
+  createdById?: number | null;
+  createdByName?: string | null;
   splitType: 'equal' | 'percentage' | 'exact';
   createdAt: string | null;
 }
@@ -88,6 +91,8 @@ function normalizeTransaction(row: DbRow): TourTransactionResponse {
     paidBy,
     paidByParticipantId: paidBy,
     paidByName: row.paid_by_name ? String(row.paid_by_name) : null,
+    createdById: toNullableNumber(row.created_by_user_id),
+    createdByName: row.created_by_name ? String(row.created_by_name) : null,
     splitType: (row.split_type ?? row.splitType ?? 'equal') as TourTransactionResponse['splitType'],
     createdAt: row.created_at ? String(row.created_at) : null,
   };
@@ -148,10 +153,14 @@ async function getTourTransactions(userId: number, tourId: number): Promise<Tour
        t.paid_by_participant_id AS paid_by,
        t.split_type,
        t.created_at,
-       p.name AS paid_by_name
+       t.created_by_user_id,
+       p.name AS paid_by_name,
+       u.name AS created_by_name
      FROM tour_spendings t
      LEFT JOIN tour_participants p
        ON p.id = t.paid_by_participant_id
+     LEFT JOIN users u
+       ON u.id = t.created_by_user_id
      WHERE t.tour_id = ?
      ORDER BY t.date DESC, t.created_at DESC, t.id DESC`,
     [tourId]
@@ -458,24 +467,15 @@ export async function addTourSpending(
   let linkedTransactionId: number | null = null;
   
   if (data.includeInMainLedger) {
-    const mainTxResult = await run(
-      `INSERT INTO transactions (
-         user_id,
-         type,
-         amount,
-         category,
-         description,
-         date
-       ) VALUES (?, 'expense', ?, ?, ?, ?)`,
-      [
-        userId,
-        data.amount,
-        data.category,
-        data.description,
-        data.date,
-      ]
-    );
-    linkedTransactionId = mainTxResult.lastInsertRowid;
+    const mainTxResult = await TransactionRepository.create({
+      userId,
+      type: 'expense',
+      amount: data.amount,
+      category: data.category,
+      description: data.description,
+      date: data.date,
+    });
+    linkedTransactionId = mainTxResult.id;
   }
 
   const result = await run(
@@ -487,8 +487,9 @@ export async function addTourSpending(
        date,
        paid_by_participant_id,
        split_type,
-       linked_transaction_id
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       linked_transaction_id,
+       created_by_user_id
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       tourId,
       data.amount,
@@ -497,7 +498,8 @@ export async function addTourSpending(
       data.date,
       data.paidBy,
       data.splitType,
-      linkedTransactionId
+      linkedTransactionId,
+      userId
     ]
   );
 
@@ -514,10 +516,14 @@ export async function addTourSpending(
        t.paid_by_participant_id AS paid_by,
        t.split_type,
        t.created_at,
-       p.name AS paid_by_name
+       t.created_by_user_id,
+       p.name AS paid_by_name,
+       u.name AS created_by_name
      FROM tour_spendings t
      LEFT JOIN tour_participants p
        ON p.id = t.paid_by_participant_id
+     LEFT JOIN users u
+       ON u.id = t.created_by_user_id
      WHERE t.id = ?
      LIMIT 1`,
     [result.lastInsertRowid]
@@ -598,21 +604,16 @@ export async function updateTourSpending(
   );
 
   if (existingTx.linked_transaction_id) {
-    await run(
-      `UPDATE transactions SET
-         amount = ?,
-         category = ?,
-         description = ?,
-         date = ?
-       WHERE id = ? AND user_id = ?`,
-      [
-        data.amount,
-        data.category,
-        data.description,
-        data.date,
-        existingTx.linked_transaction_id,
-        userId
-      ]
+    await TransactionRepository.update(
+      userId,
+      existingTx.linked_transaction_id,
+      {
+        type: 'expense',
+        amount: data.amount,
+        category: data.category,
+        description: data.description,
+        date: data.date,
+      }
     );
   }
 
@@ -629,10 +630,14 @@ export async function updateTourSpending(
        t.paid_by_participant_id AS paid_by,
        t.split_type,
        t.created_at,
-       p.name AS paid_by_name
+       t.created_by_user_id,
+       p.name AS paid_by_name,
+       u.name AS created_by_name
      FROM tour_spendings t
      LEFT JOIN tour_participants p
        ON p.id = t.paid_by_participant_id
+     LEFT JOIN users u
+       ON u.id = t.created_by_user_id
      WHERE t.id = ?
      LIMIT 1`,
     [txId]

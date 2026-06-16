@@ -19,6 +19,7 @@ interface TourTransaction {
     paidBy: number;
     splitType: string;
     paidByName?: string | null;
+    createdByName?: string | null;
 }
 
 interface TourTransactionDetailModalProps {
@@ -108,7 +109,13 @@ export default function TourTransactionDetailModal({
                         <div className="flex flex-col gap-4 mb-6 mt-auto">
                             <div className="bg-gray-50 dark:bg-white/[0.03] p-4 rounded-2xl border border-gray-100 dark:border-white/5">
                                 <p className="text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1">Paid By</p>
-                                <p className="text-sm font-bold text-gray-900 dark:text-white">{transaction.paidByName || 'Unknown'}</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                    {transaction.createdByName && transaction.createdByName !== transaction.paidByName ? (
+                                        <>{transaction.paidByName || 'Unknown'} <span className="font-medium text-gray-500 dark:text-gray-400 text-xs ml-1">(Added by {transaction.createdByName})</span></>
+                                    ) : (
+                                        transaction.paidByName || 'Unknown'
+                                    )}
+                                </p>
                             </div>
                             <div className="bg-gray-50 dark:bg-white/[0.03] p-4 rounded-2xl border border-gray-100 dark:border-white/5">
                                 <p className="text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1">Split Type</p>

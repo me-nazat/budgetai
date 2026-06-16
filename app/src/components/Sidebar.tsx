@@ -51,17 +51,16 @@ export default function Sidebar() {
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
     const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
-    const [isDark, setIsDark] = useState(() => {
-        if (typeof window === 'undefined') return true;
+    const [isDark, setIsDark] = useState(true);
 
-        const theme = localStorage.getItem('budget-ai-theme');
-        const isPublic =
-            window.location.pathname === '/' ||
-            window.location.pathname.startsWith('/login') ||
-            window.location.pathname.startsWith('/register');
-
-        return theme === 'dark' || (!theme && !isPublic);
-    });
+    useEffect(() => {
+        setIsDark(document.documentElement.classList.contains('dark'));
+        const observer = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
     const [profileHovered, setProfileHovered] = useState(false);
 
     useEffect(() => {

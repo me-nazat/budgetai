@@ -83,7 +83,7 @@ export default function TourEditCostModal({
   const [customColor, setCustomColor] = useState(CUSTOM_COLORS[0]);
   const [generatedIcons, setGeneratedIcons] = useState(CUSTOM_CATEGORY_ICONS.slice(0, 40));
 
-  const isPaidByLocked = !isCreator && participants.some(p => p.userId === currentUserId);
+  const isPaidByLocked = false; // Allow any participant to change the paid by field
 
   useEffect(() => {
     setMounted(true);
@@ -219,14 +219,8 @@ export default function TourEditCostModal({
         throw new Error(getApiErrorMessage(data, 'Failed to save changes.'));
       }
 
-      // Trigger a full revalidation of the tour endpoint so balances and metrics refresh
-      mutate(swrKey);
-      mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
-
       haptics.success();
-      reset();
       onSaveSuccess();
-      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update this cost.');
       haptics.error();

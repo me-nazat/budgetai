@@ -81,7 +81,7 @@ export default function TourAddCostModal({
   const [customColor, setCustomColor] = useState(CUSTOM_COLORS[0]);
   const [generatedIcons, setGeneratedIcons] = useState(CUSTOM_CATEGORY_ICONS.slice(0, 40));
 
-  const isPaidByLocked = !isCreator && participants.some(p => p.userId === currentUserId);
+  const isPaidByLocked = false; // Allow any participant to change the paid by field
 
   useEffect(() => {
     setMounted(true);

@@ -46,6 +46,7 @@ export const tourSpendings = sqliteTable('tour_spendings', {
     .references(() => tourParticipants.id, { onDelete: 'cascade' }),
   splitType: text('split_type', { enum: ['equal', 'percentage', 'exact'] }).default('equal'),
   linkedTransactionId: integer('linked_transaction_id'),
+  createdById: integer('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 

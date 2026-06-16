@@ -237,6 +237,10 @@ export async function ensureDbInitialized(): Promise<void> {
   ], 'write');
 
   try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  } catch { /* Ignore if column already exists */ }
+
+  try {
     await getClient().execute('ALTER TABLE transactions ADD COLUMN notes TEXT DEFAULT \'\' ');
   } catch { /* Ignore if column already exists */ }
   

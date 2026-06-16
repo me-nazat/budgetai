@@ -34,6 +34,8 @@ interface TourTransaction {
   paidBy: number;
   paidByParticipantId?: number;
   paidByName?: string | null;
+  createdById?: number | null;
+  createdByName?: string | null;
   splitType: string;
   createdAt?: string | null;
 }
@@ -69,7 +71,10 @@ export default function TourDashboard() {
     setMounted(true);
   }, []);
 
-  const { data: tourData, error: tourError, isLoading: tourLoading, mutate: mutateTour } = useSWR(tourId ? `/api/bill-splits/tours/${tourId}` : null);
+  const { data: tourData, error: tourError, isLoading: tourLoading, mutate: mutateTour } = useSWR(
+    tourId ? `/api/bill-splits/tours/${tourId}` : null,
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
   const { data: userData } = useSWR('/api/auth/me');
 
   const tour = tourData?.tour as Tour | null;
@@ -271,7 +276,7 @@ export default function TourDashboard() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...spring, delay: 0.03 }}
-            className="relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/72 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)] md:col-span-3"
+            className="relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)] md:col-span-3"
           >
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
             <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-500">Total Trip Expenses</p>
@@ -299,7 +304,7 @@ export default function TourDashboard() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...spring, delay: 0.09 }}
-            className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/72 md:col-span-3"
+            className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] md:col-span-3"
           >
             <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -390,7 +395,7 @@ export default function TourDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ y: -2 }}
                             transition={{ ...spring, delay: index * 0.025 }}
-                            className="group relative cursor-pointer overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white/78 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/72"
+                            className="group relative cursor-pointer overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white/78 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.05)] backdrop-blur-2xl transition-all hover:bg-white dark:border-white/[0.08] dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
                           >
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex min-w-0 items-center gap-4">
@@ -402,7 +407,11 @@ export default function TourDashboard() {
                                 <div className="min-w-0">
                                   <h2 className="truncate text-base font-black text-gray-950 dark:text-white">{transaction.description}</h2>
                                   <p className="mt-1 truncate text-xs font-semibold text-gray-500 dark:text-gray-400">
-                                    Paid by <span className="text-gray-800 dark:text-gray-200">{payerName}</span> · {transaction.category}
+                                    {transaction.createdByName && transaction.createdByName !== payerName ? (
+                                      <>Paid by <span className="text-gray-800 dark:text-gray-200">{payerName}</span> (Added by {transaction.createdByName})</>
+                                    ) : (
+                                      <>Paid by <span className="text-gray-800 dark:text-gray-200">{payerName}</span></>
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -479,7 +488,11 @@ export default function TourDashboard() {
         customCategories={customCategories}
         tourId={tour.id}
         onClose={() => { setIsDetailModalOpen(false); setSelectedTransaction(null); }}
-        onEdit={(tx) => { setIsDetailModalOpen(false); setTimeout(() => { setSelectedTransaction(tx); setIsEditCostOpen(true); }, 250); }}
+        onEdit={(tx) => { 
+          setIsDetailModalOpen(false); 
+          setSelectedTransaction(tx); 
+          setIsEditCostOpen(true); 
+        }}
         onDelete={(tx) => { setIsDetailModalOpen(false); void handleDeleteTransaction(tx); }}
       />
 
