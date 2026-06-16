@@ -34,8 +34,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geist.variable} ${outfit.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
+      <head>
+        <title>Wealth AI — Smart Finance</title>
+        <meta name="description" content="AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights." />
+        <meta property="og:title" content="Wealth AI — Smart Finance" />
+        <meta property="og:description" content="AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights." />
         <ThemeScript />
+      </head>
+      <body className={`${geist.variable} ${outfit.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>

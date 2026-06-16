@@ -483,18 +483,20 @@ export default function TourDashboard() {
         }}
       />
 
-      <TourTransactionDetailModal
-        transaction={selectedTransaction}
-        customCategories={customCategories}
-        tourId={tour.id}
-        onClose={() => { setIsDetailModalOpen(false); setSelectedTransaction(null); }}
-        onEdit={(tx) => { 
-          setIsDetailModalOpen(false); 
-          setSelectedTransaction(tx); 
-          setIsEditCostOpen(true); 
-        }}
-        onDelete={(tx) => { setIsDetailModalOpen(false); void handleDeleteTransaction(tx); }}
-      />
+      {isDetailModalOpen && (
+        <TourTransactionDetailModal
+          transaction={selectedTransaction}
+          customCategories={customCategories}
+          tourId={tour.id}
+          onClose={() => { setIsDetailModalOpen(false); setSelectedTransaction(null); }}
+          onEdit={(tx) => { 
+            setIsDetailModalOpen(false); 
+            setSelectedTransaction(tx); 
+            setIsEditCostOpen(true); 
+          }}
+          onDelete={(tx) => { setIsDetailModalOpen(false); void handleDeleteTransaction(tx); }}
+        />
+      )}
 
       <TourEditModal
         isOpen={isEditModalOpen}

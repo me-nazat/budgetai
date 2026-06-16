@@ -30,14 +30,20 @@ export default function SettingsPage() {
     const [avatarHovered, setAvatarHovered] = useState(false);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsDark(document.documentElement.classList.contains('dark'));
+        const observer = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
         fetch('/api/auth/me').then(r => r.json()).then(d => {
             if (d.user) {
                 setName(d.user.name); setEmail(d.user.email); setCurrency((d.user.currency || 'BDT') as CurrencyCode);
                 setNotifyBudget(!!d.user.notify_budget); setNotifyOverspend(!!d.user.notify_overspend);
             }
         });
+
+        return () => observer.disconnect();
     }, []);
 
     const save = async () => {
@@ -52,10 +58,12 @@ export default function SettingsPage() {
 
     const toggleTheme = useCallback(() => {
         const html = document.documentElement;
+        html.classList.add('theme-transitioning');
         html.classList.toggle('dark');
         const newDark = html.classList.contains('dark');
         setIsDark(newDark);
         localStorage.setItem('budget-ai-theme', newDark ? 'dark' : 'light');
+        setTimeout(() => html.classList.remove('theme-transitioning'), 400);
     }, []);
 
     const handleSignOut = async () => {

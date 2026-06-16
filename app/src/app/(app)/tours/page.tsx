@@ -22,15 +22,15 @@ const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
 const TOUR_GRADIENTS = [
   'from-zinc-950 via-slate-900 to-neutral-950',
-  'from-slate-950 via-indigo-950 to-gray-950',
-  'from-gray-900 via-emerald-950 to-zinc-950',
+  'from-slate-950 via-zinc-900 to-stone-950',
+  'from-gray-900 via-emerald-950/40 to-zinc-950',
   'from-slate-900 via-neutral-900 to-stone-950',
-  'from-neutral-950 via-fuchsia-950 to-zinc-950',
-  'from-zinc-950 via-sky-950 to-slate-950',
-  'from-gray-950 via-rose-950 to-gray-950',
-  'from-slate-950 via-teal-950 to-neutral-900',
-  'from-gray-950 via-orange-950 to-stone-950',
-  'from-zinc-950 via-cyan-950 to-slate-950',
+  'from-neutral-950 via-rose-950/30 to-zinc-950',
+  'from-zinc-950 via-sky-950/35 to-slate-950',
+  'from-gray-950 via-stone-900 to-gray-950',
+  'from-slate-950 via-teal-950/40 to-neutral-900',
+  'from-gray-950 via-orange-950/25 to-stone-950',
+  'from-zinc-950 via-cyan-950/35 to-slate-950',
 ];
 
 const TOUR_ICONS = [
@@ -134,12 +134,12 @@ export default function ToursPage() {
               onClick={() => router.push(`/tours/${tour.id}`)}
               className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)]"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[tour.id % TOUR_GRADIENTS.length]} opacity-50 dark:opacity-30 group-hover:opacity-100 transition-opacity duration-500`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-50 dark:opacity-30 group-hover:opacity-100 transition-opacity duration-500`} />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/20" />
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex size-12 items-center justify-center rounded-2xl border border-white/40 bg-white/60 dark:border-white/10 dark:bg-white/5 backdrop-blur-md shadow-sm">
                   <span className="material-symbols-outlined text-gray-700 dark:text-gray-300">
-                    {TOUR_ICONS[tour.id % TOUR_ICONS.length]}
+                    {TOUR_ICONS[index % TOUR_ICONS.length]}
                   </span>
                 </div>
                 <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-black text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 
 const navGroups = [
     {
@@ -84,6 +84,15 @@ export default function Sidebar() {
         router.push('/login');
     };
 
+    const prefetchData = (href: string) => {
+        if (href === '/tours') {
+            void mutate('/api/bill-splits/tours', async () => {
+                const res = await fetch('/api/bill-splits/tours');
+                return res.json();
+            }, { revalidate: false });
+        }
+    };
+
     return (
         <aside className={`
         hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col justify-between
@@ -130,6 +139,7 @@ export default function Sidebar() {
                                         <Link
                                             key={item.href}
                                             href={item.href}
+                                            onMouseEnter={() => prefetchData(item.href)}
                                             className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 relative group overflow-hidden ${isActive
                                                 ? 'text-primary font-bold shadow-sm'
                                                 : 'text-gray-600 dark:text-text-secondary hover:text-gray-900 dark:hover:text-white'

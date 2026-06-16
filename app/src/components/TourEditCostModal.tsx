@@ -219,12 +219,16 @@ export default function TourEditCostModal({
         throw new Error(getApiErrorMessage(data, 'Failed to save changes.'));
       }
 
+      // Trigger immediate client-side cache updates via SWR mutate handlers
+      await mutate(swrKey);
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
+
       haptics.success();
       onSaveSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update this cost.');
       haptics.error();
-      mutate(swrKey);
+      await mutate(swrKey);
     } finally {
       setIsSubmitting(false);
     }
