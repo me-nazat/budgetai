@@ -26,11 +26,10 @@ export default function SettingsPage() {
     const [notifyOverspend, setNotifyOverspend] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
-    const [isDark, setIsDark] = useState(false);
+    const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false);
     const [avatarHovered, setAvatarHovered] = useState(false);
 
     useEffect(() => {
-        setIsDark(document.documentElement.classList.contains('dark'));
         const observer = new MutationObserver(() => {
             setIsDark(document.documentElement.classList.contains('dark'));
         });

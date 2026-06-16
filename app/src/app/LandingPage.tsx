@@ -31,7 +31,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
     const y = useTransform(scrollYProgress, [0, 1], [0, -100]);
 
     return (
-        <div className="relative flex min-h-screen flex-col bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-slate-300 overflow-x-hidden selection:bg-primary dark:selection:bg-lp-cyan selection:text-white dark:selection:text-[#0A0A0A]">
+        <div className="relative flex min-h-screen flex-col bg-white dark:bg-[#0A0E1B] text-gray-700 dark:text-slate-300 overflow-x-hidden selection:bg-primary dark:selection:bg-lp-cyan selection:text-white dark:selection:text-[#0A0E1B]">
             {/* Ambient background glow */}
             <motion.div style={{ y }} className="lp-ambient-glow" />
 
@@ -61,7 +61,7 @@ function Header({ onToggleTheme, onNavigate, isLoggedIn }: { onToggleTheme: () =
             initial={{ y: -100 }}
             animate={{ y: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="sticky top-0 z-50 w-full border-b border-gray-200/60 dark:border-white/5 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl"
+            className="sticky top-0 z-50 w-full border-b border-gray-200/60 dark:border-white/5 bg-white/80 dark:bg-[#0A0E1B]/80 backdrop-blur-xl"
         >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                 {/* Logo */}
@@ -200,7 +200,7 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                                     'bg-gradient-to-br from-emerald-400 to-teal-500',
                                     'bg-gradient-to-br from-amber-400 to-orange-500'
                                 ].map((bg, i) => (
-                                    <div key={i} className={`h-10 w-10 rounded-full border-2 border-white dark:border-[#0A0A0A] ${bg} flex items-center justify-center text-white text-xs font-bold`}>
+                                    <div key={i} className={`h-10 w-10 rounded-full border-2 border-white dark:border-[#0A0E1B] ${bg} flex items-center justify-center text-white text-xs font-bold`}>
                                         {['JR', 'AM', 'KL'][i]}
                                     </div>
                                 ))}
@@ -322,7 +322,7 @@ function DashboardMockup() {
                         </div>
                     </div>
 
-                    <div className="relative h-40 border border-gray-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#0A0A0A] p-4 overflow-hidden">
+                    <div className="relative h-40 border border-gray-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#0A0E1B] p-4 overflow-hidden">
                         <p className="text-xs text-gray-400 dark:text-slate-500 mb-2 font-medium uppercase tracking-wider">Portfolio Performance</p>
                         <svg className="w-full h-24" viewBox="0 0 400 100" preserveAspectRatio="none">
                             <defs>
@@ -589,7 +589,7 @@ function FeaturesSection() {
     ];
 
     return (
-        <section id="features" className="py-20 relative">
+        <section id="features" className="py-10 relative">
             <motion.div 
                 initial="hidden"
                 whileInView="show"
@@ -619,7 +619,7 @@ function FeaturesSection() {
                                 <span className="material-symbols-outlined text-3xl">{f.icon}</span>
                             </div>
                             <h3 className="text-2xl font-medium text-gray-900 dark:text-white mb-4" style={{ fontFamily: 'var(--font-playfair), serif' }}>{f.title}</h3>
-                            <p className="text-gray-500 dark:text-gray-200 leading-relaxed font-light">{f.description}</p>
+                            <p className="text-gray-500 dark:text-slate-100 leading-relaxed font-light">{f.description}</p>
                         </motion.div>
                     ))}
                 </div>
@@ -628,10 +628,213 @@ function FeaturesSection() {
     );
 }
 
+function InteractiveVisualizer() {
+    const [activeTab, setActiveTab] = useState<'networth' | 'allocation' | 'cashflow'>('networth');
+
+    return (
+        <motion.div variants={fadeInUp} className="relative w-full min-h-[420px] lp-glass-card rounded-3xl p-6 overflow-hidden flex flex-col justify-between border border-gray-200 dark:border-white/10 shadow-2xl">
+            {/* Header with Selector Tabs */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 dark:border-white/5 pb-4 mb-4">
+                <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-1">AI Live Engine</h4>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {activeTab === 'networth' && '$2,845,910.00'}
+                        {activeTab === 'allocation' && 'Asset Allocation'}
+                        {activeTab === 'cashflow' && 'Cash Flow Overview'}
+                    </div>
+                </div>
+                
+                {/* Tab buttons */}
+                <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-white/5 p-1 rounded-xl w-full sm:w-auto">
+                    {[
+                        { id: 'networth', label: 'Net Worth' },
+                        { id: 'allocation', label: 'Allocation' },
+                        { id: 'cashflow', label: 'Cash Flow' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`flex-1 sm:flex-initial text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-300 ${
+                                activeTab === tab.id 
+                                    ? 'bg-white dark:bg-white/10 text-primary dark:text-white shadow-sm' 
+                                    : 'text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Tab Content */}
+            <div className="flex-1 w-full relative min-h-[220px]">
+                {activeTab === 'networth' && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="w-full h-full flex flex-col justify-between"
+                    >
+                        <div className="flex-1 w-full relative">
+                            {/* Gridlines */}
+                            <div className="absolute inset-0 flex flex-col justify-between pt-4 pb-6">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="w-full h-[1px] bg-gray-100 dark:bg-white/5" />
+                                ))}
+                            </div>
+                            
+                            {/* Multi-Axis SVG Chart */}
+                            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 200">
+                                <defs>
+                                    <linearGradient id="chart-grad-nw" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.4"/>
+                                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
+                                    </linearGradient>
+                                    <linearGradient id="chart-grad-sp" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.15"/>
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                {/* S&P 500 Benchmark (dashed green) */}
+                                <path d="M0,160 Q80,150 160,155 T320,135 T500,105 L500,200 L0,200 Z" fill="url(#chart-grad-sp)"/>
+                                <path d="M0,160 Q80,150 160,155 T320,135 T500,105" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeDasharray="4,4"/>
+                                
+                                {/* Wealth AI Net Worth (solid primary blue) */}
+                                <path d="M0,180 Q80,165 160,140 T320,80 T500,30 L500,200 L0,200 Z" fill="url(#chart-grad-nw)"/>
+                                <path d="M0,180 Q80,165 160,140 T320,80 T500,30" fill="none" stroke="var(--color-primary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            
+                            {/* Interactive Tooltip Callouts */}
+                            <div className="absolute top-[15%] left-[80%] -translate-x-1/2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 shadow-xl rounded-xl p-3 z-10 hidden sm:block pointer-events-none">
+                                <div className="text-[9px] font-bold text-gray-400 dark:text-slate-500 mb-0.5 uppercase">Current Status</div>
+                                <div className="text-sm font-bold text-gray-900 dark:text-white">$2,845,910</div>
+                                <div className="text-[10px] text-emerald-500 font-bold flex items-center gap-0.5 mt-0.5">
+                                    <span className="material-symbols-outlined text-xs">trending_up</span>
+                                    <span>+18.4% vs S&P 500</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500 font-bold px-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                            <span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span><span>Current</span>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'allocation' && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="w-full h-full flex flex-col justify-between"
+                    >
+                        <div className="space-y-4 py-2">
+                            {[
+                                { name: 'Equities & ETFs', pct: 55, amount: '$1,565,250', color: 'bg-primary' },
+                                { name: 'Real Estate & Properties', pct: 25, amount: '$711,477', color: 'bg-teal-500' },
+                                { name: 'Cash & Cash Equivalents', pct: 10, amount: '$284,591', color: 'bg-amber-500' },
+                                { name: 'Alternatives & Fixed Income', pct: 10, amount: '$284,591', color: 'bg-emerald-500' }
+                            ].map((item, idx) => (
+                                <div key={idx} className="space-y-1">
+                                    <div className="flex justify-between items-center text-xs font-bold">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                                            <span className="text-gray-700 dark:text-slate-300">{item.name}</span>
+                                        </div>
+                                        <div className="text-gray-955 dark:text-white">
+                                            <span>{item.amount} </span>
+                                            <span className="text-gray-400 dark:text-slate-500">({item.pct}%)</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${item.pct}%` }}
+                                            transition={{ duration: 0.8, ease: "easeOut", delay: idx * 0.1 }}
+                                            className={`h-full rounded-full ${item.color}`}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold border-t border-gray-100 dark:border-white/5 pt-2 flex justify-between">
+                            <span>Balanced Profile</span>
+                            <span>Target Variance: <span className="text-emerald-500 font-bold">Optimal</span></span>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'cashflow' && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="w-full h-full flex flex-col justify-between"
+                    >
+                        <div className="flex-1 w-full relative flex items-end justify-around pb-4 pt-4">
+                            {/* Gridlines */}
+                            <div className="absolute inset-0 flex flex-col justify-between pt-4 pb-6">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="w-full h-[1px] bg-gray-100 dark:bg-white/5" />
+                                ))}
+                            </div>
+
+                            {[
+                                { month: 'Jan', inc: 80, exp: 55, saving: '$3,120' },
+                                { month: 'Feb', inc: 90, exp: 62, saving: '$3,800' },
+                                { month: 'Mar', inc: 75, exp: 50, saving: '$2,950' },
+                                { month: 'Apr', inc: 95, exp: 58, saving: '$4,100' },
+                                { month: 'May', inc: 110, exp: 68, saving: '$5,200' },
+                            ].map((bar, idx) => (
+                                <div key={idx} className="flex flex-col items-center gap-2 relative z-10 w-12 group/bar">
+                                    <div className="flex items-end gap-1.5 h-28">
+                                        {/* Income Bar (Primary Blue) */}
+                                        <motion.div 
+                                            initial={{ height: 0 }}
+                                            animate={{ height: `${bar.inc}%` }}
+                                            transition={{ duration: 0.8, ease: "easeOut", delay: idx * 0.05 }}
+                                            className="w-4 bg-primary rounded-t-sm"
+                                        />
+                                        {/* Expense Bar (Amber Orange) */}
+                                        <motion.div 
+                                            initial={{ height: 0 }}
+                                            animate={{ height: `${bar.exp}%` }}
+                                            transition={{ duration: 0.8, ease: "easeOut", delay: idx * 0.05 }}
+                                            className="w-4 bg-amber-500 rounded-t-sm"
+                                        />
+                                    </div>
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">{bar.month}</span>
+
+                                    {/* Tooltip on bar hover */}
+                                    <div className="absolute bottom-full mb-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 shadow-lg rounded-lg p-2 text-[10px] font-bold text-gray-950 dark:text-white opacity-0 pointer-events-none group-hover/bar:opacity-100 transition-opacity duration-200 whitespace-nowrap z-20">
+                                        <p className="text-emerald-500">Savings: {bar.saving}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-400 dark:text-gray-500 font-bold border-t border-gray-100 dark:border-white/5 pt-2">
+                            <div className="flex gap-4">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 bg-primary rounded-sm" />
+                                    <span>Income</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 bg-amber-500 rounded-sm" />
+                                    <span>Expenses</span>
+                                </div>
+                            </div>
+                            <span>Avg Savings Rate: <span className="text-emerald-500">34.8%</span></span>
+                        </div>
+                    </motion.div>
+                )}
+            </div>
+        </motion.div>
+    );
+}
+
 function DataVizSection() {
     return (
-        <section id="how-it-works" className="py-16 relative">
-            <div className="lp-section-divider mb-16" />
+        <section id="how-it-works" className="py-8 relative">
+            <div className="lp-section-divider mb-8" />
             <motion.div 
                 initial="hidden"
                 whileInView="show"
@@ -640,68 +843,7 @@ function DataVizSection() {
                 className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                    {/* High-Fidelity Data Visualization Component */}
-                    <motion.div variants={fadeInUp} className="relative w-full h-[400px] lp-glass-card rounded-3xl p-6 overflow-hidden flex flex-col justify-between border border-gray-200 dark:border-white/10 shadow-2xl">
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Total Net Worth</h4>
-                                <div className="text-3xl font-medium text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-playfair), serif' }}>$2,845,910.00</div>
-                            </div>
-                            <div className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">trending_up</span>
-                                +14.2%
-                            </div>
-                        </div>
-                        
-                        {/* Realistic Multi-Axis Chart */}
-                        <div className="flex-1 w-full relative">
-                            {/* Gridlines */}
-                            <div className="absolute inset-0 flex flex-col justify-between pt-4 pb-6 border-b border-gray-200 dark:border-white/10">
-                                {[1,2,3,4].map(i => (
-                                    <div key={i} className="w-full h-[1px] bg-gray-100 dark:bg-white/5" />
-                                ))}
-                            </div>
-                            
-                            {/* SVG Area Chart */}
-                            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 200">
-                                <defs>
-                                    <linearGradient id="chart-grad-1" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.4"/>
-                                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
-                                    </linearGradient>
-                                    <linearGradient id="chart-grad-2" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.4"/>
-                                        <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
-                                    </linearGradient>
-                                </defs>
-                                {/* Primary Line (Net Worth) */}
-                                <path d="M0,180 Q50,170 100,160 T200,120 T300,90 T400,60 T500,40 L500,200 L0,200 Z" fill="url(#chart-grad-1)"/>
-                                <path d="M0,180 Q50,170 100,160 T200,120 T300,90 T400,60 T500,40" fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                                
-                                {/* Secondary Line (S&P 500 Benchmark) */}
-                                <path d="M0,190 Q60,185 120,170 T240,150 T360,130 T500,100 L500,200 L0,200 Z" fill="url(#chart-grad-2)"/>
-                                <path d="M0,190 Q60,185 120,170 T240,150 T360,130 T500,100" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeDasharray="6,4"/>
-                            </svg>
-                            
-                            {/* Axis Labels */}
-                            <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[10px] text-gray-400 dark:text-gray-500 font-medium px-2">
-                                <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
-                            </div>
-                        </div>
-                        
-                        {/* Hover UI Tooltip (Static rendering for visual fidelity) */}
-                        <div className="absolute top-[35%] left-[65%] -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 shadow-xl rounded-lg p-3 z-10 hidden sm:block pointer-events-none">
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">September 14, 2025</div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <div className="w-2 h-2 rounded-full bg-primary" />
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">$2,104,200</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Benchmark: +8.4%</span>
-                            </div>
-                        </div>
-                    </motion.div>
+                    <InteractiveVisualizer />
 
                     <div>
                         <motion.p variants={fadeInUp} className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-4">Data Visualization</motion.p>
@@ -738,8 +880,8 @@ function DataVizSection() {
 
 function TestimonialSection() {
     return (
-        <section className="py-16 relative">
-            <div className="lp-section-divider mb-16" />
+        <section className="py-8 relative">
+            <div className="lp-section-divider mb-8" />
             <motion.div 
                 initial="hidden"
                 whileInView="show"
@@ -748,7 +890,7 @@ function TestimonialSection() {
                 className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center"
             >
                 <motion.span variants={fadeInUp} className="material-symbols-outlined text-5xl text-primary/30 dark:text-lp-cyan/30 mb-8 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
-                <motion.blockquote variants={fadeInUp} className="text-3xl sm:text-5xl font-medium text-gray-900 dark:text-white leading-tight mb-12" style={{ fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontStyle: 'italic', letterSpacing: '-0.02em' }}>
+                <motion.blockquote variants={fadeInUp} className="text-3xl sm:text-5xl font-medium text-gray-900 dark:text-white leading-relaxed mb-12" style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontStyle: 'italic', letterSpacing: '-0.01em', fontWeight: 500 }}>
                     &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
                 </motion.blockquote>
                 <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">
@@ -778,7 +920,7 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
                 <motion.div 
                     variants={fadeInUp}
                     whileHover={{ scale: 1.01 }}
-                    className="relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-indigo-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0A0A] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5"
+                    className="relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-indigo-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0E1B] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5"
                 >
                     <div className="absolute top-0 left-1/4 h-48 w-48 rounded-full bg-white/10 dark:bg-lp-cyan/10 blur-[80px]" />
                     <div className="absolute bottom-0 right-1/4 h-48 w-48 rounded-full bg-blue-400/10 dark:bg-blue-600/10 blur-[80px]" />
@@ -822,7 +964,7 @@ function FooterSection() {
     ];
 
     return (
-        <footer className="border-t border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#0A0A0A] py-20 relative overflow-hidden">
+        <footer className="border-t border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#0A0E1B] py-20 relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
                     <div className="col-span-2">

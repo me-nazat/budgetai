@@ -22,6 +22,8 @@ export interface AttachmentsResponse {
 export interface AttachmentTokenPayload {
   transactionId: number;
   fileId: string;
+  scopeTag?: string;
+  tourId?: number;
 }
 
 export interface AttachmentViewerMetadata extends AttachmentRecord {
@@ -60,9 +62,54 @@ export function decodeAttachmentToken(token: string): AttachmentTokenPayload | n
   try {
     const parsed = JSON.parse(decodeBase64Url(token)) as Partial<AttachmentTokenPayload>;
     if (!parsed.transactionId || !parsed.fileId) return null;
-    return { transactionId: parsed.transactionId, fileId: parsed.fileId };
+    return {
+      transactionId: parsed.transactionId,
+      fileId: parsed.fileId,
+      scopeTag: parsed.scopeTag,
+      tourId: parsed.tourId,
+    };
   } catch {
     return null;
+  }
+}
+
+// Dynamically require Node's crypto module to prevent client-side Next.js/Webpack bundler errors
+const getCrypto = () => {
+  if (typeof window === 'undefined') {
+    return eval("require('crypto')");
+  }
+  return null;
+};
+
+export function encryptScopeTag(text: string): string {
+  const crypto = getCrypto();
+  if (!crypto) return '';
+  const secret = process.env.JWT_SECRET || 'fallback_secret_key_1234567890123456';
+  const key = crypto.createHash('sha256').update(secret).digest();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+export function decryptScopeTag(encryptedText: string): string {
+  const crypto = getCrypto();
+  if (!crypto) return '';
+  try {
+    const parts = encryptedText.split(':');
+    if (parts.length !== 2) return '';
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = parts[1];
+    const secret = process.env.JWT_SECRET || 'fallback_secret_key_1234567890123456';
+    const key = crypto.createHash('sha256').update(secret).digest();
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (e) {
+    console.error('Decryption failed:', e);
+    return '';
   }
 }
 

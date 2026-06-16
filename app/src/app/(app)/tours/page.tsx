@@ -21,16 +21,16 @@ interface Tour {
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
 const TOUR_GRADIENTS = [
-  'from-[#0f172a] via-[#1e1b4b] to-[#020617]',
-  'from-[#020617] via-[#064e3b] to-[#022c22]',
-  'from-[#171717] via-[#4c1d95] to-[#0a0a0a]',
-  'from-[#052e16] via-[#14532d] to-[#020617]',
-  'from-[#1e1b4b] via-[#312e81] to-[#0f172a]',
-  'from-[#0a0a0a] via-[#450a0a] to-[#000000]',
-  'from-[#0f172a] via-[#0c4a6e] to-[#020617]',
-  'from-[#2e1065] via-[#4c1d95] to-[#171717]',
-  'from-[#022c22] via-[#065f46] to-[#020617]',
-  'from-[#171717] via-[#7f1d1d] to-[#0a0a0a]',
+  'from-[#081C15] via-[#1B4332] to-[#000000]', // Forest Emerald
+  'from-[#020C1B] via-[#0A192F] to-[#010813]', // Midnight Ocean Blue
+  'from-[#0F0505] via-[#3A0C0C] to-[#000000]', // Velvet Crimson Red
+  'from-[#001D3D] via-[#003566] to-[#000814]', // Classic Deep Navy
+  'from-[#051C1C] via-[#0E3A3A] to-[#000F0F]', // Dark Teal/Cyan
+  'from-[#0F140F] via-[#1B3A1B] to-[#020A02]', // Deep Pine Green
+  'from-[#1F1403] via-[#3D2606] to-[#0C0801]', // Dark Amber/Bronze
+  'from-[#051F20] via-[#0B2527] to-[#010B0C]', // Deep Cyan-Gray
+  'from-[#0C1E1A] via-[#15352F] to-[#030E0C]', // Rich Sage Green
+  'from-[#1A0C00] via-[#2E1600] to-[#0A0500]', // Deep Chocolate/Burnt Orange
 ];
 
 const TOUR_ICONS = [
@@ -43,6 +43,14 @@ export default function ToursPage() {
   const { fmt } = useCurrency();
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
+    e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
+  };
 
   const { data: responseData, error: swrError, isLoading: swrLoading, mutate } = useSWR('/api/bill-splits/tours', {
     keepPreviousData: true,
@@ -150,9 +158,16 @@ export default function ToursPage() {
               whileTap={{ scale: 0.98 }}
               transition={{ ...spring, delay: index * 0.04 }}
               onClick={() => router.push(`/tours/${tour.id}`)}
-              className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)] hover:saturate-150 hover:brightness-125 transition-all duration-500"
+              onMouseMove={handleMouseMove}
+              className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)] group-hover:saturate-[1.35] group-hover:brightness-[1.35] transition-all duration-500"
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-70 dark:opacity-50 group-hover:opacity-100 transition-opacity duration-500`} />
+              <div
+                className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{
+                  background: `radial-gradient(400px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(255,255,255,0.06), transparent 80%)`,
+                }}
+              />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/20" />
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex size-12 items-center justify-center rounded-2xl border border-white/40 bg-white/60 dark:border-white/10 dark:bg-white/5 backdrop-blur-md shadow-sm">
@@ -167,7 +182,7 @@ export default function ToursPage() {
                   <button
                     onClick={(e) => deleteTour(e, tour.id)}
                     disabled={isDeleting === tour.id}
-                    className="p-1.5 rounded-full bg-rose-500/10 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/20 disabled:opacity-50"
+                    className="p-1.5 rounded-full bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       {isDeleting === tour.id ? 'hourglass_empty' : 'delete'}

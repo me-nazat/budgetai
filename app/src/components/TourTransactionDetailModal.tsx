@@ -43,7 +43,8 @@ export default function TourTransactionDetailModal({
     const { fmt } = useCurrency();
 
     useEffect(() => {
-        setMounted(true);
+        const frame = requestAnimationFrame(() => setMounted(true));
+        return () => cancelAnimationFrame(frame);
     }, []);
 
     if (!transaction || !mounted) return null;

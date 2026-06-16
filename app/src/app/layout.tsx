@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Outfit } from "next/font/google";
+import { Geist, Outfit, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
 import "material-symbols/outlined.css";
@@ -16,6 +16,14 @@ const outfit = Outfit({
   variable: "--font-outfit",
   display: "swap",
 });
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+  style: ["normal", "italic"],
+});
+
 
 export const viewport: Viewport = {
   themeColor: "#0A0A0A",
@@ -41,7 +49,7 @@ export default function RootLayout({
         <meta property="og:description" content="AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights." />
         <ThemeScript />
       </head>
-      <body className={`${geist.variable} ${outfit.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
+      <body className={`${geist.variable} ${outfit.variable} ${playfair.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>

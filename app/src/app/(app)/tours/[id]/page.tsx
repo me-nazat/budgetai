@@ -17,6 +17,7 @@ import { getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import TourEditModal from '@/components/TourEditModal';
 import { TiltCard } from '@/components/ui/TiltCard';
+import { useDashboard } from '@/hooks/useApi';
 import dynamic from 'next/dynamic';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend, ArcElement } from 'chart.js';
 
@@ -85,6 +86,11 @@ export default function TourDashboard() {
   );
   const { data: userData } = useSWR('/api/auth/me');
 
+  const [selectedMonth] = useState<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  );
+  const { data: dashboardData } = useDashboard(selectedMonth, 'all');
+
   const tour = tourData?.tour as Tour | null;
   const rawParticipants = tourData?.participants as TourParticipant[] | undefined;
   const rawTransactions = tourData?.transactions as TourTransaction[] | undefined;
@@ -137,13 +143,22 @@ export default function TourDashboard() {
     });
     const sortedDates = Array.from(dailyMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
     
+    const colors = [
+      'rgba(16, 185, 129, 0.7)', // Emerald
+      'rgba(59, 130, 246, 0.7)', // Blue
+      'rgba(244, 63, 94, 0.7)',  // Rose
+      'rgba(245, 158, 11, 0.7)',  // Amber
+      'rgba(6, 182, 212, 0.7)',  // Cyan
+    ];
+    const backgroundColors = sortedDates.map((_, i) => colors[i % colors.length]);
+
     return {
         labels: sortedDates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
         datasets: [
-            { label: 'Expenses', data: sortedDates.map(d => dailyMap.get(d)), backgroundColor: isDark ? 'rgba(19, 109, 236, 0.6)' : 'rgba(19, 109, 236, 0.7)', borderRadius: 6, borderSkipped: false as const }
+            { label: 'Expenses', data: sortedDates.map(d => dailyMap.get(d)), backgroundColor: backgroundColors, borderRadius: 6, borderSkipped: false as const }
         ]
     };
-  }, [transactions, isDark]);
+  }, [transactions]);
 
   const doughnutData = useMemo(() => {
     const catMap = new Map<string, number>();
@@ -266,8 +281,8 @@ export default function TourDashboard() {
 
   return (
     <>
-      <div className="mx-auto min-h-dvh max-w-7xl px-4 py-8 pb-28 sm:px-6 lg:px-8">
-        <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <div className="mx-auto min-h-dvh max-w-7xl px-4 py-4 pb-28 sm:px-6 lg:px-8">
+        <div className="mb-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
             <Link href="/tours" className="mb-4 inline-flex items-center gap-2 rounded-2xl text-sm font-bold text-gray-500 hover:text-gray-950 dark:hover:text-white">
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
@@ -277,6 +292,26 @@ export default function TourDashboard() {
             <h1 className="max-w-4xl text-balance text-4xl font-black tracking-tight text-gray-950 dark:text-white lg:text-6xl">
               {tour.name}
             </h1>
+            {dashboardData && (
+              <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-white/5 pt-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  Balance: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.balance)}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Earnings: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.earnings.current)}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                  Expenses: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.expenses.current)}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  Net Savings: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.netSavings)}</span>
+                </span>
+              </div>
+            )}
           </motion.div>
 
           <div className="flex items-center gap-3">
@@ -349,8 +384,8 @@ export default function TourDashboard() {
         </div>
 
         {/* Split-Screen Analytics: Spending Trends & Expense Distribution */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
-            <TiltCard className="lg:col-span-2 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.35s both' }}>
+        <div className="flex flex-col lg:flex-row gap-5 mb-8">
+            <TiltCard className="w-full lg:w-[60%] shrink-0 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.35s both' }}>
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
@@ -372,22 +407,20 @@ export default function TourDashboard() {
                 </div>
             </TiltCard>
 
-            <div className="flex flex-col gap-5" style={{ animation: 'slideUp 0.5s ease-out 0.45s both' }}>
-                <TiltCard className="glass-panel p-6 rounded-3xl flex-1 ambient-glow">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
-                    <div className="h-[250px] lg:h-full min-h-[160px]">
-                        <Doughnut data={doughnutData!} options={{
-                            responsive: true, maintainAspectRatio: false,
-                            animation: { duration: 800, easing: 'easeOutQuart' },
-                            plugins: {
-                                legend: { position: 'right' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
-                                tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
-                            },
-                            cutout: '68%',
-                        }} />
-                    </div>
-                </TiltCard>
-            </div>
+            <TiltCard className="w-full lg:w-[40%] glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.45s both' }}>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
+                <div className="h-[320px] min-h-[160px]">
+                    <Doughnut data={doughnutData!} options={{
+                        responsive: true, maintainAspectRatio: false,
+                        animation: { duration: 800, easing: 'easeOutQuart' },
+                        plugins: {
+                            legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
+                            tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
+                        },
+                        cutout: '68%',
+                    }} />
+                </div>
+            </TiltCard>
         </div>
 
         <motion.section

@@ -10,7 +10,10 @@ import {
   type AttachmentRecord,
   inferAttachmentPreviewKind,
   isAttachmentPrintable,
+  encryptScopeTag,
+  decryptScopeTag,
 } from '@/lib/transaction-attachments';
+import { queryAll, queryOne } from '@/lib/db';
 
 const DRIVE_SCOPE = ['https://www.googleapis.com/auth/drive'];
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
@@ -422,14 +425,45 @@ export async function uploadFilesToTransaction(params: {
 
   if (!folder.folderId || !folder.folderUrl) throw new Error('Unable to resolve the Drive folder.');
 
+  let appProperties: DriveAppProperties = {};
+  if (params.tourId) {
+    const tourRow = await queryOne<{ created_by: number }>('SELECT created_by FROM tours WHERE id = ?', [params.tourId]);
+    const creatorId = tourRow?.created_by;
+
+    const participantRows = await queryAll<{ user_id: number | null }>(
+      'SELECT user_id FROM tour_participants WHERE tour_id = ?',
+      [params.tourId]
+    );
+
+    const userIds = new Set<number>();
+    if (creatorId !== undefined) userIds.add(creatorId);
+    participantRows.forEach(p => {
+      if (p.user_id !== null && p.user_id !== undefined) {
+        userIds.add(p.user_id);
+      }
+    });
+
+    const scopeTagRaw = Array.from(userIds).sort().join(',');
+    const encryptedScopeTag = encryptScopeTag(scopeTagRaw);
+
+    appProperties = {
+      tourId: String(params.tourId),
+      scopeTag: encryptedScopeTag,
+    };
+  }
+
   const uploaded: AttachmentRecord[] = [];
   try {
     for (const file of params.files) {
       const mimeType = file.type || 'application/octet-stream';
       const res = await drive.files.create({
-        requestBody: { name: file.name, parents: [folder.folderId] },
+        requestBody: { 
+          name: file.name, 
+          parents: [folder.folderId],
+          ...(Object.keys(appProperties).length > 0 ? { appProperties } : {})
+        },
         media: { mimeType, body: Readable.fromWeb(file.stream() as any) }, // eslint-disable-line @typescript-eslint/no-explicit-any
-        fields: 'id,name,mimeType,size,modifiedTime',
+        fields: 'id,name,mimeType,size,modifiedTime,appProperties',
         supportsAllDrives: true,
       });
       uploaded.push(mapDriveFile(res.data));
@@ -452,12 +486,32 @@ async function resolveAttachment(
   try {
     const res = await drive.files.get({
       fileId,
-      fields: 'id,name,mimeType,size,modifiedTime,parents',
+      fields: 'id,name,mimeType,size,modifiedTime,parents,appProperties',
       supportsAllDrives: true,
     });
 
     const parents = res.data.parents ?? [];
     if (!parents.includes(folder.folderId)) throw new Error('File does not belong to this transaction.');
+
+    const appProps = (res.data.appProperties as Record<string, string> | undefined) || {};
+    const fileTourId = appProps.tourId ? parseInt(appProps.tourId, 10) : undefined;
+
+    if (tourId) {
+      if (fileTourId !== tourId) {
+        throw new Error('Access denied: Tour ID mismatch.');
+      }
+      if (appProps.scopeTag) {
+        const decryptedUsers = decryptScopeTag(appProps.scopeTag);
+        const allowedUserIds = decryptedUsers.split(',').map(id => parseInt(id, 10));
+        if (!allowedUserIds.includes(identity.userId)) {
+          throw new Error('Access denied: User not in authorized roster.');
+        }
+      }
+    } else {
+      if (fileTourId !== undefined) {
+        throw new Error('Access denied: Tour attachments cannot be accessed globally.');
+      }
+    }
 
     return { file: mapDriveFile(res.data), folderId: folder.folderId };
   } catch (error) { throw toFriendlyError(error); }

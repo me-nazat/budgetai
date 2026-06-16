@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSWRConfig } from 'swr';
@@ -70,6 +69,7 @@ export default function TransactionsPage() {
     const [qaSubmitting, setQaSubmitting] = useState(false);
     
     const invalidateFinancialData = useInvalidateFinancialData();
+    const { mutate } = useSWRConfig();
 
     // Custom Category Add State (Desktop Inline)
     const [qaAddingCustomCategory, setQaAddingCustomCategory] = useState(false);
@@ -191,6 +191,7 @@ export default function TransactionsPage() {
     };
 
     const submitQuickAdd = async () => {
+        if (qaSubmitting) return;
         const parsed = parseFloat(qaAmount);
         const categoryName = (qaAddingCustomCategory ? qaCustomCategoryName.trim().replace(/\s+/g, ' ') : qaCategory.trim().replace(/\s+/g, ' '));
         if (!qaAmount || isNaN(parsed) || parsed <= 0 || !categoryName) return;
@@ -219,6 +220,29 @@ export default function TransactionsPage() {
             }
 
             if (isOnline) {
+                // Optimistic SWR update for online POST
+                const tempId = 'temp-' + Date.now();
+                const optimisticTx = {
+                    id: tempId,
+                    type: qaType,
+                    amount: parsed,
+                    category: categoryName,
+                    description: qaDesc || categoryName,
+                    date: qaDate,
+                    created_at: new Date().toISOString(),
+                    pending: true,
+                };
+                mutate(
+                    swrKey,
+                    (current: TransactionsCache | undefined) => {
+                        return {
+                            transactions: [optimisticTx, ...(current?.transactions || [])],
+                            total: (current?.total || 0) + 1,
+                        };
+                    },
+                    { revalidate: false }
+                );
+
                 // Online: POST directly to API
                 const res = await fetch('/api/transactions', {
                     method: 'POST',
@@ -272,6 +296,7 @@ export default function TransactionsPage() {
         } catch (error) {
             console.error('Quick Add error:', error);
             setQaSubmitting(false);
+            mutate(swrKey); // Rollback optimistic update
         }
     };
 
@@ -292,6 +317,7 @@ export default function TransactionsPage() {
     };
 
     const submitEdit = async () => {
+        if (editSubmitting) return;
         if (!editingTx) return;
 
         const parsed = parseFloat(String(editingTx.amount));
@@ -310,6 +336,18 @@ export default function TransactionsPage() {
 
         try {
             if (isOnline) {
+                // Optimistic SWR update
+                mutate(
+                    swrKey,
+                    (current: TransactionsCache | undefined) => {
+                        const updated = (current?.transactions || []).map(t =>
+                            t.id === editingTx.id ? { ...t, ...payload, pending: true } : t
+                        );
+                        return { transactions: updated, total: current?.total || 0 };
+                    },
+                    { revalidate: false }
+                );
+
                 // Online: PUT directly to API
                 const res = await fetch('/api/transactions', {
                     method: 'PUT',
@@ -351,10 +389,12 @@ export default function TransactionsPage() {
         } catch (error) {
             console.error('Edit error:', error);
             setEditSubmitting(false);
+            mutate(swrKey); // Rollback optimistic update
         }
     };
 
     const submitDelete = async () => {
+        if (deleteSubmitting) return;
         if (!deletingTxId) return;
         setDeleteSubmitting(true);
 
@@ -362,6 +402,16 @@ export default function TransactionsPage() {
 
         try {
             if (isOnline) {
+                // Optimistic SWR update
+                mutate(
+                    swrKey,
+                    (current: TransactionsCache | undefined) => {
+                        const filtered = (current?.transactions || []).filter(t => t.id !== deletingTxId);
+                        return { transactions: filtered, total: Math.max(0, (current?.total || 1) - 1) };
+                    },
+                    { revalidate: false }
+                );
+
                 const res = await fetch(`/api/transactions?id=${deletingTxId}`, {
                     method: 'DELETE',
                 });
@@ -391,10 +441,13 @@ export default function TransactionsPage() {
         } catch (error) {
             console.error('Delete error:', error);
             setDeleteSubmitting(false);
+            mutate(swrKey); // Rollback optimistic update
         }
     };
 
     const submitDuplicate = async (tx: TransactionRecord) => {
+        if (qaSubmitting) return;
+        setQaSubmitting(true);
         const payload = {
             actionType: 'add' as const,
             type: tx.type,
@@ -406,6 +459,25 @@ export default function TransactionsPage() {
 
         try {
             if (isOnline) {
+                // Optimistic SWR update
+                const tempId = 'temp-' + Date.now();
+                const optimisticTx = {
+                    id: tempId,
+                    ...payload,
+                    created_at: new Date().toISOString(),
+                    pending: true,
+                };
+                mutate(
+                    swrKey,
+                    (current: TransactionsCache | undefined) => {
+                        return {
+                            transactions: [optimisticTx, ...(current?.transactions || [])],
+                            total: (current?.total || 0) + 1,
+                        };
+                    },
+                    { revalidate: false }
+                );
+
                 const res = await fetch('/api/transactions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -440,8 +512,11 @@ export default function TransactionsPage() {
             setActionMenuOpenId(null);
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
+            setQaSubmitting(false);
         } catch (error) {
             console.error('Duplicate error:', error);
+            setQaSubmitting(false);
+            mutate(swrKey); // Rollback optimistic update
         }
     };
 
@@ -844,7 +919,7 @@ export default function TransactionsPage() {
                                                 Generate icon
                                             </button>
                                         </div>
-                                        <div className="grid max-h-40 grid-cols-8 gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white/50 p-2 dark:border-[#30363d] dark:bg-[#0d1117]/50 sm:grid-cols-10">
+                                        <div className="grid max-h-40 grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white/50 p-2 dark:border-[#30363d] dark:bg-[#0d1117]/50">
                                             {qaIconOptions.map(icon => (
                                                 <button
                                                     key={icon}

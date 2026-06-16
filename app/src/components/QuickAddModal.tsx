@@ -5,6 +5,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useSWRConfig } from 'swr';
 import { queueTransaction } from '@/lib/offlineDb';
 import {
     CATEGORIES_EXPENSE, CATEGORIES_INCOME,
@@ -51,6 +52,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
     const [attachments, setAttachments] = useState<File[]>([]);
     const [qaScanningId, setQaScanningId] = useState<number | null>(null);
     const invalidateFinancialData = useInvalidateFinancialData();
+    const { mutate } = useSWRConfig();
     const isSavingRef = useRef(false);
     
     // Custom Categories State
@@ -260,6 +262,36 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
 
         try {
             if (isOnline) {
+                // Optimistic SWR update
+                mutate(
+                    (key: string) => typeof key === 'string' && key.startsWith('/api/transactions'),
+                    (current: any) => {
+                        if (!current) return current;
+                        if (Array.isArray(current.transactions)) {
+                            if (initialTransaction) {
+                                const updated = current.transactions.map((t: any) =>
+                                    t.id === initialTransaction.id ? { ...t, ...payload } : t
+                                );
+                                return { ...current, transactions: updated };
+                            } else {
+                                const optimistic = {
+                                    id: 'temp-' + Date.now(),
+                                    ...payload,
+                                    created_at: new Date().toISOString(),
+                                    pending: true,
+                                };
+                                return {
+                                    ...current,
+                                    transactions: [optimistic, ...current.transactions],
+                                    total: current.total + 1
+                                };
+                            }
+                        }
+                        return current;
+                    },
+                    { revalidate: false }
+                );
+
                 const isEdit = !!initialTransaction;
                 const method = isEdit ? 'PUT' : 'POST';
                 const body = isEdit ? JSON.stringify({ ...payload, id: initialTransaction.id }) : JSON.stringify(payload);
@@ -294,6 +326,8 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                 handleClose();
             }, 300); // Drastically reduced for faster UX
         } catch {
+            // Rollback SWR cache on error
+            mutate((key: string) => typeof key === 'string' && key.startsWith('/api/transactions'));
             alert('Failed to save. Please try again.');
         } finally {
             isSavingRef.current = false;

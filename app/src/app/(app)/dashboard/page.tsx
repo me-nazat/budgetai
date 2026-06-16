@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import { useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
+import { useSWRConfig } from 'swr';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
 import dynamic from 'next/dynamic';
@@ -87,6 +88,7 @@ export default function DashboardPage() {
     const chartRef = useRef(null);
     const { currency, fmt } = useCurrency();
     const router = useRouter();
+    const { mutate } = useSWRConfig();
 
     const [selectedMonth, setSelectedMonth] = useState<string>(
         `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
@@ -95,6 +97,7 @@ export default function DashboardPage() {
 
     // SWR hooks — cached, stale-while-revalidate
     const { data, isLoading, isValidating } = useDashboard(selectedMonth, selectedWeek);
+    const dashboardKey = `/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`;
     const { user } = useUser();
     const marketNews = useMarketNews();
     const exchangeRates = useExchangeRates(currency);
@@ -198,6 +201,7 @@ export default function DashboardPage() {
     };
 
     const submitDashboardEdit = async () => {
+        if (editSubmitting) return;
         if (!editingTx) return;
 
         const parsed = parseFloat(String(editingTx.amount));
@@ -205,6 +209,41 @@ export default function DashboardPage() {
         setEditSubmitting(true);
 
         try {
+            // Optimistic update
+            mutate(
+                dashboardKey,
+                (current: any) => {
+                    if (!current) return current;
+                    const oldTx = current.recentTransactions.find((t: any) => t.id === editingTx.id);
+                    if (!oldTx) return current;
+                    const diff = parsed - oldTx.amount;
+                    
+                    const updatedTransactions = current.recentTransactions.map((t: any) =>
+                        t.id === editingTx.id ? { ...t, amount: parsed, category: editingTx.category, description: editingTx.description || editingTx.category, date: editingTx.date } : t
+                    );
+                    
+                    let newExpenses = current.expenses.current;
+                    let newEarnings = current.earnings.current;
+                    if (editingTx.type === 'expense') {
+                        newExpenses += diff;
+                    } else {
+                        newEarnings += diff;
+                    }
+                    const newBalance = current.balance + (editingTx.type === 'earning' ? diff : -diff);
+                    const newNetSavings = newEarnings - newExpenses;
+
+                    return {
+                        ...current,
+                        recentTransactions: updatedTransactions,
+                        expenses: { ...current.expenses, current: newExpenses },
+                        earnings: { ...current.earnings, current: newEarnings },
+                        netSavings: newNetSavings,
+                        balance: newBalance
+                    };
+                },
+                { revalidate: false }
+            );
+
             const response = await fetch('/api/transactions', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -224,13 +263,54 @@ export default function DashboardPage() {
             await finishMutation();
         } catch (error) {
             console.error('Dashboard edit error:', error);
+            mutate(dashboardKey); // Rollback
         } finally {
             setEditSubmitting(false);
         }
     };
 
     const submitDashboardDuplicate = async (tx: DashboardTransaction) => {
+        if (editSubmitting) return;
+        setEditSubmitting(true);
         try {
+            // Optimistic update
+            mutate(
+                dashboardKey,
+                (current: any) => {
+                    if (!current) return current;
+                    const tempId = Date.now();
+                    const newTx = {
+                        id: tempId,
+                        type: tx.type,
+                        amount: tx.amount,
+                        category: tx.category,
+                        description: tx.description || tx.category,
+                        date: new Date().toISOString().split('T')[0],
+                    };
+                    const updatedTransactions = [newTx, ...current.recentTransactions];
+                    
+                    let newExpenses = current.expenses.current;
+                    let newEarnings = current.earnings.current;
+                    if (tx.type === 'expense') {
+                        newExpenses += tx.amount;
+                    } else {
+                        newEarnings += tx.amount;
+                    }
+                    const newBalance = current.balance + (tx.type === 'earning' ? tx.amount : -tx.amount);
+                    const newNetSavings = newEarnings - newExpenses;
+
+                    return {
+                        ...current,
+                        recentTransactions: updatedTransactions,
+                        expenses: { ...current.expenses, current: newExpenses },
+                        earnings: { ...current.earnings, current: newEarnings },
+                        netSavings: newNetSavings,
+                        balance: newBalance
+                    };
+                },
+                { revalidate: false }
+            );
+
             const response = await fetch('/api/transactions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -248,14 +328,50 @@ export default function DashboardPage() {
             await finishMutation();
         } catch (error) {
             console.error('Dashboard duplicate error:', error);
+            mutate(dashboardKey); // Rollback
+        } finally {
+            setEditSubmitting(false);
         }
     };
 
     const submitDashboardDelete = async () => {
+        if (deleteSubmitting) return;
         if (!deletingTxId) return;
         setDeleteSubmitting(true);
 
         try {
+            // Optimistic update
+            mutate(
+                dashboardKey,
+                (current: any) => {
+                    if (!current) return current;
+                    const oldTx = current.recentTransactions.find((t: any) => t.id === deletingTxId);
+                    if (!oldTx) return current;
+                    
+                    const updatedTransactions = current.recentTransactions.filter((t: any) => t.id !== deletingTxId);
+                    
+                    let newExpenses = current.expenses.current;
+                    let newEarnings = current.earnings.current;
+                    if (oldTx.type === 'expense') {
+                        newExpenses -= oldTx.amount;
+                    } else {
+                        newEarnings -= oldTx.amount;
+                    }
+                    const newBalance = current.balance - (oldTx.type === 'earning' ? oldTx.amount : -oldTx.amount);
+                    const newNetSavings = newEarnings - newExpenses;
+
+                    return {
+                        ...current,
+                        recentTransactions: updatedTransactions,
+                        expenses: { ...current.expenses, current: newExpenses },
+                        earnings: { ...current.earnings, current: newEarnings },
+                        netSavings: newNetSavings,
+                        balance: newBalance
+                    };
+                },
+                { revalidate: false }
+            );
+
             const response = await fetch(`/api/transactions?id=${deletingTxId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Dashboard transaction delete failed');
 
@@ -263,6 +379,7 @@ export default function DashboardPage() {
             await finishMutation();
         } catch (error) {
             console.error('Dashboard delete error:', error);
+            mutate(dashboardKey); // Rollback
         } finally {
             setDeleteSubmitting(false);
         }

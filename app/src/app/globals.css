@@ -3,6 +3,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
+  /* Font Family Definitions */
+  --font-playfair: var(--font-playfair), serif;
+
   /* Extreme Dark Mode (OLED) */
   --color-bg-dark: #0A0E1B;
   --color-surface-dark: #12182B;
@@ -774,7 +777,7 @@
 
   60% {
     opacity: 1;
-    transform: scale(1.05);
+    transform: scale(1.025);
   }
 
   100% {
@@ -915,7 +918,7 @@
 }
 
 .animate-bounce-in {
-  animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1375) forwards;
 }
 
 .animate-slide-up {

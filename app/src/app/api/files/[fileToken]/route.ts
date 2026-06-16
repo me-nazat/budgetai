@@ -22,14 +22,18 @@ function buildContentDisposition(fileName: string, mode: 'inline' | 'attachment'
   return `${mode}; filename*=UTF-8''${encoded}`;
 }
 
-function buildFolderLabel(tx: { category: string; description?: string | null; date: string }) {
-  const parts = [tx.category];
+function buildFolderLabel(
+  tx: { category: string; description?: string | null; date: string },
+  tourName?: string | null,
+) {
+  const parts = tourName ? [`Tour: ${tourName}`, tx.category] : [tx.category];
   if (tx.description && tx.description !== tx.category) parts.push(tx.description);
   parts.push(tx.date.slice(0, 7));
   return parts.join(' — ');
 }
 
 async function getAuthorizedContext(transactionId: number, userId: number) {
+  // First, check if it's a personal transaction
   const tx = await queryOne<{
     id: number;
     user_id: number;
@@ -41,21 +45,72 @@ async function getAuthorizedContext(transactionId: number, userId: number) {
     userId,
   ]);
 
-  if (!tx) return null;
+  if (tx) {
+    const user = await queryOne<{ id: number; name: string; email: string }>(
+      'SELECT id, name, email FROM users WHERE id = ?',
+      [tx.user_id],
+    );
 
-  const user = await queryOne<{ id: number; name: string; email: string }>(
-    'SELECT id, name, email FROM users WHERE id = ?',
-    [tx.user_id],
-  );
+    return {
+      tx,
+      tourId: undefined as number | undefined,
+      tourName: undefined as string | undefined,
+      owner: {
+        userId: tx.user_id,
+        name: user?.name ?? null,
+        email: user?.email ?? null,
+      },
+    };
+  }
 
-  return {
-    tx,
-    owner: {
-      userId: tx.user_id,
-      name: user?.name ?? null,
-      email: user?.email ?? null,
-    },
-  };
+  // If not found in personal transactions, check if it's a tour spending
+  const tourSpending = await queryOne<{
+    id: number;
+    tour_id: number;
+    category: string;
+    description: string;
+    date: string;
+    created_by_user_id: number | null;
+  }>('SELECT id, tour_id, category, description, date, created_by_user_id FROM tour_spendings WHERE id = ?', [
+    transactionId,
+  ]);
+
+  if (tourSpending) {
+    const tour = await queryOne<{ id: number; name: string; created_by: number }>(
+      `SELECT DISTINCT t.id, t.name, t.created_by
+       FROM tours t
+       LEFT JOIN tour_participants tp ON tp.tour_id = t.id
+       WHERE t.id = ?
+         AND (t.created_by = ? OR tp.user_id = ?)`,
+      [tourSpending.tour_id, userId, userId]
+    );
+
+    if (!tour) return null;
+
+    const ownerId = tourSpending.created_by_user_id ?? tour.created_by;
+    const user = await queryOne<{ id: number; name: string; email: string }>(
+      'SELECT id, name, email FROM users WHERE id = ?',
+      [ownerId],
+    );
+
+    return {
+      tx: {
+        id: tourSpending.id,
+        category: tourSpending.category,
+        description: tourSpending.description,
+        date: tourSpending.date,
+      },
+      tourId: tourSpending.tour_id,
+      tourName: tour.name,
+      owner: {
+        userId: ownerId,
+        name: user?.name ?? null,
+        email: user?.email ?? null,
+      },
+    };
+  }
+
+  return null;
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -79,8 +134,9 @@ export async function GET(request: Request, context: RouteContext) {
         userId: ctx.owner.userId,
         userName: ctx.owner.name,
         userEmail: ctx.owner.email ?? session.email,
-        folderLabel: buildFolderLabel(ctx.tx),
+        folderLabel: buildFolderLabel(ctx.tx, ctx.tourName),
         fileId: decoded.fileId,
+        tourId: ctx.tourId,
       });
 
       return NextResponse.json({
@@ -100,9 +156,10 @@ export async function GET(request: Request, context: RouteContext) {
       userId: ctx.owner.userId,
       userName: ctx.owner.name,
       userEmail: ctx.owner.email ?? session.email,
-      folderLabel: buildFolderLabel(ctx.tx),
+      folderLabel: buildFolderLabel(ctx.tx, ctx.tourName),
       fileId: decoded.fileId,
       range: request.headers.get('range'),
+      tourId: ctx.tourId,
     });
 
     const headers = new Headers();

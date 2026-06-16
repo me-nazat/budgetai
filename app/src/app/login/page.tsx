@@ -118,7 +118,7 @@ function LoginForm() {
                     <div className="flex-1 flex flex-col justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                         <h1 className="text-5xl font-black leading-tight mb-8 text-gray-900 dark:text-white">
                             Master your money,<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600 dark:from-emerald-400 dark:to-cyan-400">effortlessly.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-cyan-800 dark:from-emerald-400 dark:to-cyan-400">effortlessly.</span>
                         </h1>
                         
                         {/* Carousel */}
@@ -171,8 +171,8 @@ function LoginForm() {
 
                     <div className="auth-glass-card w-full max-w-[480px] p-8 sm:p-12 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                         <div className="mb-10 text-center">
-                            <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Welcome Back</h2>
-                            <p className="text-gray-400 text-sm">Enter your credentials to access your dashboard.</p>
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">Welcome Back</h2>
+                            <p className="text-gray-600 dark:text-gray-400 text-sm">Enter your credentials to access your dashboard.</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
@@ -184,14 +184,14 @@ function LoginForm() {
                             )}
 
                             <div className="space-y-1.5 relative group">
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider group-focus-within:text-primary group-focus-within:-translate-y-1 transition-all">Email Address</label>
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider group-focus-within:text-primary group-focus-within:-translate-y-1 transition-all">Email Address</label>
                                 <div className="relative auth-input-focus">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 group-focus-within:text-primary transition-colors">mail</span>
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-inner"
+                                        className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-inner"
                                         placeholder="you@example.com"
                                         required
                                         autoComplete="email"
@@ -201,7 +201,7 @@ function LoginForm() {
 
                             <div className="space-y-1.5 relative group">
                                 <div className="flex justify-between items-center">
-                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider group-focus-within:text-primary group-focus-within:-translate-y-1 transition-all">Password</label>
+                                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider group-focus-within:text-primary group-focus-within:-translate-y-1 transition-all">Password</label>
                                     <a href="#" className="text-xs font-semibold text-primary hover:text-emerald-400 transition-colors">Forgot?</a>
                                 </div>
                                 <div className="relative auth-input-focus">
@@ -210,14 +210,14 @@ function LoginForm() {
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-inner"
+                                        className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-inner"
                                         placeholder="••••••••"
                                         required
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                                     >
                                         <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                                     </button>
@@ -249,12 +249,13 @@ function LoginForm() {
                         <div className="mt-8 pt-8 border-t border-white/10 text-center">
                             <p className="text-sm text-gray-400">
                                 Don&apos;t have an account?{' '}
-                                <Link href="/register" className="text-white font-bold hover:text-primary transition-colors relative group">
+                                <Link href="/register" className="text-gray-900 dark:text-white font-bold hover:text-primary transition-colors relative group">
                                     Create an account
                                     <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-primary transition-all group-hover:w-full" />
                                 </Link>
                             </p>
                         </div>
+
                     </div>
                 </div>
             </div>

@@ -39,7 +39,7 @@ function PasswordStrength({ password }: { password: string }) {
                             style={{ fontVariationSettings: c.pass ? "'FILL' 1" : "'FILL' 0" }}>
                             {c.pass ? 'check_circle' : 'radio_button_unchecked'}
                         </span>
-                        <span className={`transition-colors duration-300 ${c.pass ? 'text-white' : 'text-gray-500'}`}>{c.label}</span>
+                        <span className={`transition-colors duration-300 ${c.pass ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-500'}`}>{c.label}</span>
                     </div>
                 ))}
             </div>
@@ -123,20 +123,20 @@ export default function RegisterPage() {
             <div className="flex w-full z-10 relative">
                 
                 {/* Left Panel - Feature Highlights (Hidden on Mobile) */}
-                <div className="hidden lg:flex flex-col justify-between w-1/2 p-16 text-white">
+                <div className="hidden lg:flex flex-col justify-between w-1/2 p-16 text-gray-900 dark:text-white">
                     <div className="flex items-center gap-3 animate-fade-in-up">
                         <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20">
                             <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={32} height={32} className="object-contain filter invert-0" />
                         </div>
-                        <span className="text-2xl font-bold tracking-tight">Wealth AI</span>
+                        <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Wealth AI</span>
                     </div>
 
                     <div className="flex-1 flex flex-col justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                        <h1 className="text-5xl font-black leading-tight mb-6">
+                        <h1 className="text-5xl font-black leading-tight mb-6 text-gray-900 dark:text-white">
                             Start building your<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">wealth today.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-cyan-800 dark:from-emerald-400 dark:to-cyan-400">wealth today.</span>
                         </h1>
-                        <p className="text-gray-300 text-lg max-w-md leading-relaxed mb-12">
+                        <p className="text-gray-600 dark:text-gray-300 text-lg max-w-md leading-relaxed mb-12">
                             Join thousands of people who use AI to make smarter financial decisions every single day.
                         </p>
 
@@ -151,8 +151,8 @@ export default function RegisterPage() {
                                         <span className="material-symbols-outlined text-emerald-400">{feature.icon}</span>
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-bold">{feature.title}</h3>
-                                        <p className="text-gray-400 text-sm mt-1">{feature.desc}</p>
+                                        <h3 className="text-gray-900 dark:text-white font-bold">{feature.title}</h3>
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{feature.desc}</p>
                                     </div>
                                 </div>
                             ))}
@@ -175,8 +175,8 @@ export default function RegisterPage() {
 
                     <div className="auth-glass-card w-full max-w-[480px] p-8 sm:p-12 animate-fade-in-up my-auto" style={{ animationDelay: '0.4s' }}>
                         <div className="mb-8 text-center">
-                            <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Create Account</h2>
-                            <p className="text-gray-400 text-sm">It takes less than a minute to get started.</p>
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">Create Account</h2>
+                            <p className="text-gray-600 dark:text-gray-400 text-sm">It takes less than a minute to get started.</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">
@@ -188,14 +188,14 @@ export default function RegisterPage() {
                             )}
 
                             <div className="space-y-1.5 relative group">
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Full Name</label>
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Full Name</label>
                                 <div className="relative auth-input-focus">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 group-focus-within:text-emerald-400 transition-colors">person</span>
                                     <input
                                         type="text"
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
+                                        className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
                                         placeholder="John Doe"
                                         required
                                         autoComplete="name"
@@ -204,14 +204,14 @@ export default function RegisterPage() {
                             </div>
 
                             <div className="space-y-1.5 relative group">
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Email Address</label>
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Email Address</label>
                                 <div className="relative auth-input-focus">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 group-focus-within:text-emerald-400 transition-colors">mail</span>
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
+                                        className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
                                         placeholder="you@example.com"
                                         required
                                         autoComplete="email"
@@ -220,14 +220,14 @@ export default function RegisterPage() {
                             </div>
 
                             <div className="space-y-1.5 relative group">
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Password</label>
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Password</label>
                                 <div className="relative auth-input-focus">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 group-focus-within:text-emerald-400 transition-colors">lock</span>
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
+                                        className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
                                         placeholder="••••••••"
                                         required
                                         minLength={6}
@@ -235,7 +235,7 @@ export default function RegisterPage() {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                                     >
                                         <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                                     </button>
@@ -244,14 +244,14 @@ export default function RegisterPage() {
                             </div>
 
                             <div className="space-y-1.5 relative group">
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Confirm Password</label>
+                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider group-focus-within:text-emerald-400 group-focus-within:-translate-y-1 transition-all">Confirm Password</label>
                                 <div className="relative auth-input-focus">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 group-focus-within:text-emerald-400 transition-colors">lock_clock</span>
                                     <input
                                         type="password"
                                         value={confirm}
                                         onChange={(e) => setConfirm(e.target.value)}
-                                        className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
+                                        className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all shadow-inner"
                                         placeholder="••••••••"
                                         required
                                         minLength={6}
@@ -290,7 +290,7 @@ export default function RegisterPage() {
                         <div className="mt-8 pt-8 border-t border-white/10 text-center">
                             <p className="text-sm text-gray-400">
                                 Already have an account?{' '}
-                                <Link href="/login" className="text-white font-bold hover:text-emerald-400 transition-colors relative group">
+                                <Link href="/login" className="text-gray-900 dark:text-white font-bold hover:text-emerald-400 transition-colors relative group">
                                     Sign in
                                     <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-emerald-400 transition-all group-hover:w-full" />
                                 </Link>
