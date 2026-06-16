@@ -52,6 +52,12 @@ export default function DayDetailPopup({
     const popupRef = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
     const { fmt } = useCurrency();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setMounted(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
 
     const totalExpense = transactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
     const totalIncome = transactions.filter(tx => tx.type === 'earning').reduce((sum, tx) => sum + tx.amount, 0);
@@ -105,7 +111,7 @@ export default function DayDetailPopup({
         return () => document.removeEventListener('keydown', handleEscape);
     }, [onClose]);
 
-    if (!anchorEl || !position) return null;
+    if (!mounted || !anchorEl || !position) return null;
 
     return createPortal(
         <AnimatePresence>

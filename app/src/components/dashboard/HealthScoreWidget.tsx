@@ -200,6 +200,11 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
 
 function ScoreRow({ label, score, max }: { label: string, score: number, max: number }) {
   const percentage = (score / max) * 100;
+  const getGradientClass = (pct: number) => {
+    if (pct >= 80) return 'bg-gradient-to-r from-emerald-500 to-teal-400';
+    if (pct >= 50) return 'bg-gradient-to-r from-amber-500 to-yellow-450';
+    return 'bg-gradient-to-r from-rose-500 to-orange-400';
+  };
   
   return (
     <div className="flex flex-col gap-1.5">
@@ -209,7 +214,7 @@ function ScoreRow({ label, score, max }: { label: string, score: number, max: nu
       </div>
       <div className="w-full h-1.5 bg-gray-100 dark:bg-surface-hover rounded-full overflow-hidden">
         <motion.div 
-          className="h-full bg-gray-400 dark:bg-gray-500 rounded-full"
+          className={`h-full ${getGradientClass(percentage)} rounded-full`}
           initial={{ width: 0 }}
           whileInView={{ width: `${percentage}%` }}
           viewport={{ once: true }}

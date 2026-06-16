@@ -41,6 +41,12 @@ export default function TransactionDetailModal({
     const { fmt } = useCurrency();
     const [notes, setNotes] = useState('');
     const [isSavingNotes, setIsSavingNotes] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setMounted(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
 
     useEffect(() => {
         if (transaction) {
@@ -65,7 +71,7 @@ export default function TransactionDetailModal({
         }
     };
 
-    if (!transaction) return null;
+    if (!mounted || !transaction) return null;
 
     const isExpense = transaction.type === 'expense';
     const amountColor = isExpense ? 'text-rose-600' : 'text-emerald-600';
