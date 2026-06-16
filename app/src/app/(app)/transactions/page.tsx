@@ -244,10 +244,11 @@ export default function TransactionsPage() {
                 );
 
                 // Online: POST directly to API
+                const { actionType, ...apiPayload } = payload;
                 const res = await fetch('/api/transactions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(apiPayload),
                 });
                 if (!res.ok) throw new Error('API add failed');
                 const data = await res.json();
@@ -478,10 +479,11 @@ export default function TransactionsPage() {
                     { revalidate: false }
                 );
 
+                const { actionType, ...apiPayload } = payload;
                 const res = await fetch('/api/transactions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(apiPayload),
                 });
                 if (!res.ok) throw new Error('API duplicate failed');
                 

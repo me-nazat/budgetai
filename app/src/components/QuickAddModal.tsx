@@ -294,7 +294,8 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
 
                 const isEdit = !!initialTransaction;
                 const method = isEdit ? 'PUT' : 'POST';
-                const body = isEdit ? JSON.stringify({ ...payload, id: initialTransaction.id }) : JSON.stringify(payload);
+                const { actionType, ...apiPayload } = payload;
+                const body = isEdit ? JSON.stringify({ ...apiPayload, id: initialTransaction.id }) : JSON.stringify(apiPayload);
 
                 const res = await fetch('/api/transactions', {
                     method,
