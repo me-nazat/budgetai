@@ -20,6 +20,7 @@ import { TiltCard } from '@/components/ui/TiltCard';
 import { useDashboard } from '@/hooks/useApi';
 import dynamic from 'next/dynamic';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend, ArcElement } from 'chart.js';
+import { useHaptics } from '@/hooks/useHaptics';
 
 const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), { ssr: false });
 const Doughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), { ssr: false });
@@ -32,6 +33,25 @@ interface TourParticipant {
   userId: number | null;
   paid?: number;
   balance?: number;
+}
+
+interface ItineraryItem {
+  id: string;
+  day: number;
+  time: string;
+  title: string;
+  location: string;
+  cost?: string;
+  type: 'flight' | 'hotel' | 'food' | 'activity' | 'transport' | 'other';
+  notes?: string;
+}
+
+interface ChecklistItem {
+  id: string;
+  name: string;
+  category: 'Documents' | 'Clothing' | 'Electronics' | 'Toiletries' | 'Other';
+  assignedTo: string;
+  completed: boolean;
 }
 
 interface TourTransaction {
@@ -121,12 +141,149 @@ export default function TourDashboard() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { categories: customCategories } = useCustomCategories('expense');
+  const haptics = useHaptics();
+
+  // Navigation state
+  const [activeTab, setActiveTab] = useState<'ledger' | 'itinerary' | 'checklist' | 'settlements'>('ledger');
+
+  // Itinerary Planner state
+  const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
+  const [itinTitle, setItinTitle] = useState('');
+  const [itinDay, setItinDay] = useState(1);
+  const [itinTime, setItinTime] = useState('09:00');
+  const [itinLocation, setItinLocation] = useState('');
+  const [itinCost, setItinCost] = useState('');
+  const [itinType, setItinType] = useState<ItineraryItem['type']>('activity');
+  const [itinNotes, setItinNotes] = useState('');
+  const [isAddingItinerary, setIsAddingItinerary] = useState(false);
+
+  useEffect(() => {
+    if (!tourId) return;
+    const saved = localStorage.getItem(`tour_${tourId}_itinerary`);
+    if (saved) {
+      try { setItinerary(JSON.parse(saved)); } catch (e) { console.error(e); }
+    } else {
+      setItinerary([]);
+    }
+  }, [tourId]);
+
+  const handleAddItinerary = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!itinTitle.trim()) return;
+
+    const newItem: ItineraryItem = {
+      id: Date.now().toString(),
+      day: itinDay,
+      time: itinTime,
+      title: itinTitle.trim(),
+      location: itinLocation.trim(),
+      cost: itinCost.trim() ? itinCost.trim() : undefined,
+      type: itinType,
+      notes: itinNotes.trim() ? itinNotes.trim() : undefined,
+    };
+
+    const updated = [...itinerary, newItem].sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day;
+      return a.time.localeCompare(b.time);
+    });
+
+    setItinerary(updated);
+    localStorage.setItem(`tour_${tourId}_itinerary`, JSON.stringify(updated));
+
+    setItinTitle('');
+    setItinLocation('');
+    setItinCost('');
+    setItinNotes('');
+    setItinType('activity');
+    setIsAddingItinerary(false);
+    haptics.success();
+  };
+
+  const handleDeleteItinerary = (id: string) => {
+    const updated = itinerary.filter(item => item.id !== id);
+    setItinerary(updated);
+    localStorage.setItem(`tour_${tourId}_itinerary`, JSON.stringify(updated));
+    haptics.tap();
+  };
+
+  // Group Checklist / Packing List state
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [checkName, setCheckName] = useState('');
+  const [checkCategory, setCheckCategory] = useState<ChecklistItem['category']>('Other');
+  const [checkAssignee, setCheckAssignee] = useState('Everyone');
+  const [activeChecklistFilter, setActiveChecklistFilter] = useState<string>('All');
+  const [isAddingChecklist, setIsAddingChecklist] = useState(false);
+
+  useEffect(() => {
+    if (!tourId) return;
+    const saved = localStorage.getItem(`tour_${tourId}_checklist`);
+    if (saved) {
+      try { setChecklist(JSON.parse(saved)); } catch (e) { console.error(e); }
+    } else {
+      setChecklist([]);
+    }
+  }, [tourId]);
+
+  const handleAddChecklist = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkName.trim()) return;
+
+    const newItem: ChecklistItem = {
+      id: Date.now().toString(),
+      name: checkName.trim(),
+      category: checkCategory,
+      assignedTo: checkAssignee,
+      completed: false,
+    };
+
+    const updated = [...checklist, newItem];
+    setChecklist(updated);
+    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(updated));
+
+    setCheckName('');
+    setCheckCategory('Other');
+    setCheckAssignee('Everyone');
+    setIsAddingChecklist(false);
+    haptics.success();
+  };
+
+  const handleToggleChecklist = (id: string) => {
+    const updated = checklist.map(item =>
+      item.id === id ? { ...item, completed: !item.completed } : item
+    );
+    setChecklist(updated);
+    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(updated));
+    haptics.tap();
+  };
+
+  const handleDeleteChecklist = (id: string) => {
+    const updated = checklist.filter(item => item.id !== id);
+    setChecklist(updated);
+    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(updated));
+    haptics.tap();
+  };
+
+  const generateDefaultChecklist = () => {
+    const defaults: ChecklistItem[] = [
+      { id: '1', name: 'Passports & Visas', category: 'Documents', assignedTo: 'Everyone', completed: false },
+      { id: '2', name: 'Flight & Hotel Bookings', category: 'Documents', assignedTo: 'Everyone', completed: false },
+      { id: '3', name: 'Local Currency / Cards', category: 'Documents', assignedTo: 'Everyone', completed: false },
+      { id: '4', name: 'Phone Chargers & Power Banks', category: 'Electronics', assignedTo: 'Everyone', completed: false },
+      { id: '5', name: 'Universal Travel Adapter', category: 'Electronics', assignedTo: 'Everyone', completed: false },
+      { id: '6', name: 'Toothbrush & Travel Toiletries', category: 'Toiletries', assignedTo: 'Everyone', completed: false },
+      { id: '7', name: 'First-aid & Daily Medicines', category: 'Other', assignedTo: 'Everyone', completed: false },
+      { id: '8', name: 'Weather-appropriate Clothes', category: 'Clothing', assignedTo: 'Everyone', completed: false },
+    ];
+    setChecklist(defaults);
+    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(defaults));
+    haptics.success();
+  };
 
   // Destructure computed metrics out of the API response to save client CPU
   const totalSpent = Number(tourData?.totalSpent || 0);
   const perPerson = Number(tourData?.perPerson || 0);
   const averageCost = Number(tourData?.averageCost || 0);
-  const balances = (tourData?.balances ?? []) as TourParticipant[];
+  const balances = useMemo(() => (tourData?.balances ?? []) as TourParticipant[], [tourData?.balances]);
 
   const currentUserBalanceObj = balances.find(b => b.userId === currentUserId);
   const myBalance = currentUserBalanceObj?.balance || 0;
@@ -136,29 +293,112 @@ export default function TourDashboard() {
   const gridColor = isDark ? '#21262d' : '#e5e7eb';
 
   const barData = useMemo(() => {
-    const dailyMap = new Map<string, number>();
+    if (transactions.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+
+    const dailyCatMap = new Map<string, Map<string, number>>();
+    const categoriesSet = new Set<string>();
+
     transactions.forEach(t => {
       const date = t.date || 'Unknown';
-      if (date !== 'Unknown') dailyMap.set(date, (dailyMap.get(date) || 0) + Number(t.amount));
+      if (date === 'Unknown') return;
+      const cat = t.category || 'Other';
+      const formattedCat = cat.trim().charAt(0).toUpperCase() + cat.trim().slice(1).toLowerCase();
+      categoriesSet.add(formattedCat);
+
+      if (!dailyCatMap.has(date)) {
+        dailyCatMap.set(date, new Map<string, number>());
+      }
+      const catMap = dailyCatMap.get(date)!;
+      catMap.set(formattedCat, (catMap.get(formattedCat) || 0) + Number(t.amount));
     });
-    const sortedDates = Array.from(dailyMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    
-    const colors = [
-      'rgba(16, 185, 129, 0.7)', // Emerald
-      'rgba(59, 130, 246, 0.7)', // Blue
-      'rgba(244, 63, 94, 0.7)',  // Rose
-      'rgba(245, 158, 11, 0.7)',  // Amber
-      'rgba(6, 182, 212, 0.7)',  // Cyan
-    ];
-    const backgroundColors = sortedDates.map((_, i) => colors[i % colors.length]);
+
+    const sortedDates = Array.from(dailyCatMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    const uniqueCategories = Array.from(categoriesSet);
+
+    const datasets = uniqueCategories.map(cat => {
+      const data = sortedDates.map(date => {
+        return dailyCatMap.get(date)?.get(cat) || 0;
+      });
+
+      const hexColor = getCategoryHex ? getCategoryHex(cat, customCategories) : '#136dec';
+
+      return {
+        label: cat,
+        data,
+        backgroundColor: hexColor,
+        borderRadius: 4,
+        borderSkipped: false as const
+      };
+    });
 
     return {
-        labels: sortedDates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-        datasets: [
-            { label: 'Expenses', data: sortedDates.map(d => dailyMap.get(d)), backgroundColor: backgroundColors, borderRadius: 6, borderSkipped: false as const }
-        ]
+      labels: sortedDates.map(d => {
+        const [year, month, day] = d.split('-');
+        const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+        return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }),
+      datasets
     };
-  }, [transactions]);
+  }, [transactions, customCategories]);
+
+  const contributionData = useMemo(() => {
+    const activeBalances = balances.filter(b => (b.paid || 0) > 0);
+    const labels = activeBalances.map(b => b.name);
+    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e', '#06b6d4', '#14b8a6', '#ec4899', '#0ea5e9'];
+    
+    return {
+      labels,
+      datasets: [{
+        data: activeBalances.map(b => b.paid || 0),
+        backgroundColor: activeBalances.map((_, i) => colors[i % colors.length]),
+        borderWidth: 0,
+        spacing: 2,
+      }]
+    };
+  }, [balances]);
+
+  const settlementPlan = useMemo(() => {
+    if (!balances || balances.length === 0) return [];
+    
+    const debtors = balances
+      .filter(b => (b.balance ?? 0) < -0.01)
+      .map(b => ({ ...b, balance: b.balance ?? 0 }))
+      .sort((a, b) => a.balance - b.balance);
+      
+    const creditors = balances
+      .filter(b => (b.balance ?? 0) > 0.01)
+      .map(b => ({ ...b, balance: b.balance ?? 0 }))
+      .sort((a, b) => b.balance - a.balance);
+      
+    const plans: { from: string; to: string; amount: number }[] = [];
+    let dIdx = 0;
+    let cIdx = 0;
+    
+    while (dIdx < debtors.length && cIdx < creditors.length) {
+      const debtor = debtors[dIdx];
+      const creditor = creditors[cIdx];
+      
+      const oweAmount = -debtor.balance;
+      const creditAmount = creditor.balance;
+      const transfer = Math.min(oweAmount, creditAmount);
+      
+      plans.push({
+        from: debtor.name,
+        to: creditor.name,
+        amount: transfer
+      });
+      
+      debtor.balance += transfer;
+      creditor.balance -= transfer;
+      
+      if (Math.abs(debtor.balance) < 0.01) dIdx++;
+      if (Math.abs(creditor.balance) < 0.01) cIdx++;
+    }
+    
+    return plans;
+  }, [balances]);
 
   const doughnutData = useMemo(() => {
     const catMap = new Map<string, number>();
@@ -383,197 +623,783 @@ export default function TourDashboard() {
           </TiltCard>
         </div>
 
-        {/* Split-Screen Analytics: Spending Trends & Expense Distribution */}
-        <div className="flex flex-col lg:flex-row gap-5 mb-8">
-            <TiltCard className="w-full lg:w-[60%] shrink-0 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.35s both' }}>
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
-                        <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Tour expenses over time</p>
-                    </div>
-                </div>
-                <div className="h-[320px]">
-                    <Bar data={barData!} options={{
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
-                            tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8 },
-                        },
-                        scales: {
-                            x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
-                            y: { beginAtZero: true, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => fmt(Number(v)), font: { size: 11 }, padding: 8 }, border: { display: false } },
-                        },
-                    }} />
-                </div>
-            </TiltCard>
+        {/* Navigation Tabs */}
+        <div className="mb-8 flex flex-wrap gap-2 border-b border-gray-200 dark:border-white/10 pb-4">
+          {[
+            { id: 'ledger', label: 'Expenses Ledger', icon: 'receipt_long' },
+            { id: 'itinerary', label: 'Itinerary Planner', icon: 'calendar_month' },
+            { id: 'checklist', label: 'Packing Checklist', icon: 'backpack' },
+            { id: 'settlements', label: 'Balances & Settlements', icon: 'handshake' }
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { haptics.tap(); setActiveTab(tab.id as any); }}
+                className={`relative flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition-all outline-none ${
+                  isActive ? 'text-white' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-tab-indicator"
+                    className="absolute inset-0 rounded-2xl bg-primary shadow-lg shadow-primary/20"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px]">{tab.icon}</span>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-            <TiltCard className="w-full lg:w-[40%] glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.45s both' }}>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
-                <div className="h-[320px] min-h-[160px]">
-                    <Doughnut data={doughnutData!} options={{
+        <AnimatePresence mode="wait">
+          {activeTab === 'ledger' && (
+            <motion.div
+              key="ledger-tab"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={spring}
+              className="space-y-8"
+            >
+              {/* Split-Screen Analytics: Spending Trends & Expense Distribution */}
+              <div className="flex flex-col lg:flex-row gap-5">
+                  <TiltCard className="w-full lg:w-[60%] shrink-0 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'none' }}>
+                      <div className="flex justify-between items-center mb-6">
+                          <div>
+                              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
+                              <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Tour expenses over time</p>
+                          </div>
+                      </div>
+                      <div className="h-[320px]">
+                          <Bar data={barData!} options={{
+                              responsive: true, maintainAspectRatio: false,
+                              plugins: {
+                                  legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
+                                  tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8 },
+                              },
+                              scales: {
+                                  x: { stacked: true, grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
+                                  y: { stacked: true, beginAtZero: true, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => fmt(Number(v)), font: { size: 11 }, padding: 8 }, border: { display: false } },
+                              },
+                          }} />
+                      </div>
+                  </TiltCard>
+
+                  <TiltCard className="w-full lg:w-[40%] glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'none' }}>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
+                      <div className="h-[320px] min-h-[160px]">
+                          <Doughnut data={doughnutData!} options={{
+                              responsive: true, maintainAspectRatio: false,
+                              animation: { duration: 800, easing: 'easeOutQuart' },
+                              plugins: {
+                                  legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
+                                  tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
+                              },
+                              cutout: '68%',
+                          }} />
+                      </div>
+                  </TiltCard>
+              </div>
+
+              {/* Transactions Ledger */}
+              <div className="mt-10">
+                <h2 className="mb-6 text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
+                <AnimatePresence mode="popLayout">
+                  {transactions.length === 0 ? (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={spring}
+                      className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-[2rem] p-8 text-center"
+                    >
+                      <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">receipt_long</span>
+                      <h2 className="text-2xl font-black text-gray-950 dark:text-white">No costs logged yet</h2>
+                      <p className="mt-2 max-w-md text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Add the first meal, ride, hotel bill, or shared purchase for this trip.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add</span>
+                        Add First Cost
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="feed" layout className="space-y-6">
+                      {groupedTransactions.map(([date, items], groupIndex) => (
+                        <motion.section
+                          key={date}
+                          layout
+                          initial={{ opacity: 0, y: 14 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ ...spring, delay: groupIndex * 0.04 }}
+                        >
+                          <div className="mb-3 flex items-center gap-3">
+                            <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">
+                              {date === 'Unknown date' ? date : new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </p>
+                            <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
+                          </div>
+
+                          <div className="space-y-3">
+                            {items.map((transaction, index) => {
+                              const payerId = transaction.paidByParticipantId ?? transaction.paidBy;
+                              const payerName = transaction.paidByName ?? getParticipantName(payerId);
+
+                              return (
+                                <motion.article
+                                  layoutId={`tour-transaction-${transaction.id}`}
+                                  key={transaction.id}
+                                  onClick={() => { setSelectedTransaction(transaction); setIsDetailModalOpen(true); }}
+                                  initial={{ opacity: 0, x: -14 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  whileHover={{ y: -2 }}
+                                  transition={{ ...spring, delay: index * 0.025 }}
+                                  className="group relative cursor-pointer overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white/78 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.05)] backdrop-blur-2xl transition-all hover:bg-white dark:border-white/[0.08] dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
+                                >
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex min-w-0 items-center gap-4">
+                                      <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
+                                        <span className="material-symbols-outlined">
+                                          {getCategoryIcon(transaction.category, customCategories)}
+                                        </span>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h2 className="truncate text-base font-black text-gray-950 dark:text-white">{transaction.description}</h2>
+                                        <p className="mt-1 truncate text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                          {transaction.createdByName && transaction.createdByName !== payerName ? (
+                                            <>Paid by <span className="text-gray-800 dark:text-gray-200">{payerName}</span> (Added by {transaction.createdByName})</>
+                                          ) : (
+                                            <>Paid by <span className="text-gray-800 dark:text-gray-200">{payerName}</span></>
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="shrink-0 flex items-center gap-4">
+                                      <div className="text-right">
+                                        <p className="text-xl font-black tabular-nums text-rose-500">-{fmt(transaction.amount)}</p>
+                                        <span className="mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
+                                          {transaction.splitType}
+                                        </span>
+                                      </div>
+                                      <div className="hidden sm:flex items-center gap-1 border-l border-gray-200 dark:border-white/10 pl-4">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); setIsEditCostOpen(true); }}
+                                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:bg-white/[0.04] dark:hover:bg-white/10 dark:hover:text-white"
+                                          title="Edit"
+                                        >
+                                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); void handleDeleteTransaction(transaction); }}
+                                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-400 transition-colors hover:bg-rose-100 hover:text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
+                                          title="Delete"
+                                        >
+                                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.article>
+                              );
+                            })}
+                          </div>
+                        </motion.section>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Member Contributions Doughnut Chart */}
+              {balances.some(b => (b.paid || 0) > 0) && (
+                <motion.section
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] mt-10"
+                >
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Member Contributions</h2>
+                    <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Breakdown of total money paid by each member of the trip.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row gap-8 items-center">
+                    <div className="w-full lg:w-[45%] h-[240px] flex items-center justify-center">
+                      <Doughnut data={contributionData!} options={{
                         responsive: true, maintainAspectRatio: false,
                         animation: { duration: 800, easing: 'easeOutQuart' },
                         plugins: {
-                            legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
-                            tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
+                          legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 11 } } },
+                          tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8, callbacks: { label: (c) => `Paid: ${fmt(Number(c.raw))}` } },
                         },
                         cutout: '68%',
-                    }} />
-                </div>
-            </TiltCard>
-        </div>
-
-        <motion.section
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...spring, delay: 0.09 }}
-          className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] mb-10"
-        >
-          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-2xl font-black text-gray-950 dark:text-white">Balances</h2>
-              <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">Who paid what and how the equal split currently settles.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {balances.map((participant) => (
-              <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-                <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
-                <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
-                  Paid {fmt(participant.paid || 0)}
-                </p>
-                <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
-                  {(participant.balance || 0) > 0
-                    ? `Gets back ${fmt(participant.balance || 0)}`
-                    : (participant.balance || 0) < 0
-                      ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
-                      : 'Settled'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </motion.section>
-
-        <div className="mt-10">
-          <h2 className="mb-6 text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
-          <AnimatePresence mode="popLayout">
-            {transactions.length === 0 ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={spring}
-                className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-[2rem] p-8 text-center"
-              >
-                <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">receipt_long</span>
-                <h2 className="text-2xl font-black text-gray-950 dark:text-white">No costs logged yet</h2>
-                <p className="mt-2 max-w-md text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Add the first meal, ride, hotel bill, or shared purchase for this trip.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
-                >
-                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add</span>
-                  Add First Cost
-                </button>
-              </motion.div>
-            ) : (
-              <motion.div key="feed" layout className="space-y-6">
-                {groupedTransactions.map(([date, items], groupIndex) => (
-                  <motion.section
-                    key={date}
-                    layout
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ ...spring, delay: groupIndex * 0.04 }}
-                  >
-                    <div className="mb-3 flex items-center gap-3">
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">
-                        {date === 'Unknown date' ? date : new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                      <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
+                      }} />
                     </div>
-
-                    <div className="space-y-3">
-                      {items.map((transaction, index) => {
-                        const payerId = transaction.paidByParticipantId ?? transaction.paidBy;
-                        const payerName = transaction.paidByName ?? getParticipantName(payerId);
-
-                        return (
-                          <motion.article
-                            layoutId={`tour-transaction-${transaction.id}`}
-                            key={transaction.id}
-                            onClick={() => { setSelectedTransaction(transaction); setIsDetailModalOpen(true); }}
-                            initial={{ opacity: 0, x: -14 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            whileHover={{ y: -2 }}
-                            transition={{ ...spring, delay: index * 0.025 }}
-                            className="group relative cursor-pointer overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white/78 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.05)] backdrop-blur-2xl transition-all hover:bg-white dark:border-white/[0.08] dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex min-w-0 items-center gap-4">
-                                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
-                                  <span className="material-symbols-outlined">
-                                    {getCategoryIcon(transaction.category, customCategories)}
-                                  </span>
-                                </div>
-                                <div className="min-w-0">
-                                  <h2 className="truncate text-base font-black text-gray-950 dark:text-white">{transaction.description}</h2>
-                                  <p className="mt-1 truncate text-xs font-semibold text-gray-500 dark:text-gray-400">
-                                    {transaction.createdByName && transaction.createdByName !== payerName ? (
-                                      <>Paid by <span className="text-gray-800 dark:text-gray-200">{payerName}</span> (Added by {transaction.createdByName})</>
-                                    ) : (
-                                      <>Paid by <span className="text-gray-800 dark:text-gray-200">{payerName}</span></>
-                                    )}
-                                  </p>
-                                </div>
+                    <div className="w-full lg:w-[55%] space-y-3">
+                      {balances
+                        .filter(b => (b.paid || 0) > 0)
+                        .sort((a, b) => (b.paid || 0) - (a.paid || 0))
+                        .map((b, i) => {
+                          const totalPaid = balances.reduce((sum, item) => sum + (item.paid || 0), 0);
+                          const percent = totalPaid > 0 ? Math.round(((b.paid || 0) / totalPaid) * 100) : 0;
+                          const colors = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e', '#06b6d4', '#14b8a6', '#ec4899', '#0ea5e9'];
+                          const dotColor = colors[i % colors.length];
+                          return (
+                            <div key={b.id} className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-white/[0.01]">
+                              <div className="flex items-center gap-2.5">
+                                <div className="size-3 rounded-full" style={{ backgroundColor: dotColor }} />
+                                <span className="text-sm font-black text-gray-950 dark:text-white">{b.name}</span>
                               </div>
-                              <div className="shrink-0 flex items-center gap-4">
-                                <div className="text-right">
-                                  <p className="text-xl font-black tabular-nums text-rose-500">-{fmt(transaction.amount)}</p>
-                                  <span className="mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
-                                    {transaction.splitType}
-                                  </span>
-                                </div>
-                                <div className="hidden sm:flex items-center gap-1 border-l border-gray-200 dark:border-white/10 pl-4">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); setIsEditCostOpen(true); }}
-                                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:bg-white/[0.04] dark:hover:bg-white/10 dark:hover:text-white"
-                                    title="Edit"
-                                  >
-                                    <span className="material-symbols-outlined text-[20px]">edit</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); void handleDeleteTransaction(transaction); }}
-                                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-400 transition-colors hover:bg-rose-100 hover:text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
-                                    title="Delete"
-                                  >
-                                    <span className="material-symbols-outlined text-[20px]">delete</span>
-                                  </button>
-                                </div>
+                              <div className="text-right">
+                                <span className="text-sm font-mono font-black text-gray-900 dark:text-gray-200">{fmt(b.paid || 0)}</span>
+                                <span className="ml-2.5 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md font-bold">{percent}%</span>
                               </div>
                             </div>
-                          </motion.article>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
-                  </motion.section>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                  </div>
+                </motion.section>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'itinerary' && (
+            <motion.div
+              key="itinerary-tab"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={spring}
+              className="space-y-6"
+            >
+              <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Trip Itinerary</h2>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                      Plan and view your day-by-day activities, reservations, and timings.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { haptics.tap(); setIsAddingItinerary(!isAddingItinerary); }}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover self-start sm:self-auto"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">{isAddingItinerary ? 'close' : 'add'}</span>
+                    {isAddingItinerary ? 'Cancel' : 'Add Activity'}
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {isAddingItinerary && (
+                    <motion.form
+                      onSubmit={handleAddItinerary}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="border-t border-gray-100 dark:border-white/5 pt-6 mt-4 space-y-4 overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
+                          <input
+                            type="text"
+                            required
+                            value={itinTitle}
+                            onChange={e => setItinTitle(e.target.value)}
+                            placeholder="e.g. Eiffel Tower Visit, Hotel Check-in"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day Number</label>
+                          <input
+                            type="number"
+                            required
+                            min="1"
+                            value={itinDay}
+                            onChange={e => setItinDay(Number(e.target.value))}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Time</label>
+                          <input
+                            type="time"
+                            required
+                            value={itinTime}
+                            onChange={e => setItinTime(e.target.value)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
+                          <input
+                            type="text"
+                            value={itinLocation}
+                            onChange={e => setItinLocation(e.target.value)}
+                            placeholder="e.g. Paris, France"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Estimated Cost (Optional)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={itinCost}
+                            onChange={e => setItinCost(e.target.value)}
+                            placeholder="0.00"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
+                          <select
+                            value={itinType}
+                            onChange={e => setItinType(e.target.value as any)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          >
+                            <option value="activity">Activity 🎯</option>
+                            <option value="flight">Flight ✈️</option>
+                            <option value="hotel">Hotel 🏨</option>
+                            <option value="food">Food 🍽️</option>
+                            <option value="transport">Transport 🚗</option>
+                            <option value="other">Other 📦</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+                        <textarea
+                          value={itinNotes}
+                          onChange={e => setItinNotes(e.target.value)}
+                          placeholder="Confirmation codes, reminders, reservation links..."
+                          className="mt-1 min-h-16 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-black text-white shadow-md hover:bg-primary-hover"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">calendar_add_on</span>
+                        Save Activity
+                      </button>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {itinerary.length === 0 ? (
+                <div className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
+                  <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">route</span>
+                  <h3 className="text-xl font-black text-gray-950 dark:text-white">Your itinerary is empty</h3>
+                  <p className="mt-2 max-w-sm text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Start planning your trip schedule by adding flight timings, hotel stays, and exciting activities!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { haptics.tap(); setIsAddingItinerary(true); }}
+                    className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">add</span>
+                    Add First Activity
+                  </button>
+                </div>
+              ) : (
+                <div className="relative border-l border-gray-200 dark:border-white/10 ml-6 pl-8 space-y-8 py-4">
+                  {itinerary.map((item, index) => {
+                    const typeIcons: Record<string, string> = {
+                      flight: 'flight_takeoff',
+                      hotel: 'hotel',
+                      food: 'restaurant',
+                      activity: 'local_activity',
+                      transport: 'directions_car',
+                      other: 'category'
+                    };
+                    const icon = typeIcons[item.type] || 'category';
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="relative group"
+                      >
+                        <div className="absolute -left-[50px] top-1.5 flex size-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-gray-300 transition-transform group-hover:scale-110">
+                          <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                        </div>
+
+                        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden transition-all hover:translate-x-1 duration-200">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
+                                Day {item.day}
+                              </span>
+                              <span className="text-sm font-mono font-bold text-gray-500 dark:text-gray-400">
+                                {item.time}
+                              </span>
+                              <h3 className="text-base font-black text-gray-950 dark:text-white">{item.title}</h3>
+                            </div>
+                            <div className="flex items-center gap-3 self-end sm:self-auto">
+                              {item.cost && (
+                                <span className="text-sm font-mono font-black text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-lg">
+                                  Est. {fmt(Number(item.cost))}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteItinerary(item.id)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                                title="Delete activity"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {(item.location || item.notes) && (
+                            <div className="mt-2 space-y-1.5">
+                              {item.location && (
+                                <p className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold">
+                                  <span className="material-symbols-outlined text-[15px] text-gray-400">pin_drop</span>
+                                  {item.location}
+                                </p>
+                              )}
+                              {item.notes && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 bg-white/[0.02] border border-white/[0.04] p-2 rounded-lg leading-relaxed italic">
+                                  {item.notes}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'checklist' && (
+            <motion.div
+              key="checklist-tab"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={spring}
+              className="space-y-6"
+            >
+              <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Group Packing Checklist</h2>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                      Ensure nothing is left behind. Track items to pack and assign them to trip members.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {checklist.length === 0 && (
+                      <button
+                        type="button"
+                        onClick={generateDefaultChecklist}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-500/20"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        Generate Essentials
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { haptics.tap(); setIsAddingChecklist(!isAddingChecklist); }}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{isAddingChecklist ? 'close' : 'add'}</span>
+                      {isAddingChecklist ? 'Cancel' : 'Add Item'}
+                    </button>
+                  </div>
+                </div>
+
+                {checklist.length > 0 && (
+                  <div className="mb-6 bg-white/[0.02] border border-white/[0.04] p-4 rounded-2xl">
+                    <div className="flex justify-between items-center mb-2 text-xs font-black uppercase text-gray-400">
+                      <span>Progress</span>
+                      <span>
+                        {checklist.filter(c => c.completed).length} / {checklist.length} packed
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-white/10 h-2.5 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(checklist.filter(c => c.completed).length / checklist.length) * 100}%` }}
+                        className="bg-emerald-500 h-full rounded-full"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <AnimatePresence>
+                  {isAddingChecklist && (
+                    <motion.form
+                      onSubmit={handleAddChecklist}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="border-t border-gray-100 dark:border-white/5 pt-6 mt-4 space-y-4 overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Item Name</label>
+                          <input
+                            type="text"
+                            required
+                            value={checkName}
+                            onChange={e => setCheckName(e.target.value)}
+                            placeholder="e.g. Passports, Chargers, Adapters"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
+                          <select
+                            value={checkCategory}
+                            onChange={e => setCheckCategory(e.target.value as any)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          >
+                            <option value="Documents">Documents 📄</option>
+                            <option value="Clothing">Clothing 👕</option>
+                            <option value="Electronics">Electronics 🔌</option>
+                            <option value="Toiletries">Toiletries 🧴</option>
+                            <option value="Other">Other 📦</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Assigned To</label>
+                          <select
+                            value={checkAssignee}
+                            onChange={e => setCheckAssignee(e.target.value)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          >
+                            <option value="Everyone">Everyone</option>
+                            {participants.map(p => (
+                              <option key={p.id} value={p.name}>{p.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-black text-white shadow-md hover:bg-primary-hover"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">playlist_add</span>
+                        Add Checklist Item
+                      </button>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {checklist.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {['All', 'Documents', 'Clothing', 'Electronics', 'Toiletries', 'Other'].map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => setActiveChecklistFilter(filter)}
+                      className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                        activeChecklistFilter === filter
+                          ? 'bg-primary/20 text-primary border border-primary/30'
+                          : 'text-gray-500 border border-transparent hover:bg-white/5 dark:text-gray-400'
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {checklist.length === 0 ? (
+                <div className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
+                  <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">backpack</span>
+                  <h3 className="text-xl font-black text-gray-950 dark:text-white">Your packing list is empty</h3>
+                  <p className="mt-2 max-w-sm text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Generate our recommended essential packing checklist, or add your own items below.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={generateDefaultChecklist}
+                    className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+                    Generate Essentials List
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {checklist
+                    .filter(item => activeChecklistFilter === 'All' || item.category === activeChecklistFilter)
+                    .map((item, index) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.025 }}
+                        onClick={() => handleToggleChecklist(item.id)}
+                        className="glass-panel p-4 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-colors hover:bg-white/[0.04]"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`size-6 rounded-lg border flex items-center justify-center transition-all ${
+                            item.completed
+                              ? 'border-emerald-500 bg-emerald-500 text-white'
+                              : 'border-white/20 bg-white/[0.02]'
+                          }`}>
+                            {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className={`text-sm font-black truncate text-white ${item.completed ? 'line-through text-gray-500' : ''}`}>
+                              {item.name}
+                            </h4>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              <span className="text-[10px] font-black uppercase text-gray-500 bg-white/[0.05] px-1.5 py-0.5 rounded">
+                                {item.category}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-400">
+                                👤 {item.assignedTo}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteChecklist(item.id); }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-rose-500/10 hover:text-rose-500 transition-colors shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </motion.div>
+                    ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'settlements' && (
+            <motion.div
+              key="settlements-tab"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={spring}
+              className="space-y-8"
+            >
+              <div>
+                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-4">Balances Overview</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {balances.map((participant) => (
+                    <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                      <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
+                      <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                        Paid {fmt(participant.paid || 0)}
+                      </p>
+                      <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                        {(participant.balance || 0) > 0
+                          ? `Gets back ${fmt(participant.balance || 0)}`
+                          : (participant.balance || 0) < 0
+                            ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
+                            : 'Settled'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
+                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-1">Settlement Plan</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">
+                  Optimized payments to settle all group debts with the fewest transactions.
+                </p>
+
+                {settlementPlan.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <span className="material-symbols-outlined text-emerald-400 text-5xl mb-3">celebration</span>
+                    <p className="text-base font-black text-white">All Settled!</p>
+                    <p className="text-xs text-gray-400 mt-1 font-medium">No pending debts between members of this tour.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {settlementPlan.map((plan, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2 text-sm font-black text-rose-300 truncate max-w-[120px] sm:max-w-none text-center">
+                            {plan.from}
+                          </div>
+
+                          <div className="flex-1 flex flex-col items-center min-w-[60px] relative px-2">
+                            <span className="text-xs font-mono font-black text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full z-10 shrink-0">
+                              {fmt(plan.amount)}
+                            </span>
+                            <div className="w-full border-t border-dashed border-gray-500 absolute top-1/2 -translate-y-1/2" />
+                            <span className="material-symbols-outlined text-[16px] text-gray-500 absolute right-0 top-1/2 -translate-y-1/2 bg-slate-900 rounded-full pl-0.5">
+                              play_arrow
+                            </span>
+                          </div>
+
+                          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-sm font-black text-emerald-300 truncate max-w-[120px] sm:max-w-none text-center">
+                            {plan.to}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${plan.from} paid ${fmt(plan.amount)} to ${plan.to}`);
+                            haptics.tap();
+                          }}
+                          className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                          title="Copy settlement details"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <TourAddCostModal
