@@ -403,7 +403,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                                 onClick={() => handleSelectRecentCustom(cat.name)}
                                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${isSelected
                                                     ? colorStyle.selected
-                                                    : 'bg-gray-100 dark:bg-[#0d1117] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#30363d] hover:border-gray-300 dark:hover:border-gray-500'
+                                                    : 'bg-gray-100 dark:bg-[#0A0E1A] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#30363d] hover:border-gray-300 dark:hover:border-gray-500'
                                                     }`}
                                             >
                                                 <span className={`material-symbols-outlined text-[18px] ${!isSelected ? colorStyle.text : ''}`}>
@@ -434,7 +434,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                     ) : !isCreatingCustom ? (
                         <>
                             {/* Type Toggle */}
-                            <div className="flex bg-gray-100 dark:bg-[#0d1117] rounded-xl p-1 mb-6">
+                            <div className="flex bg-gray-100 dark:bg-[#0A0E1A] rounded-xl p-1 mb-6">
                                 <button
                                     onClick={() => { setType('expense'); setCategory(''); setIsCreatingCustom(false); setShowRecentCustom(false); }}
                                     className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === 'expense'
@@ -468,7 +468,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                         value={amount}
                                         onChange={e => setAmount(e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full pl-12 pr-4 py-4 text-3xl font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-[#30363d] rounded-2xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-center"
+                                        className="w-full pl-12 pr-4 py-4 text-3xl font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] rounded-2xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-center"
                                         autoFocus
                                     />
                                     </div>
@@ -481,7 +481,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                         type="date"
                                         value={date}
                                         onChange={e => setDate(e.target.value)}
-                                        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm font-medium"
+                                        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm font-medium"
                                     />
                                 </div>
                             </div>
@@ -504,7 +504,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                                     onClick={() => setCategory(cat.label)}
                                                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${isSelected
                                                         ? selectedBg
-                                                        : 'bg-gray-100 dark:bg-[#0d1117] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#30363d]'
+                                                        : 'bg-gray-100 dark:bg-[#0A0E1A] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#30363d]'
                                                         }`}
                                                 >
                                                     <span className={`material-symbols-outlined text-[16px] ${!isSelected && cat.color ? getColorStyle(cat.color).text : ''}`}>
@@ -550,7 +550,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                     value={description}
                                     onChange={e => { setDescription(e.target.value); if (e.target.value.trim()) setDescriptionError(false); }}
                                     placeholder="e.g. Lunch with friends"
-                                    className={`w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-primary/20 text-sm transition-all ${
+                                    className={`w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-primary/20 text-sm transition-all ${
                                         descriptionError
                                             ? 'border-rose-400 focus:border-rose-500 ring-2 ring-rose-500/20'
                                             : 'border-gray-200 dark:border-[#30363d] focus:border-primary'
@@ -572,7 +572,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                     onChange={e => setNotes(e.target.value)}
                                     placeholder="Additional notes, receipt info, context..."
                                     rows={2}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm resize-none"
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm resize-none"
                                 />
                             </div>
 
@@ -662,7 +662,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                         value={customName}
                                         onChange={e => setCustomName(e.target.value)}
                                         placeholder="e.g. Coffee, Gym, Pets, Crypto"
-                                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
                                         autoFocus
                                     />
                                     {/* Live Icon Preview */}
@@ -720,7 +720,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                             className={`aspect-square rounded-xl flex items-center justify-center text-xl transition-all ${
                                                 customIcon === icon 
                                                 ? `${getColorStyle(customColor).bg} text-white shadow-md scale-110`
-                                                : 'bg-gray-100 dark:bg-[#0d1117] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800'
+                                                : 'bg-gray-100 dark:bg-[#0A0E1A] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800'
                                             }`}
                                         >
                                             <span className="material-symbols-outlined">{icon}</span>
@@ -731,7 +731,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
 
                             {/* Live Preview Card */}
                             {customName.trim() && (
-                                <div className="mb-6 p-4 rounded-xl bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-[#30363d]">
+                                <div className="mb-6 p-4 rounded-xl bg-gray-50 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d]">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Preview</p>
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getColorStyle(customColor).bg}`}>

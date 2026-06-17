@@ -213,7 +213,7 @@ export default function Sidebar() {
                             
                             {/* Avatar */}
                             <div className="relative w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-cyan-600 p-[2px] shrink-0 transform group-hover:scale-105 transition-transform duration-300">
-                                <div className="w-full h-full rounded-full bg-white dark:bg-[#0d1117] flex items-center justify-center overflow-hidden">
+                                <div className="w-full h-full rounded-full bg-white dark:bg-[#0A0E1A] flex items-center justify-center overflow-hidden">
                                     <span className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-tr from-primary to-cyan-600">
                                         {user.name.charAt(0).toUpperCase()}
                                     </span>

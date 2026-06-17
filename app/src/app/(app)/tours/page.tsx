@@ -159,7 +159,7 @@ export default function ToursPage() {
               transition={{ ...spring, delay: index * 0.04 }}
               onClick={() => router.push(`/tours/${tour.id}`)}
               onMouseMove={handleMouseMove}
-              className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0d1117]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)] group-hover:saturate-[1.35] group-hover:brightness-[1.35] transition-all duration-500"
+              className="group relative overflow-hidden rounded-[2rem] border border-gray-200 bg-white/78 p-6 text-left shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0A0E1A]/70 dark:shadow-[0_18px_70px_rgba(0,0,0,0.25)] group-hover:saturate-[1.35] group-hover:brightness-[1.35] transition-all duration-500"
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-70 dark:opacity-50 group-hover:opacity-100 transition-opacity duration-500`} />
               <div

@@ -153,7 +153,7 @@ export default function TourEditModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
             transition={spring}
-            className="relative z-50 max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border border-white/10 bg-[#0d1117]/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
+            className="relative z-50 max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border border-white/10 bg-[#0A0E1A]/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
           >
             <div className="p-5 sm:p-7">
               <div className="mb-6 flex items-start justify-between gap-4">

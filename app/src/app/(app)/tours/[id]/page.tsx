@@ -547,7 +547,7 @@ export default function TourDashboard() {
 
   return (
     <>
-      <div className="mx-auto min-h-dvh max-w-7xl px-4 py-4 pb-28 sm:px-6 lg:px-8">
+      <div className="mx-auto min-h-dvh max-w-7xl px-4 py-2 pb-20 sm:px-6 lg:px-8">
         <div className="mb-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
             <Link href="/tours" className="mb-4 inline-flex items-center gap-2 rounded-2xl text-sm font-bold text-gray-500 hover:text-gray-950 dark:hover:text-white">
@@ -555,7 +555,7 @@ export default function TourDashboard() {
               Back to Tours
             </Link>
             <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-primary">Tour Dashboard</p>
-            <h1 className="max-w-4xl text-balance text-4xl font-black tracking-tight text-gray-950 dark:text-white lg:text-6xl">
+            <h1 className="max-w-4xl text-balance text-3xl font-black tracking-tight text-gray-950 dark:text-white lg:text-5xl">
               {tour.name}
             </h1>
             {dashboardData && (
@@ -716,7 +716,7 @@ export default function TourDashboard() {
                       </div>
                   </TiltCard>
 
-                  <TiltCard className="w-full lg:w-[40%] glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'none' }}>
+                  <TiltCard className="w-full lg:w-[40%] glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'none' }} tiltIntensity={7.5}>
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
                       <div className="h-[320px] min-h-[160px]">
                           <Doughnut data={doughnutData!} options={{
@@ -861,7 +861,7 @@ export default function TourDashboard() {
                                           {transaction.splitType}
                                         </span>
                                       </div>
-                                      <div className="hidden sm:flex items-center gap-1 border-l border-gray-200 dark:border-white/10 pl-4">
+                                      <div className="flex items-center gap-1 border-l border-gray-200 dark:border-white/10 pl-4">
                                         <button
                                           type="button"
                                           onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); setIsEditCostOpen(true); }}
@@ -1358,7 +1358,7 @@ export default function TourDashboard() {
                             {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
                           </div>
                           <div className="min-w-0">
-                            <h4 className={`text-sm font-black truncate text-gray-950 dark:text-white ${item.completed ? 'line-through text-gray-500' : ''}`}>
+                            <h4 className={`text-sm font-black truncate text-[#1A1A1A] dark:text-white ${item.completed ? 'line-through text-gray-500' : ''}`}>
                               {item.name}
                             </h4>
                             <div className="flex flex-wrap items-center gap-1.5 mt-1">
@@ -1580,7 +1580,7 @@ export default function TourDashboard() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.97 }}
                 transition={spring}
-                className="relative z-50 w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] border border-white/10 bg-[#0d1117]/95 shadow-2xl backdrop-blur-xl p-6 sm:p-8"
+                className="relative z-50 w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] border border-white/10 bg-[#0A0E1A]/95 shadow-2xl backdrop-blur-xl p-6 sm:p-8"
               >
                 <div className="flex items-start justify-between gap-4 mb-6">
                   <div>

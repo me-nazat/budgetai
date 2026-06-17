@@ -157,7 +157,7 @@ export function RecurringContent() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50/50 dark:bg-[#0d1117]/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-[#30363d]">
+                                    <tr className="bg-gray-50/50 dark:bg-[#0A0E1A]/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-[#30363d]">
                                         <th className="px-6 py-4 font-semibold">Name</th>
                                         <th className="px-6 py-4 font-semibold">Type</th>
                                         <th className="px-6 py-4 font-semibold">Category</th>

@@ -109,6 +109,7 @@ export const transactions = sqliteTable('transactions', {
   index('idx_transactions_tour').on(table.tourId),
   index('idx_transactions_user_date').on(table.userId, table.date),
   index('idx_transactions_user_amount').on(table.userId, table.amount),
+  index('idx_transactions_composite').on(table.userId, table.tourId, table.date, table.amount),
 ]);
 
 /** TypeScript type inferred from a SELECT on the transactions table. */

@@ -613,7 +613,7 @@ function FeaturesSection() {
                             key={i} 
                             variants={fadeInUp}
                             whileHover={{ y: -10 }}
-                            className="group lp-glass-card p-10 rounded-3xl"
+                            className="group capability-card p-10 rounded-3xl"
                         >
                             <div className="h-14 w-14 rounded-2xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-white mb-8 group-hover:bg-primary dark:group-hover:bg-lp-cyan group-hover:text-white dark:group-hover:text-black group-hover:border-primary dark:group-hover:border-lp-cyan transition-all duration-500 shadow-lg shadow-black/5 dark:shadow-black/50">
                                 <span className="material-symbols-outlined text-3xl">{f.icon}</span>
@@ -652,16 +652,16 @@ function InteractiveVisualizer() {
                 strokeControls.set({ pathLength: 0, opacity: 0 });
                 fillControls.set({ opacity: 0 });
 
-                // Phase 1 (Render/Draw): Draw path (1.8s linear) and fade in fill (1.8s)
+                // Phase 1 (Render/Draw): Draw path (1.8s easeInOut) and fade in fill (1.8s)
                 strokeControls.start({
                     pathLength: 1,
                     opacity: 1,
-                    transition: { duration: 1.8, ease: "linear" }
+                    transition: { duration: 1.8, ease: "easeInOut" }
                 });
                 
                 await fillControls.start({
                     opacity: 1,
-                    transition: { duration: 1.8, ease: "linear" }
+                    transition: { duration: 1.8, ease: "easeInOut" }
                 });
 
                 if (!isMounted) break;
@@ -896,8 +896,8 @@ function InteractiveVisualizer() {
 
 function DataVizSection() {
     return (
-        <section id="how-it-works" className="py-8 relative">
-            <div className="lp-section-divider mb-8" />
+        <section id="how-it-works" className="py-2 relative">
+            <div className="lp-section-divider mb-4" />
             <motion.div 
                 initial="hidden"
                 whileInView="show"
@@ -905,18 +905,18 @@ function DataVizSection() {
                 variants={staggerContainer}
                 className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                     <InteractiveVisualizer />
 
                     <div>
-                        <motion.p variants={fadeInUp} className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-4">Data Visualization</motion.p>
-                        <motion.h3 variants={fadeInUp} className="text-3xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-tight mb-6" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                        <motion.p variants={fadeInUp} className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-2">Data Visualization</motion.p>
+                        <motion.h3 variants={fadeInUp} className="text-3xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-tight mb-4" style={{ fontFamily: 'var(--font-playfair), serif' }}>
                             See your money<br />in a new light
                         </motion.h3>
-                        <motion.p variants={fadeInUp} className="text-gray-500 dark:text-slate-400 mb-8 font-light leading-relaxed">
+                        <motion.p variants={fadeInUp} className="text-gray-500 dark:text-slate-400 mb-6 font-light leading-relaxed">
                             Wealth AI turns complex financial data into beautiful, interactive stories. See exactly where your money goes with charts and reports generated instantly by our AI.
                         </motion.p>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {['Exportable tax-ready reports', 'Peer benchmarking', 'Smart savings projections'].map((item, i) => (
                                 <motion.div key={i} variants={fadeInUp} className="flex items-center gap-3">
                                     <div className="h-6 w-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -930,7 +930,7 @@ function DataVizSection() {
                             variants={fadeInUp} 
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="mt-10 inline-flex h-12 items-center justify-center rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-6 text-sm font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+                            className="mt-8 inline-flex h-12 items-center justify-center rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-6 text-sm font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
                         >
                             Explore Visualizations
                         </motion.button>
@@ -943,8 +943,8 @@ function DataVizSection() {
 
 function TestimonialSection() {
     return (
-        <section className="py-8 relative">
-            <div className="lp-section-divider mb-8" />
+        <section className="py-4 relative">
+            <div className="lp-section-divider mb-4" />
             <motion.div 
                 initial="hidden"
                 whileInView="show"
@@ -952,8 +952,8 @@ function TestimonialSection() {
                 variants={staggerContainer}
                 className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center"
             >
-                <motion.span variants={fadeInUp} className="material-symbols-outlined text-5xl text-primary/30 dark:text-lp-cyan/30 mb-8 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
-                <motion.blockquote variants={fadeInUp} className="text-2xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-relaxed mb-12" style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontStyle: 'italic', letterSpacing: 'normal', fontWeight: 500 }}>
+                <motion.span variants={fadeInUp} className="material-symbols-outlined text-4xl text-primary/30 dark:text-lp-cyan/30 mb-4 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
+                <motion.blockquote variants={fadeInUp} className="text-xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-8 tracking-tight" style={{ fontFamily: 'var(--font-fraunces), serif', fontStyle: 'italic', letterSpacing: '-0.02em', fontWeight: 500 }}>
                     &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
                 </motion.blockquote>
                 <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">

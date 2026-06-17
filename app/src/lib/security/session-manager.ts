@@ -72,9 +72,10 @@ const REFRESH_TOKEN_DAYS = 7;
 
 /**
  * Refresh token max age in seconds.
+ * For non-remembered devices, default is 2 hours.
  * @constant
  */
-const REFRESH_MAX_AGE = REFRESH_TOKEN_DAYS * 24 * 60 * 60;
+const REFRESH_MAX_AGE = 2 * 60 * 60;
 
 /**
  * JWT payload interface with Wealth AI custom claims.
@@ -348,8 +349,11 @@ export async function getSessionOrRefresh(): Promise<SessionPayload | null> {
  */
 export function computeRefreshExpiry(rememberMe?: boolean): string {
   const expiry = new Date();
-  const days = rememberMe ? 30 : REFRESH_TOKEN_DAYS;
-  expiry.setDate(expiry.getDate() + days);
+  if (rememberMe) {
+    expiry.setDate(expiry.getDate() + 30);
+  } else {
+    expiry.setHours(expiry.getHours() + 2);
+  }
   return expiry.toISOString();
 }
 

@@ -263,7 +263,7 @@ export default function TransactionAttachmentsSection({
             className={`relative overflow-hidden rounded-xl border border-dashed px-4 py-4 transition-all ${
               isDragging
                 ? 'border-primary/40 bg-primary/5 shadow-inner'
-                : 'border-gray-300 bg-gray-50/50 dark:border-[#30363d] dark:bg-[#0d1117]/30'
+                : 'border-gray-300 bg-gray-50/50 dark:border-[#30363d] dark:bg-[#0A0E1A]/30'
             }`}
           >
             {/* Radial gradient overlay */}
@@ -339,12 +339,12 @@ export default function TransactionAttachmentsSection({
             </div>
 
             {isLoading ? (
-              <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-xs text-gray-400 dark:bg-[#0d1117]/40">
+              <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-xs text-gray-400 dark:bg-[#0A0E1A]/40">
                 <span className="material-symbols-outlined animate-spin text-[16px]">sync</span>
                 Loading files...
               </div>
             ) : attachments.length === 0 ? (
-              <div className="rounded-xl bg-gray-50 px-4 py-3 text-xs text-gray-400 dark:bg-[#0d1117]/40">
+              <div className="rounded-xl bg-gray-50 px-4 py-3 text-xs text-gray-400 dark:bg-[#0A0E1A]/40">
                 No files attached yet. Upload receipts, invoices, or documents to this transaction.
               </div>
             ) : (

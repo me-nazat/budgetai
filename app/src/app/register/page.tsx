@@ -134,7 +134,7 @@ export default function RegisterPage() {
                     <div className="flex-1 flex flex-col justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                         <h1 className="text-5xl font-black leading-tight mb-6 text-gray-900 dark:text-white">
                             Start building your<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-cyan-800 dark:from-emerald-400 dark:to-cyan-400">wealth today.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-950 to-cyan-950 dark:from-emerald-400 dark:to-cyan-400">wealth today.</span>
                         </h1>
                         <p className="text-gray-600 dark:text-gray-300 text-lg max-w-md leading-relaxed mb-12">
                             Join thousands of people who use AI to make smarter financial decisions every single day.

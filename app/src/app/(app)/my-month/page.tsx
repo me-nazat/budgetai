@@ -209,7 +209,7 @@ export default function MyMonthPage() {
                             <span className="hidden sm:inline">Add Transaction</span>
                         </button>
                         
-                        <label className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 shadow-sm dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-gray-200 cursor-pointer hover:border-primary/50 transition-colors">
+                        <label className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 shadow-sm dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-gray-200 cursor-pointer hover:border-primary/50 transition-colors">
                             <span className="material-symbols-outlined text-primary">calendar_month</span>
                             <select value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)} className="bg-transparent outline-none cursor-pointer">
                                 {monthOptions.map(option => <option key={option.value} value={option.value} className="bg-white dark:bg-surface-dark">{option.label}</option>)}
@@ -281,7 +281,7 @@ export default function MyMonthPage() {
             </section>
 
             {/* Sidebar Section */}
-            <aside className="bg-gray-50/50 p-4 lg:p-6 xl:p-8 dark:bg-[#0d1117]/30 pb-24">
+            <aside className="bg-gray-50/50 p-4 lg:p-6 xl:p-8 dark:bg-[#0A0E1A]/30 pb-24">
                 <div className="flex flex-col gap-6 sticky top-8">
                     {/* Monthly Cash Flow */}
                     <div className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111827] h-[380px] flex flex-col shadow-sm">

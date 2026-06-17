@@ -360,6 +360,32 @@ async function resolveTransactionFolder(
   return { folderId: txFolder.folderId, folderUrl: txFolder.folderUrl };
 }
 
+// Helper to verify if user is part of a tour's roster
+async function verifyTourRoster(tourId: number, userId: number): Promise<void> {
+  const tourRow = await queryOne<{ created_by: number }>('SELECT created_by FROM tours WHERE id = ?', [tourId]);
+  if (!tourRow) {
+    throw new Error('Access denied: Tour not found.');
+  }
+  const creatorId = tourRow.created_by;
+
+  const participantRows = await queryAll<{ user_id: number | null }>(
+    'SELECT user_id FROM tour_participants WHERE tour_id = ?',
+    [tourId]
+  );
+
+  const userIds = new Set<number>();
+  userIds.add(creatorId);
+  participantRows.forEach(p => {
+    if (p.user_id !== null && p.user_id !== undefined) {
+      userIds.add(p.user_id);
+    }
+  });
+
+  if (!userIds.has(userId)) {
+    throw new Error('Access denied: User not in authorized roster.');
+  }
+}
+
 // ────── Public API ──────
 
 export async function listTransactionAttachments(params: {
@@ -369,6 +395,10 @@ export async function listTransactionAttachments(params: {
   folderLabel: string;
   tourId?: number;
 }) {
+  if (params.tourId) {
+    await verifyTourRoster(params.tourId, params.userId);
+  }
+
   const drive = await getDriveClient();
   const folder = await resolveTransactionFolder(
     drive,
@@ -414,6 +444,10 @@ export async function uploadFilesToTransaction(params: {
   files: File[];
   tourId?: number;
 }) {
+  if (params.tourId) {
+    await verifyTourRoster(params.tourId, params.userId);
+  }
+
   const drive = await getDriveClient();
   const folder = await resolveTransactionFolder(
     drive,
@@ -480,6 +514,10 @@ async function resolveAttachment(
   fileId: string,
   tourId?: number,
 ) {
+  if (tourId) {
+    await verifyTourRoster(tourId, identity.userId);
+  }
+
   const folder = await resolveTransactionFolder(drive, identity, folderLabel, false, tourId);
   if (!folder.folderId) throw new Error('This transaction does not have an attachment folder.');
 

@@ -954,7 +954,7 @@ export default function DashboardPage() {
                                             <select
                                                 value={editingTx.type}
                                                 onChange={(event) => setEditingTx({ ...editingTx, type: event.target.value as "expense" | "earning", category: '' })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             >
                                                 <option value="expense">Expense</option>
                                                 <option value="earning">Earning</option>
@@ -967,7 +967,7 @@ export default function DashboardPage() {
                                                 step="0.01"
                                                 value={editingTx.amount}
                                                 onChange={(event) => setEditingTx({ ...editingTx, amount: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -977,7 +977,7 @@ export default function DashboardPage() {
                                             <select
                                                 value={editingTx.category}
                                                 onChange={(event) => setEditingTx({ ...editingTx, category: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             >
                                                 <option value="">Select</option>
                                                 {dashboardCategoryOptions.map(category => (
@@ -998,7 +998,7 @@ export default function DashboardPage() {
                                                 type="date"
                                                 value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''}
                                                 onChange={(event) => setEditingTx({ ...editingTx, date: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -1009,7 +1009,7 @@ export default function DashboardPage() {
                                             value={editingTx.description || ''}
                                             onChange={(event) => setEditingTx({ ...editingTx, description: event.target.value })}
                                             placeholder="Optional description"
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-white"
+                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                         />
                                     </div>
                                     <div className="flex gap-3 pt-1">

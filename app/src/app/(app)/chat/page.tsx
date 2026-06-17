@@ -604,7 +604,7 @@ export default function ChatPage() {
     return (
         <div className="flex flex-col h-[calc(100dvh-64px-80px)] lg:h-[100dvh]">
             {/* Header */}
-            <div className="h-14 lg:h-16 border-b border-gray-200 dark:border-[#30363d] flex items-center justify-between px-4 lg:px-6 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl sticky top-0 z-10">
+            <div className="h-14 lg:h-16 border-b border-gray-200 dark:border-[#30363d] flex items-center justify-between px-4 lg:px-6 bg-white/80 dark:bg-[#0A0E1A]/80 backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary to-teal-600 flex items-center justify-center shadow-sm shadow-primary/30">
                         <span className="material-symbols-outlined text-white text-lg">smart_toy</span>
@@ -672,7 +672,7 @@ export default function ChatPage() {
             {showHistory && (
                 <div className="fixed inset-0 z-[80] flex justify-end bg-slate-950/45 backdrop-blur-sm">
                     <button className="flex-1 cursor-default" aria-label="Close history" onClick={() => setShowHistory(false)} />
-                    <aside className="h-full w-full max-w-md border-l border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-[#0d1117]">
+                    <aside className="h-full w-full max-w-md border-l border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-[#0A0E1A]">
                         <div className="border-b border-gray-200 p-4 dark:border-[#30363d]">
                             <div className="mb-4 flex items-center justify-between gap-3">
                                 <div>
@@ -956,7 +956,7 @@ export default function ChatPage() {
             </div>
 
             {/* Input Area */}
-            <div className="p-3 lg:p-4 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl border-t border-gray-200 dark:border-[#30363d]">
+            <div className="p-3 lg:p-4 bg-white/80 dark:bg-[#0A0E1A]/80 backdrop-blur-xl border-t border-gray-200 dark:border-[#30363d]">
                 {/* Quick actions toolbar */}
                 <div className="flex gap-1.5 mb-3 max-w-3xl mx-auto overflow-x-auto pb-1 scrollbar-hide">
                     <button onClick={() => setInput('📊 Give me a summary of my spending')} className="px-2.5 py-1 flex items-center gap-1 rounded-lg text-xs font-semibold bg-gray-100 text-primary dark:bg-primary/10 hover:bg-gray-200 dark:hover:bg-primary/20 transition-all border border-gray-200 dark:border-primary/20 hover:-translate-y-0.5 whitespace-nowrap shrink-0"><span className="material-symbols-outlined text-[13px]">query_stats</span>Summary</button>

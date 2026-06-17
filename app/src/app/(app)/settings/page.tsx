@@ -103,7 +103,7 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                     {/* Account */}
                     <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
+                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
                             <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Account</p>
                         </div>
                         <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d]">
@@ -112,17 +112,17 @@ export default function SettingsPage() {
                                 type="text"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
-                                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                             />
                         </div>
-                        <button onClick={save} disabled={saving} className="w-full px-4 py-3.5 text-sm font-bold text-primary dark:text-emerald-400 text-center active:bg-gray-50 dark:active:bg-[#0d1117] transition-colors disabled:opacity-50">
+                        <button onClick={save} disabled={saving} className="w-full px-4 py-3.5 text-sm font-bold text-primary dark:text-emerald-400 text-center active:bg-gray-50 dark:active:bg-[#0A0E1A] transition-colors disabled:opacity-50">
                             {saved ? '✓ Saved Successfully' : saving ? 'Saving...' : 'Save Profile'}
                         </button>
                     </motion.div>
 
                     {/* Preferences */}
                     <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
+                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
                             <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Preferences</p>
                         </div>
                         <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d]">
@@ -136,7 +136,7 @@ export default function SettingsPage() {
                                 <select
                                     value={currency}
                                     onChange={e => { setCurrency(e.target.value as CurrencyCode); }}
-                                    className="bg-gray-100 dark:bg-[#0d1117] border border-gray-200 dark:border-[#30363d] rounded-lg px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 font-bold outline-none"
+                                    className="bg-gray-100 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] rounded-lg px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 font-bold outline-none"
                                 >
                                     {(Object.keys(CURRENCIES) as CurrencyCode[]).map(code => (
                                         <option key={code} value={code}>{CURRENCIES[code].flag} {code}</option>
@@ -164,7 +164,7 @@ export default function SettingsPage() {
 
                     {/* Notifications */}
                     <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
+                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
                             <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Notifications</p>
                         </div>
                         {[
@@ -237,7 +237,7 @@ export default function SettingsPage() {
                                     onMouseEnter={() => setAvatarHovered(true)}
                                     onMouseLeave={() => setAvatarHovered(false)}
                                 >
-                                    <div className="w-full h-full rounded-full bg-white dark:bg-[#0d1117] flex items-center justify-center relative overflow-hidden">
+                                    <div className="w-full h-full rounded-full bg-white dark:bg-[#0A0E1A] flex items-center justify-center relative overflow-hidden">
                                         {/* Name Initial */}
                                         <span className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-tr from-primary to-cyan-600 transition-transform duration-300 ${avatarHovered ? 'scale-90 opacity-0' : 'scale-100 opacity-100'}`}>
                                             {name?.charAt(0)?.toUpperCase() || 'U'}
@@ -255,11 +255,11 @@ export default function SettingsPage() {
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Display Name</label>
                                         <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-gray-100 focus:bg-white dark:bg-[#161b22] dark:hover:bg-[#1c2128] dark:focus:bg-[#0d1117] dark:border-white/5 text-gray-900 dark:text-white outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-medium" />
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-gray-100 focus:bg-white dark:bg-[#161b22] dark:hover:bg-[#1c2128] dark:focus:bg-[#0A0E1A] dark:border-white/5 text-gray-900 dark:text-white outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-medium" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Email Address</label>
-                                        <input type="email" value={email} disabled className="w-full px-4 py-3 rounded-xl border border-transparent bg-gray-50 dark:bg-[#0d1117] text-gray-400 font-medium cursor-not-allowed opacity-70" />
+                                        <input type="email" value={email} disabled className="w-full px-4 py-3 rounded-xl border border-transparent bg-gray-50 dark:bg-[#0A0E1A] text-gray-400 font-medium cursor-not-allowed opacity-70" />
                                     </div>
                                 </div>
                             </div>

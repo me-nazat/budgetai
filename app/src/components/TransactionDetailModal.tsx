@@ -158,14 +158,14 @@ export default function TransactionDetailModal({
                         <div className="flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-white/5 mt-auto">
                             <button
                                 onClick={() => { onClose(); onEdit(transaction); }}
-                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-[#0d1117] dark:hover:bg-[#21262d] text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
+                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-[#0A0E1A] dark:hover:bg-[#21262d] text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
                                 title="Edit"
                             >
                                 <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">edit</span>
                             </button>
                             <button
                                 onClick={() => { onClose(); onDuplicate(transaction); }}
-                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-[#0d1117] dark:hover:bg-[#21262d] text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
+                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-[#0A0E1A] dark:hover:bg-[#21262d] text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
                                 title="Duplicate"
                             >
                                 <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">content_copy</span>

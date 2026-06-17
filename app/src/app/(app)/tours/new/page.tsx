@@ -141,7 +141,7 @@ export default function NewTourPage() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Bali summer trip"
-              className="w-full rounded-2xl border border-gray-200 bg-white/80 py-4 pl-12 pr-4 text-base font-bold text-gray-950 outline-none backdrop-blur-xl placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-[#0d1117]/72 dark:text-white dark:placeholder:text-gray-600"
+              className="w-full rounded-2xl border border-gray-200 bg-white/80 py-4 pl-12 pr-4 text-base font-bold text-gray-950 outline-none backdrop-blur-xl placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-[#0A0E1A]/72 dark:text-white dark:placeholder:text-gray-600"
               required
             />
           </div>
@@ -183,7 +183,7 @@ export default function NewTourPage() {
                       value={participant.name}
                       onChange={(event) => handleParticipantChange(participant.id, event.target.value)}
                       placeholder={index === 0 ? 'You or organizer' : `Participant ${index + 1}`}
-                      className="w-full rounded-2xl border border-gray-200 bg-white/75 py-3.5 pl-12 pr-4 text-sm font-bold text-gray-950 outline-none backdrop-blur-xl placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-[#0d1117]/72 dark:text-white dark:placeholder:text-gray-600"
+                      className="w-full rounded-2xl border border-gray-200 bg-white/75 py-3.5 pl-12 pr-4 text-sm font-bold text-gray-950 outline-none backdrop-blur-xl placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-[#0A0E1A]/72 dark:text-white dark:placeholder:text-gray-600"
                       required={index < 2}
                     />
                   </div>

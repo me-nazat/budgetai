@@ -69,6 +69,7 @@ const PERSISTED_PREFIXES = [
     '/api/goals',
     '/api/recurring',
     '/api/notifications',
+    '/api/bill-splits',
 ];
 
 type PersistedEntry = {

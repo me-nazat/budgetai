@@ -746,7 +746,7 @@ export default function TransactionsPage() {
                                     placeholder="0.00"
                                     value={qaAmount}
                                     onChange={e => setQaAmount(e.target.value)}
-                                    className="w-full rounded-2xl border border-gray-200 bg-white/85 py-4 pl-12 pr-4 text-4xl font-black tracking-tight text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                    className="w-full rounded-2xl border border-gray-200 bg-white/85 py-4 pl-12 pr-4 text-4xl font-black tracking-tight text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
                                 />
                             </div>
 
@@ -757,7 +757,7 @@ export default function TransactionsPage() {
                                         type="date"
                                         value={qaDate}
                                         onChange={e => setQaDate(e.target.value)}
-                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
                                     />
                                 </div>
                                 <div>
@@ -767,7 +767,7 @@ export default function TransactionsPage() {
                                         placeholder="Optional"
                                         value={qaDesc}
                                         onChange={e => setQaDesc(e.target.value)}
-                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
                                     />
                                 </div>
                             </div>
@@ -780,7 +780,7 @@ export default function TransactionsPage() {
                                     onChange={e => setQaNotes(e.target.value)}
                                     placeholder="Receipt info, context..."
                                     rows={2}
-                                    className="w-full resize-none rounded-xl border border-gray-200 bg-white/85 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0d1117]/80 dark:text-white"
+                                    className="w-full resize-none rounded-xl border border-gray-200 bg-white/85 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
                                 />
                             </div>
 
@@ -792,7 +792,7 @@ export default function TransactionsPage() {
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {qaAttachments.map((file, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs dark:border-[#30363d] dark:bg-[#0d1117]">
+                                        <div key={idx} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs dark:border-[#30363d] dark:bg-[#0A0E1A]">
                                             <span className="material-symbols-outlined text-gray-500 text-[14px]">
                                                 {file.type.startsWith('image/') ? 'image' : 'description'}
                                             </span>
@@ -872,7 +872,7 @@ export default function TransactionsPage() {
                                                     key={category}
                                                     type="button"
                                                     onClick={() => { setQaCategory(category); setQaAddingCustomCategory(false); }}
-                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? 'border-primary bg-primary text-white shadow-sm' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-gray-400 dark:hover:text-white'}`}
+                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? 'border-primary bg-primary text-white shadow-sm' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-gray-400 dark:hover:text-white'}`}
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">{getCategoryIcon(category, customCategories)}</span>
                                                     {category}
@@ -886,7 +886,7 @@ export default function TransactionsPage() {
                                                     key={category.id}
                                                     type="button"
                                                     onClick={() => setQaCategory(category.name)}
-                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? getColorStyle(category.color).selected : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-gray-400 dark:hover:text-white'}`}
+                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? getColorStyle(category.color).selected : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-gray-400 dark:hover:text-white'}`}
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">{category.icon}</span>
                                                     {category.name}
@@ -916,7 +916,7 @@ export default function TransactionsPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-[#30363d] dark:bg-[#0d1117]/70">
+                                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-[#30363d] dark:bg-[#0A0E1A]/70">
                                         <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Custom category name</label>
                                         <div className="flex items-center gap-3">
                                             <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${qaCustomCategoryName.trim() ? getColorStyle(qaCustomColor).bg : 'bg-gray-300 dark:bg-gray-700'}`}>
@@ -948,7 +948,7 @@ export default function TransactionsPage() {
                                                 Generate icon
                                             </button>
                                         </div>
-                                        <div className="grid max-h-40 grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white/50 p-2 dark:border-[#30363d] dark:bg-[#0d1117]/50">
+                                        <div className="grid max-h-40 grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white/50 p-2 dark:border-[#30363d] dark:bg-[#0A0E1A]/50">
                                             {qaIconOptions.map(icon => (
                                                 <button
                                                     key={icon}
@@ -1232,7 +1232,7 @@ export default function TransactionsPage() {
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Type</label>
                                         <select value={editingTx.type} onChange={e => setEditingTx({...editingTx, type: e.target.value as "expense" | "earning"})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
                                             <option value="expense">Expense</option>
                                             <option value="earning">Earning</option>
                                         </select>
@@ -1240,14 +1240,14 @@ export default function TransactionsPage() {
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Amount</label>
                                         <input type="number" step="0.01" value={editingTx.amount} onChange={e => setEditingTx({...editingTx, amount: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Category</label>
                                         <select value={editingTx.category} onChange={e => setEditingTx({...editingTx, category: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
                                             <option value="">Select</option>
                                             {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                             {customCategories.filter(c => c.type === editingTx.type).length > 0 && (
@@ -1262,14 +1262,14 @@ export default function TransactionsPage() {
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Date</label>
                                         <input type="date" value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''} onChange={e => setEditingTx({...editingTx, date: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Description</label>
                                     <input type="text" value={editingTx.description || ''} onChange={e => setEditingTx({...editingTx, description: e.target.value})}
                                         placeholder="Optional description"
-                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                 </div>
                                 <TransactionAttachmentsSection transactionId={Number(editingTx.id)} transactionDescription={editingTx.description || editingTx.category} />
                                 <div className="pt-1 flex gap-3">

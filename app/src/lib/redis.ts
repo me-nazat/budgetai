@@ -12,7 +12,7 @@ export function getRedisClient(): Redis | null {
   if (!redisAvailable) return null;
 
   if (!redisClient) {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const url = process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
     if (!url || !token || url.includes('your-chosen-instance') || token.includes('your_secure_rest_token_here')) {

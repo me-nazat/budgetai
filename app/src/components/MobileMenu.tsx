@@ -49,7 +49,7 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
             <div className={`
                 fixed bottom-0 left-0 w-full z-50 lg:hidden overflow-hidden
                 rounded-t-[2rem] border-t border-white/70 bg-white/92 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl
-                transition-transform duration-[400ms] transform dark:border-white/10 dark:bg-[#0d1117]/94 dark:shadow-black/55
+                transition-transform duration-[400ms] transform dark:border-white/10 dark:bg-[#0A0E1A]/94 dark:shadow-black/55
                 ${isOpen ? 'translate-y-0' : 'translate-y-full'}
                 flex flex-col max-h-[85vh]
                 flex flex-col max-h-[85vh]
@@ -119,7 +119,7 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                 </div>
 
                 {/* Footer / Settings */}
-                <div className="p-4 border-t border-gray-100 dark:border-[#30363d] shrink-0 bg-gray-50/70 dark:bg-[#0d1117]/80">
+                <div className="p-4 border-t border-gray-100 dark:border-[#30363d] shrink-0 bg-gray-50/70 dark:bg-[#0A0E1A]/80">
                     <Link
                         href="/settings"
                         onClick={onClose}
