@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion, useScroll, useTransform, Variants, useMotionValue, useSpring, useMotionTemplate } from 'framer-motion';
+import { motion, useScroll, useTransform, Variants, useMotionValue, useSpring, useMotionTemplate, useAnimation, useReducedMotion } from 'framer-motion';
 
 /* ──────────────────────────────────────────────
    Theme Toggle Helper
@@ -631,6 +631,65 @@ function FeaturesSection() {
 function InteractiveVisualizer() {
     const [activeTab, setActiveTab] = useState<'networth' | 'allocation' | 'cashflow'>('networth');
 
+    const strokeControls = useAnimation();
+    const fillControls = useAnimation();
+    const prefersReducedMotion = useReducedMotion();
+
+    useEffect(() => {
+        if (activeTab !== 'networth') return;
+
+        if (prefersReducedMotion) {
+            strokeControls.set({ pathLength: 1, opacity: 1 });
+            fillControls.set({ opacity: 1 });
+            return;
+        }
+
+        let isMounted = true;
+
+        const animateGraph = async () => {
+            while (isMounted) {
+                // Phase 3 to Phase 1 transition: reset values instantly
+                strokeControls.set({ pathLength: 0, opacity: 0 });
+                fillControls.set({ opacity: 0 });
+
+                // Phase 1 (Render/Draw): Draw path (1.8s) and fade in fill (1.8s)
+                strokeControls.start({
+                    pathLength: 1,
+                    opacity: 1,
+                    transition: { duration: 1.8, ease: "easeInOut" }
+                });
+                
+                await fillControls.start({
+                    opacity: 1,
+                    transition: { duration: 1.8, ease: "easeInOut" }
+                });
+
+                if (!isMounted) break;
+
+                // Phase 2 (Hold State): Hold completely static for 2.0s
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                if (!isMounted) break;
+
+                // Phase 3 (Reset/Repeat): Fade out gracefully over 0.5s
+                strokeControls.start({
+                    opacity: 0,
+                    transition: { duration: 0.5, ease: "easeOut" }
+                });
+                await fillControls.start({
+                    opacity: 0,
+                    transition: { duration: 0.5, ease: "easeOut" }
+                });
+            }
+        };
+
+        animateGraph();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [activeTab, strokeControls, fillControls, prefersReducedMotion]);
+
     return (
         <motion.div variants={fadeInUp} className="relative w-full min-h-[420px] lp-glass-card rounded-3xl p-6 overflow-hidden flex flex-col justify-between border border-gray-200 dark:border-white/10 shadow-2xl">
             {/* Header with Selector Tabs */}
@@ -687,8 +746,12 @@ function InteractiveVisualizer() {
                             <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 200">
                                 <defs>
                                     <linearGradient id="chart-grad-nw" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.4"/>
-                                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
+                                        <stop offset="0%" stopColor="var(--color-chart-line)" stopOpacity="0.4"/>
+                                        <stop offset="100%" stopColor="var(--color-chart-line)" stopOpacity="0"/>
+                                    </linearGradient>
+                                    <linearGradient id="chart-line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="var(--color-chart-line)" stopOpacity="0.6" />
+                                        <stop offset="100%" stopColor="var(--color-chart-line)" stopOpacity="1" />
                                     </linearGradient>
                                     <linearGradient id="chart-grad-sp" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#10b981" stopOpacity="0.15"/>
@@ -696,12 +759,12 @@ function InteractiveVisualizer() {
                                     </linearGradient>
                                 </defs>
                                 {/* S&P 500 Benchmark (dashed green) */}
-                                <path d="M0,160 Q80,150 160,155 T320,135 T500,105 L500,200 L0,200 Z" fill="url(#chart-grad-sp)"/>
-                                <path d="M0,160 Q80,150 160,155 T320,135 T500,105" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeDasharray="4,4"/>
+                                <motion.path d="M0,160 Q80,150 160,155 T320,135 T500,105 L500,200 L0,200 Z" fill="url(#chart-grad-sp)" animate={fillControls} />
+                                <motion.path d="M0,160 Q80,150 160,155 T320,135 T500,105" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeDasharray="4,4" animate={strokeControls} />
                                 
-                                {/* Wealth AI Net Worth (solid primary blue) */}
-                                <path d="M0,180 Q80,165 160,140 T320,80 T500,30 L500,200 L0,200 Z" fill="url(#chart-grad-nw)"/>
-                                <path d="M0,180 Q80,165 160,140 T320,80 T500,30" fill="none" stroke="var(--color-primary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                {/* Wealth AI Net Worth (solid primary blue/cyan) */}
+                                <motion.path d="M0,180 Q80,165 160,140 T320,80 T500,30 L500,200 L0,200 Z" fill="url(#chart-grad-nw)" animate={fillControls} />
+                                <motion.path d="M0,180 Q80,165 160,140 T320,80 T500,30" fill="none" stroke="url(#chart-line-gradient)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" animate={strokeControls} />
                             </svg>
                             
                             {/* Interactive Tooltip Callouts */}
@@ -887,10 +950,10 @@ function TestimonialSection() {
                 whileInView="show"
                 viewport={{ once: true }}
                 variants={staggerContainer}
-                className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center"
+                className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center"
             >
                 <motion.span variants={fadeInUp} className="material-symbols-outlined text-5xl text-primary/30 dark:text-lp-cyan/30 mb-8 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
-                <motion.blockquote variants={fadeInUp} className="text-3xl sm:text-5xl font-medium text-gray-900 dark:text-white leading-relaxed mb-12" style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontStyle: 'italic', letterSpacing: '-0.01em', fontWeight: 500 }}>
+                <motion.blockquote variants={fadeInUp} className="text-2xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-relaxed mb-12" style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontStyle: 'italic', letterSpacing: 'normal', fontWeight: 500 }}>
                     &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
                 </motion.blockquote>
                 <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">
