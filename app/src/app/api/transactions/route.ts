@@ -11,6 +11,7 @@ import {
 } from '@/lib/validation';
 import { validateInput } from '@/lib/types/api';
 import { CreateTransactionDTO, UpdateTransactionDTO } from '@/lib/types/dto';
+import { invalidateDashboardCache } from '@/lib/redis';
 
 async function ensureCustomCategory(userId: number, type: string, categoryName: string) {
     const name = categoryName.trim().replace(/\s+/g, ' ');
@@ -101,6 +102,9 @@ export const POST = apiHandler(
             [userId, type, amount, categoryName, description, date, notes]
         );
 
+        // Invalidate dashboard cache
+        await invalidateDashboardCache(userId);
+
         Promise.resolve().then(() => {
             return maybeCreateBudgetAlert({
                 userId: userId,
@@ -127,6 +131,10 @@ export const DELETE = apiHandler(
         }
 
         await run('DELETE FROM transactions WHERE id = ? AND user_id = ?', [numId, userId]);
+
+        // Invalidate dashboard cache
+        await invalidateDashboardCache(userId);
+
         return NextResponse.json({ success: true });
     })
 );
@@ -146,6 +154,9 @@ export const PUT = apiHandler(
         if (result.rowsAffected === 0) {
             return NextResponse.json({ error: 'Transaction not found or unauthorized' }, { status: 404 });
         }
+
+        // Invalidate dashboard cache
+        await invalidateDashboardCache(userId);
 
         Promise.resolve().then(() => {
             return maybeCreateBudgetAlert({

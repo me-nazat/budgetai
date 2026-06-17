@@ -652,16 +652,16 @@ function InteractiveVisualizer() {
                 strokeControls.set({ pathLength: 0, opacity: 0 });
                 fillControls.set({ opacity: 0 });
 
-                // Phase 1 (Render/Draw): Draw path (1.8s) and fade in fill (1.8s)
+                // Phase 1 (Render/Draw): Draw path (1.8s linear) and fade in fill (1.8s)
                 strokeControls.start({
                     pathLength: 1,
                     opacity: 1,
-                    transition: { duration: 1.8, ease: "easeInOut" }
+                    transition: { duration: 1.8, ease: "linear" }
                 });
                 
                 await fillControls.start({
                     opacity: 1,
-                    transition: { duration: 1.8, ease: "easeInOut" }
+                    transition: { duration: 1.8, ease: "linear" }
                 });
 
                 if (!isMounted) break;

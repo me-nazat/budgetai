@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
-import { useDashboard, useUser, useMarketNews, useExchangeRates } from '@/hooks/useApi';
+import { useDashboard, useUser, useMarketNews, useExchangeRates, DashboardData } from '@/hooks/useApi';
 import { useSWRConfig } from 'swr';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
@@ -96,7 +96,28 @@ export default function DashboardPage() {
     const [selectedWeek, setSelectedWeek] = useState<string>('all');
 
     // SWR hooks — cached, stale-while-revalidate
-    const { data, isLoading, isValidating } = useDashboard(selectedMonth, selectedWeek);
+    const { data: swrData, isLoading, isValidating } = useDashboard(selectedMonth, selectedWeek);
+    const [localCacheData, setLocalCacheData] = useState<DashboardData | null>(null);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem('wealth-ai-swr-cache-v1');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    const cacheKey = `/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`;
+                    const entry = parsed[cacheKey];
+                    if (entry && entry.value && entry.value.data) {
+                        setLocalCacheData(entry.value.data);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load local SWR cache:', e);
+            }
+        }
+    }, [selectedMonth, selectedWeek]);
+
+    const data = swrData || localCacheData;
     const dashboardKey = `/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`;
     const { user } = useUser();
     const marketNews = useMarketNews();

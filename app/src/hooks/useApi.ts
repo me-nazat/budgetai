@@ -5,7 +5,7 @@ import useSWR, { mutate } from 'swr';
 // ────────────────────────────────────────────────────────────
 // Dashboard
 // ────────────────────────────────────────────────────────────
-interface DashboardData {
+export interface DashboardData {
     expenses: { current: number; change: number };
     earnings: { current: number; change: number };
     netSavings: number;

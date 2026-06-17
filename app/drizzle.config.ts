@@ -23,7 +23,6 @@ export default defineConfig({
 
   /** Database dialect — SQLite-compatible via Turso/libSQL. */
   dialect: 'turso',
-
   /** Database connection configuration. */
   dbCredentials: {
     url: process.env.TURSO_DATABASE_URL!,

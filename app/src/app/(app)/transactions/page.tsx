@@ -158,6 +158,33 @@ export default function TransactionsPage() {
         dateRange.start, dateRange.end, typeFilter
     );
 
+    const [localCacheData, setLocalCacheData] = useState<TransactionsCache | null>(null);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem('wealth-ai-swr-cache-v1');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    const params = new URLSearchParams();
+                    if (dateRange.start) params.set('start', dateRange.start);
+                    if (dateRange.end) params.set('end', dateRange.end);
+                    if (typeFilter !== 'all') params.set('type', typeFilter);
+                    params.set('limit', '200');
+                    const cacheKey = `/api/transactions?${params.toString()}`;
+                    const entry = parsed[cacheKey];
+                    if (entry && entry.value && entry.value.data) {
+                        setLocalCacheData(entry.value.data);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load local SWR cache:', e);
+            }
+        }
+    }, [dateRange.start, dateRange.end, typeFilter]);
+
+    const activeTransactions = transactions.length > 0 ? transactions : (localCacheData?.transactions || []);
+
     // Build the SWR key to match what useTransactions generates
     const swrKey = useMemo(() => {
         const params = new URLSearchParams();
@@ -540,7 +567,7 @@ export default function TransactionsPage() {
         { value: '4', label: 'Week 4 (22nd-End)' },
     ];
 
-    const transactionRows = transactions as TransactionRecord[];
+    const transactionRows = activeTransactions as TransactionRecord[];
     const sorted = [...transactionRows]
         .filter(t => !searchQuery || (t.description || '').toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => {
@@ -605,7 +632,7 @@ export default function TransactionsPage() {
         : ['Food', 'Transport', 'Housing', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Education', 'Other'];
 
     // Show loading only on first ever load (no cached data)
-    const showFullLoading = !transactions.length && isLoading;
+    const showFullLoading = !activeTransactions.length && isLoading;
 
     return (
         <div className="p-4 lg:p-8 max-w-[1400px] mx-auto page-enter">

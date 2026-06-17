@@ -241,7 +241,8 @@ export async function verifyAccessToken(
  */
 export async function setSessionCookies(
   accessToken: string,
-  refreshToken: string
+  refreshToken: string,
+  rememberMe?: boolean
 ): Promise<void> {
   const cookieStore = await cookies();
   let isSecure = process.env.NODE_ENV === 'production';
@@ -266,11 +267,13 @@ export async function setSessionCookies(
     path: '/',
   });
 
+  const refreshMaxAge = rememberMe ? 30 * 24 * 60 * 60 : REFRESH_MAX_AGE;
+
   cookieStore.set(REFRESH_COOKIE_NAME, refreshToken, {
     httpOnly: true,
     secure: isSecure,
     sameSite: 'strict',
-    maxAge: REFRESH_MAX_AGE,
+    maxAge: refreshMaxAge,
     path: '/',
   });
 }
@@ -343,9 +346,10 @@ export async function getSessionOrRefresh(): Promise<SessionPayload | null> {
  *
  * @returns ISO-8601 date string for the expiration timestamp.
  */
-export function computeRefreshExpiry(): string {
+export function computeRefreshExpiry(rememberMe?: boolean): string {
   const expiry = new Date();
-  expiry.setDate(expiry.getDate() + REFRESH_TOKEN_DAYS);
+  const days = rememberMe ? 30 : REFRESH_TOKEN_DAYS;
+  expiry.setDate(expiry.getDate() + days);
   return expiry.toISOString();
 }
 

@@ -138,6 +138,7 @@ export const LoginDTO = z.object({
   password: passwordSchema,
   /** Optional TOTP code for 2FA-enabled accounts. */
   totpCode: z.string().length(6, 'TOTP code must be 6 digits').optional(),
+  rememberMe: z.boolean().optional(),
 }).strict();
 export type LoginDTO = z.infer<typeof LoginDTO>;
 

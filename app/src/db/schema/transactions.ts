@@ -11,7 +11,7 @@
  * @module db/schema/transactions
  */
 
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { tours, tourParticipants } from './bill-splits';
@@ -103,7 +103,13 @@ export const transactions = sqliteTable('transactions', {
 
   /** Record creation timestamp (UTC ISO-8601). */
   createdAt: text('created_at').default(sql`(datetime('now'))`),
-});
+}, (table) => [
+  index('idx_transactions_user').on(table.userId),
+  index('idx_transactions_date').on(table.date),
+  index('idx_transactions_tour').on(table.tourId),
+  index('idx_transactions_user_date').on(table.userId, table.date),
+  index('idx_transactions_user_amount').on(table.userId, table.amount),
+]);
 
 /** TypeScript type inferred from a SELECT on the transactions table. */
 export type Transaction = typeof transactions.$inferSelect;

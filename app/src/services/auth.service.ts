@@ -266,7 +266,7 @@ export class AuthService {
 
     // Full login — create session
     if (ctx.ip) clearFailedAttempts(ctx.ip);
-    return AuthService.completeLogin(user, ctx);
+    return AuthService.completeLogin(user, ctx, validated.rememberMe);
   }
 
   /**
@@ -280,7 +280,8 @@ export class AuthService {
    */
   private static async completeLogin(
     user: { id: number; name: string; email: string; currency: string | null },
-    ctx: AuthRequestContext
+    ctx: AuthRequestContext,
+    rememberMe?: boolean
   ): Promise<AuthResult> {
     const accessToken = await createAccessToken(user.id, user.email);
     const refreshToken = createRefreshToken();
@@ -289,7 +290,7 @@ export class AuthService {
     await UserRepository.createSession({
       userId: user.id,
       tokenHash: hashRefreshToken(refreshToken),
-      expiresAt: computeRefreshExpiry(),
+      expiresAt: computeRefreshExpiry(rememberMe),
       deviceFingerprint: ctx.request
         ? computeDeviceFingerprint(ctx.request)
         : undefined,
@@ -299,7 +300,7 @@ export class AuthService {
     });
 
     // Set cookies
-    await setSessionCookies(accessToken, refreshToken);
+    await setSessionCookies(accessToken, refreshToken, rememberMe);
 
     // Audit log
     AuditService.logLogin(user.id, ctx.ip, ctx.userAgent);
@@ -370,10 +371,19 @@ export class AuthService {
       );
     }
 
+    // Check if the current session was created with "Remember Me"
+    let isRememberMe = false;
+    if (session.createdAt && session.expiresAt) {
+      const createdStr = session.createdAt.includes('T') ? session.createdAt : session.createdAt.replace(' ', 'T') + 'Z';
+      const expiresStr = session.expiresAt.includes('T') ? session.expiresAt : session.expiresAt.replace(' ', 'T') + 'Z';
+      const diffMs = new Date(expiresStr).getTime() - new Date(createdStr).getTime();
+      isRememberMe = diffMs > 10 * 24 * 60 * 60 * 1000;
+    }
+
     // Rotate token
     const newRefreshToken = createRefreshToken();
     const newTokenHash = hashRefreshToken(newRefreshToken);
-    const newExpiry = computeRefreshExpiry();
+    const newExpiry = computeRefreshExpiry(isRememberMe);
 
     await UserRepository.rotateSessionToken(tokenHash, newTokenHash, newExpiry);
 
@@ -381,7 +391,7 @@ export class AuthService {
     const newAccessToken = await createAccessToken(user.id, user.email);
 
     // Set cookies
-    await setSessionCookies(newAccessToken, newRefreshToken);
+    await setSessionCookies(newAccessToken, newRefreshToken, isRememberMe);
 
     return {
       user: {

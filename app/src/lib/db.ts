@@ -293,6 +293,14 @@ export async function ensureDbInitialized(): Promise<void> {
   } catch { /* Ignore */ }
 
   try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_amount ON transactions(user_id, amount)');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_tour_id ON transactions(tour_id)');
+  } catch { /* Ignore */ }
+
+  try {
     await getClient().execute('ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT \'BDT\' ');
   } catch { /* Ignore */ }
 
