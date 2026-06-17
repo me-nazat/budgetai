@@ -143,6 +143,10 @@ export default function TourDashboard() {
   const { categories: customCategories } = useCustomCategories('expense');
   const haptics = useHaptics();
 
+  // Category Filter and Pagination States
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [visibleTransactionsLimit, setVisibleTransactionsLimit] = useState<number>(15);
+
   // Navigation state
   const [activeTab, setActiveTab] = useState<'ledger' | 'itinerary' | 'checklist' | 'settlements'>('ledger');
 
@@ -421,13 +425,35 @@ export default function TourDashboard() {
     return new Map(participants.map((participant) => [participant.id, participant.name]));
   }, [participants]);
 
+  const filteredTransactions = useMemo(() => {
+    let list = transactions;
+    if (selectedCategory !== 'All') {
+      list = list.filter(t => t.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
+    }
+    return list;
+  }, [transactions, selectedCategory]);
+
+  const limitedTransactions = useMemo(() => {
+    return filteredTransactions.slice(0, visibleTransactionsLimit);
+  }, [filteredTransactions, visibleTransactionsLimit]);
+
   const groupedTransactions = useMemo(() => {
     const groups = new Map<string, TourTransaction[]>();
-    transactions.forEach((transaction) => {
+    limitedTransactions.forEach((transaction) => {
       const key = transaction.date || 'Unknown date';
       groups.set(key, [...(groups.get(key) ?? []), transaction]);
     });
     return Array.from(groups.entries());
+  }, [limitedTransactions]);
+
+  const uniqueTxCategories = useMemo(() => {
+    const cats = new Set<string>();
+    transactions.forEach(t => {
+      if (t.category) {
+        cats.add(t.category.trim().charAt(0).toUpperCase() + t.category.trim().slice(1).toLowerCase());
+      }
+    });
+    return ['All', ...Array.from(cats)];
   }, [transactions]);
 
   const handleShareClick = useCallback(async () => {
@@ -706,11 +732,48 @@ export default function TourDashboard() {
                   </TiltCard>
               </div>
 
+              {/* Injected Balances Overview */}
+              <div className="mt-8">
+                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-4">Balances Overview</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {balances.map((participant) => (
+                    <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                      <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
+                      <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                        Paid {fmt(participant.paid || 0)}
+                      </p>
+                      <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                        {(participant.balance || 0) > 0
+                          ? `Gets back ${fmt(participant.balance || 0)}`
+                          : (participant.balance || 0) < 0
+                            ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
+                            : 'Settled'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Transactions Ledger */}
               <div className="mt-10">
-                <h2 className="mb-6 text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-gray-400">Filter Category:</span>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => { haptics.tap(); setSelectedCategory(e.target.value); setVisibleTransactionsLimit(15); }}
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 dark:border-white/10 dark:bg-[#111827] dark:text-white outline-none"
+                    >
+                      {uniqueTxCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <AnimatePresence mode="popLayout">
-                  {transactions.length === 0 ? (
+                  {filteredTransactions.length === 0 ? (
                     <motion.div
                       key="empty"
                       initial={{ opacity: 0, y: 16 }}
@@ -722,16 +785,18 @@ export default function TourDashboard() {
                       <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">receipt_long</span>
                       <h2 className="text-2xl font-black text-gray-950 dark:text-white">No costs logged yet</h2>
                       <p className="mt-2 max-w-md text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Add the first meal, ride, hotel bill, or shared purchase for this trip.
+                        {selectedCategory !== 'All' ? 'No transactions found matching this category.' : 'Add the first meal, ride, hotel bill, or shared purchase for this trip.'}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
-                      >
-                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add</span>
-                        Add First Cost
-                      </button>
+                      {selectedCategory === 'All' && (
+                        <button
+                          type="button"
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add</span>
+                          Add First Cost
+                        </button>
+                      )}
                     </motion.div>
                   ) : (
                     <motion.div key="feed" layout className="space-y-6">
@@ -825,6 +890,17 @@ export default function TourDashboard() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+                {filteredTransactions.length > visibleTransactionsLimit && (
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => { haptics.tap(); setVisibleTransactionsLimit(prev => prev + 15); }}
+                      className="rounded-2xl border border-gray-200 bg-white/50 px-6 py-3 text-sm font-black text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
+                    >
+                      Show More
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Member Contributions Doughnut Chart */}
@@ -1147,7 +1223,7 @@ export default function TourDashboard() {
                 </div>
 
                 {checklist.length > 0 && (
-                  <div className="mb-6 bg-white/[0.02] border border-white/[0.04] p-4 rounded-2xl">
+                  <div className="mb-6 bg-gray-50 dark:bg-white/[0.02] border border-gray-150 dark:border-white/[0.04] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-2 text-xs font-black uppercase text-gray-400">
                       <span>Progress</span>
                       <span>
@@ -1182,7 +1258,7 @@ export default function TourDashboard() {
                             value={checkName}
                             onChange={e => setCheckName(e.target.value)}
                             placeholder="e.g. Passports, Chargers, Adapters"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.04] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                           />
                         </div>
                         <div>
@@ -1190,7 +1266,7 @@ export default function TourDashboard() {
                           <select
                             value={checkCategory}
                             onChange={e => setCheckCategory(e.target.value as any)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                           >
                             <option value="Documents">Documents 📄</option>
                             <option value="Clothing">Clothing 👕</option>
@@ -1204,7 +1280,7 @@ export default function TourDashboard() {
                           <select
                             value={checkAssignee}
                             onChange={e => setCheckAssignee(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                           >
                             <option value="Everyone">Everyone</option>
                             {participants.map(p => (
@@ -1235,7 +1311,7 @@ export default function TourDashboard() {
                       className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                         activeChecklistFilter === filter
                           ? 'bg-primary/20 text-primary border border-primary/30'
-                          : 'text-gray-500 border border-transparent hover:bg-white/5 dark:text-gray-400'
+                          : 'text-gray-500 border border-transparent hover:bg-gray-100 dark:hover:bg-white/5 dark:text-gray-400'
                       }`}
                     >
                       {filter}
@@ -1271,25 +1347,25 @@ export default function TourDashboard() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.025 }}
                         onClick={() => handleToggleChecklist(item.id)}
-                        className="glass-panel p-4 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-colors hover:bg-white/[0.04]"
+                        className="glass-panel p-4 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.04]"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`size-6 rounded-lg border flex items-center justify-center transition-all ${
                             item.completed
                               ? 'border-emerald-500 bg-emerald-500 text-white'
-                              : 'border-white/20 bg-white/[0.02]'
+                              : 'border-gray-300 dark:border-white/20 bg-gray-50 dark:bg-white/[0.02]'
                           }`}>
                             {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
                           </div>
                           <div className="min-w-0">
-                            <h4 className={`text-sm font-black truncate text-white ${item.completed ? 'line-through text-gray-500' : ''}`}>
+                            <h4 className={`text-sm font-black truncate text-gray-950 dark:text-white ${item.completed ? 'line-through text-gray-500' : ''}`}>
                               {item.name}
                             </h4>
                             <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                              <span className="text-[10px] font-black uppercase text-gray-500 bg-white/[0.05] px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] font-black uppercase text-gray-500 bg-gray-100 dark:bg-white/[0.05] px-1.5 py-0.5 rounded">
                                 {item.category}
                               </span>
-                              <span className="text-[10px] font-bold text-gray-400">
+                              <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
                                 👤 {item.assignedTo}
                               </span>
                             </div>
@@ -1397,6 +1473,59 @@ export default function TourDashboard() {
                   </div>
                 )}
               </div>
+
+              {/* Injected Member Contributions Doughnut Chart */}
+              {balances.some(b => (b.paid || 0) > 0) && (
+                <motion.section
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] mt-10"
+                >
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Member Contributions</h2>
+                    <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Breakdown of total money paid by each member of the trip.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row gap-8 items-center">
+                    <div className="w-full lg:w-[45%] h-[240px] flex items-center justify-center">
+                      <Doughnut data={contributionData!} options={{
+                        responsive: true, maintainAspectRatio: false,
+                        animation: { duration: 800, easing: 'easeOutQuart' },
+                        plugins: {
+                          legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 11 } } },
+                          tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8, callbacks: { label: (c) => `Paid: ${fmt(Number(c.raw))}` } },
+                        },
+                        cutout: '68%',
+                      }} />
+                    </div>
+                    <div className="w-full lg:w-[55%] space-y-3">
+                      {balances
+                        .filter(b => (b.paid || 0) > 0)
+                        .sort((a, b) => (b.paid || 0) - (a.paid || 0))
+                        .map((b, i) => {
+                          const totalPaid = balances.reduce((sum, item) => sum + (item.paid || 0), 0);
+                          const percent = totalPaid > 0 ? Math.round(((b.paid || 0) / totalPaid) * 100) : 0;
+                          const colors = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e', '#06b6d4', '#14b8a6', '#ec4899', '#0ea5e9'];
+                          const dotColor = colors[i % colors.length];
+                          return (
+                            <div key={b.id} className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-white/[0.01]">
+                              <div className="flex items-center gap-2.5">
+                                <div className="size-3 rounded-full" style={{ backgroundColor: dotColor }} />
+                                <span className="text-sm font-black text-gray-950 dark:text-white">{b.name}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-sm font-mono font-black text-gray-900 dark:text-gray-200">{fmt(b.paid || 0)}</span>
+                                <span className="ml-2.5 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md font-bold">{percent}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </motion.section>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
