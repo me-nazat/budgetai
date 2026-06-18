@@ -47,48 +47,62 @@ export default function FinancialLineGraph() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     if (!inView || pathLength === 0) {
-      setPhase('idle');
-      setVisible(false);
-      setDashOffset(pathLength);
-      return;
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        setPhase('idle');
+        setVisible(false);
+        setDashOffset(pathLength);
+      }, 0);
+      return () => {
+        cancelled = true;
+        if (timeoutId !== null) clearTimeout(timeoutId);
+      };
     }
 
     if (prefersReducedMotion) {
-      setPhase('hold');
-      setVisible(true);
-      setDashOffset(0);
-      return;
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        setPhase('hold');
+        setVisible(true);
+        setDashOffset(0);
+      }, 0);
+      return () => {
+        cancelled = true;
+        if (timeoutId !== null) clearTimeout(timeoutId);
+      };
     }
-
-    let cancelled = false;
-    let drawFrame: number | null = null;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const runLoop = () => {
       if (cancelled) return;
 
-      setPhase('draw');
-      setVisible(true);
+      // Phase 3 & 4 Reset / Cooldown: instant disappear without transition
+      setPhase('idle');
       setDashOffset(pathLength);
+      setVisible(false);
 
-      const drawStart = performance.now();
-
-      const animateDraw = (now: number) => {
+      // Force layout calculation / render tick before starting drawing transition
+      timeoutId = setTimeout(() => {
         if (cancelled) return;
-        const elapsed = now - drawStart;
-        const progress = Math.min(elapsed / DRAW_MS, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        setDashOffset(pathLength * (1 - eased));
 
-        if (progress < 1) {
-          drawFrame = requestAnimationFrame(animateDraw);
-        } else {
-          setDashOffset(0);
+        // Phase 1: Draw-In (1.0s)
+        setPhase('draw');
+        setDashOffset(0);
+        setVisible(true);
+
+        timeoutId = setTimeout(() => {
+          if (cancelled) return;
+
+          // Phase 2: Hold (2.0s)
           setPhase('hold');
 
           timeoutId = setTimeout(() => {
             if (cancelled) return;
+
+            // Phase 3 & 4 Reset: instantly set offsets
             setVisible(false);
             setPhase('cooldown');
             setDashOffset(pathLength);
@@ -97,17 +111,14 @@ export default function FinancialLineGraph() {
               if (!cancelled) runLoop();
             }, COOLDOWN_MS);
           }, HOLD_MS);
-        }
-      };
-
-      drawFrame = requestAnimationFrame(animateDraw);
+        }, DRAW_MS);
+      }, 50);
     };
 
     runLoop();
 
     return () => {
       cancelled = true;
-      if (drawFrame !== null) cancelAnimationFrame(drawFrame);
       if (timeoutId !== null) clearTimeout(timeoutId);
     };
   }, [inView, pathLength, prefersReducedMotion]);
@@ -140,8 +151,10 @@ export default function FinancialLineGraph() {
         <path
           d={`${GRAPH_PATH} L 475,200 L 10,200 Z`}
           fill="url(#financial-graph-fill)"
-          className="transition-opacity duration-75"
-          style={{ opacity: visible ? 1 : 0 }}
+          style={{
+            opacity: visible ? 1 : 0,
+            transition: 'opacity 75ms linear',
+          }}
         />
 
         <path
@@ -152,11 +165,14 @@ export default function FinancialLineGraph() {
           strokeWidth="5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="financial-graph-glow transition-opacity duration-75"
+          className="financial-graph-glow"
           style={{
             opacity: visible ? 0.35 : 0,
             strokeDasharray: pathLength || undefined,
             strokeDashoffset: dashOffset,
+            transition: phase === 'draw'
+              ? 'stroke-dashoffset 1000ms cubic-bezier(0.25, 0.1, 0.25, 1), opacity 75ms linear'
+              : 'opacity 75ms linear',
           }}
         />
 
@@ -168,11 +184,14 @@ export default function FinancialLineGraph() {
           strokeWidth="3.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="financial-graph-stroke transition-opacity duration-75"
+          className="financial-graph-stroke"
           style={{
             opacity: visible ? 1 : 0,
             strokeDasharray: pathLength || undefined,
             strokeDashoffset: dashOffset,
+            transition: phase === 'draw'
+              ? 'stroke-dashoffset 1000ms cubic-bezier(0.25, 0.1, 0.25, 1), opacity 75ms linear'
+              : 'opacity 75ms linear',
           }}
         />
 

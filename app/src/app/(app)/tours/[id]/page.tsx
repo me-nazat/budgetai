@@ -1358,7 +1358,7 @@ export default function TourDashboard() {
                             {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
                           </div>
                           <div className="min-w-0">
-                            <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through text-gray-400 dark:text-gray-500' : 'checklist-item-title text-gray-900 dark:text-white'}`}>
+                            <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through' : 'checklist-item-title'}`}>
                               {item.name}
                             </h4>
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -1394,6 +1394,29 @@ export default function TourDashboard() {
               transition={spring}
               className="space-y-8"
             >
+              {/* Balances Overview — mirrored from Expenses Ledger tab (positioned at top) */}
+              <div>
+                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-4">Balances Overview</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {balances.map((participant) => (
+                    <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                      <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
+                      <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                        Paid {fmt(participant.paid || 0)}
+                      </p>
+                      <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                        {(participant.balance || 0) > 0
+                          ? `Gets back ${fmt(participant.balance || 0)}`
+                          : (participant.balance || 0) < 0
+                            ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
+                            : 'Settled'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Settlement Plan */}
               <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
                 <h3 className="text-xl font-black text-gray-950 dark:text-white mb-1">Settlement Plan</h3>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">
@@ -1451,28 +1474,6 @@ export default function TourDashboard() {
                     ))}
                   </div>
                 )}
-              </div>
-
-              {/* Balances Overview — mirrored from Expenses Ledger tab */}
-              <div>
-                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-4">Balances Overview</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {balances.map((participant) => (
-                    <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
-                      <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
-                      <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
-                        Paid {fmt(participant.paid || 0)}
-                      </p>
-                      <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
-                        {(participant.balance || 0) > 0
-                          ? `Gets back ${fmt(participant.balance || 0)}`
-                          : (participant.balance || 0) < 0
-                            ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
-                            : 'Settled'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* Injected Member Contributions Doughnut Chart */}
