@@ -54,7 +54,11 @@ export const POST = apiHandler(
         );
     }
 
-    return NextResponse.json({ user: result.user });
+    // Set auth state for cache warming on client side
+    const maxAge = body.rememberMe ? 2592000 : 7200; // 30 days or 2 hours
+    const response = NextResponse.json({ user: result.user });
+    response.headers.set('Set-Cookie', `wealth-ai-auth-state=authenticated; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`);
+    return response;
   },
   { rateLimit: 'auth' }
 );

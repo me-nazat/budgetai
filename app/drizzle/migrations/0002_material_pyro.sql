@@ -1,0 +1,1 @@
+ALTER TABLE `user_sessions` ADD `remember_me` integer DEFAULT 0;

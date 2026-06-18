@@ -97,25 +97,24 @@ export default function DashboardPage() {
 
     // SWR hooks — cached, stale-while-revalidate
     const { data: swrData, isLoading, isValidating } = useDashboard(selectedMonth, selectedWeek);
-    const [localCacheData, setLocalCacheData] = useState<DashboardData | null>(null);
 
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            try {
-                const raw = localStorage.getItem('wealth-ai-swr-cache-v1');
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    const cacheKey = `/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`;
-                    const entry = parsed[cacheKey];
-                    if (entry && entry.value && entry.value.data) {
-                        setLocalCacheData(entry.value.data);
-                    }
-                }
-            } catch (e) {
-                console.error('Failed to load local SWR cache:', e);
-            }
+    // Synchronously read from localStorage cache for instant render (no flash)
+    const cacheKey = `/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`;
+    const localCacheData = (() => {
+      if (typeof window === 'undefined') return null;
+      try {
+        const raw = localStorage.getItem('wealth-ai-swr-cache-v1');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const entry = parsed[cacheKey];
+        if (entry && entry.value && entry.value.data) {
+          return entry.value.data as DashboardData;
         }
-    }, [selectedMonth, selectedWeek]);
+      } catch {
+        // Ignore parse errors
+      }
+      return null;
+    })();
 
     const data = swrData || localCacheData;
     const dashboardKey = `/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`;

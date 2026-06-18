@@ -15,6 +15,13 @@
       "when": 1781713785682,
       "tag": "0001_romantic_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1781769197644,
+      "tag": "0002_material_pyro",
+      "breakpoints": true
     }
   ]
 }

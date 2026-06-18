@@ -291,6 +291,7 @@ export class AuthService {
       userId: user.id,
       tokenHash: hashRefreshToken(refreshToken),
       expiresAt: computeRefreshExpiry(rememberMe),
+      rememberMe,
       deviceFingerprint: ctx.request
         ? computeDeviceFingerprint(ctx.request)
         : undefined,
@@ -371,16 +372,10 @@ export class AuthService {
       );
     }
 
-    // Check if the current session was created with "Remember Me"
-    let isRememberMe = false;
-    if (session.createdAt && session.expiresAt) {
-      const createdStr = session.createdAt.includes('T') ? session.createdAt : session.createdAt.replace(' ', 'T') + 'Z';
-      const expiresStr = session.expiresAt.includes('T') ? session.expiresAt : session.expiresAt.replace(' ', 'T') + 'Z';
-      const diffMs = new Date(expiresStr).getTime() - new Date(createdStr).getTime();
-      isRememberMe = diffMs > 10 * 24 * 60 * 60 * 1000;
-    }
+    // Use the stored rememberMe flag from the session (1 = true, 0 = false)
+    const isRememberMe = session.rememberMe === 1;
 
-    // Rotate token
+    // Rotate token with the same rememberMe persistence
     const newRefreshToken = createRefreshToken();
     const newTokenHash = hashRefreshToken(newRefreshToken);
     const newExpiry = computeRefreshExpiry(isRememberMe);
@@ -390,7 +385,7 @@ export class AuthService {
     // Create new access token
     const newAccessToken = await createAccessToken(user.id, user.email);
 
-    // Set cookies
+    // Set cookies with the same rememberMe persistence
     await setSessionCookies(newAccessToken, newRefreshToken, isRememberMe);
 
     return {

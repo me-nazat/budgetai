@@ -59,11 +59,29 @@
 
   :root {
     --color-chart-line: #136dec;
+    --graph-canvas-bg: #ffffff;
+    --graph-grid-color: rgba(107, 114, 128, 0.18);
+    --graph-axis-text: rgba(107, 114, 128, 0.72);
+    --graph-gradient-start: #10b981;
+    --graph-gradient-end: #2563eb;
+    --checklist-text: #1a1a1a;
+    --checklist-text-muted: #4b5563;
+    --checklist-badge-bg: #f3f4f6;
+    --checklist-badge-text: #6b7280;
   }
 
   html.dark {
     color-scheme: dark;
     --color-chart-line: #5b8ff9;
+    --graph-canvas-bg: #0f172a;
+    --graph-grid-color: rgba(255, 255, 255, 0.08);
+    --graph-axis-text: rgba(203, 213, 225, 0.75);
+    --graph-gradient-start: #34d399;
+    --graph-gradient-end: #38bdf8;
+    --checklist-text: #ffffff;
+    --checklist-text-muted: #9ca3af;
+    --checklist-badge-bg: rgba(255, 255, 255, 0.05);
+    --checklist-badge-text: #9ca3af;
   }
 
   body {
@@ -1841,4 +1859,60 @@ html:not(.dark) .auth-mesh-bg {
       background-position: 350% 50%, 350% 50%;
     }
   }
+}
+
+/* Landing page financial line graph */
+.financial-graph-canvas {
+  background: var(--graph-canvas-bg);
+  border-radius: 1rem;
+}
+
+.financial-graph-grid {
+  background: var(--graph-grid-color);
+}
+
+.financial-graph-axis {
+  color: var(--graph-axis-text);
+  border-top: 1px solid var(--graph-grid-color);
+}
+
+.financial-graph-stroke {
+  will-change: stroke-dashoffset, opacity;
+}
+
+.financial-graph-glow {
+  filter: none;
+  will-change: stroke-dashoffset, opacity;
+}
+
+html.dark .financial-graph-glow,
+:where(.dark) .financial-graph-glow {
+  filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.45)) drop-shadow(0 0 14px rgba(56, 189, 248, 0.35));
+}
+
+html.dark .financial-graph-endpoint,
+:where(.dark) .financial-graph-endpoint {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.65));
+}
+
+/* Tour checklist typography — enforced light/dark contrast */
+.checklist-item-title {
+  color: var(--checklist-text);
+}
+
+.checklist-item-title.is-completed {
+  color: var(--checklist-text-muted);
+}
+
+.checklist-item-badge {
+  color: var(--checklist-badge-text);
+  background: var(--checklist-badge-bg);
+}
+
+.checklist-item-assignee {
+  color: var(--checklist-text-muted);
+}
+
+.checklist-progress-label {
+  color: var(--checklist-text-muted);
 }

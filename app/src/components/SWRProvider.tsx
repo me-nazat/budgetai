@@ -16,7 +16,18 @@ async function refreshTokens(): Promise<boolean> {
     refreshPromise = (async () => {
         try {
             const res = await fetch('/api/auth/refresh', { method: 'POST' });
-            return res.ok;
+            const success = res.ok;
+            if (success) {
+              // Signal successful authentication for cache warming
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('wealth-ai-auth-state', 'authenticated');
+                window.dispatchEvent(new StorageEvent('storage', {
+                  key: 'wealth-ai-auth-state',
+                  newValue: 'authenticated',
+                }));
+              }
+            }
+            return success;
         } catch {
             return false;
         } finally {
@@ -58,7 +69,7 @@ const fetcher = async (url: string) => {
 };
 
 const STORAGE_KEY = 'wealth-ai-swr-cache-v1';
-const CACHE_TTL_MS = 30 * 60 * 1000;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours for instant loading on return visits
 const PERSISTED_PREFIXES = [
     '/api/dashboard',
     '/api/transactions',
@@ -161,11 +172,94 @@ function createPersistentCache(): Cache<unknown> {
 }
 
 import { useEffect } from 'react';
+import { mutate } from 'swr';
+
+function getCurrentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Critical endpoints to pre-warm on authentication for instant dashboard loading. */
+function getCriticalEndpoints() {
+  const month = getCurrentMonthKey();
+  return [
+    '/api/auth/me',
+    `/api/dashboard?month=${month}&week=all`,
+    '/api/transactions?limit=50',
+    '/api/categories',
+    '/api/budgets',
+    '/api/networth',
+  ];
+}
+
+function unwrapApiResponse(json: unknown) {
+  if (json && typeof json === 'object' && (json as { success?: boolean }).success === true && 'data' in json) {
+    return (json as { data: unknown }).data;
+  }
+  return json;
+}
+
+/** Pre-warms the SWR cache with critical data for instant dashboard rendering. */
+async function warmCache() {
+  try {
+    await Promise.allSettled(
+      getCriticalEndpoints().map(async (endpoint) => {
+        const response = await fetch(endpoint, {
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const json = await response.json().catch(() => null);
+          if (json) {
+            await mutate(endpoint, unwrapApiResponse(json), false);
+          }
+        }
+      })
+    );
+  } catch {
+    // Silently fail - cache warming is best effort
+  }
+}
+
+/** Listens for authentication state changes and triggers cache warming. */
+function setupAuthListener() {
+  if (typeof window === 'undefined') return;
+
+  // Listen for storage events (cross-tab login)
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'wealth-ai-auth-state' && e.newValue === 'authenticated') {
+      warmCache();
+    }
+  });
+
+  // Listen for custom auth event (same-tab login)
+  window.addEventListener('wealth-ai-authenticated', () => {
+    warmCache();
+  });
+
+  // Check on initial load if user is authenticated
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (res.ok) {
+        await warmCache();
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  // Small delay to let SWR initialize first
+  setTimeout(checkAuth, 100);
+}
 
 export default function SWRProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Run auto-sync for recurring transactions and subscriptions silently
         fetch('/api/sync', { method: 'POST' }).catch(() => {});
+
+        // Set up authentication listener for cache warming
+        setupAuthListener();
     }, []);
 
     return (

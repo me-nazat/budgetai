@@ -89,6 +89,9 @@ export const userSessions = sqliteTable(
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
+
+    /** Whether this session was created with "Remember Me" for 30-day persistence. */
+    rememberMe: integer('remember_me').default(0),
   },
   (table) => [
     index('idx_sessions_user').on(table.userId),

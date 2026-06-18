@@ -1223,8 +1223,8 @@ export default function TourDashboard() {
                 </div>
 
                 {checklist.length > 0 && (
-                  <div className="mb-6 bg-gray-50 dark:bg-white/[0.02] border border-gray-150 dark:border-white/[0.04] p-4 rounded-2xl">
-                    <div className="flex justify-between items-center mb-2 text-xs font-black uppercase text-gray-400">
+                  <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
+                    <div className="checklist-progress-label mb-2 flex items-center justify-between text-xs font-black uppercase">
                       <span>Progress</span>
                       <span>
                         {checklist.filter(c => c.completed).length} / {checklist.length} packed
@@ -1358,14 +1358,14 @@ export default function TourDashboard() {
                             {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
                           </div>
                           <div className="min-w-0">
-                            <h4 className={`text-sm font-black truncate text-[#1A1A1A] dark:text-white ${item.completed ? 'line-through text-gray-500' : ''}`}>
+                            <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through text-gray-400 dark:text-gray-500' : 'checklist-item-title text-gray-900 dark:text-white'}`}>
                               {item.name}
                             </h4>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                              <span className="text-[10px] font-black uppercase text-gray-500 bg-gray-100 dark:bg-white/[0.05] px-1.5 py-0.5 rounded">
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="checklist-item-badge rounded px-1.5 py-0.5 text-[10px] font-black uppercase">
                                 {item.category}
                               </span>
-                              <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                              <span className="checklist-item-assignee text-[10px] font-bold">
                                 👤 {item.assignedTo}
                               </span>
                             </div>
@@ -1403,8 +1403,8 @@ export default function TourDashboard() {
                 {settlementPlan.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-6 text-center">
                     <span className="material-symbols-outlined text-emerald-400 text-5xl mb-3">celebration</span>
-                    <p className="text-base font-black text-white">All Settled!</p>
-                    <p className="text-xs text-gray-400 mt-1 font-medium">No pending debts between members of this tour.</p>
+                    <p className="text-base font-black text-gray-950 dark:text-white">All Settled!</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">No pending debts between members of this tour.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1451,6 +1451,28 @@ export default function TourDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Balances Overview — mirrored from Expenses Ledger tab */}
+              <div>
+                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-4">Balances Overview</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {balances.map((participant) => (
+                    <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                      <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
+                      <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                        Paid {fmt(participant.paid || 0)}
+                      </p>
+                      <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                        {(participant.balance || 0) > 0
+                          ? `Gets back ${fmt(participant.balance || 0)}`
+                          : (participant.balance || 0) < 0
+                            ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
+                            : 'Settled'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Injected Member Contributions Doughnut Chart */}

@@ -65,17 +65,17 @@ const ACCESS_TOKEN_EXPIRY = '15m';
 const ACCESS_MAX_AGE = 15 * 60;
 
 /**
- * Refresh token validity duration in days.
- * @constant
- */
-const REFRESH_TOKEN_DAYS = 7;
-
-/**
- * Refresh token max age in seconds.
- * For non-remembered devices, default is 2 hours.
+ * Refresh token max age in seconds for non-remembered devices (2 hours).
+ * For remembered devices ("Remember Me"), the max age is 30 days (2,592,000 seconds).
  * @constant
  */
 const REFRESH_MAX_AGE = 2 * 60 * 60;
+
+/**
+ * Refresh token max age in seconds for remembered devices (30 days).
+ * @constant
+ */
+const REFRESH_MAX_AGE_REMEMBER_ME = 30 * 24 * 60 * 60;
 
 /**
  * JWT payload interface with Wealth AI custom claims.
@@ -227,18 +227,22 @@ export async function verifyAccessToken(
 /**
  * Sets both access and refresh token cookies.
  *
- * Both cookies are HTTP-only, secure (in production), and SameSite=Lax.
- * The access token has a short max-age matching its JWT expiry.
+ * Both cookies are HTTP-only, secure (in production), and SameSite=Strict.
+ * The access token has a short max-age matching its JWT expiry (15 min).
  * The refresh token has a longer max-age for session persistence.
+ * When rememberMe is true, the refresh token persists for 30 days (sliding window).
  *
  * @param accessToken - The signed access JWT.
  * @param refreshToken - The opaque refresh token string.
+ * @param rememberMe - Whether to extend refresh token to 30 days.
  *
  * @security
  * - `httpOnly: true` prevents JavaScript access (XSS protection).
  * - `secure: true` in production ensures HTTPS-only transmission.
- * - `sameSite: 'lax'` prevents CSRF in cross-origin POST requests.
+ * - `sameSite: 'strict'` prevents CSRF in cross-origin requests.
  * - `path: '/'` ensures tokens are sent for all routes.
+ * - RememberMe consent is implicit via checkbox - no extra notification needed.
+ * - The 30-day sliding window is maintained by token rotation on each refresh.
  */
 export async function setSessionCookies(
   accessToken: string,
@@ -268,7 +272,7 @@ export async function setSessionCookies(
     path: '/',
   });
 
-  const refreshMaxAge = rememberMe ? 30 * 24 * 60 * 60 : REFRESH_MAX_AGE;
+  const refreshMaxAge = getRefreshMaxAge(rememberMe);
 
   cookieStore.set(REFRESH_COOKIE_NAME, refreshToken, {
     httpOnly: true,
@@ -345,6 +349,7 @@ export async function getSessionOrRefresh(): Promise<SessionPayload | null> {
 /**
  * Computes the expiration date for a new refresh token.
  *
+ * @param rememberMe - Whether the session should persist for 30 days (Remember Me).
  * @returns ISO-8601 date string for the expiration timestamp.
  */
 export function computeRefreshExpiry(rememberMe?: boolean): string {
@@ -355,6 +360,16 @@ export function computeRefreshExpiry(rememberMe?: boolean): string {
     expiry.setHours(expiry.getHours() + 2);
   }
   return expiry.toISOString();
+}
+
+/**
+ * Gets the refresh token max age in seconds based on rememberMe flag.
+ *
+ * @param rememberMe - Whether the session should persist for 30 days.
+ * @returns Max age in seconds for cookie setting.
+ */
+export function getRefreshMaxAge(rememberMe?: boolean): number {
+  return rememberMe ? REFRESH_MAX_AGE_REMEMBER_ME : REFRESH_MAX_AGE;
 }
 
 /**

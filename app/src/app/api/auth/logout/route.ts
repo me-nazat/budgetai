@@ -26,6 +26,9 @@ export const POST = apiHandler(
   withAuth<any>(async (request, { userId }) => {
     const ip = getClientIP(request);
     await AuthService.logout(userId, { ip });
-    return NextResponse.json({ message: 'Logged out successfully' });
+    const response = NextResponse.json({ message: 'Logged out successfully' });
+    // Clear auth state for cache warming
+    response.headers.set('Set-Cookie', 'wealth-ai-auth-state=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
+    return response;
   })
 );

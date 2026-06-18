@@ -223,10 +223,14 @@ export class UserRepository {
     deviceName?: string;
     ipAddress?: string;
     userAgent?: string;
+    rememberMe?: boolean;
   }): Promise<typeof userSessions.$inferSelect> {
     const result = await db
       .insert(userSessions)
-      .values(data)
+      .values({
+        ...data,
+        rememberMe: data.rememberMe ? 1 : 0,
+      })
       .returning();
 
     return result[0];
@@ -257,6 +261,7 @@ export class UserRepository {
 
   /**
    * Rotates a session's refresh token (updates hash, extends expiry).
+   * Preserves the rememberMe flag for continued persistence.
    *
    * @param oldTokenHash - The current token hash to replace.
    * @param newTokenHash - The new token hash.

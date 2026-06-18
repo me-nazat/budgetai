@@ -80,6 +80,7 @@ export default function Sidebar() {
     const handleLogout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
         localStorage.removeItem('wealth-ai-swr-cache-v1');
+        localStorage.removeItem('wealth-ai-auth-state');
         router.push('/login');
     };
 

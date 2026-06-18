@@ -84,6 +84,12 @@ function LoginForm() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error?.message || (typeof data.error === 'string' ? data.error : 'Login failed'));
             
+            // Signal successful authentication for cache warming
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('wealth-ai-auth-state', 'authenticated');
+              window.dispatchEvent(new Event('wealth-ai-authenticated'));
+            }
+            
             triggerConfetti();
             
             setTimeout(() => {
@@ -225,23 +231,25 @@ function LoginForm() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2 mt-4 select-none">
-                                <input
-                                    type="checkbox"
-                                    id="rememberMe"
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-primary focus:ring-primary focus:ring-opacity-50 transition-colors cursor-pointer"
-                                />
-                                <label htmlFor="rememberMe" className="text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                    Remember This Device
-                                </label>
-                            </div>
+                            <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-2.5 select-none">
+                                    <input
+                                        type="checkbox"
+                                        id="rememberMe"
+                                        checked={rememberMe}
+                                        onChange={(e) => setRememberMe(e.target.checked)}
+                                        className="h-4 w-4 cursor-pointer rounded border-gray-300 bg-gray-50 text-primary transition-colors focus:ring-primary focus:ring-opacity-50 dark:border-white/10 dark:bg-white/5"
+                                        aria-describedby="rememberMe-desc"
+                                    />
+                                    <label htmlFor="rememberMe" id="rememberMe-desc" className="cursor-pointer text-xs font-semibold text-gray-600 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
+                                        Remember This Device
+                                    </label>
+                                </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="relative w-full py-4 px-4 bg-gradient-to-r from-primary to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-gray-900 font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 disabled:opacity-70 disabled:shadow-none mt-6 flex items-center justify-center gap-2 group overflow-hidden"
+                                className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-primary to-cyan-500 px-4 py-4 font-bold text-gray-900 shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-300 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-70 disabled:shadow-none sm:w-auto sm:min-w-[220px] group"
                             >
                                 {/* Button Glow Effect */}
                                 <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1s_forwards]" />
@@ -258,6 +266,7 @@ function LoginForm() {
                                     </>
                                 )}
                             </button>
+                            </div>
                         </form>
 
                         <div className="mt-8 pt-8 border-t border-white/10 text-center">
