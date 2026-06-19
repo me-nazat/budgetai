@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 /**
  * Client-side AI helper using Puter.js (free, no API key needed)
  * Falls back to server-side Gemini if Puter is unavailable

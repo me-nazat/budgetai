@@ -214,7 +214,7 @@ export function ReceiptScannerModal({ isOpen, onClose }: ReceiptScannerModalProp
           ) : (
             <div className="flex flex-col gap-6">
               <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-[#30363d] bg-gray-100 dark:bg-black/50 aspect-video md:aspect-[4/3] flex items-center justify-center group">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                { }
                 <img src={previewUrl} alt="Receipt preview" className={`max-w-full max-h-full object-contain ${loading ? 'opacity-50 blur-sm' : ''}`} />
                 {loading && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">

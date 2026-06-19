@@ -5,7 +5,7 @@ import { getSession } from '@/lib/security/session-manager';
 import { isValidCurrency } from '@/lib/validation';
 
 // In-memory cache to avoid hitting external APIs too frequently
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 let cachedRates: Record<string, any> | null = null;
 let cachedRatesTime = 0;
 const RATES_CACHE_TTL = 3600 * 1000; // 1 hour

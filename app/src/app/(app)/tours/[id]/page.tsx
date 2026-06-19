@@ -108,7 +108,7 @@ export default function TourDashboard() {
 
   const { data: tourData, error: tourError, isLoading: tourLoading, mutate: mutateTour } = useSWR(
     tourId ? `/api/bill-splits/tours/${tourId}` : null,
-    { keepPreviousData: true, revalidateOnFocus: false }
+    { revalidateOnFocus: false }
   );
   const { data: userData } = useSWR('/api/auth/me');
 
@@ -1380,7 +1380,7 @@ export default function TourDashboard() {
               ) : (
                 <div className="space-y-10">
                   {groupedItinerary.map(([groupName, items]) => {
-                    const isExpanded = expandedGroups[groupName] || false;
+                    const isExpanded = expandedGroups[groupName] ?? false;
                     const visibleItems = isExpanded ? items : items.slice(0, 5);
                     const showExpand = items.length > 5;
 
@@ -1603,7 +1603,7 @@ export default function TourDashboard() {
                                 />
                                 <button
                                   type="button"
-                                  onClick={handleAddCustomCategory}
+                                  onClick={(e) => handleAddCustomCategory(e as unknown as React.FormEvent)}
                                   className="rounded-xl bg-primary px-3 text-xs font-black text-white hover:bg-primary-hover"
                                 >
                                   Save

@@ -69,12 +69,12 @@
 
 | Metric | Value |
 |:---|:---|
-| 📁 Total Project Files | `196` |
-| 🔷 TypeScript Modules | `98 files` |
-| ⚛️ React Components & Pages | `65 files` |
-| 📝 Total Lines of Code | `30,533` |
-| 💎 Pure Logic & Code | `23,284 lines` |
-| 🖊️ Documentation Comments | `4,183 lines` |
+| 📁 Total Project Files | `210` |
+| 🔷 TypeScript Modules | `105 files` |
+| ⚛️ React Components & Pages | `70 files` |
+| 📝 Total Lines of Code | `33,200+` |
+| 💎 Pure Logic & Code | `25,500+ lines` |
+| 🖊️ Documentation Comments | `4,300 lines` |
 
 </div>
 
@@ -216,15 +216,29 @@ Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.
 
 <br/>
 
-### 〔 11 〕 &nbsp; Bill Splitter
+### 〔 11 〕 &nbsp; Bill Splitter & Tour Budget Manager
 
-> Fair splits, every time.
+> Fair splits, every time — from quick one-off splits to full multi-day group trips.
 
+**Quick Bill Splitter**
 - Enter bill total, description, participants (up to 10), and split mode: Equal, Percentage, or Custom Amount
 - Live results panel updates as you type — see each person's share instantly
 - "Add as Transaction" — saves your share as an expense with one tap
 - "Copy Summary" — formatted text ready to paste into WhatsApp or any messenger
 - Full split history saved in DB, filterable by settled / unsettled
+
+**Tour Budget Manager** *(Full Group Trip Toolkit)*
+- Create named tours with any number of participants — link members to user accounts for live sync
+- **Expenses Ledger** — log shared tour costs with payer assignment and split type; includes stacked Bar and Doughnut analytics charts
+- **Trip Itinerary Planner** — hierarchical `Group Category` grouping (e.g. "Day 1", "Sylhet Segment"), timeline view with type icons (flight ✈️, hotel 🏨, food 🍽️, transport 🚗), activity cost estimates, and file attachments
+  - Pagination per group: shows 5 activities, "Expand More" button for overflow
+  - Autocomplete suggestions for existing group names when adding a new activity
+- **Group Packing Checklist** — assign items to members or "Everyone", mark as packed, filter by category (Documents, Clothing, Electronics, Toiletries + custom), optional file attachments, and a progress bar showing packed count
+  - Custom categories: add tour-specific categories (e.g. "Camping Gear") stored per-tour in DB
+  - "Generate Essentials" pre-fills 8 standard packing items with one click
+- **Balances & Settlements** — automated debt minimization algorithm to produce the fewest payments needed to settle the group; copy settlement details to clipboard
+- **Real-time SSE Sync** — all tabs and trip members see itinerary, checklist, and expense changes instantly via Server-Sent Events (no polling)
+- **Invite link** — generate a one-click join URL; participants select their name and link their account
 
 <br/>
 

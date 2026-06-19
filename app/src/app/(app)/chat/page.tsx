@@ -317,14 +317,14 @@ export default function ChatPage() {
             const { transactions } = await res.json();
             if (!transactions || transactions.length === 0) return;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             const totalExpenses = transactions.filter((t: any) => t.type === 'expense').reduce((s: number, t: { amount: number }) => s + t.amount, 0);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             const totalEarnings = transactions.filter((t: any) => t.type === 'earning').reduce((s: number, t: { amount: number }) => s + t.amount, 0);
             const net = totalEarnings - totalExpenses;
 
             const catMap: Record<string, { expenses: number; earnings: number }> = {};
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             transactions.forEach((t: any) => {
                 if (!catMap[t.category]) catMap[t.category] = { expenses: 0, earnings: 0 };
                 if (t.type === 'expense') catMap[t.category].expenses += t.amount;
@@ -358,7 +358,7 @@ export default function ChatPage() {
                 });
                 headerRow.height = 28;
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 transactions.forEach((t: any) => {
                     const isExp = t.type === 'expense';
                     const row = ws.addRow([t.date, isExp ? '▼ Expense' : '▲ Earning', t.category, t.description, `${isExp ? '−' : '+'} ${sym}${t.amount.toFixed(2)}`]);
@@ -411,11 +411,11 @@ export default function ChatPage() {
                 doc.setFontSize(10); doc.text(`Financial Report  •  Generated: ${new Date().toLocaleString()}`, 14, 25);
                 doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.text(`Period: ${dateRange?.start || 'All'} to ${dateRange?.end || 'Now'}`, 14, 40);
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 autoTable(doc as any, {
                     startY: 46,
                     head: [['Date', 'Type', 'Category', 'Description', 'Amount']],
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     body: transactions.map((t: any) => {
                         const isExp = t.type === 'expense';
                         return [t.date, isExp ? 'Expense' : 'Earning', t.category, t.description, `${isExp ? '-' : '+'} ${sym}${t.amount.toFixed(2)}`];
@@ -423,7 +423,7 @@ export default function ChatPage() {
                     theme: 'striped',
                     headStyles: { fillColor: [19, 109, 236], textColor: 255, fontStyle: 'bold', halign: 'center' },
                     columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } },
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     didParseCell: (data: any) => {
                         if (data.section === 'body') {
                             const rd = data.row.raw as string[]; const isExp = rd[1]?.includes('Expense');
@@ -434,11 +434,11 @@ export default function ChatPage() {
                     styles: { fontSize: 9, cellPadding: 4 }, alternateRowStyles: { fillColor: [248, 250, 252] },
                 });
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 let y = (doc as any).lastAutoTable?.finalY || 100; y += 10;
                 doc.setTextColor(19, 109, 236); doc.setFontSize(13); doc.text('Category Breakdown', 14, y); y += 4;
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 autoTable(doc as any, {
                     startY: y,
                     head: [['Category', 'Expenses', 'Earnings', 'Net']],
@@ -449,7 +449,7 @@ export default function ChatPage() {
                     theme: 'grid',
                     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold', halign: 'center' },
                     columnStyles: { 1: { textColor: [220, 38, 38] }, 2: { textColor: [22, 163, 74] }, 3: { halign: 'right', fontStyle: 'bold' } },
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     didParseCell: (data: any) => {
                         if (data.section === 'body' && data.column.index === 3) {
                             data.cell.styles.textColor = String(data.cell.raw).startsWith('+') ? [22, 163, 74] : [220, 38, 38];
@@ -458,7 +458,7 @@ export default function ChatPage() {
                     styles: { fontSize: 9, cellPadding: 3 },
                 });
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 y = (doc as any).lastAutoTable?.finalY || y + 40; y += 12;
 
                 doc.setFillColor(248, 250, 252); doc.roundedRect(14, y - 4, 182, 38, 3, 3, 'F');

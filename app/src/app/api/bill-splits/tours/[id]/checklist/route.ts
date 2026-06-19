@@ -109,7 +109,7 @@ export async function POST(request: Request, context: RouteContext) {
       if (!existing) return NextResponse.json({ error: 'Checklist item not found' }, { status: 404 });
 
       // We might toggle completion only, or update fields
-      if (formData.has('completed') && formData.keys().next().value === 'completed') {
+      if (formData.has('completed') && !formData.has('name')) {
         // Just completion toggle
         await run(
           'UPDATE tour_checklist_items SET completed = ? WHERE id = ? AND tour_id = ?',

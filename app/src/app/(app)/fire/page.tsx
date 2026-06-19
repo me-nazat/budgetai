@@ -64,7 +64,7 @@ export default function FIRECalculatorPage() {
         }
 
         return { data, labels, finalBalance: data[data.length - 1] || balance };
-    }, [currentAge, targetAge, currentNetWorth, monthlyContribution, annualReturnRate, yearsToRetire]);
+    }, [currentAge, currentNetWorth, monthlyContribution, annualReturnRate, yearsToRetire]);
 
     const isOnTrack = projectionData.finalBalance >= fireNumber;
     const progressPercent = Math.min(100, (currentNetWorth / fireNumber) * 100);
