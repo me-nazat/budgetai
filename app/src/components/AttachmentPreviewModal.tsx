@@ -185,7 +185,7 @@ export default function AttachmentPreviewModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={spring}
-            className="relative z-[81] flex h-[80dvh] w-[80vw] min-w-[min(80vw,20rem)] max-w-[1280px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-gray-950 text-white shadow-2xl"
+            className="relative z-[81] flex h-[88dvh] w-[94vw] min-w-[min(94vw,20rem)] max-w-[1280px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-gray-950 text-white shadow-2xl sm:h-[80dvh] sm:w-[80vw]"
           >
             <header className="flex min-h-16 items-center gap-3 border-b border-white/10 bg-gray-950/95 px-4 py-3 sm:px-5">
               <div className="min-w-0 flex-1">

@@ -892,31 +892,31 @@ export default function TourDashboard() {
   return (
     <>
       <div className="mx-auto min-h-dvh max-w-7xl px-4 py-2 pb-20 sm:px-6 lg:px-8">
-        <div className="mb-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="mb-4 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
-            <Link href="/tours" className="mb-4 inline-flex items-center gap-2 rounded-2xl text-sm font-bold text-gray-500 hover:text-gray-950 dark:hover:text-white">
+            <Link href="/tours" className="mb-3 inline-flex items-center gap-2 rounded-2xl text-xs font-black uppercase tracking-[0.18em] text-gray-500 transition-colors hover:text-gray-950 dark:hover:text-white">
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               Back to Tours
             </Link>
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-primary">Tour Dashboard</p>
-            <h1 className="max-w-4xl text-balance text-3xl font-black tracking-tight text-gray-950 dark:text-white lg:text-5xl">
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-primary sm:text-xs">Tour Dashboard</p>
+            <h1 className="max-w-4xl text-balance text-[2rem] font-black tracking-tight text-gray-950 dark:text-white sm:text-4xl lg:text-5xl">
               {tour.name}
             </h1>
             {dashboardData && (
-              <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-white/5 pt-3">
-                <span className="flex items-center gap-1.5">
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-gray-100 pt-3 text-[11px] font-medium text-gray-500 dark:border-white/5 dark:text-gray-400 sm:text-xs">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   Balance: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.balance)}</span>
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   Earnings: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.earnings.current)}</span>
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                   Expenses: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.expenses.current)}</span>
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                   Net Savings: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.netSavings)}</span>
                 </span>
@@ -924,7 +924,7 @@ export default function TourDashboard() {
             )}
           </motion.div>
 
-          <div className="flex items-center gap-3">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
             {tour.createdBy === currentUserId && (
               <motion.button
                 type="button"
@@ -932,7 +932,7 @@ export default function TourDashboard() {
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.97 }}
                 transition={spring}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-5 py-3.5 text-sm font-black text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-4 py-3 text-xs font-black text-gray-700 backdrop-blur-xl hover:bg-gray-50 sm:w-auto sm:px-5 sm:py-3.5 sm:text-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
               >
                 <span className="material-symbols-outlined text-[20px]">edit</span>
                 Edit Tour
@@ -944,7 +944,7 @@ export default function TourDashboard() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.97 }}
               transition={spring}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-3.5 text-sm font-black text-primary hover:bg-primary/15 dark:border-primary/30"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-xs font-black text-primary backdrop-blur-xl hover:bg-primary/15 sm:w-auto sm:px-5 sm:py-3.5 sm:text-sm dark:border-primary/30"
             >
               <span className="material-symbols-outlined text-[20px]">share</span>
               Share Trip
@@ -956,7 +956,7 @@ export default function TourDashboard() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.97 }}
               transition={spring}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.22)] hover:bg-primary-hover"
+              className="inline-flex col-span-2 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.22)] hover:bg-primary-hover sm:col-span-1 sm:w-auto sm:px-5 sm:py-3.5 sm:text-sm"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add</span>
               Add Cost
@@ -964,26 +964,26 @@ export default function TourDashboard() {
           </div>
         </div>
 
-        <div className="-mx-4 mb-8 flex flex-nowrap gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 md:gap-4 md:overflow-visible lg:gap-5 stagger-children">
-          <TiltCard className="glass-panel stat-gradient-blue min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
+        <div className="-mx-4 mb-8 flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-4 pb-2 overscroll-x-contain sm:mx-0 sm:px-0 md:gap-4 md:overflow-visible lg:gap-5 stagger-children">
+          <TiltCard className="glass-panel stat-gradient-blue min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Total Spent</p>
                 <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(totalSpent)}</h3>
             </div>
           </TiltCard>
-          <TiltCard className="glass-panel stat-gradient-emerald min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
+          <TiltCard className="glass-panel stat-gradient-emerald min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Per Person</p>
                 <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(perPerson)}</h3>
             </div>
           </TiltCard>
-          <TiltCard className="glass-panel stat-gradient-orange min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
+          <TiltCard className="glass-panel stat-gradient-orange min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Avg Cost</p>
                 <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(averageCost)}</h3>
             </div>
           </TiltCard>
-          <TiltCard className={`glass-panel ${myBalance >= 0 ? 'stat-gradient-blue' : 'stat-gradient-rose'} min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
+          <TiltCard className={`glass-panel ${myBalance >= 0 ? 'stat-gradient-blue' : 'stat-gradient-rose'} min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">My Balance</p>
                 <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">
@@ -994,7 +994,7 @@ export default function TourDashboard() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="mb-8 flex flex-wrap gap-2 border-b border-gray-200 dark:border-white/10 pb-4">
+        <div className="-mx-4 mb-8 flex gap-2 overflow-x-auto border-b border-gray-200 px-4 pb-4 dark:border-white/10 sm:mx-0 sm:px-0">
           {[
             { id: 'ledger', label: 'Expenses Ledger', icon: 'receipt_long' },
             { id: 'itinerary', label: 'Itinerary Planner', icon: 'calendar_month' },
@@ -1006,19 +1006,19 @@ export default function TourDashboard() {
               <button
                 key={tab.id}
                 onClick={() => { haptics.tap(); setActiveTab(tab.id as any); }}
-                className={`relative flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition-all outline-none ${
+                className={`relative flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-xs font-black transition-all outline-none sm:rounded-2xl sm:px-5 sm:py-3 sm:text-sm ${
                   isActive ? 'text-white' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
                 }`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="active-tab-indicator"
-                    className="absolute inset-0 rounded-2xl bg-primary shadow-lg shadow-primary/20"
+                    className="absolute inset-0 rounded-full bg-primary shadow-lg shadow-primary/20 sm:rounded-2xl"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
-                <span className="relative z-10 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px]">{tab.icon}</span>
+                <span className="relative z-10 flex items-center gap-2 whitespace-nowrap">
+                  <span className="material-symbols-outlined text-[18px] sm:text-[20px]">{tab.icon}</span>
                   {tab.label}
                 </span>
               </button>

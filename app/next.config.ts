@@ -9,7 +9,7 @@ const securityHeaders = [
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob:",
             "connect-src 'self' https://*.turso.io https://generativelanguage.googleapis.com https://openrouter.ai https://open.er-api.com https://www.googleapis.com",
-            "frame-ancestors 'none'",
+            "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",
             "upgrade-insecure-requests",
@@ -17,7 +17,7 @@ const securityHeaders = [
     },
     {
         key: 'X-Frame-Options',
-        value: 'DENY',
+        value: 'SAMEORIGIN',
     },
     {
         key: 'X-Content-Type-Options',
