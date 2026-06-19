@@ -24,18 +24,21 @@ async function getAuthorizedTour(tourId: number, userId: number) {
 }
 
 function toClientItineraryItem(item: any, tourId: number) {
-  if (!item.attachmentId) return item;
-  return {
-    ...item,
-    attachmentId: encodeAttachmentToken({
-      fileId: item.attachmentId,
+  const mapped = { ...item };
+  if (mapped.attachmentId) {
+    mapped.attachmentId = encodeAttachmentToken({
+      fileId: mapped.attachmentId,
       tourId,
-      itemId: Number(item.id),
+      itemId: Number(mapped.id),
       itemType: 'itinerary',
-    }),
-  };
+    });
+  }
+  return mapped;
 }
 
+// ────────────────────────────────────────────
+// GET — list all itinerary items for a tour
+// ────────────────────────────────────────────
 export async function GET(request: Request, context: RouteContext) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -49,20 +52,28 @@ export async function GET(request: Request, context: RouteContext) {
 
   try {
     const items = await queryAll(
-      `SELECT id, tour_id as tourId, day, time, title, location, cost, type, notes, group_title as groupTitle, attachment_id as attachmentId, attachment_name as attachmentName
+      `SELECT id, tour_id as tourId, day, time, time_end as timeEnd, title, location,
+              cost, cost_display as costDisplay, type, notes, group_title as groupTitle,
+              attachment_id as attachmentId, attachment_name as attachmentName
        FROM tour_itinerary_items
        WHERE tour_id = ?
        ORDER BY day ASC, time ASC`,
       [tourId]
     );
 
-    return NextResponse.json({ success: true, itinerary: items.map((item: any) => toClientItineraryItem(item, tourId)) });
+    return NextResponse.json({
+      success: true,
+      itinerary: items.map((item: any) => toClientItineraryItem(item, tourId)),
+    });
   } catch (error) {
     console.error('Failed to get itinerary', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
+// ────────────────────────────────────────────
+// POST — create a new itinerary item
+// ────────────────────────────────────────────
 export async function POST(request: Request, context: RouteContext) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -79,25 +90,23 @@ export async function POST(request: Request, context: RouteContext) {
     const title = formData.get('title') as string;
     const day = parseInt(formData.get('day') as string, 10);
     const time = formData.get('time') as string;
+    const timeEnd = (formData.get('timeEnd') as string) || null;
     const location = (formData.get('location') as string) || '';
+    // costDisplay stores text like "250", "250-300" for range display
+    const costDisplay = (formData.get('costDisplay') as string) || null;
     const costVal = formData.get('cost') as string;
     const cost = costVal ? parseFloat(costVal) : null;
     const type = (formData.get('type') as string) || 'activity';
     const notes = (formData.get('notes') as string) || '';
-    
-    // Group category title fallback
+
     let groupTitle = formData.get('groupTitle') as string;
-    if (!groupTitle || !groupTitle.trim()) {
-      groupTitle = 'General Activities';
-    } else {
-      groupTitle = groupTitle.trim();
-    }
+    groupTitle = groupTitle?.trim() || 'General Activities';
 
     if (!title || isNaN(day) || !time) {
       return NextResponse.json({ error: 'Missing required fields (title, day, time)' }, { status: 400 });
     }
 
-    // Handle optional file upload
+    // Optional file upload
     const file = formData.get('file') as File | null;
     let attachmentId: string | null = null;
     let attachmentName: string | null = null;
@@ -107,7 +116,6 @@ export async function POST(request: Request, context: RouteContext) {
         'SELECT name, email FROM users WHERE id = ?',
         [session.userId]
       );
-      
       const folderLabel = `Tour: ${tour.name} — Itinerary`;
       const uploadResult = await uploadFilesToTransaction({
         userId: session.userId,
@@ -117,7 +125,6 @@ export async function POST(request: Request, context: RouteContext) {
         files: [file],
         tourId,
       });
-
       if (uploadResult.files.length > 0) {
         attachmentId = uploadResult.files[0].id;
         attachmentName = uploadResult.files[0].name;
@@ -125,10 +132,10 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const result = await run(
-      `INSERT INTO tour_itinerary_items (
-        tour_id, day, time, title, location, cost, type, notes, group_title, attachment_id, attachment_name
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tourId, day, time, title, location, cost, type, notes, groupTitle, attachmentId, attachmentName]
+      `INSERT INTO tour_itinerary_items
+         (tour_id, day, time, time_end, title, location, cost, cost_display, type, notes, group_title, attachment_id, attachment_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tourId, day, time, timeEnd, title, location, cost, costDisplay, type, notes, groupTitle, attachmentId, attachmentName]
     );
 
     const createdItem = {
@@ -136,27 +143,145 @@ export async function POST(request: Request, context: RouteContext) {
       tourId,
       day,
       time,
+      timeEnd,
       title,
       location,
       cost,
+      costDisplay,
       type,
       notes,
       groupTitle,
       attachmentId,
       attachmentName,
     };
-    const clientItem = toClientItineraryItem(createdItem, tourId);
 
-    // Broadcast the update via SSE
-    broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE', data: clientItem });
+    broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE', data: createdItem });
 
-    return NextResponse.json({ success: true, item: clientItem });
+    return NextResponse.json({ success: true, item: toClientItineraryItem(createdItem, tourId) });
   } catch (error) {
     console.error('Failed to create itinerary item', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
+// ────────────────────────────────────────────
+// PATCH — edit an existing itinerary item
+// Query param: ?id=<itemId>
+// ────────────────────────────────────────────
+export async function PATCH(request: Request, context: RouteContext) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await context.params;
+  const tourId = parseInt(id, 10);
+  if (!Number.isFinite(tourId)) return NextResponse.json({ error: 'Invalid Tour ID' }, { status: 400 });
+
+  const tour = await getAuthorizedTour(tourId, session.userId);
+  if (!tour) return NextResponse.json({ error: 'Tour not found or access denied' }, { status: 403 });
+
+  try {
+    const url = new URL(request.url);
+    const itemId = parseInt(url.searchParams.get('id') || '', 10);
+    if (!Number.isFinite(itemId)) {
+      return NextResponse.json({ error: 'Missing or invalid item ID' }, { status: 400 });
+    }
+
+    const existing = await queryOne<{ id: number; attachment_id: string | null; attachment_name: string | null }>(
+      'SELECT id, attachment_id, attachment_name FROM tour_itinerary_items WHERE id = ? AND tour_id = ?',
+      [itemId, tourId]
+    );
+    if (!existing) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+
+    const formData = await request.formData();
+    const title = formData.get('title') as string;
+    const day = parseInt(formData.get('day') as string, 10);
+    const time = formData.get('time') as string;
+    // timeEnd: empty string means "clear it", absent means "keep existing" — but for simplicity we always send it
+    const timeEnd = (formData.get('timeEnd') as string) || null;
+    const location = (formData.get('location') as string) || '';
+    const costDisplay = (formData.get('costDisplay') as string) || null;
+    const costVal = formData.get('cost') as string;
+    const cost = costVal ? parseFloat(costVal) : null;
+    const type = (formData.get('type') as string) || 'activity';
+    const notes = (formData.get('notes') as string) || '';
+    let groupTitle = (formData.get('groupTitle') as string) || '';
+    groupTitle = groupTitle.trim() || 'General Activities';
+
+    if (!title || isNaN(day) || !time) {
+      return NextResponse.json({ error: 'Missing required fields (title, day, time)' }, { status: 400 });
+    }
+
+    // Optional replacement file upload
+    const file = formData.get('file') as File | null;
+    let newAttachmentId: string | null = existing.attachment_id;
+    let newAttachmentName: string | null = existing.attachment_name;
+
+    if (file && file instanceof File && file.size > 0) {
+      const user = await queryOne<{ name: string; email: string }>(
+        'SELECT name, email FROM users WHERE id = ?',
+        [session.userId]
+      );
+      const folderLabel = `Tour: ${tour.name} — Itinerary`;
+      const uploadResult = await uploadFilesToTransaction({
+        userId: session.userId,
+        userName: user?.name ?? null,
+        userEmail: user?.email ?? session.email,
+        folderLabel,
+        files: [file],
+        tourId,
+      });
+      if (uploadResult.files.length > 0) {
+        newAttachmentId = uploadResult.files[0].id;
+        newAttachmentName = uploadResult.files[0].name;
+      }
+    }
+
+    await run(
+      `UPDATE tour_itinerary_items
+       SET title = ?, day = ?, time = ?, time_end = ?,
+           location = ?, cost = ?, cost_display = ?,
+           type = ?, notes = ?, group_title = ?,
+           attachment_id = ?, attachment_name = ?
+       WHERE id = ? AND tour_id = ?`,
+      [
+        title, day, time, timeEnd,
+        location, cost, costDisplay,
+        type, notes, groupTitle,
+        newAttachmentId, newAttachmentName,
+        itemId, tourId,
+      ]
+    );
+
+    const updatedItem = {
+      id: itemId,
+      tourId,
+      day,
+      time,
+      timeEnd,
+      title,
+      location,
+      cost,
+      costDisplay,
+      type,
+      notes,
+      groupTitle,
+      attachmentId: newAttachmentId,
+      attachmentName: newAttachmentName,
+    };
+
+    broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE', data: updatedItem });
+
+    return NextResponse.json({ success: true, item: toClientItineraryItem(updatedItem, tourId) });
+  } catch (error) {
+    console.error('Failed to update itinerary item', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// ────────────────────────────────────────────
+// DELETE — remove an itinerary item
+// Query param: ?id=<itemId>
+// ────────────────────────────────────────────
 export async function DELETE(request: Request, context: RouteContext) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -171,26 +296,23 @@ export async function DELETE(request: Request, context: RouteContext) {
   try {
     const url = new URL(request.url);
     const itemId = parseInt(url.searchParams.get('id') || '', 10);
-    if (!Number.isFinite(itemId)) return NextResponse.json({ error: 'Missing or invalid item ID' }, { status: 400 });
+    if (!Number.isFinite(itemId)) {
+      return NextResponse.json({ error: 'Missing or invalid item ID' }, { status: 400 });
+    }
 
-    // Find the item to see if it has an attachment to delete
     const item = await queryOne<{ attachment_id: string | null }>(
       'SELECT attachment_id FROM tour_itinerary_items WHERE id = ? AND tour_id = ?',
       [itemId, tourId]
     );
-
     if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
 
-    // Delete database record
     await run('DELETE FROM tour_itinerary_items WHERE id = ? AND tour_id = ?', [itemId, tourId]);
 
-    // Clean up file in Google Drive if it exists
     if (item.attachment_id) {
       const user = await queryOne<{ name: string; email: string }>(
         'SELECT name, email FROM users WHERE id = ?',
         [session.userId]
       );
-      
       const folderLabel = `Tour: ${tour.name} — Itinerary`;
       try {
         await deleteTransactionAttachment({
@@ -206,7 +328,6 @@ export async function DELETE(request: Request, context: RouteContext) {
       }
     }
 
-    // Broadcast the update via SSE
     broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE' });
 
     return NextResponse.json({ success: true });

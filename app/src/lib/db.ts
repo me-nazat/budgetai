@@ -239,9 +239,11 @@ export async function ensureDbInitialized(): Promise<void> {
       tour_id INTEGER NOT NULL,
       day INTEGER NOT NULL,
       time TEXT NOT NULL,
+      time_end TEXT DEFAULT NULL,
       title TEXT NOT NULL,
       location TEXT DEFAULT '',
       cost REAL,
+      cost_display TEXT DEFAULT NULL,
       type TEXT DEFAULT 'activity',
       notes TEXT DEFAULT '',
       group_title TEXT DEFAULT 'General Activities',
@@ -370,6 +372,16 @@ export async function ensureDbInitialized(): Promise<void> {
   try {
     await getClient().execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_tours_invite_code ON tours(invite_code)');
   } catch { /* Ignore */ }
+
+  // Support time range: optional end time for itinerary activities
+  try {
+    await getClient().execute('ALTER TABLE tour_itinerary_items ADD COLUMN time_end TEXT DEFAULT NULL');
+  } catch { /* Ignore — column already exists */ }
+
+  // Support cost range strings like "250-300" (stored as TEXT instead of REAL)
+  try {
+    await getClient().execute('ALTER TABLE tour_itinerary_items ADD COLUMN cost_display TEXT DEFAULT NULL');
+  } catch { /* Ignore — column already exists */ }
 
   initialized = true;
 }

@@ -231,8 +231,11 @@ Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.
 - Create named tours with any number of participants — link members to user accounts for live sync
 - **Expenses Ledger** — log shared tour costs with payer assignment and split type; includes stacked Bar and Doughnut analytics charts
 - **Trip Itinerary Planner** — hierarchical `Group Category` grouping (e.g. "Day 1", "Sylhet Segment"), timeline view with type icons (flight ✈️, hotel 🏨, food 🍽️, transport 🚗), activity cost estimates, and file attachments
+  - Edit activity support: fully-interactive inline editing of activity details, including group category, titles, location, type, cost estimates, notes, and file attachments
+  - Timing range support: optional end time to show time spans (e.g. "09:00 – 12:00")
+  - Cost range support: enter arbitrary ranges like "250-300" (using a hyphen) which render styled as "Est. 250 – 300"
   - Pagination per group: shows 5 activities, "Expand More" button for overflow
-  - Autocomplete suggestions for existing group names when adding a new activity
+  - Autocomplete suggestions for existing group names when adding/editing a new activity
 - **Group Packing Checklist** — assign items to members or "Everyone", mark as packed, filter by category (Documents, Clothing, Electronics, Toiletries + custom), optional file attachments, and a progress bar showing packed count
   - Custom categories: add tour-specific categories (e.g. "Camping Gear") stored per-tour in DB
   - "Generate Essentials" pre-fills 8 standard packing items with one click

@@ -63,6 +63,8 @@ export const tourItineraryItems = sqliteTable('tour_itinerary_items', {
   title: text('title').notNull(),
   location: text('location').default(''),
   cost: real('cost'),
+  costDisplay: text('cost_display'),
+  timeEnd: text('time_end'),
   type: text('type').default('activity'),
   notes: text('notes').default(''),
   groupTitle: text('group_title').default('General Activities'),

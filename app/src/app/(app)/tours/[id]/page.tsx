@@ -39,9 +39,11 @@ interface ItineraryItem {
   id: string;
   day: number;
   time: string;
+  timeEnd?: string | null;       // optional end time for a range like "09:00 – 12:00"
   title: string;
   location: string;
-  cost?: string;
+  cost?: string | number | null;
+  costDisplay?: string | null;   // raw text range like "250-300" or "500"
   type: 'flight' | 'hotel' | 'food' | 'activity' | 'transport' | 'other';
   notes?: string;
   groupTitle?: string;
@@ -165,8 +167,9 @@ export default function TourDashboard() {
   const [itinTitle, setItinTitle] = useState('');
   const [itinDay, setItinDay] = useState(1);
   const [itinTime, setItinTime] = useState('09:00');
+  const [itinTimeEnd, setItinTimeEnd] = useState('');       // optional end time
   const [itinLocation, setItinLocation] = useState('');
-  const [itinCost, setItinCost] = useState('');
+  const [itinCost, setItinCost] = useState('');             // raw text: "500" or "250-300"
   const [itinType, setItinType] = useState<ItineraryItem['type']>('activity');
   const [itinNotes, setItinNotes] = useState('');
   const [itinGroupTitle, setItinGroupTitle] = useState('');
@@ -174,7 +177,24 @@ export default function TourDashboard() {
   const [showItinGroupSuggestions, setShowItinGroupSuggestions] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [isAddingItinerary, setIsAddingItinerary] = useState(false);
-  
+
+  // Edit state — holds the item currently being edited (null = no edit in progress)
+  const [editingItinItem, setEditingItinItem] = useState<ItineraryItem | null>(null);
+  const [editItinTitle, setEditItinTitle] = useState('');
+  const [editItinDay, setEditItinDay] = useState(1);
+  const [editItinTime, setEditItinTime] = useState('09:00');
+  const [editItinTimeEnd, setEditItinTimeEnd] = useState('');
+  const [editItinLocation, setEditItinLocation] = useState('');
+  const [editItinCost, setEditItinCost] = useState('');
+  const [editItinType, setEditItinType] = useState<ItineraryItem['type']>('activity');
+  const [editItinNotes, setEditItinNotes] = useState('');
+  const [editItinGroupTitle, setEditItinGroupTitle] = useState('');
+  const [editItinAttachment, setEditItinAttachment] = useState<File | null>(null);
+  const [isSavingItinEdit, setIsSavingItinEdit] = useState(false);
+  const [showEditGroupSuggestions, setShowEditGroupSuggestions] = useState(false);
+  const editGroupInputRef = useRef<HTMLDivElement>(null);
+  const editItinFileInputRef = useRef<HTMLInputElement>(null);
+
   const itinFileInputRef = useRef<HTMLInputElement>(null);
   const itinGroupInputRef = useRef<HTMLDivElement>(null);
 
@@ -207,6 +227,9 @@ export default function TourDashboard() {
       }
       if (itinGroupInputRef.current && !itinGroupInputRef.current.contains(event.target as Node)) {
         setShowItinGroupSuggestions(false);
+      }
+      if (editGroupInputRef.current && !editGroupInputRef.current.contains(event.target as Node)) {
+        setShowEditGroupSuggestions(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -303,13 +326,19 @@ export default function TourDashboard() {
     if (!itinTitle.trim()) return;
 
     const groupTitle = itinGroupTitle.trim() || 'General Activities';
+    // Parse cost: if it contains '-', store as costDisplay range string; also extract first number for numeric cost
+    const costRaw = itinCost.trim();
+    const costDisplay = costRaw || null;
+    const costNum = costRaw ? parseFloat(costRaw.split('-')[0].trim()) : null;
 
     const formData = new FormData();
     formData.append('title', itinTitle.trim());
     formData.append('day', String(itinDay));
     formData.append('time', itinTime);
+    if (itinTimeEnd.trim()) formData.append('timeEnd', itinTimeEnd.trim());
     formData.append('location', itinLocation.trim());
-    formData.append('cost', itinCost.trim());
+    if (costDisplay) formData.append('costDisplay', costDisplay);
+    if (costNum !== null && !isNaN(costNum)) formData.append('cost', String(costNum));
     formData.append('type', itinType);
     formData.append('notes', itinNotes.trim());
     formData.append('groupTitle', groupTitle);
@@ -321,9 +350,11 @@ export default function TourDashboard() {
       id: 'temp_' + Date.now(),
       day: itinDay,
       time: itinTime,
+      timeEnd: itinTimeEnd.trim() || null,
       title: itinTitle.trim(),
       location: itinLocation.trim(),
-      cost: itinCost.trim() || undefined,
+      cost: costNum ?? undefined,
+      costDisplay,
       type: itinType,
       notes: itinNotes.trim() || undefined,
       groupTitle,
@@ -341,6 +372,7 @@ export default function TourDashboard() {
     setItinTitle('');
     setItinLocation('');
     setItinCost('');
+    setItinTimeEnd('');
     setItinNotes('');
     setItinGroupTitle('');
     setItinAttachment(null);
@@ -357,6 +389,84 @@ export default function TourDashboard() {
       mutateItinerary();
     } catch {
       mutateItinerary({ success: true, itinerary: previous }, { revalidate: true });
+    }
+  };
+
+  const openEditItinerary = (item: ItineraryItem) => {
+    setEditingItinItem(item);
+    setEditItinTitle(item.title);
+    setEditItinDay(item.day);
+    setEditItinTime(item.time);
+    setEditItinTimeEnd(item.timeEnd || '');
+    setEditItinLocation(item.location || '');
+    setEditItinCost(item.costDisplay || (item.cost != null ? String(item.cost) : ''));
+    setEditItinType(item.type);
+    setEditItinNotes(item.notes || '');
+    setEditItinGroupTitle(item.groupTitle || '');
+    setEditItinAttachment(null);
+    if (editItinFileInputRef.current) editItinFileInputRef.current.value = '';
+  };
+
+  const handleEditItinerary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItinItem || !editItinTitle.trim()) return;
+    setIsSavingItinEdit(true);
+
+    const groupTitle = editItinGroupTitle.trim() || 'General Activities';
+    const costRaw = editItinCost.trim();
+    const costDisplay = costRaw || null;
+    const costNum = costRaw ? parseFloat(costRaw.split('-')[0].trim()) : null;
+
+    const formData = new FormData();
+    formData.append('title', editItinTitle.trim());
+    formData.append('day', String(editItinDay));
+    formData.append('time', editItinTime);
+    formData.append('timeEnd', editItinTimeEnd.trim()); // empty string → clears end time
+    formData.append('location', editItinLocation.trim());
+    formData.append('costDisplay', costDisplay ?? '');
+    if (costNum !== null && !isNaN(costNum)) formData.append('cost', String(costNum));
+    formData.append('type', editItinType);
+    formData.append('notes', editItinNotes.trim());
+    formData.append('groupTitle', groupTitle);
+    if (editItinAttachment) formData.append('file', editItinAttachment);
+
+    // Optimistic update
+    const previous = itinerary;
+    const optimistic = itinerary.map(item =>
+      item.id === editingItinItem.id
+        ? {
+            ...item,
+            title: editItinTitle.trim(),
+            day: editItinDay,
+            time: editItinTime,
+            timeEnd: editItinTimeEnd.trim() || null,
+            location: editItinLocation.trim(),
+            cost: costNum ?? item.cost,
+            costDisplay,
+            type: editItinType,
+            notes: editItinNotes.trim(),
+            groupTitle,
+          }
+        : item
+    ).sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day;
+      return a.time.localeCompare(b.time);
+    });
+    mutateItinerary({ success: true, itinerary: optimistic }, { revalidate: false });
+    setEditingItinItem(null);
+    haptics.success();
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/itinerary?id=${editingItinItem.id}`, {
+        method: 'PATCH',
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      mutateItinerary();
+    } catch {
+      mutateItinerary({ success: true, itinerary: previous }, { revalidate: true });
+    } finally {
+      setIsSavingItinEdit(false);
     }
   };
 
@@ -1228,8 +1338,8 @@ export default function TourDashboard() {
                       exit={{ opacity: 0, height: 0 }}
                       className="border-t border-gray-100 dark:border-white/5 pt-6 mt-4 space-y-4 overflow-hidden"
                     >
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                        <div ref={itinGroupInputRef} className="relative">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
+                        <div ref={itinGroupInputRef} className="relative sm:col-span-2">
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category Title</label>
                           <input
                             type="text"
@@ -1254,7 +1364,7 @@ export default function TourDashboard() {
                             </div>
                           )}
                         </div>
-                        <div>
+                        <div className="sm:col-span-2">
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
                           <input
                             type="text"
@@ -1266,7 +1376,7 @@ export default function TourDashboard() {
                           />
                         </div>
                         <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day Number</label>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day #</label>
                           <input
                             type="number"
                             required
@@ -1276,8 +1386,11 @@ export default function TourDashboard() {
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                         <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Time</label>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
                           <input
                             type="time"
                             required
@@ -1286,30 +1399,25 @@ export default function TourDashboard() {
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
                           />
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">End Time <span className="text-gray-500 font-normal">(optional)</span></label>
                           <input
-                            type="text"
-                            value={itinLocation}
-                            onChange={e => setItinLocation(e.target.value)}
-                            placeholder="e.g. Paris, France"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            type="time"
+                            value={itinTimeEnd}
+                            onChange={e => setItinTimeEnd(e.target.value)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
                           />
                         </div>
                         <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Estimated Cost (Optional)</label>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost (Optional)</label>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
                             value={itinCost}
                             onChange={e => setItinCost(e.target.value)}
-                            placeholder="0.00"
+                            placeholder="e.g. 500 or 250-400"
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
+                          <p className="mt-1 ml-1 text-[10px] text-gray-500">Use a dash for a range, e.g. 250-400</p>
                         </div>
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
@@ -1328,14 +1436,26 @@ export default function TourDashboard() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
+                          <input
+                            type="text"
+                            value={itinLocation}
+                            onChange={e => setItinLocation(e.target.value)}
+                            placeholder="e.g. Paris, France"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
                           <textarea
                             value={itinNotes}
                             onChange={e => setItinNotes(e.target.value)}
                             placeholder="Confirmation codes, reminders, reservation links..."
-                            className="mt-1 min-h-16 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
                         </div>
                         <div>
@@ -1423,17 +1543,33 @@ export default function TourDashboard() {
                                       <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
                                         Day {item.day}
                                       </span>
+                                      {/* Time — shows range if timeEnd is set */}
                                       <span className="text-sm font-mono font-bold text-gray-500 dark:text-gray-400">
-                                        {item.time}
+                                        {item.time}{item.timeEnd ? ` – ${item.timeEnd}` : ''}
                                       </span>
                                       <h4 className="text-base font-black text-gray-950 dark:text-white">{item.title}</h4>
                                     </div>
-                                    <div className="flex items-center gap-3 self-end sm:self-auto">
-                                      {item.cost && (
+                                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                      {/* Cost — show costDisplay (range-aware) or fallback to formatted number */}
+                                      {(item.costDisplay || item.cost) && (
                                         <span className="text-sm font-mono font-black text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-lg">
-                                          Est. {fmt(Number(item.cost))}
+                                          Est. {item.costDisplay
+                                            ? item.costDisplay.includes('-')
+                                              ? item.costDisplay.replace('-', ' – ')
+                                              : item.costDisplay
+                                            : fmt(Number(item.cost))}
                                         </span>
                                       )}
+                                      {/* Edit button */}
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditItinerary(item)}
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-primary/10 hover:text-primary transition-colors"
+                                        title="Edit activity"
+                                      >
+                                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                                      </button>
+                                      {/* Delete button */}
                                       <button
                                         type="button"
                                         onClick={() => handleDeleteItinerary(item.id)}
@@ -1498,6 +1634,200 @@ export default function TourDashboard() {
                   })}
                 </div>
               )}
+
+              {/* ── Edit Itinerary Activity Modal ── */}
+              <AnimatePresence>
+                {editingItinItem && (
+                  <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center px-0 sm:px-4">
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setEditingItinItem(null)}
+                      className="absolute inset-0 bg-slate-950/80 backdrop-blur-lg"
+                    />
+                    <motion.form
+                      onSubmit={handleEditItinerary}
+                      initial={{ opacity: 0, y: 40, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 30, scale: 0.97 }}
+                      transition={spring}
+                      className="relative z-10 w-full max-w-2xl max-h-[90dvh] overflow-y-auto rounded-t-[2rem] sm:rounded-[2rem] border border-white/10 bg-[#0A0E1A]/98 shadow-2xl backdrop-blur-xl p-6 sm:p-8 space-y-5"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Edit Activity</p>
+                          <h2 className="mt-1 text-xl font-black text-white">Update Itinerary Item</h2>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingItinItem(null)}
+                          className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                      </div>
+
+                      {/* Group + Title + Day */}
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
+                        <div ref={editGroupInputRef} className="relative sm:col-span-2">
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category</label>
+                          <input
+                            type="text"
+                            value={editItinGroupTitle}
+                            onFocus={() => setShowEditGroupSuggestions(true)}
+                            onChange={e => { setEditItinGroupTitle(e.target.value); setShowEditGroupSuggestions(true); }}
+                            placeholder="e.g. Day 1"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                          {showEditGroupSuggestions && uniqueGroupTitles.filter(t => !editItinGroupTitle || t.toLowerCase().includes(editItinGroupTitle.toLowerCase())).length > 0 && (
+                            <div className="absolute left-0 right-0 z-20 mt-1 max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-slate-900 p-2 shadow-lg">
+                              {uniqueGroupTitles.filter(t => !editItinGroupTitle || t.toLowerCase().includes(editItinGroupTitle.toLowerCase())).map(s => (
+                                <button key={s} type="button"
+                                  onClick={() => { setEditItinGroupTitle(s); setShowEditGroupSuggestions(false); }}
+                                  className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 hover:bg-white/5"
+                                >{s}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
+                          <input
+                            type="text"
+                            required
+                            value={editItinTitle}
+                            onChange={e => setEditItinTitle(e.target.value)}
+                            placeholder="e.g. Eiffel Tower Visit"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day #</label>
+                          <input
+                            type="number" required min="1"
+                            value={editItinDay}
+                            onChange={e => setEditItinDay(Number(e.target.value))}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Time Range + Cost + Type */}
+                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
+                          <input
+                            type="time" required
+                            value={editItinTime}
+                            onChange={e => setEditItinTime(e.target.value)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">End Time <span className="text-gray-500 font-normal">(opt)</span></label>
+                          <input
+                            type="time"
+                            value={editItinTimeEnd}
+                            onChange={e => setEditItinTimeEnd(e.target.value)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost (Optional)</label>
+                          <input
+                            type="text"
+                            value={editItinCost}
+                            onChange={e => setEditItinCost(e.target.value)}
+                            placeholder="e.g. 500 or 250-400"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                          <p className="mt-1 ml-1 text-[10px] text-gray-500">Dash for range: 250-400</p>
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
+                          <select
+                            value={editItinType}
+                            onChange={e => setEditItinType(e.target.value as any)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          >
+                            <option value="activity">Activity 🎯</option>
+                            <option value="flight">Flight ✈️</option>
+                            <option value="hotel">Hotel 🏨</option>
+                            <option value="food">Food 🍽️</option>
+                            <option value="transport">Transport 🚗</option>
+                            <option value="other">Other 📦</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Location + Notes + File */}
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
+                          <input
+                            type="text"
+                            value={editItinLocation}
+                            onChange={e => setEditItinLocation(e.target.value)}
+                            placeholder="e.g. Paris, France"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+                          <textarea
+                            value={editItinNotes}
+                            onChange={e => setEditItinNotes(e.target.value)}
+                            placeholder="Confirmation codes, links..."
+                            className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Replace File (Optional)</label>
+                          <input
+                            ref={editItinFileInputRef}
+                            type="file"
+                            onChange={e => setEditItinAttachment(e.target.files?.[0] || null)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none"
+                          />
+                          {editingItinItem?.attachmentName && !editItinAttachment && (
+                            <p className="mt-1 ml-1 text-[10px] text-gray-400 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[12px]">attachment</span>
+                              {editingItinItem.attachmentName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Save / Cancel */}
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingItinItem(null)}
+                          className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-3 text-sm font-black text-gray-400 hover:text-white transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSavingItinEdit}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-black text-white shadow-md hover:bg-primary-hover disabled:opacity-60"
+                        >
+                          {isSavingItinEdit ? (
+                            <span className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                          ) : (
+                            <span className="material-symbols-outlined text-[18px]">save</span>
+                          )}
+                          {isSavingItinEdit ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </motion.form>
+                  </div>
+                )}
+              </AnimatePresence>
+
             </motion.div>
           )}
 
