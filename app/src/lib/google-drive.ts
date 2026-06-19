@@ -23,6 +23,7 @@ const APP_PROP_TOUR_ID = 'budgetAiTourId';
 const USER_FOLDER_TYPE = 'user-folder';
 const TOUR_FOLDER_TYPE = 'tour-folder';
 const LOCAL_ENV_FILES = ['.env.local', '.env'];
+const FOLDER_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type DriveAppProperties = Record<string, string>;
 
@@ -32,6 +33,8 @@ interface DriveFolderRecord {
   folderName: string;
   appProperties: DriveAppProperties | null;
 }
+
+const transactionFolderCache = new Map<string, { folderId: string; folderUrl: string; expiresAt: number }>();
 
 export interface AttachmentContentResult {
   file: AttachmentRecord;
@@ -190,6 +193,28 @@ function buildFolderUrl(folderId: string) {
   return `https://drive.google.com/drive/folders/${folderId}`;
 }
 
+function getTransactionFolderCacheKey(identity: DriveUserIdentity, folderLabel: string, tourId?: number) {
+  return `${tourId ? `tour:${tourId}` : `user:${identity.userId}`}::${normalizeFolderKey(folderLabel)}`;
+}
+
+function getCachedTransactionFolder(key: string) {
+  const cached = transactionFolderCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    transactionFolderCache.delete(key);
+    return null;
+  }
+  return { folderId: cached.folderId, folderUrl: cached.folderUrl };
+}
+
+function setCachedTransactionFolder(key: string, folderId: string, folderUrl: string) {
+  transactionFolderCache.set(key, {
+    folderId,
+    folderUrl,
+    expiresAt: Date.now() + FOLDER_CACHE_TTL_MS,
+  });
+}
+
 function mapDriveFile(file: drive_v3.Schema$File): AttachmentRecord {
   return {
     id: file.id ?? '',
@@ -345,6 +370,10 @@ async function resolveTransactionFolder(
   create: boolean,
   tourId?: number,
 ) {
+  const cacheKey = getTransactionFolderCacheKey(identity, folderLabel, tourId);
+  const cached = getCachedTransactionFolder(cacheKey);
+  if (cached) return cached;
+
   let parentFolder: DriveFolderRecord | null = null;
   
   if (tourId) {
@@ -357,6 +386,7 @@ async function resolveTransactionFolder(
   const normalized = normalizeFolderName(folderLabel, 'Receipts');
   const txFolder = await ensureSubFolder(drive, parentFolder.folderId, normalized, create);
   if (!txFolder) return { folderId: null, folderUrl: parentFolder.folderUrl };
+  setCachedTransactionFolder(cacheKey, txFolder.folderId, txFolder.folderUrl);
   return { folderId: txFolder.folderId, folderUrl: txFolder.folderUrl };
 }
 
@@ -486,9 +516,8 @@ export async function uploadFilesToTransaction(params: {
     };
   }
 
-  const uploaded: AttachmentRecord[] = [];
   try {
-    for (const file of params.files) {
+    const uploaded = await Promise.all(params.files.map(async (file) => {
       const mimeType = file.type || 'application/octet-stream';
       const res = await drive.files.create({
         requestBody: { 
@@ -500,11 +529,10 @@ export async function uploadFilesToTransaction(params: {
         fields: 'id,name,mimeType,size,modifiedTime,appProperties',
         supportsAllDrives: true,
       });
-      uploaded.push(mapDriveFile(res.data));
-    }
+      return mapDriveFile(res.data);
+    }));
+    return { files: uploaded, folderUrl: folder.folderUrl };
   } catch (error) { throw toFriendlyError(error); }
-
-  return { files: uploaded, folderUrl: folder.folderUrl };
 }
 
 async function resolveAttachment(
@@ -683,4 +711,3 @@ export async function uploadChatAttachmentsToGemini(params: {
 
   return { files: uploaded, folderUrl: sessionFolder.folderUrl };
 }
-

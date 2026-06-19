@@ -6,8 +6,11 @@ import {
   uploadFilesToTransaction,
 } from '@/lib/google-drive';
 import {
+  decodeAttachmentToken,
+  encodeAttachmentToken,
   MAX_ATTACHMENT_FILES,
   MAX_ATTACHMENT_SIZE_BYTES,
+  type AttachmentRecord,
   type AttachmentsResponse,
 } from '@/lib/transaction-attachments';
 
@@ -63,6 +66,21 @@ async function getUser(userId: number) {
   return user ?? null;
 }
 
+function toClientAttachment(txId: number, tourId: number, file: AttachmentRecord): AttachmentRecord {
+  return {
+    ...file,
+    id: encodeAttachmentToken({ transactionId: txId, tourId, fileId: file.id }),
+  };
+}
+
+function decodeRouteAttachmentToken(token: string, txId: number, tourId: number) {
+  const decoded = decodeAttachmentToken(token);
+  if (!decoded?.fileId) return null;
+  if (decoded.transactionId && decoded.transactionId !== txId) return null;
+  if (decoded.tourId && decoded.tourId !== tourId) return null;
+  return decoded.fileId;
+}
+
 export async function GET(_request: Request, context: ExtendedRouteContext) {
   const session = await getSession();
   if (!session) return jsonError('Please sign in to view attachments.', 401);
@@ -88,7 +106,7 @@ export async function GET(_request: Request, context: ExtendedRouteContext) {
       tourId,
     });
 
-    const payload: AttachmentsResponse = { files: result.files, limit: result.limit };
+    const payload: AttachmentsResponse = { files: result.files.map((file) => toClientAttachment(txId, tourId, file)), limit: result.limit };
     return NextResponse.json(payload);
   } catch (error) {
     console.error('Failed to list attachments', error);
@@ -144,7 +162,7 @@ export async function POST(request: Request, context: ExtendedRouteContext) {
     });
 
     return NextResponse.json({
-      files: result.files,
+      files: result.files.map((file) => toClientAttachment(txId, tourId, file)),
       limit: { maxFiles: MAX_ATTACHMENT_FILES, maxFileSizeBytes: MAX_ATTACHMENT_SIZE_BYTES },
     });
   } catch (error) {
@@ -168,8 +186,10 @@ export async function DELETE(request: Request, context: ExtendedRouteContext) {
   if (!tx) return jsonError('Transaction not found.', 404);
 
   const url = new URL(request.url);
-  const fileId = url.searchParams.get('fileId');
-  if (!fileId) return jsonError('File ID is required.', 400);
+  const attachmentToken = url.searchParams.get('attachmentToken') ?? url.searchParams.get('fileId');
+  if (!attachmentToken) return jsonError('Attachment token is required.', 400);
+  const fileId = decodeRouteAttachmentToken(attachmentToken, txId, tourId);
+  if (!fileId) return jsonError('Invalid attachment token.', 400);
 
   const user = await getUser(session.userId);
   const folderLabel = buildFolderLabel(tx.tourName, tx);

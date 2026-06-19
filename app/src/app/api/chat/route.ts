@@ -123,8 +123,7 @@ export const POST = apiHandler(
                     sessionId: chatSessionId,
                     files: rawFiles,
                 });
-                
-                driveUploadInfo = `\n\n[SYSTEM NOTE: The attached files have been successfully uploaded to Google Drive. Drive Folder URL: ${uploadResult.folderUrl}. Files uploaded: ${uploadResult.files.map(f => f.name).join(', ')}]`;
+                driveUploadInfo = `\n\n[SYSTEM NOTE: The attached files have been securely staged for analysis. Files uploaded: ${uploadResult.files.map(f => f.name).join(', ')}]`;
             } catch (e) {
                 console.error('Failed to upload to Gemini Drive folder:', e);
                 driveUploadInfo = `\n\n[SYSTEM NOTE: Failed to upload attached files to Google Drive.]`;

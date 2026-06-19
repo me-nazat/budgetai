@@ -233,7 +233,46 @@ export async function ensureDbInitialized(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_tour_groups_user ON tour_groups(user_id, created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_tour_participants_tour ON tour_participants(tour_id)`,
     `CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_coach_messages_user ON coach_messages(user_id)`
+    `CREATE INDEX IF NOT EXISTS idx_coach_messages_user ON coach_messages(user_id)`,
+    `CREATE TABLE IF NOT EXISTS tour_itinerary_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tour_id INTEGER NOT NULL,
+      day INTEGER NOT NULL,
+      time TEXT NOT NULL,
+      title TEXT NOT NULL,
+      location TEXT DEFAULT '',
+      cost REAL,
+      type TEXT DEFAULT 'activity',
+      notes TEXT DEFAULT '',
+      group_title TEXT DEFAULT 'General Activities',
+      attachment_id TEXT,
+      attachment_name TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS tour_checklist_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tour_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE,
+      UNIQUE(tour_id, name)
+    )`,
+    `CREATE TABLE IF NOT EXISTS tour_checklist_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tour_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      assigned_to TEXT NOT NULL,
+      completed INTEGER DEFAULT 0,
+      description TEXT DEFAULT '',
+      attachment_id TEXT,
+      attachment_name TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_tour_itinerary_tour ON tour_itinerary_items(tour_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_tour_checklist_tour ON tour_checklist_items(tour_id)`
   ], 'write');
 
   try {

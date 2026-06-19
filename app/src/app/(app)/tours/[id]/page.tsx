@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
@@ -44,14 +44,20 @@ interface ItineraryItem {
   cost?: string;
   type: 'flight' | 'hotel' | 'food' | 'activity' | 'transport' | 'other';
   notes?: string;
+  groupTitle?: string;
+  attachmentId?: string;
+  attachmentName?: string;
 }
 
 interface ChecklistItem {
   id: string;
   name: string;
-  category: 'Documents' | 'Clothing' | 'Electronics' | 'Toiletries' | 'Other';
+  category: string;
   assignedTo: string;
   completed: boolean;
+  description?: string;
+  attachmentId?: string;
+  attachmentName?: string;
 }
 
 interface TourTransaction {
@@ -151,7 +157,11 @@ export default function TourDashboard() {
   const [activeTab, setActiveTab] = useState<'ledger' | 'itinerary' | 'checklist' | 'settlements'>('ledger');
 
   // Itinerary Planner state
-  const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
+  const { data: itineraryData, mutate: mutateItinerary } = useSWR<{ success: boolean; itinerary: ItineraryItem[] }>(
+    tourId ? `/api/bill-splits/tours/${tourId}/itinerary` : null
+  );
+  const itinerary = useMemo(() => itineraryData?.itinerary ?? [], [itineraryData]);
+
   const [itinTitle, setItinTitle] = useState('');
   const [itinDay, setItinDay] = useState(1);
   const [itinTime, setItinTime] = useState('09:00');
@@ -159,128 +169,352 @@ export default function TourDashboard() {
   const [itinCost, setItinCost] = useState('');
   const [itinType, setItinType] = useState<ItineraryItem['type']>('activity');
   const [itinNotes, setItinNotes] = useState('');
+  const [itinGroupTitle, setItinGroupTitle] = useState('');
+  const [itinAttachment, setItinAttachment] = useState<File | null>(null);
+  const [showItinGroupSuggestions, setShowItinGroupSuggestions] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [isAddingItinerary, setIsAddingItinerary] = useState(false);
+  
+  const itinFileInputRef = useRef<HTMLInputElement>(null);
+  const itinGroupInputRef = useRef<HTMLDivElement>(null);
 
+  // Group Checklist / Packing List state
+  const { data: checklistData, mutate: mutateChecklist } = useSWR<{ success: boolean; checklist: ChecklistItem[]; categories: { id: number; name: string }[] }>(
+    tourId ? `/api/bill-splits/tours/${tourId}/checklist` : null
+  );
+  const checklist = useMemo(() => checklistData?.checklist ?? [], [checklistData]);
+  const customCategoriesList = useMemo(() => checklistData?.categories ?? [], [checklistData]);
+
+  const [checkName, setCheckName] = useState('');
+  const [checkCategory, setCheckCategory] = useState('Other');
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>(['Everyone']);
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [checkDescription, setCheckDescription] = useState('');
+  const [checkAttachment, setCheckAttachment] = useState<File | null>(null);
+  const [newCustomCategory, setNewCustomCategory] = useState('');
+  const [showCustomCatInput, setShowCustomCatInput] = useState(false);
+  const [activeChecklistFilter, setActiveChecklistFilter] = useState<string>('All');
+  const [isAddingChecklist, setIsAddingChecklist] = useState(false);
+
+  const checkFileInputRef = useRef<HTMLInputElement>(null);
+  const assigneeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close suggestions and dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (assigneeDropdownRef.current && !assigneeDropdownRef.current.contains(event.target as Node)) {
+        setShowAssigneeDropdown(false);
+      }
+      if (itinGroupInputRef.current && !itinGroupInputRef.current.contains(event.target as Node)) {
+        setShowItinGroupSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // SSE Sync Hook
   useEffect(() => {
     if (!tourId) return;
-    const saved = localStorage.getItem(`tour_${tourId}_itinerary`);
-    if (saved) {
-      try { setItinerary(JSON.parse(saved)); } catch (e) { console.error(e); }
-    } else {
-      setItinerary([]);
-    }
-  }, [tourId]);
 
-  const handleAddItinerary = (e: React.FormEvent) => {
+    let sse: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+
+    function connect() {
+      sse = new EventSource(`/api/bill-splits/tours/${tourId}/sync`);
+
+      sse.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'ITINERARY_CHANGE') {
+            mutateItinerary();
+          } else if (
+            payload.type === 'CHECKLIST_CHANGE' ||
+            payload.type === 'ITEM_CREATE' ||
+            payload.type === 'ITEM_MUTATE' ||
+            payload.type === 'TOGGLE_PACKED' ||
+            payload.type === 'CATEGORY_CHANGE'
+          ) {
+            mutateChecklist();
+          }
+        } catch (err) {
+          // ignore parsing error
+        }
+      };
+
+      sse.onerror = () => {
+        if (sse) sse.close();
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
+    }
+
+    connect();
+
+    return () => {
+      if (sse) sse.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [tourId, mutateItinerary, mutateChecklist]);
+
+  const uniqueGroupTitles = useMemo(() => {
+    const titles = new Set<string>();
+    itinerary.forEach((item) => {
+      if (item.groupTitle) {
+        titles.add(item.groupTitle);
+      }
+    });
+    return Array.from(titles);
+  }, [itinerary]);
+
+  const filteredGroupSuggestions = useMemo(() => {
+    const query = itinGroupTitle.toLowerCase().trim();
+    if (!query) return uniqueGroupTitles;
+    return uniqueGroupTitles.filter(t => t.toLowerCase().includes(query));
+  }, [itinGroupTitle, uniqueGroupTitles]);
+
+  const groupedItinerary = useMemo<[string, ItineraryItem[]][]>(() => {
+    const groups = new Map<string, ItineraryItem[]>();
+    itinerary.forEach((item) => {
+      const groupName = item.groupTitle?.trim() || 'General Activities';
+      groups.set(groupName, [...(groups.get(groupName) ?? []), item]);
+    });
+    return Array.from(groups.entries());
+  }, [itinerary]);
+
+  const handleToggleAssignee = (name: string) => {
+    if (name === 'Everyone') {
+      setSelectedAssignees(['Everyone']);
+    } else {
+      let updated = selectedAssignees.filter(a => a !== 'Everyone');
+      if (updated.includes(name)) {
+        updated = updated.filter(a => a !== name);
+      } else {
+        updated.push(name);
+      }
+      if (updated.length === 0) {
+        updated = ['Everyone'];
+      }
+      setSelectedAssignees(updated);
+    }
+  };
+
+  const handleAddItinerary = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itinTitle.trim()) return;
 
-    const newItem: ItineraryItem = {
-      id: Date.now().toString(),
+    const groupTitle = itinGroupTitle.trim() || 'General Activities';
+
+    const formData = new FormData();
+    formData.append('title', itinTitle.trim());
+    formData.append('day', String(itinDay));
+    formData.append('time', itinTime);
+    formData.append('location', itinLocation.trim());
+    formData.append('cost', itinCost.trim());
+    formData.append('type', itinType);
+    formData.append('notes', itinNotes.trim());
+    formData.append('groupTitle', groupTitle);
+    if (itinAttachment) {
+      formData.append('file', itinAttachment);
+    }
+
+    const optimisticItem: ItineraryItem = {
+      id: 'temp_' + Date.now(),
       day: itinDay,
       time: itinTime,
       title: itinTitle.trim(),
       location: itinLocation.trim(),
-      cost: itinCost.trim() ? itinCost.trim() : undefined,
+      cost: itinCost.trim() || undefined,
       type: itinType,
-      notes: itinNotes.trim() ? itinNotes.trim() : undefined,
+      notes: itinNotes.trim() || undefined,
+      groupTitle,
+      attachmentName: itinAttachment ? itinAttachment.name : undefined,
     };
 
-    const updated = [...itinerary, newItem].sort((a, b) => {
+    const previous = itinerary;
+    const sorted = [...itinerary, optimisticItem].sort((a, b) => {
       if (a.day !== b.day) return a.day - b.day;
       return a.time.localeCompare(b.time);
     });
 
-    setItinerary(updated);
-    localStorage.setItem(`tour_${tourId}_itinerary`, JSON.stringify(updated));
+    mutateItinerary({ success: true, itinerary: sorted }, { revalidate: false });
 
     setItinTitle('');
     setItinLocation('');
     setItinCost('');
     setItinNotes('');
-    setItinType('activity');
+    setItinGroupTitle('');
+    setItinAttachment(null);
+    if (itinFileInputRef.current) itinFileInputRef.current.value = '';
     setIsAddingItinerary(false);
     haptics.success();
-  };
 
-  const handleDeleteItinerary = (id: string) => {
-    const updated = itinerary.filter(item => item.id !== id);
-    setItinerary(updated);
-    localStorage.setItem(`tour_${tourId}_itinerary`, JSON.stringify(updated));
-    haptics.tap();
-  };
-
-  // Group Checklist / Packing List state
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
-  const [checkName, setCheckName] = useState('');
-  const [checkCategory, setCheckCategory] = useState<ChecklistItem['category']>('Other');
-  const [checkAssignee, setCheckAssignee] = useState('Everyone');
-  const [activeChecklistFilter, setActiveChecklistFilter] = useState<string>('All');
-  const [isAddingChecklist, setIsAddingChecklist] = useState(false);
-
-  useEffect(() => {
-    if (!tourId) return;
-    const saved = localStorage.getItem(`tour_${tourId}_checklist`);
-    if (saved) {
-      try { setChecklist(JSON.parse(saved)); } catch (e) { console.error(e); }
-    } else {
-      setChecklist([]);
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/itinerary`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      mutateItinerary();
+    } catch {
+      mutateItinerary({ success: true, itinerary: previous }, { revalidate: true });
     }
-  }, [tourId]);
+  };
 
-  const handleAddChecklist = (e: React.FormEvent) => {
+  const handleDeleteItinerary = async (id: string) => {
+    const previous = itinerary;
+    mutateItinerary({ success: true, itinerary: itinerary.filter(item => item.id !== id) }, { revalidate: false });
+    haptics.tap();
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/itinerary?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error();
+      mutateItinerary();
+    } catch {
+      mutateItinerary({ success: true, itinerary: previous }, { revalidate: true });
+    }
+  };
+
+  const handleAddChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkName.trim()) return;
 
-    const newItem: ChecklistItem = {
-      id: Date.now().toString(),
+    const assignedToStr = selectedAssignees.join(', ');
+
+    const formData = new FormData();
+    formData.append('name', checkName.trim());
+    formData.append('category', checkCategory);
+    formData.append('assignedTo', assignedToStr);
+    formData.append('description', checkDescription.trim());
+    if (checkAttachment) {
+      formData.append('file', checkAttachment);
+    }
+
+    const optimisticItem: ChecklistItem = {
+      id: 'temp_' + Date.now(),
       name: checkName.trim(),
       category: checkCategory,
-      assignedTo: checkAssignee,
+      assignedTo: assignedToStr,
       completed: false,
+      description: checkDescription.trim() || undefined,
+      attachmentName: checkAttachment ? checkAttachment.name : undefined,
     };
 
-    const updated = [...checklist, newItem];
-    setChecklist(updated);
-    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(updated));
+    const previous = checklist;
+    mutateChecklist({ success: true, checklist: [...checklist, optimisticItem], categories: customCategoriesList }, { revalidate: false });
 
     setCheckName('');
     setCheckCategory('Other');
-    setCheckAssignee('Everyone');
+    setSelectedAssignees(['Everyone']);
+    setCheckDescription('');
+    setCheckAttachment(null);
+    if (checkFileInputRef.current) checkFileInputRef.current.value = '';
     setIsAddingChecklist(false);
     haptics.success();
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      mutateChecklist();
+    } catch {
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
+    }
   };
 
-  const handleToggleChecklist = (id: string) => {
-    const updated = checklist.map(item =>
-      item.id === id ? { ...item, completed: !item.completed } : item
-    );
-    setChecklist(updated);
-    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(updated));
+  const handleToggleChecklist = async (id: string) => {
+    const item = checklist.find(i => i.id === id);
+    if (!item) return;
+
+    const newCompleted = !item.completed;
+    const previous = checklist;
+    const updated = checklist.map(i => i.id === id ? { ...i, completed: newCompleted } : i);
+    mutateChecklist({ success: true, checklist: updated, categories: customCategoriesList }, { revalidate: false });
     haptics.tap();
+
+    const formData = new FormData();
+    formData.append('id', String(id));
+    formData.append('completed', String(newCompleted));
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      mutateChecklist();
+    } catch {
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
+    }
   };
 
-  const handleDeleteChecklist = (id: string) => {
-    const updated = checklist.filter(item => item.id !== id);
-    setChecklist(updated);
-    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(updated));
+  const handleDeleteChecklist = async (id: string) => {
+    const previous = checklist;
+    mutateChecklist({ success: true, checklist: checklist.filter(item => item.id !== id), categories: customCategoriesList }, { revalidate: false });
     haptics.tap();
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error();
+      mutateChecklist();
+    } catch {
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
+    }
   };
 
-  const generateDefaultChecklist = () => {
-    const defaults: ChecklistItem[] = [
-      { id: '1', name: 'Passports & Visas', category: 'Documents', assignedTo: 'Everyone', completed: false },
-      { id: '2', name: 'Flight & Hotel Bookings', category: 'Documents', assignedTo: 'Everyone', completed: false },
-      { id: '3', name: 'Local Currency / Cards', category: 'Documents', assignedTo: 'Everyone', completed: false },
-      { id: '4', name: 'Phone Chargers & Power Banks', category: 'Electronics', assignedTo: 'Everyone', completed: false },
-      { id: '5', name: 'Universal Travel Adapter', category: 'Electronics', assignedTo: 'Everyone', completed: false },
-      { id: '6', name: 'Toothbrush & Travel Toiletries', category: 'Toiletries', assignedTo: 'Everyone', completed: false },
-      { id: '7', name: 'First-aid & Daily Medicines', category: 'Other', assignedTo: 'Everyone', completed: false },
-      { id: '8', name: 'Weather-appropriate Clothes', category: 'Clothing', assignedTo: 'Everyone', completed: false },
+  const handleAddCustomCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustomCategory.trim()) return;
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCustomCategory.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      setNewCustomCategory('');
+      setShowCustomCatInput(false);
+      mutateChecklist();
+      haptics.success();
+    } catch {
+      // ignore error
+    }
+  };
+
+  const generateDefaultChecklist = async () => {
+    const defaults = [
+      { name: 'Passports & Visas', category: 'Documents', assignedTo: 'Everyone' },
+      { name: 'Flight & Hotel Bookings', category: 'Documents', assignedTo: 'Everyone' },
+      { name: 'Local Currency / Cards', category: 'Documents', assignedTo: 'Everyone' },
+      { name: 'Phone Chargers & Power Banks', category: 'Electronics', assignedTo: 'Everyone' },
+      { name: 'Universal Travel Adapter', category: 'Electronics', assignedTo: 'Everyone' },
+      { name: 'Toothbrush & Travel Toiletries', category: 'Toiletries', assignedTo: 'Everyone' },
+      { name: 'First-aid & Daily Medicines', category: 'Other', assignedTo: 'Everyone' },
+      { name: 'Weather-appropriate Clothes', category: 'Clothing', assignedTo: 'Everyone' },
     ];
-    setChecklist(defaults);
-    localStorage.setItem(`tour_${tourId}_checklist`, JSON.stringify(defaults));
-    haptics.success();
+
+    try {
+      for (const item of defaults) {
+        const formData = new FormData();
+        formData.append('name', item.name);
+        formData.append('category', item.category);
+        formData.append('assignedTo', item.assignedTo);
+        await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
+      mutateChecklist();
+      haptics.success();
+    } catch {
+      // ignore
+    }
   };
 
   // Destructure computed metrics out of the API response to save client CPU
@@ -620,29 +854,29 @@ export default function TourDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8 stagger-children">
-          <TiltCard className="glass-panel stat-gradient-blue p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
+        <div className="-mx-4 mb-8 flex flex-nowrap gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 md:gap-4 md:overflow-visible lg:gap-5 stagger-children">
+          <TiltCard className="glass-panel stat-gradient-blue min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">Total Spent</p>
-                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(totalSpent)}</h3>
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Total Spent</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(totalSpent)}</h3>
             </div>
           </TiltCard>
-          <TiltCard className="glass-panel stat-gradient-emerald p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
+          <TiltCard className="glass-panel stat-gradient-emerald min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">Per Person</p>
-                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(perPerson)}</h3>
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Per Person</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(perPerson)}</h3>
             </div>
           </TiltCard>
-          <TiltCard className="glass-panel stat-gradient-orange p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe" style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
+          <TiltCard className="glass-panel stat-gradient-orange min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">Avg Cost</p>
-                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(averageCost)}</h3>
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Avg Cost</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(averageCost)}</h3>
             </div>
           </TiltCard>
-          <TiltCard className={`glass-panel ${myBalance >= 0 ? 'stat-gradient-blue' : 'stat-gradient-rose'} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
+          <TiltCard className={`glass-panel ${myBalance >= 0 ? 'stat-gradient-blue' : 'stat-gradient-rose'} min-w-[10.5rem] flex-[0_0_10.5rem] p-4 rounded-3xl relative overflow-hidden group breathe md:min-w-0 md:flex-1 lg:p-6`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">My Balance</p>
-                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">My Balance</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">
                   {myBalance > 0 ? '+' : myBalance < 0 ? '-' : ''}{fmt(Math.abs(myBalance))}
                 </h3>
             </div>
@@ -994,7 +1228,32 @@ export default function TourDashboard() {
                       exit={{ opacity: 0, height: 0 }}
                       className="border-t border-gray-100 dark:border-white/5 pt-6 mt-4 space-y-4 overflow-hidden"
                     >
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                        <div ref={itinGroupInputRef} className="relative">
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category Title</label>
+                          <input
+                            type="text"
+                            value={itinGroupTitle}
+                            onFocus={() => setShowItinGroupSuggestions(true)}
+                            onChange={e => { setItinGroupTitle(e.target.value); setShowItinGroupSuggestions(true); }}
+                            placeholder="e.g. Day 1, Day 1 (30 July)"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                          {showItinGroupSuggestions && filteredGroupSuggestions.length > 0 && (
+                            <div className="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-white/10 dark:bg-slate-900">
+                              {filteredGroupSuggestions.map(suggestion => (
+                                <button
+                                  key={suggestion}
+                                  type="button"
+                                  onClick={() => { setItinGroupTitle(suggestion); setShowItinGroupSuggestions(false); }}
+                                  className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+                                >
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
                           <input
@@ -1002,7 +1261,7 @@ export default function TourDashboard() {
                             required
                             value={itinTitle}
                             onChange={e => setItinTitle(e.target.value)}
-                            placeholder="e.g. Eiffel Tower Visit, Hotel Check-in"
+                            placeholder="e.g. Eiffel Tower Visit"
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
                         </div>
@@ -1069,14 +1328,25 @@ export default function TourDashboard() {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
-                        <textarea
-                          value={itinNotes}
-                          onChange={e => setItinNotes(e.target.value)}
-                          placeholder="Confirmation codes, reminders, reservation links..."
-                          className="mt-1 min-h-16 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                        />
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+                          <textarea
+                            value={itinNotes}
+                            onChange={e => setItinNotes(e.target.value)}
+                            placeholder="Confirmation codes, reminders, reservation links..."
+                            className="mt-1 min-h-16 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">File Attachment (Optional)</label>
+                          <input
+                            ref={itinFileInputRef}
+                            type="file"
+                            onChange={e => setItinAttachment(e.target.files?.[0] || null)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
                       </div>
 
                       <button
@@ -1108,74 +1378,122 @@ export default function TourDashboard() {
                   </button>
                 </div>
               ) : (
-                <div className="relative border-l border-gray-200 dark:border-white/10 ml-6 pl-8 space-y-8 py-4">
-                  {itinerary.map((item, index) => {
-                    const typeIcons: Record<string, string> = {
-                      flight: 'flight_takeoff',
-                      hotel: 'hotel',
-                      food: 'restaurant',
-                      activity: 'local_activity',
-                      transport: 'directions_car',
-                      other: 'category'
-                    };
-                    const icon = typeIcons[item.type] || 'category';
+                <div className="space-y-10">
+                  {groupedItinerary.map(([groupName, items]) => {
+                    const isExpanded = expandedGroups[groupName] || false;
+                    const visibleItems = isExpanded ? items : items.slice(0, 5);
+                    const showExpand = items.length > 5;
+
                     return (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="relative group"
-                      >
-                        <div className="absolute -left-[50px] top-1.5 flex size-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-gray-300 transition-transform group-hover:scale-110">
-                          <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                      <div key={groupName} className="space-y-4">
+                        <div className="flex items-center gap-3 border-b border-gray-200 dark:border-white/10 pb-2">
+                          <span className="material-symbols-outlined text-[20px] text-primary">folder_open</span>
+                          <h3 className="text-lg font-black text-gray-950 dark:text-white">{groupName}</h3>
+                          <span className="rounded-full bg-gray-100 dark:bg-white/10 px-2 py-0.5 text-xs font-black text-gray-500 dark:text-gray-400">
+                            {items.length} {items.length === 1 ? 'activity' : 'activities'}
+                          </span>
                         </div>
 
-                        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden transition-all hover:translate-x-1 duration-200">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
-                                Day {item.day}
-                              </span>
-                              <span className="text-sm font-mono font-bold text-gray-500 dark:text-gray-400">
-                                {item.time}
-                              </span>
-                              <h3 className="text-base font-black text-gray-950 dark:text-white">{item.title}</h3>
-                            </div>
-                            <div className="flex items-center gap-3 self-end sm:self-auto">
-                              {item.cost && (
-                                <span className="text-sm font-mono font-black text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-lg">
-                                  Est. {fmt(Number(item.cost))}
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteItinerary(item.id)}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
-                                title="Delete activity"
+                        <div className="relative border-l border-gray-200 dark:border-white/10 ml-6 pl-8 space-y-6 py-2">
+                          {visibleItems.map((item, index) => {
+                            const typeIcons: Record<string, string> = {
+                              flight: 'flight_takeoff',
+                              hotel: 'hotel',
+                              food: 'restaurant',
+                              activity: 'local_activity',
+                              transport: 'directions_car',
+                              other: 'category'
+                            };
+                            const icon = typeIcons[item.type] || 'category';
+                            return (
+                              <motion.div
+                                key={item.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.03 }}
+                                className="relative group"
                               >
-                                <span className="material-symbols-outlined text-[18px]">delete</span>
-                              </button>
-                            </div>
-                          </div>
+                                <div className="absolute -left-[50px] top-1.5 flex size-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-gray-300 transition-transform group-hover:scale-110">
+                                  <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                                </div>
 
-                          {(item.location || item.notes) && (
-                            <div className="mt-2 space-y-1.5">
-                              {item.location && (
-                                <p className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold">
-                                  <span className="material-symbols-outlined text-[15px] text-gray-400">pin_drop</span>
-                                  {item.location}
-                                </p>
-                              )}
-                              {item.notes && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 bg-white/[0.02] border border-white/[0.04] p-2 rounded-lg leading-relaxed italic">
-                                  {item.notes}
-                                </p>
-                              )}
-                            </div>
-                          )}
+                                <div className="glass-panel p-5 rounded-2xl relative overflow-hidden transition-all hover:translate-x-1 duration-200">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
+                                        Day {item.day}
+                                      </span>
+                                      <span className="text-sm font-mono font-bold text-gray-500 dark:text-gray-400">
+                                        {item.time}
+                                      </span>
+                                      <h4 className="text-base font-black text-gray-950 dark:text-white">{item.title}</h4>
+                                    </div>
+                                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                                      {item.cost && (
+                                        <span className="text-sm font-mono font-black text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-lg">
+                                          Est. {fmt(Number(item.cost))}
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteItinerary(item.id)}
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                                        title="Delete activity"
+                                      >
+                                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {(item.location || item.notes || item.attachmentId) && (
+                                    <div className="mt-2 space-y-1.5">
+                                      {item.location && (
+                                        <p className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold">
+                                          <span className="material-symbols-outlined text-[15px] text-gray-400">pin_drop</span>
+                                          {item.location}
+                                        </p>
+                                      )}
+                                      {item.notes && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 bg-white/[0.02] border border-white/[0.04] p-2 rounded-lg leading-relaxed italic">
+                                          {item.notes}
+                                        </p>
+                                      )}
+                                      {item.attachmentId && (
+                                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                                          <span className="material-symbols-outlined text-[16px] text-gray-400">attachment</span>
+                                          <a
+                                            href={`/api/bill-splits/tours/${tourId}/attachments?attachmentToken=${encodeURIComponent(item.attachmentId)}&type=itinerary&download=1`}
+                                            className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                          >
+                                            {item.attachmentName || 'Download Attachment'}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
                         </div>
-                      </motion.div>
+
+                        {showExpand && (
+                          <div className="pl-14 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedGroups(prev => ({ ...prev, [groupName]: !isExpanded }))}
+                              className="inline-flex items-center gap-1.5 text-xs font-black text-primary hover:underline"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">
+                                {isExpanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                              </span>
+                              {isExpanded ? 'Show Less' : `Expand More (${items.length - 5} more)`}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -1183,207 +1501,310 @@ export default function TourDashboard() {
             </motion.div>
           )}
 
-          {activeTab === 'checklist' && (
-            <motion.div
-              key="checklist-tab"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={spring}
-              className="space-y-6"
-            >
-              <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div>
-                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Group Packing Checklist</h2>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-                      Ensure nothing is left behind. Track items to pack and assign them to trip members.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {checklist.length === 0 && (
+          {activeTab === 'checklist' && (() => {
+            const categoriesList = Array.from(new Set(['All', 'Documents', 'Clothing', 'Electronics', 'Toiletries', 'Other', ...customCategoriesList.map((c: any) => c.name)]));
+            return (
+              <motion.div
+                key="checklist-tab"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={spring}
+                className="space-y-6"
+              >
+                <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                      <h2 className="text-2xl font-black text-gray-950 dark:text-white">Group Packing Checklist</h2>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                        Ensure nothing is left behind. Track items to pack and assign them to trip members.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {checklist.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={generateDefaultChecklist}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-500/20"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                          Generate Essentials
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={generateDefaultChecklist}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-500/20"
+                        onClick={() => { haptics.tap(); setIsAddingChecklist(!isAddingChecklist); }}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover"
                       >
-                        <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                        Generate Essentials
+                        <span className="material-symbols-outlined text-[18px]">{isAddingChecklist ? 'close' : 'add'}</span>
+                        {isAddingChecklist ? 'Cancel' : 'Add Item'}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => { haptics.tap(); setIsAddingChecklist(!isAddingChecklist); }}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">{isAddingChecklist ? 'close' : 'add'}</span>
-                      {isAddingChecklist ? 'Cancel' : 'Add Item'}
-                    </button>
+                    </div>
                   </div>
+
+                  {checklist.length > 0 && (
+                    <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
+                      <div className="checklist-progress-label mb-2 flex items-center justify-between text-xs font-black uppercase">
+                        <span>Progress</span>
+                        <span>
+                          {checklist.filter(c => c.completed).length} / {checklist.length} packed
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-white/10 h-2.5 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(checklist.filter(c => c.completed).length / checklist.length) * 100}%` }}
+                          className="bg-emerald-500 h-full rounded-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <AnimatePresence>
+                    {isAddingChecklist && (
+                      <motion.form
+                        onSubmit={handleAddChecklist}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="border-t border-gray-100 dark:border-white/5 pt-6 mt-4 space-y-4 overflow-hidden"
+                      >
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Item Name</label>
+                            <input
+                              type="text"
+                              required
+                              value={checkName}
+                              onChange={e => setCheckName(e.target.value)}
+                              placeholder="e.g. Passports, Chargers, Adapters"
+                              className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.04] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center ml-1">
+                              <label className="text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
+                              <button
+                                type="button"
+                                onClick={() => setShowCustomCatInput(!showCustomCatInput)}
+                                className="text-[10px] font-black uppercase tracking-wider text-primary hover:underline"
+                              >
+                                {showCustomCatInput ? 'Cancel' : '+ Custom Category'}
+                              </button>
+                            </div>
+                            {showCustomCatInput ? (
+                              <div className="mt-1 flex gap-2">
+                                <input
+                                  type="text"
+                                  value={newCustomCategory}
+                                  onChange={e => setNewCustomCategory(e.target.value)}
+                                  placeholder="New category..."
+                                  className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.04] px-3 py-2 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAddCustomCategory}
+                                  className="rounded-xl bg-primary px-3 text-xs font-black text-white hover:bg-primary-hover"
+                                >
+                                  Save
+                                </button>
+                              </div>
+                            ) : (
+                              <select
+                                value={checkCategory}
+                                onChange={e => setCheckCategory(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                              >
+                                <option value="Documents">Documents 📄</option>
+                                <option value="Clothing">Clothing 👕</option>
+                                <option value="Electronics">Electronics 🔌</option>
+                                <option value="Toiletries">Toiletries 🧴</option>
+                                <option value="Other">Other 📦</option>
+                                {customCategoriesList.map(cat => (
+                                  <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                          <div ref={assigneeDropdownRef} className="relative">
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Assigned To</label>
+                            <button
+                              type="button"
+                              onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
+                              className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white text-left outline-none focus:border-primary flex justify-between items-center"
+                            >
+                              <span className="truncate">{selectedAssignees.join(', ')}</span>
+                              <span className="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+                            </button>
+                            {showAssigneeDropdown && (
+                              <div className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-lg dark:border-white/10 dark:bg-slate-900 space-y-1">
+                                <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedAssignees.includes('Everyone')}
+                                    onChange={() => handleToggleAssignee('Everyone')}
+                                    className="rounded border-gray-300 dark:border-white/20 bg-gray-50 text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Everyone</span>
+                                </label>
+                                {participants.map(p => (
+                                  <label key={p.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedAssignees.includes(p.name)}
+                                      onChange={() => handleToggleAssignee(p.name)}
+                                      className="rounded border-gray-300 dark:border-white/20 bg-gray-50 text-primary focus:ring-primary"
+                                    />
+                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{p.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description (Optional)</label>
+                            <textarea
+                              value={checkDescription}
+                              onChange={e => setCheckDescription(e.target.value)}
+                              placeholder="Enter item details, sizes, quantities, or instructions..."
+                              className="mt-1 min-h-16 w-full resize-none rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Attachment (Optional)</label>
+                            <input
+                              ref={checkFileInputRef}
+                              type="file"
+                              onChange={e => setCheckAttachment(e.target.files?.[0] || null)}
+                              className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-gray-950 dark:text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-black text-white shadow-md hover:bg-primary-hover"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">playlist_add</span>
+                          Add Checklist Item
+                        </button>
+                      </motion.form>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {checklist.length > 0 && (
-                  <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
-                    <div className="checklist-progress-label mb-2 flex items-center justify-between text-xs font-black uppercase">
-                      <span>Progress</span>
-                      <span>
-                        {checklist.filter(c => c.completed).length} / {checklist.length} packed
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-white/10 h-2.5 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(checklist.filter(c => c.completed).length / checklist.length) * 100}%` }}
-                        className="bg-emerald-500 h-full rounded-full"
-                      />
-                    </div>
+                  <div className="flex flex-wrap gap-2">
+                    {categoriesList.map(filter => (
+                      <button
+                        key={filter}
+                        onClick={() => setActiveChecklistFilter(filter)}
+                        className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                          activeChecklistFilter === filter
+                            ? 'bg-primary/20 text-primary border border-primary/30'
+                            : 'text-gray-500 border border-transparent hover:bg-gray-100 dark:hover:bg-white/5 dark:text-gray-400'
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    ))}
                   </div>
                 )}
 
-                <AnimatePresence>
-                  {isAddingChecklist && (
-                    <motion.form
-                      onSubmit={handleAddChecklist}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="border-t border-gray-100 dark:border-white/5 pt-6 mt-4 space-y-4 overflow-hidden"
-                    >
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Item Name</label>
-                          <input
-                            type="text"
-                            required
-                            value={checkName}
-                            onChange={e => setCheckName(e.target.value)}
-                            placeholder="e.g. Passports, Chargers, Adapters"
-                            className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.04] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
-                          <select
-                            value={checkCategory}
-                            onChange={e => setCheckCategory(e.target.value as any)}
-                            className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
-                          >
-                            <option value="Documents">Documents 📄</option>
-                            <option value="Clothing">Clothing 👕</option>
-                            <option value="Electronics">Electronics 🔌</option>
-                            <option value="Toiletries">Toiletries 🧴</option>
-                            <option value="Other">Other 📦</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Assigned To</label>
-                          <select
-                            value={checkAssignee}
-                            onChange={e => setCheckAssignee(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
-                          >
-                            <option value="Everyone">Everyone</option>
-                            {participants.map(p => (
-                              <option key={p.id} value={p.name}>{p.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-black text-white shadow-md hover:bg-primary-hover"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">playlist_add</span>
-                        Add Checklist Item
-                      </button>
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {checklist.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {['All', 'Documents', 'Clothing', 'Electronics', 'Toiletries', 'Other'].map(filter => (
+                {checklist.length === 0 ? (
+                  <div className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
+                    <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">backpack</span>
+                    <h3 className="text-xl font-black text-gray-950 dark:text-white">Your packing list is empty</h3>
+                    <p className="mt-2 max-w-sm text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Generate our recommended essential packing checklist, or add your own items below.
+                    </p>
                     <button
-                      key={filter}
-                      onClick={() => setActiveChecklistFilter(filter)}
-                      className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                        activeChecklistFilter === filter
-                          ? 'bg-primary/20 text-primary border border-primary/30'
-                          : 'text-gray-500 border border-transparent hover:bg-gray-100 dark:hover:bg-white/5 dark:text-gray-400'
-                      }`}
+                      type="button"
+                      onClick={generateDefaultChecklist}
+                      className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
                     >
-                      {filter}
+                      <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+                      Generate Essentials List
                     </button>
-                  ))}
-                </div>
-              )}
-
-              {checklist.length === 0 ? (
-                <div className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
-                  <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">backpack</span>
-                  <h3 className="text-xl font-black text-gray-950 dark:text-white">Your packing list is empty</h3>
-                  <p className="mt-2 max-w-sm text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Generate our recommended essential packing checklist, or add your own items below.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={generateDefaultChecklist}
-                    className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-                    Generate Essentials List
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {checklist
-                    .filter(item => activeChecklistFilter === 'All' || item.category === activeChecklistFilter)
-                    .map((item, index) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.025 }}
-                        onClick={() => handleToggleChecklist(item.id)}
-                        className="glass-panel p-4 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.04]"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`size-6 rounded-lg border flex items-center justify-center transition-all ${
-                            item.completed
-                              ? 'border-emerald-500 bg-emerald-500 text-white'
-                              : 'border-gray-300 dark:border-white/20 bg-gray-50 dark:bg-white/[0.02]'
-                          }`}>
-                            {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through' : 'checklist-item-title'}`}>
-                              {item.name}
-                            </h4>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <span className="checklist-item-badge rounded px-1.5 py-0.5 text-[10px] font-black uppercase">
-                                {item.category}
-                              </span>
-                              <span className="checklist-item-assignee text-[10px] font-bold">
-                                👤 {item.assignedTo}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteChecklist(item.id); }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-rose-500/10 hover:text-rose-500 transition-colors shrink-0"
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {checklist
+                      .filter(item => activeChecklistFilter === 'All' || item.category === activeChecklistFilter)
+                      .map((item, index) => (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.025 }}
+                          onClick={() => handleToggleChecklist(item.id)}
+                          className="glass-panel p-4 rounded-2xl cursor-pointer flex flex-col justify-between gap-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.04]"
                         >
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </motion.div>
-                    ))}
-                </div>
-              )}
-            </motion.div>
-          )}
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`size-6 rounded-lg border flex items-center justify-center transition-all ${
+                                item.completed
+                                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                                  : 'border-gray-300 dark:border-white/20 bg-gray-50 dark:bg-white/[0.02]'
+                              }`}>
+                                {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through' : 'checklist-item-title'}`}>
+                                  {item.name}
+                                </h4>
+                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                  <span className="checklist-item-badge rounded px-1.5 py-0.5 text-[10px] font-black uppercase">
+                                    {item.category}
+                                  </span>
+                                  <span className="checklist-item-assignee text-[10px] font-bold">
+                                    👤 {item.assignedTo}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteChecklist(item.id); }}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-rose-500/10 hover:text-rose-500 transition-colors shrink-0"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+
+                          {(item.description || item.attachmentId) && (
+                            <div className="mt-1 pl-9 space-y-2 border-t border-gray-100 dark:border-white/5 pt-2">
+                              {item.description && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed italic">
+                                  {item.description}
+                                </p>
+                              )}
+                              {item.attachmentId && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-[15px] text-gray-400">attachment</span>
+                                  <a
+                                    href={`/api/bill-splits/tours/${tourId}/attachments?attachmentToken=${encodeURIComponent(item.attachmentId)}&type=checklist&download=1`}
+                                    className="text-xs font-black text-primary hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {item.attachmentName || 'Download Attachment'}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {activeTab === 'settlements' && (
             <motion.div

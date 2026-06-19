@@ -52,3 +52,54 @@ export const tourSpendings = sqliteTable('tour_spendings', {
 
 export type TourSpending = typeof tourSpendings.$inferSelect;
 export type NewTourSpending = typeof tourSpendings.$inferInsert;
+
+export const tourItineraryItems = sqliteTable('tour_itinerary_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tourId: integer('tour_id')
+    .notNull()
+    .references(() => tours.id, { onDelete: 'cascade' }),
+  day: integer('day').notNull(),
+  time: text('time').notNull(),
+  title: text('title').notNull(),
+  location: text('location').default(''),
+  cost: real('cost'),
+  type: text('type').default('activity'),
+  notes: text('notes').default(''),
+  groupTitle: text('group_title').default('General Activities'),
+  attachmentId: text('attachment_id'),
+  attachmentName: text('attachment_name'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+export type TourItineraryItem = typeof tourItineraryItems.$inferSelect;
+export type NewTourItineraryItem = typeof tourItineraryItems.$inferInsert;
+
+export const tourChecklistCategories = sqliteTable('tour_checklist_categories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tourId: integer('tour_id')
+    .notNull()
+    .references(() => tours.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+export type TourChecklistCategory = typeof tourChecklistCategories.$inferSelect;
+export type NewTourChecklistCategory = typeof tourChecklistCategories.$inferInsert;
+
+export const tourChecklistItems = sqliteTable('tour_checklist_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tourId: integer('tour_id')
+    .notNull()
+    .references(() => tours.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  assignedTo: text('assigned_to').notNull(),
+  completed: integer('completed').default(0),
+  description: text('description').default(''),
+  attachmentId: text('attachment_id'),
+  attachmentName: text('attachment_name'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+export type TourChecklistItem = typeof tourChecklistItems.$inferSelect;
+export type NewTourChecklistItem = typeof tourChecklistItems.$inferInsert;

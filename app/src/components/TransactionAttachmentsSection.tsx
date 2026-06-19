@@ -8,9 +8,9 @@ import {
   MAX_ATTACHMENT_SIZE_BYTES,
   type AttachmentRecord,
   type AttachmentsResponse,
-  buildAttachmentViewerHref,
   formatFileSize,
 } from '@/lib/transaction-attachments';
+import AttachmentPreviewModal from './AttachmentPreviewModal';
 
 interface TransactionAttachmentsSectionProps {
   transactionId?: number;
@@ -80,6 +80,7 @@ export default function TransactionAttachmentsSection({
   const [isDragging, setIsDragging] = useState(false);
   const [notice, setNotice] = useState<UploadNotice | null>(null);
   const [progress, setProgress] = useState<UploadProgressState | null>(null);
+  const [previewFile, setPreviewFile] = useState<AttachmentRecord | null>(null);
 
   const remainingSlots = Math.max(0, MAX_ATTACHMENT_FILES - attachments.length);
   const constraintsCopy = useMemo(
@@ -141,42 +142,29 @@ export default function TransactionAttachmentsSection({
       }
 
       setIsUploading(true);
-      const uploaded: AttachmentRecord[] = [];
-      const failed: string[] = [];
+      setProgress({ current: 0, total: valid.length, fileName: valid.map((f) => f.name).join(', ') });
 
-      for (const [i, file] of valid.entries()) {
-        setProgress({ current: i, total: valid.length, fileName: file.name });
+      const form = new FormData();
+      valid.forEach((file) => form.append('files', file));
 
-        const form = new FormData();
-        form.append('files', file);
+      try {
+        const url = apiEndpoint || `/api/transactions/${transactionId || 0}/attachments`;
+        const res = await fetch(url, { method: 'POST', body: form });
+        const payload = (await res.json().catch(() => null)) as (AttachmentsResponse & { error?: string }) | { error?: string } | null;
+        if (!res.ok) throw new Error(payload && 'error' in payload ? payload.error || 'Upload failed.' : 'Upload failed.');
 
-        try {
-          const url = apiEndpoint || `/api/transactions/${transactionId || 0}/attachments`;
-          const res = await fetch(url, { method: 'POST', body: form });
-          const payload = (await res.json().catch(() => null)) as (AttachmentsResponse & { error?: string }) | { error?: string } | null;
-          if (!res.ok) throw new Error(payload && 'error' in payload ? payload.error || `Upload failed: ${file.name}` : `Upload failed: ${file.name}`);
-
-          if (payload && 'files' in payload) {
-            const next = payload.files.slice(0, 1);
-            uploaded.push(...next);
-            setAttachments((cur) => mergeAttachments(next, cur));
-          }
-          setProgress({ current: i + 1, total: valid.length, fileName: file.name });
-        } catch (e) {
-          failed.push(e instanceof Error ? e.message : `Upload failed: ${file.name}`);
+        const uploaded = payload && 'files' in payload ? payload.files : [];
+        if (uploaded.length > 0) {
+          setProgress({ current: uploaded.length, total: valid.length, fileName: uploaded.at(-1)?.name ?? valid.at(-1)?.name ?? '' });
+          setAttachments((cur) => mergeAttachments(uploaded, cur));
+          await fetchAttachments(true);
+          showNotice('success', uploaded.length === 1 ? '1 file attached.' : `${uploaded.length} files attached.`);
         }
-      }
-
-      setIsUploading(false);
-      setProgress(null);
-      if (uploaded.length > 0) await fetchAttachments(true);
-
-      if (uploaded.length > 0 && failed.length === 0) {
-        showNotice('success', uploaded.length === 1 ? '1 file attached.' : `${uploaded.length} files attached.`);
-      } else if (uploaded.length > 0 && failed.length > 0) {
-        showNotice('info', `Uploaded ${uploaded.length} files, ${failed.length} failed.`);
-      } else if (failed.length > 0) {
-        showNotice('error', failed[0]);
+      } catch (e) {
+        showNotice('error', e instanceof Error ? e.message : 'Unable to upload files right now.');
+      } finally {
+        setIsUploading(false);
+        setProgress(null);
       }
     },
     [attachments.length, fetchAttachments, showNotice, transactionId, apiEndpoint],
@@ -187,7 +175,7 @@ export default function TransactionAttachmentsSection({
     setIsLoading(true);
     try {
       const url = apiEndpoint || `/api/transactions/${transactionId || 0}/attachments`;
-      const res = await fetch(`${url}?fileId=${fileId}`, {
+      const res = await fetch(`${url}?attachmentToken=${encodeURIComponent(fileId)}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
@@ -351,16 +339,15 @@ export default function TransactionAttachmentsSection({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {attachments.map((file) => {
                   const icon = pickFileIcon(file.mimeType, file.name);
-                  const href = buildAttachmentViewerHref(transactionDescription, transactionId || 0, file.id);
                   const isImage = file.mimeType?.startsWith('image/');
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={file.id}
+                      onClick={() => setPreviewFile(file)}
                       className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-[#30363d] dark:bg-[#161b22]"
                     >
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10"></a>
-                      
-                      <div className="relative z-20 p-4 pointer-events-none">
+                      <div className="relative z-20 p-4 text-left">
                           <div className="flex items-start justify-between">
                             <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isImage ? 'bg-indigo-50 text-indigo-500 dark:bg-indigo-500/10 dark:text-indigo-400' : 'bg-primary/10 text-primary'}`}>
                                 <span className="material-symbols-outlined text-[20px]">{icon}</span>
@@ -368,7 +355,7 @@ export default function TransactionAttachmentsSection({
                             <button
                               type="button"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFile(file.id, file.name); }}
-                              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:opacity-100 dark:bg-[#21262d] dark:hover:bg-rose-500/20"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:opacity-100 dark:bg-[#21262d] dark:hover:bg-rose-500/20"
                               title="Delete file"
                             >
                               <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -385,7 +372,7 @@ export default function TransactionAttachmentsSection({
                             </div>
                           </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -393,6 +380,12 @@ export default function TransactionAttachmentsSection({
           </div>
         </div>
       </div>
+      <AttachmentPreviewModal
+        fileToken={previewFile?.id ?? null}
+        contextTitle={transactionDescription}
+        fallbackName={previewFile?.name}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   );
 }

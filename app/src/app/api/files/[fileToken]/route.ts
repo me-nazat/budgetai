@@ -120,6 +120,7 @@ export async function GET(request: Request, context: RouteContext) {
   const { fileToken } = await context.params;
   const decoded = decodeAttachmentToken(fileToken);
   if (!decoded) return jsonError('Invalid file link.', 400);
+  if (!decoded.transactionId) return jsonError('Invalid file link.', 400);
 
   const ctx = await getAuthorizedContext(decoded.transactionId, session.userId);
   if (!ctx) return jsonError('File not found.', 404);
@@ -140,7 +141,7 @@ export async function GET(request: Request, context: RouteContext) {
       });
 
       return NextResponse.json({
-        id: metadata.file.id,
+        id: fileToken,
         name: metadata.file.name,
         mimeType: metadata.file.mimeType,
         size: metadata.file.size,

@@ -63,6 +63,15 @@ export {
   tourParticipants,
   type TourParticipant,
   type NewTourParticipant,
+  tourItineraryItems,
+  type TourItineraryItem,
+  type NewTourItineraryItem,
+  tourChecklistCategories,
+  type TourChecklistCategory,
+  type NewTourChecklistCategory,
+  tourChecklistItems,
+  type TourChecklistItem,
+  type NewTourChecklistItem,
 } from './bill-splits';
 
 /* ═══════════════════════════════════════════════════════════════
