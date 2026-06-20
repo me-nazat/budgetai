@@ -271,17 +271,20 @@ interface GooglePlaceDetails {
   photoUrl: string;
 }
 
-const parseJsonLocation = (locStr: string | null | undefined): { name: string; address?: string; photoUrl?: string; googleMapsUrl?: string } | null => {
+const parseJsonLocation = (locStr: string | null | undefined): { name: string; address?: string; photoUrl?: string; googleMapsUrl?: string; latitude?: string; longitude?: string } | null => {
   if (!locStr) return null;
   const trimmed = locStr.trim();
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
       return JSON.parse(trimmed);
     } catch (e) {
-      return null;
+      // Fallback to legacy string below
     }
   }
-  return null;
+  return {
+    name: trimmed,
+    address: 'Legacy Location',
+  };
 };
 
 const mapDarkStyles = [
@@ -522,7 +525,11 @@ export default function TourDashboard() {
     const scriptId = 'google-maps-api-script';
     const existing = document.getElementById(scriptId);
     if (existing) {
-      existing.addEventListener('load', initializeServices);
+      if (win.google && win.google.maps) {
+        initializeServices();
+      } else {
+        existing.addEventListener('load', initializeServices);
+      }
       return;
     }
 
@@ -576,6 +583,8 @@ export default function TourDashboard() {
     }
 
     const win = window as any;
+    if (!win.google || !win.google.maps) return;
+
     const mapOptions = {
       center: { lat: initialLat, lng: initialLng },
       zoom: initialZoom,
@@ -715,20 +724,31 @@ export default function TourDashboard() {
   };
 
   const confirmLocation = () => {
-    if (!tempSelectedPlace) return;
+    let placeToSave = tempSelectedPlace;
+    if (!placeToSave && mapSearchQuery.trim()) {
+      placeToSave = {
+        name: mapSearchQuery.trim(),
+        address: 'Custom Location',
+        latitude: '',
+        longitude: '',
+        googleMapsUrl: '',
+        photoUrl: ''
+      };
+    }
+    if (!placeToSave) return;
     
-    const serialized = JSON.stringify(tempSelectedPlace);
+    const serialized = JSON.stringify(placeToSave);
     
     if (mapPickerTarget === 'add') {
       setItinLocation(serialized);
-      setItinLatitude(tempSelectedPlace.latitude);
-      setItinLongitude(tempSelectedPlace.longitude);
-      setItinCoordsInput(`${tempSelectedPlace.latitude}, ${tempSelectedPlace.longitude}`);
+      setItinLatitude(placeToSave.latitude);
+      setItinLongitude(placeToSave.longitude);
+      setItinCoordsInput(placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : '');
     } else {
       setEditItinLocation(serialized);
-      setEditItinLatitude(tempSelectedPlace.latitude);
-      setEditItinLongitude(tempSelectedPlace.longitude);
-      setEditItinCoordsInput(`${tempSelectedPlace.latitude}, ${tempSelectedPlace.longitude}`);
+      setEditItinLatitude(placeToSave.latitude);
+      setEditItinLongitude(placeToSave.longitude);
+      setEditItinCoordsInput(placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : '');
     }
     
     setIsMapPickerOpen(false);
@@ -1755,7 +1775,7 @@ export default function TourDashboard() {
               {tour.name}
             </h1>
             {dashboardData && (
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-gray-100 pt-3 text-[11px] font-medium text-gray-500 dark:border-white/5 dark:text-gray-400 sm:text-xs">
+              <div className="mt-4 hidden sm:flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-gray-100 pt-3 text-[11px] font-medium text-gray-500 dark:border-white/5 dark:text-gray-400 sm:text-xs">
                 <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   Balance: <span className="font-bold text-gray-950 dark:text-white">{fmt(dashboardData.balance)}</span>
@@ -1776,7 +1796,7 @@ export default function TourDashboard() {
             )}
           </motion.div>
 
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
+          <div className="flex w-full gap-2 overflow-x-auto pb-1 sm:pb-0 sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 hide-scrollbar pt-2 sm:pt-0">
             {tour.createdBy === currentUserId && (
               <motion.button
                 type="button"
@@ -1784,9 +1804,9 @@ export default function TourDashboard() {
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.97 }}
                 transition={spring}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/50 px-4 py-3 text-xs font-black text-gray-700 backdrop-blur-xl hover:bg-gray-50 sm:w-auto sm:px-5 sm:py-3.5 sm:text-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
+                className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-gray-200 bg-white/50 px-4 py-2.5 text-xs font-black text-gray-700 backdrop-blur-xl hover:bg-gray-50 sm:px-5 sm:py-3.5 sm:text-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
               >
-                <span className="material-symbols-outlined text-[20px]">edit</span>
+                <span className="material-symbols-outlined text-[18px] sm:text-[20px]">edit</span>
                 Edit Tour
               </motion.button>
             )}
@@ -1796,9 +1816,9 @@ export default function TourDashboard() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.97 }}
               transition={spring}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-xs font-black text-primary backdrop-blur-xl hover:bg-primary/15 sm:w-auto sm:px-5 sm:py-3.5 sm:text-sm dark:border-primary/30"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5 text-xs font-black text-primary backdrop-blur-xl hover:bg-primary/15 sm:px-5 sm:py-3.5 sm:text-sm dark:border-primary/30"
             >
-              <span className="material-symbols-outlined text-[20px]">share</span>
+              <span className="material-symbols-outlined text-[18px] sm:text-[20px]">share</span>
               Share Trip
             </motion.button>
 
@@ -1808,15 +1828,15 @@ export default function TourDashboard() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.97 }}
               transition={spring}
-              className="inline-flex col-span-2 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.22)] hover:bg-primary-hover sm:col-span-1 sm:w-auto sm:px-5 sm:py-3.5 sm:text-sm"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-2xl bg-primary px-5 py-2.5 text-xs font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.22)] hover:bg-primary-hover sm:px-5 sm:py-3.5 sm:text-sm"
             >
-              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[18px] sm:text-[20px]">add</span>
               Add Cost
             </motion.button>
           </div>
         </div>
 
-        <div className="-mx-4 mb-8 flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-4 pb-2 overscroll-x-contain sm:mx-0 sm:px-0 md:gap-4 md:overflow-visible lg:gap-5 stagger-children">
+        <div className="-mx-4 mb-5 sm:mb-8 flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-4 pb-2 overscroll-x-contain sm:mx-0 sm:px-0 md:gap-4 md:overflow-visible lg:gap-5 stagger-children">
           <TiltCard className="glass-panel stat-gradient-blue min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Total Spent</p>
@@ -1846,7 +1866,7 @@ export default function TourDashboard() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="-mx-4 mb-8 flex gap-2 overflow-x-auto border-b border-gray-200 px-4 pb-4 dark:border-white/10 sm:mx-0 sm:px-0">
+        <div className="-mx-4 mb-5 sm:mb-8 flex gap-2 overflow-x-auto border-b border-gray-200 px-4 pb-4 dark:border-white/10 sm:mx-0 sm:px-0">
           {[
             { id: 'ledger', label: 'Expenses Ledger', icon: 'receipt_long' },
             { id: 'itinerary', label: 'Itinerary Planner', icon: 'calendar_month' },
@@ -1886,10 +1906,10 @@ export default function TourDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={spring}
-              className="space-y-8"
+              className="space-y-5 sm:space-y-8"
             >
               {/* Mobile Sub-tab Switcher */}
-              <div className="lg:hidden flex p-1 bg-gray-100 dark:bg-white/[0.04] rounded-2xl border border-gray-200 dark:border-white/10 mb-6">
+              <div className="lg:hidden flex p-1 bg-gray-100 dark:bg-white/[0.04] rounded-2xl border border-gray-200 dark:border-white/10 mb-5 sm:mb-6">
                 <button
                   type="button"
                   onClick={() => { haptics.tap(); setLedgerSubTab('transactions'); }}
@@ -1991,7 +2011,7 @@ export default function TourDashboard() {
               </div>
 
               {/* Transactions Ledger */}
-              <div className={`mt-10 ${ledgerSubTab !== 'transactions' ? 'hidden lg:block' : ''}`}>
+              <div className={`mt-5 sm:mt-10 ${ledgerSubTab !== 'transactions' ? 'hidden lg:block' : ''}`}>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <h2 className="text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
                   <div className="flex items-center gap-2">
