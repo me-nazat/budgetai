@@ -106,8 +106,8 @@ export async function POST(request: Request, context: RouteContext) {
 
     // Handle updates
     if (itemId !== null && Number.isFinite(itemId)) {
-      const existing = await queryOne<{ id: number }>(
-        'SELECT id FROM tour_checklist_items WHERE id = ? AND tour_id = ?',
+      const existing = await queryOne<{ id: number; attachment_id: string | null }>(
+        'SELECT id, attachment_id FROM tour_checklist_items WHERE id = ? AND tour_id = ?',
         [itemId, tourId]
       );
       if (!existing) return NextResponse.json({ error: 'Checklist item not found' }, { status: 404 });
@@ -127,18 +127,88 @@ export async function POST(request: Request, context: RouteContext) {
       } else {
         // Full update
         const completedByVal = formData.get('completedBy') as string | null;
+        const removeAttachment = formData.get('removeAttachment') === 'true';
+        const file = formData.get('file') as File | null;
+        
+        let newAttachmentId: string | undefined = undefined;
+        let newAttachmentName: string | undefined = undefined;
+
+        if (removeAttachment) {
+          newAttachmentId = null;
+          newAttachmentName = null;
+          
+          if (existing.attachment_id) {
+            try {
+              const user = await queryOne<{ name: string; email: string }>('SELECT name, email FROM users WHERE id = ?', [session.userId]);
+              await deleteTransactionAttachment({
+                userId: session.userId,
+                userName: user?.name ?? null,
+                userEmail: user?.email ?? session.email,
+                folderLabel: `Tour: ${tour.name} — Checklist`,
+                fileId: existing.attachment_id,
+                tourId,
+              });
+            } catch (err) {
+              console.error('Failed to delete old attachment from drive', err);
+            }
+          }
+        } else if (file && file instanceof File && file.size > 0) {
+          const user = await queryOne<{ name: string; email: string }>('SELECT name, email FROM users WHERE id = ?', [session.userId]);
+          const folderLabel = `Tour: ${tour.name} — Checklist`;
+          const uploadResult = await uploadFilesToTransaction({
+            userId: session.userId,
+            userName: user?.name ?? null,
+            userEmail: user?.email ?? session.email,
+            folderLabel,
+            files: [file],
+            tourId,
+          });
+
+          if (uploadResult.files.length > 0) {
+            newAttachmentId = uploadResult.files[0].id;
+            newAttachmentName = uploadResult.files[0].name;
+            
+            if (existing.attachment_id) {
+              try {
+                await deleteTransactionAttachment({
+                  userId: session.userId,
+                  userName: user?.name ?? null,
+                  userEmail: user?.email ?? session.email,
+                  folderLabel,
+                  fileId: existing.attachment_id,
+                  tourId,
+                });
+              } catch (err) {
+                console.error('Failed to delete old attachment from drive', err);
+              }
+            }
+          }
+        }
+
+        const updateFields = [
+          'name = COALESCE(?, name)',
+          'category = COALESCE(?, category)',
+          'assigned_to = COALESCE(?, assigned_to)',
+          'completed = COALESCE(?, completed)',
+          'description = COALESCE(?, description)',
+          'priority = COALESCE(?, priority)',
+          'quantity = COALESCE(?, quantity)',
+          'completed_by = COALESCE(?, completed_by)'
+        ];
+        const updateParams: any[] = [name, category, assignedTo, completed, description, priority, quantity, completedByVal];
+
+        if (newAttachmentId !== undefined) {
+          updateFields.push('attachment_id = ?', 'attachment_name = ?');
+          updateParams.push(newAttachmentId, newAttachmentName);
+        }
+
+        updateParams.push(itemId, tourId);
+
         await run(
           `UPDATE tour_checklist_items 
-           SET name = COALESCE(?, name), 
-               category = COALESCE(?, category), 
-               assigned_to = COALESCE(?, assigned_to), 
-               completed = COALESCE(?, completed), 
-               description = COALESCE(?, description),
-               priority = COALESCE(?, priority),
-               quantity = COALESCE(?, quantity),
-               completed_by = COALESCE(?, completed_by)
+           SET ${updateFields.join(', ')}
            WHERE id = ? AND tour_id = ?`,
-          [name, category, assignedTo, completed, description, priority, quantity, completedByVal, itemId, tourId]
+          updateParams
         );
         
         broadcastTourUpdate(tourId, {

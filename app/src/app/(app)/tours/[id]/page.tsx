@@ -1127,6 +1127,9 @@ export default function TourDashboard() {
   const [showCustomCatInput, setShowCustomCatInput] = useState(false);
   const [activeChecklistFilter, setActiveChecklistFilter] = useState<string>('All');
   const [checkPriorityFilter, setCheckPriorityFilter] = useState<string>('All');
+  const [checkSearchQuery, setCheckSearchQuery] = useState<string>('');
+  const [checkFilterAssignee, setCheckFilterAssignee] = useState<string>('All');
+  const [checkFilterStatus, setCheckFilterStatus] = useState<string>('All'); // All, Pending, Packed
   const [isAddingChecklist, setIsAddingChecklist] = useState(false);
 
   const checkFileInputRef = useRef<HTMLInputElement>(null);
@@ -1141,6 +1144,8 @@ export default function TourDashboard() {
   const [editCheckQuantity, setEditCheckQuantity] = useState<number>(1);
   const [editCheckAssignees, setEditCheckAssignees] = useState<string[]>(['Everyone']);
   const [showEditCheckAssigneeDropdown, setShowEditCheckAssigneeDropdown] = useState(false);
+  const [editCheckAttachment, setEditCheckAttachment] = useState<File | null>(null);
+  const [editCheckRemoveAttachment, setEditCheckRemoveAttachment] = useState(false);
   const [isGeneratingAiSuggestions, setIsGeneratingAiSuggestions] = useState(false);
 
   const editCheckFileInputRef = useRef<HTMLInputElement>(null);
@@ -1518,6 +1523,8 @@ export default function TourDashboard() {
     const assignees = item.assignedTo ? item.assignedTo.split(',').map(s => s.trim()).filter(Boolean) : ['Everyone'];
     setEditCheckAssignees(assignees.length > 0 ? assignees : ['Everyone']);
     setShowEditCheckAssigneeDropdown(false);
+    setEditCheckAttachment(null);
+    setEditCheckRemoveAttachment(false);
   };
 
   const handleEditChecklist = async (e: React.FormEvent) => {
@@ -1564,6 +1571,12 @@ export default function TourDashboard() {
     formData.append('quantity', String(editCheckQuantity));
     formData.append('completed', String(isFullyCompleted));
     formData.append('completedBy', (editingChecklistItem.completedBy || '[]') as string);
+    if (editCheckAttachment) {
+      formData.append('file', editCheckAttachment);
+    }
+    if (editCheckRemoveAttachment) {
+      formData.append('removeAttachment', 'true');
+    }
 
     try {
       const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
@@ -3487,6 +3500,69 @@ export default function TourDashboard() {
                         />
                       </div>
 
+                      <div>
+                        <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 flex items-center gap-2">
+                          Attachment (Optional)
+                          {editingChecklistItem?.attachmentId && !editCheckRemoveAttachment && (
+                            <span className="text-[10px] text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded uppercase">Has Attachment</span>
+                          )}
+                        </label>
+                        
+                        <div className="mt-1 space-y-2">
+                          <input
+                            type="file"
+                            ref={editCheckFileInputRef}
+                            className="hidden"
+                            onChange={e => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                setEditCheckAttachment(e.target.files[0]);
+                                setEditCheckRemoveAttachment(false);
+                              }
+                            }}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => editCheckFileInputRef.current?.click()}
+                              className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none hover:bg-white/5 flex-1"
+                            >
+                              <span className="material-symbols-outlined text-[20px] text-primary">upload_file</span>
+                              <span className="truncate">
+                                {editCheckAttachment ? editCheckAttachment.name : (
+                                  (editingChecklistItem?.attachmentName && !editCheckRemoveAttachment) 
+                                    ? `Replace: ${editingChecklistItem.attachmentName}` 
+                                    : 'Upload new file...'
+                                )}
+                              </span>
+                            </button>
+                            
+                            {(editCheckAttachment || (editingChecklistItem?.attachmentId && !editCheckRemoveAttachment)) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditCheckAttachment(null);
+                                  if (editCheckFileInputRef.current) {
+                                    editCheckFileInputRef.current.value = '';
+                                  }
+                                  if (editingChecklistItem?.attachmentId) {
+                                    setEditCheckRemoveAttachment(true);
+                                  }
+                                }}
+                                className="flex items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-500 outline-none hover:bg-red-500/20 w-[48px]"
+                                title="Remove attachment"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                              </button>
+                            )}
+                          </div>
+                          
+                          {editCheckRemoveAttachment && editingChecklistItem?.attachmentId && (
+                            <p className="text-xs font-semibold text-red-400 ml-1">Existing attachment will be deleted.</p>
+                          )}
+                        </div>
+                      </div>
+
+
                       {/* Save / Cancel */}
                       <div className="flex gap-3 pt-2">
                         <button
@@ -3587,6 +3663,55 @@ export default function TourDashboard() {
                           animate={{ width: `${(checklist.filter(c => c.completed).length / checklist.length) * 100}%` }}
                           className="bg-emerald-500 h-full rounded-full"
                         />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Search and Filters */}
+                  {checklist.length > 0 && (
+                    <div className="mb-6 flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          placeholder="Search checklist items..."
+                          value={checkSearchQuery}
+                          onChange={(e) => setCheckSearchQuery(e.target.value)}
+                          className="w-full rounded-2xl border border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] py-3 pl-10 pr-4 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                        />
+                        <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                        {checkSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setCheckSearchQuery('')}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                          >
+                            <span className="material-symbols-outlined text-lg">close</span>
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-2 shrink-0">
+                        <select
+                          value={checkFilterAssignee}
+                          onChange={e => setCheckFilterAssignee(e.target.value)}
+                          className="rounded-2xl border border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary appearance-none cursor-pointer"
+                        >
+                          <option value="All">All Assignees</option>
+                          <option value={currentUserName}>Assigned to Me</option>
+                          <option value="Everyone">Everyone</option>
+                          {participants.map(p => (
+                            <option key={p.id} value={p.name}>{p.name}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={checkFilterStatus}
+                          onChange={e => setCheckFilterStatus(e.target.value)}
+                          className="rounded-2xl border border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary appearance-none cursor-pointer"
+                        >
+                          <option value="All">All Statuses</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Packed">Packed</option>
+                        </select>
                       </div>
                     </div>
                   )}
@@ -3870,6 +3995,34 @@ export default function TourDashboard() {
                     {checklist
                       .filter(item => activeChecklistFilter === 'All' || item.category === activeChecklistFilter)
                       .filter(item => checkPriorityFilter === 'All' || item.priority === checkPriorityFilter)
+                      .filter(item => {
+                        if (checkSearchQuery) {
+                          const query = checkSearchQuery.toLowerCase();
+                          return item.name.toLowerCase().includes(query) || (item.description || '').toLowerCase().includes(query);
+                        }
+                        return true;
+                      })
+                      .filter(item => {
+                        if (checkFilterAssignee === 'All') return true;
+                        if (checkFilterAssignee === 'Everyone' && item.assignedTo === 'Everyone') return true;
+                        return item.assignedTo?.includes(checkFilterAssignee) || item.assignedTo === 'Everyone';
+                      })
+                      .filter(item => {
+                        if (checkFilterStatus === 'All') return true;
+                        const completedByArr = getCompletedByArray(item.completedBy);
+                        const isMyCompleted = completedByArr.includes(currentUserName);
+                        const isDoneInMyView = isMyCompleted || item.completed;
+                        if (checkFilterStatus === 'Pending') return !isDoneInMyView;
+                        if (checkFilterStatus === 'Packed') return isDoneInMyView;
+                        return true;
+                      })
+                      // Sort: Pending first, then Packed
+                      .sort((a, b) => {
+                        const aDone = a.completed || getCompletedByArray(a.completedBy).includes(currentUserName);
+                        const bDone = b.completed || getCompletedByArray(b.completedBy).includes(currentUserName);
+                        if (aDone === bDone) return 0;
+                        return aDone ? 1 : -1;
+                      })
                       .map((item, index) => {
                         const prioColor = item.priority === 'High' 
                           ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' 
