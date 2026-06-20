@@ -272,7 +272,7 @@ interface GooglePlaceDetails {
   placeId?: string;
 }
 
-const parseJsonLocation = (locStr: string | null | undefined): { name: string; address?: string; photoUrl?: string; googleMapsUrl?: string; latitude?: string; longitude?: string } | null => {
+const parseJsonLocation = (locStr: string | null | undefined): { name: string; address?: string; photoUrl?: string; googleMapsUrl?: string; latitude?: string; longitude?: string; placeId?: string } | null => {
   if (!locStr) return null;
   const trimmed = locStr.trim();
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
@@ -285,11 +285,35 @@ const parseJsonLocation = (locStr: string | null | undefined): { name: string; a
   }
 };
 
-const getFinalLocationPayload = (locationVal: string, coordsInput: string, lat: string, lng: string): string => {
+const buildLocationPayload = (
+  locationVal: string,
+  coordsInput: string,
+  lat: string,
+  lng: string,
+  source: 'manual' | 'map',
+): string => {
   const trimmedLoc = locationVal.trim();
   const trimmedCoords = coordsInput.trim();
   const parsedCoords = parseCoordinates(trimmedCoords);
   const isMapLink = /^https?:\/\//i.test(trimmedCoords);
+  const locationName = getLocationNameValue(trimmedLoc).trim();
+
+  if (source === 'manual') {
+    if (trimmedCoords) {
+      const manualLat = parsedCoords?.lat || lat || '';
+      const manualLng = parsedCoords?.lng || lng || '';
+      return JSON.stringify({
+        name: locationName,
+        address: isMapLink ? 'Google Maps link' : trimmedCoords,
+        latitude: manualLat,
+        longitude: manualLng,
+        googleMapsUrl: isMapLink ? trimmedCoords : (manualLat && manualLng ? `https://www.google.com/maps/search/?api=1&query=${manualLat},${manualLng}` : ''),
+        photoUrl: '',
+      });
+    }
+
+    return locationName;
+  }
 
   if (trimmedLoc.startsWith('{') && trimmedLoc.endsWith('}')) {
     try {
@@ -315,7 +339,7 @@ const getFinalLocationPayload = (locationVal: string, coordsInput: string, lat: 
     const manualLat = parsedCoords?.lat || lat || '';
     const manualLng = parsedCoords?.lng || lng || '';
     return JSON.stringify({
-      name: trimmedLoc,
+      name: locationName,
       address: isMapLink ? 'Google Maps link' : trimmedCoords,
       latitude: manualLat,
       longitude: manualLng,
@@ -324,7 +348,7 @@ const getFinalLocationPayload = (locationVal: string, coordsInput: string, lat: 
     });
   }
 
-  return trimmedLoc;
+  return locationName;
 };
 
 const getLocationNameValue = (locationVal: string): string => {
@@ -581,6 +605,8 @@ export default function TourDashboard() {
 
   const [itinCoordsInput, setItinCoordsInput] = useState('');
   const [editItinCoordsInput, setEditItinCoordsInput] = useState('');
+  const [itinLocationSource, setItinLocationSource] = useState<'manual' | 'map'>('manual');
+  const [editItinLocationSource, setEditItinLocationSource] = useState<'manual' | 'map'>('manual');
 
   // Google Places Map States
   const [mapApiLoaded, setMapApiLoaded] = useState(false);
@@ -599,6 +625,7 @@ export default function TourDashboard() {
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const autocompleteRequestIdRef = useRef(0);
+  const googleMapsWaitIntervalRef = useRef<number | null>(null);
 
   const initializeGoogleMapsServices = useCallback(() => {
     if (typeof window === 'undefined') return false;
@@ -614,6 +641,10 @@ export default function TourDashboard() {
     autocompleteServiceRef.current = new maps.places.AutocompleteService();
     sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
     geocoderRef.current = new maps.Geocoder();
+    if (googleMapsWaitIntervalRef.current) {
+      window.clearInterval(googleMapsWaitIntervalRef.current);
+      googleMapsWaitIntervalRef.current = null;
+    }
     setMapApiLoaded(true);
     setMapLoadError('');
     return true;
@@ -621,20 +652,34 @@ export default function TourDashboard() {
 
   const waitForGoogleMapsServices = useCallback((timeoutMs = 8000) => {
     if (initializeGoogleMapsServices()) return;
+    if (googleMapsWaitIntervalRef.current) {
+      window.clearInterval(googleMapsWaitIntervalRef.current);
+    }
 
     const startedAt = Date.now();
-    const intervalId = window.setInterval(() => {
+    googleMapsWaitIntervalRef.current = window.setInterval(() => {
       if (initializeGoogleMapsServices()) {
-        window.clearInterval(intervalId);
         return;
       }
 
       if (Date.now() - startedAt > timeoutMs) {
-        window.clearInterval(intervalId);
+        if (googleMapsWaitIntervalRef.current) {
+          window.clearInterval(googleMapsWaitIntervalRef.current);
+          googleMapsWaitIntervalRef.current = null;
+        }
         setMapLoadError('Google Maps loaded, but Places services are not available. Confirm that the Places API is enabled for this key.');
       }
     }, 120);
   }, [initializeGoogleMapsServices]);
+
+  useEffect(() => {
+    return () => {
+      if (googleMapsWaitIntervalRef.current) {
+        window.clearInterval(googleMapsWaitIntervalRef.current);
+        googleMapsWaitIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -852,15 +897,16 @@ export default function TourDashboard() {
     const parsed = parseJsonLocation(existingLocStr);
     
     if (parsed && parsed.address) {
-      const lat = target === 'add' ? itinLatitude : editItinLatitude;
-      const lng = target === 'add' ? itinLongitude : editItinLongitude;
+      const lat = (target === 'add' ? itinLatitude : editItinLatitude) || parsed.latitude || '';
+      const lng = (target === 'add' ? itinLongitude : editItinLongitude) || parsed.longitude || '';
       setTempSelectedPlace({
         name: parsed.name,
         address: parsed.address,
         latitude: lat,
         longitude: lng,
         googleMapsUrl: parsed.googleMapsUrl || '',
-        photoUrl: parsed.photoUrl || ''
+        photoUrl: parsed.photoUrl || '',
+        placeId: parsed.placeId,
       });
     } else {
       const lat = target === 'add' ? itinLatitude : editItinLatitude;
@@ -911,11 +957,13 @@ export default function TourDashboard() {
       setItinLatitude(placeToSave.latitude);
       setItinLongitude(placeToSave.longitude);
       setItinCoordsInput(placeToSave.googleMapsUrl || (placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : ''));
+      setItinLocationSource('map');
     } else {
       setEditItinLocation(serialized);
       setEditItinLatitude(placeToSave.latitude);
       setEditItinLongitude(placeToSave.longitude);
       setEditItinCoordsInput(placeToSave.googleMapsUrl || (placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : ''));
+      setEditItinLocationSource('map');
     }
     
     setIsMapPickerOpen(false);
@@ -926,8 +974,8 @@ export default function TourDashboard() {
   };
 
   const handleLocationChange = (val: string) => {
-    const existing = parseJsonLocation(itinLocation);
-    setItinLocation(existing ? JSON.stringify({ ...existing, name: val }) : val);
+    setItinLocationSource('manual');
+    setItinLocation(val);
     const parsed = parseCoordinates(val);
     if (parsed) {
       setItinLatitude(parsed.lat);
@@ -937,17 +985,12 @@ export default function TourDashboard() {
   };
 
   const handleCoordsInputChange = (val: string) => {
-    setItinCoordsInput(val);
+    setItinLocationSource('manual');
     const existing = parseJsonLocation(itinLocation);
     if (existing) {
-      const parsedLinkCoords = parseCoordinates(val);
-      setItinLocation(JSON.stringify({
-        ...existing,
-        googleMapsUrl: /^https?:\/\//i.test(val.trim()) ? val.trim() : existing.googleMapsUrl,
-        latitude: parsedLinkCoords?.lat || existing.latitude || itinLatitude,
-        longitude: parsedLinkCoords?.lng || existing.longitude || itinLongitude,
-      }));
+      setItinLocation(existing.name);
     }
+    setItinCoordsInput(val);
     const parsed = parseCoordinates(val);
     if (parsed) {
       setItinLatitude(parsed.lat);
@@ -971,8 +1014,8 @@ export default function TourDashboard() {
   };
 
   const handleEditLocationChange = (val: string) => {
-    const existing = parseJsonLocation(editItinLocation);
-    setEditItinLocation(existing ? JSON.stringify({ ...existing, name: val }) : val);
+    setEditItinLocationSource('manual');
+    setEditItinLocation(val);
     const parsed = parseCoordinates(val);
     if (parsed) {
       setEditItinLatitude(parsed.lat);
@@ -982,17 +1025,12 @@ export default function TourDashboard() {
   };
 
   const handleEditCoordsInputChange = (val: string) => {
-    setEditItinCoordsInput(val);
+    setEditItinLocationSource('manual');
     const existing = parseJsonLocation(editItinLocation);
     if (existing) {
-      const parsedLinkCoords = parseCoordinates(val);
-      setEditItinLocation(JSON.stringify({
-        ...existing,
-        googleMapsUrl: /^https?:\/\//i.test(val.trim()) ? val.trim() : existing.googleMapsUrl,
-        latitude: parsedLinkCoords?.lat || existing.latitude || editItinLatitude,
-        longitude: parsedLinkCoords?.lng || existing.longitude || editItinLongitude,
-      }));
+      setEditItinLocation(existing.name);
     }
+    setEditItinCoordsInput(val);
     const parsed = parseCoordinates(val);
     if (parsed) {
       setEditItinLatitude(parsed.lat);
@@ -1191,7 +1229,7 @@ export default function TourDashboard() {
     formData.append('day', String(itinDay));
     formData.append('time', itinTime);
     if (itinTimeEnd.trim()) formData.append('timeEnd', itinTimeEnd.trim());
-    const finalLocation = getFinalLocationPayload(itinLocation, itinCoordsInput, itinLatitude, itinLongitude);
+    const finalLocation = buildLocationPayload(itinLocation, itinCoordsInput, itinLatitude, itinLongitude, itinLocationSource);
     formData.append('location', finalLocation);
     if (costDisplay) formData.append('costDisplay', costDisplay);
     if (costNum !== null && !isNaN(costNum)) formData.append('cost', String(costNum));
@@ -1242,6 +1280,7 @@ export default function TourDashboard() {
     setItinLatitude('');
     setItinLongitude('');
     setItinCoordsInput('');
+    setItinLocationSource('manual');
     if (itinFileInputRef.current) itinFileInputRef.current.value = '';
     setIsAddingItinerary(false);
     haptics.success();
@@ -1273,6 +1312,7 @@ export default function TourDashboard() {
     setEditItinLatitude(item.latitude || '');
     setEditItinLongitude(item.longitude || '');
     setEditItinCoordsInput(getLocationAuxValue(item.location || '', item.latitude, item.longitude));
+    setEditItinLocationSource(parseJsonLocation(item.location || '') ? 'map' : 'manual');
     setEditItinAttachment(null);
     if (editItinFileInputRef.current) editItinFileInputRef.current.value = '';
   };
@@ -1292,7 +1332,7 @@ export default function TourDashboard() {
     formData.append('day', String(editItinDay));
     formData.append('time', editItinTime);
     formData.append('timeEnd', editItinTimeEnd.trim()); // empty string → clears end time
-    const finalLocation = getFinalLocationPayload(editItinLocation, editItinCoordsInput, editItinLatitude, editItinLongitude);
+    const finalLocation = buildLocationPayload(editItinLocation, editItinCoordsInput, editItinLatitude, editItinLongitude, editItinLocationSource);
     formData.append('location', finalLocation);
     formData.append('costDisplay', costDisplay ?? '');
     if (costNum !== null && !isNaN(costNum)) formData.append('cost', String(costNum));
@@ -2667,15 +2707,22 @@ export default function TourDashboard() {
 	                                className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
 	                              />
 	                            </div>
-	                            <div>
+                            <div>
                               <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">File Attachment (Optional)</label>
-                              <input
-                                ref={itinFileInputRef}
-                                type="file"
-                                onChange={e => setItinAttachment(e.target.files?.[0] || null)}
-	                                className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-primary"
-	                              />
-	                            </div>
+                              <label className="mt-1 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.035] px-4 py-4 text-center transition-colors hover:border-primary/50 hover:bg-white/[0.055]">
+                                <input
+                                  ref={itinFileInputRef}
+                                  type="file"
+                                  onChange={e => setItinAttachment(e.target.files?.[0] || null)}
+                                  className="sr-only"
+                                />
+                                <span className="material-symbols-outlined text-[24px] text-primary">upload_file</span>
+                                <span className="mt-1 max-w-full truncate text-sm font-black text-white">
+                                  {itinAttachment ? itinAttachment.name : 'Attach itinerary document'}
+                                </span>
+                                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">PDF, image, or booking file</span>
+                              </label>
+                            </div>
 	                        </div>
 	                      </div>
 
@@ -3145,21 +3192,22 @@ export default function TourDashboard() {
 	                                className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
 	                              />
 	                            </div>
-	                            <div>
+                            <div>
                               <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Replace File (Optional)</label>
-                              <input
-                                ref={editItinFileInputRef}
-                                type="file"
-                                onChange={e => setEditItinAttachment(e.target.files?.[0] || null)}
-                                className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none"
-                              />
-                              {editingItinItem?.attachmentName && !editItinAttachment && (
-                                <p className="mt-1 ml-1 text-[10px] text-gray-400 flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-[12px]">attachment</span>
-                                  {editingItinItem.attachmentName}
-	                                </p>
-	                              )}
-	                            </div>
+                              <label className="mt-1 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.035] px-4 py-4 text-center transition-colors hover:border-primary/50 hover:bg-white/[0.055]">
+                                <input
+                                  ref={editItinFileInputRef}
+                                  type="file"
+                                  onChange={e => setEditItinAttachment(e.target.files?.[0] || null)}
+                                  className="sr-only"
+                                />
+                                <span className="material-symbols-outlined text-[24px] text-primary">upload_file</span>
+                                <span className="mt-1 max-w-full truncate text-sm font-black text-white">
+                                  {editItinAttachment?.name || editingItinItem?.attachmentName || 'Attach replacement document'}
+                                </span>
+                                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">PDF, image, or booking file</span>
+                              </label>
+                            </div>
 	                        </div>
 	                      </div>
 
@@ -4170,46 +4218,34 @@ export default function TourDashboard() {
                   </div>
                 )}
                 
-                {/* Contextual Place Card */}
-                <div className="flex-1 flex flex-col justify-end">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
                   {tempSelectedPlace ? (
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
-                      {tempSelectedPlace.photoUrl && (
-                        <div className="w-full h-32 rounded-xl bg-slate-900 overflow-hidden border border-white/5">
-                          <img src={tempSelectedPlace.photoUrl} alt={tempSelectedPlace.name} className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                      <div>
-                        <h4 className="text-sm font-black text-white">{tempSelectedPlace.name}</h4>
-                        <p className="text-xs font-bold text-gray-400 mt-1">{tempSelectedPlace.address}</p>
-                        {Number.isFinite(parseFloat(tempSelectedPlace.latitude)) && Number.isFinite(parseFloat(tempSelectedPlace.longitude)) && (
-                          <p className="text-[10px] font-mono text-emerald-400/80 mt-2 bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10 w-fit">
-                            {parseFloat(tempSelectedPlace.latitude).toFixed(6)}, {parseFloat(tempSelectedPlace.longitude).toFixed(6)}
-                          </p>
-                        )}
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
+                        <span className="material-symbols-outlined text-[20px]">location_on</span>
                       </div>
-                      
-                      <button
-                        type="button"
-                        onClick={confirmLocation}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-black text-white shadow-md hover:bg-emerald-600 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                        Confirm this location
-                      </button>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-black uppercase tracking-[0.16em] text-emerald-300">Targeted Place</p>
+                        <p className="mt-1 truncate text-sm font-black text-white">{tempSelectedPlace.name}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs font-semibold text-gray-400">{tempSelectedPlace.address}</p>
+                      </div>
                     </div>
                   ) : (
-                    <div className="h-48 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-4">
-                      <span className="material-symbols-outlined text-4xl text-gray-600 mb-2">pin_drop</span>
-                      <p className="text-xs font-black text-gray-400">No Location Selected</p>
-                      <p className="text-[10px] font-medium text-gray-500 mt-1 max-w-[200px]">Search for a place or click anywhere on the map to drop a pin.</p>
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-500">
+                        <span className="material-symbols-outlined text-[20px]">pin_drop</span>
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.16em] text-gray-400">No Location Selected</p>
+                        <p className="mt-1 text-xs font-semibold leading-relaxed text-gray-500">Search for a place or click the map to drop a pin.</p>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
               
               {/* Right Panel: Interactive Map */}
-              <div className="flex-1 relative min-h-[300px] md:min-h-0 bg-[#0A0E1A]">
+              <div className="flex-1 relative min-h-[420px] md:min-h-0 bg-[#0A0E1A]">
                 <div ref={mapContainerRef} className="w-full h-full" />
                 {!mapApiLoaded && (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#0A0E1A]">
@@ -4227,6 +4263,39 @@ export default function TourDashboard() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Click map or drag pin to adjust
                 </div>
+
+                {tempSelectedPlace && (
+                  <div className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border border-white/15 bg-slate-950/90 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:inset-x-5 sm:bottom-5 sm:p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-slate-900">
+                          {tempSelectedPlace.photoUrl ? (
+                            <img src={tempSelectedPlace.photoUrl} alt={tempSelectedPlace.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="material-symbols-outlined text-emerald-300">location_on</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-white">{tempSelectedPlace.name}</p>
+                          <p className="mt-0.5 line-clamp-2 text-xs font-semibold leading-relaxed text-gray-400">{tempSelectedPlace.address}</p>
+                          {Number.isFinite(parseFloat(tempSelectedPlace.latitude)) && Number.isFinite(parseFloat(tempSelectedPlace.longitude)) && (
+                            <p className="mt-1 w-fit rounded-lg border border-emerald-500/15 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                              {parseFloat(tempSelectedPlace.latitude).toFixed(6)}, {parseFloat(tempSelectedPlace.longitude).toFixed(6)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={confirmLocation}
+                        className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-white shadow-[0_16px_36px_rgba(16,185,129,0.24)] transition-colors hover:bg-emerald-600"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                        Confirm This Location
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
