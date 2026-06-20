@@ -287,6 +287,47 @@ const parseJsonLocation = (locStr: string | null | undefined): { name: string; a
   };
 };
 
+const getFinalLocationPayload = (locationVal: string, coordsInput: string, lat: string, lng: string): string => {
+  const trimmedLoc = locationVal.trim();
+  const trimmedCoords = coordsInput.trim();
+
+  // Try parsing locationVal as JSON (e.g. from Map picker)
+  if (trimmedLoc.startsWith('{') && trimmedLoc.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmedLoc);
+      // Update with any coords changes from the other field
+      if (trimmedCoords) {
+        parsed.address = trimmedCoords;
+        parsed.latitude = lat;
+        parsed.longitude = lng;
+        parsed.googleMapsUrl = trimmedCoords.startsWith('http') ? trimmedCoords : (parsed.googleMapsUrl || '');
+      } else {
+        // Coords input was cleared
+        parsed.address = '';
+        parsed.latitude = '';
+        parsed.longitude = '';
+        parsed.googleMapsUrl = '';
+      }
+      return JSON.stringify(parsed);
+    } catch (e) {
+      // Fallback
+    }
+  }
+
+  // If it's a plain string but they provided coords/link
+  if (trimmedCoords) {
+    return JSON.stringify({
+      name: trimmedLoc,
+      address: trimmedCoords,
+      latitude: lat,
+      longitude: lng,
+      googleMapsUrl: trimmedCoords.startsWith('http') ? trimmedCoords : '',
+    });
+  }
+
+  return trimmedLoc;
+};
+
 const mapDarkStyles = [
   { elementType: "geometry", stylers: [{ color: "#0A0E1A" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#0A0E1A" }, { weight: 2 }] },
@@ -998,7 +1039,8 @@ export default function TourDashboard() {
     formData.append('day', String(itinDay));
     formData.append('time', itinTime);
     if (itinTimeEnd.trim()) formData.append('timeEnd', itinTimeEnd.trim());
-    formData.append('location', itinLocation.trim());
+    const finalLocation = getFinalLocationPayload(itinLocation, itinCoordsInput, itinLatitude, itinLongitude);
+    formData.append('location', finalLocation);
     if (costDisplay) formData.append('costDisplay', costDisplay);
     if (costNum !== null && !isNaN(costNum)) formData.append('cost', String(costNum));
     formData.append('type', itinType);
@@ -1017,7 +1059,7 @@ export default function TourDashboard() {
       time: itinTime,
       timeEnd: itinTimeEnd.trim() || null,
       title: itinTitle.trim(),
-      location: itinLocation.trim(),
+      location: finalLocation,
       cost: costNum ?? undefined,
       costDisplay,
       type: itinType,
@@ -1098,7 +1140,8 @@ export default function TourDashboard() {
     formData.append('day', String(editItinDay));
     formData.append('time', editItinTime);
     formData.append('timeEnd', editItinTimeEnd.trim()); // empty string → clears end time
-    formData.append('location', editItinLocation.trim());
+    const finalLocation = getFinalLocationPayload(editItinLocation, editItinCoordsInput, editItinLatitude, editItinLongitude);
+    formData.append('location', finalLocation);
     formData.append('costDisplay', costDisplay ?? '');
     if (costNum !== null && !isNaN(costNum)) formData.append('cost', String(costNum));
     formData.append('type', editItinType);
@@ -1119,7 +1162,7 @@ export default function TourDashboard() {
             day: editItinDay,
             time: editItinTime,
             timeEnd: editItinTimeEnd.trim() || null,
-            location: editItinLocation.trim(),
+            location: finalLocation,
             cost: costNum ?? item.cost,
             costDisplay,
             type: editItinType,
@@ -2417,69 +2460,44 @@ export default function TourDashboard() {
                             <option value="Booked">Booked ✅</option>
                             <option value="Completed">Completed 🎉</option>
                           </select>
-                        </div>
-                      </div>
-
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="sm:col-span-2">
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Location</label>
-                          {(() => {
-                            const parsed = parseJsonLocation(itinLocation);
-                            if (parsed) {
-                              return (
-                                <div className="relative group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex gap-4 transition-all duration-300 hover:bg-white/[0.05] hover:border-emerald-500/30">
-                                  <div className="relative w-20 h-20 rounded-xl bg-slate-900 border border-white/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                    {parsed.photoUrl ? (
-                                      <img src={parsed.photoUrl} alt={parsed.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="text-emerald-400 bg-emerald-500/10 w-full h-full flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-3xl">location_on</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                                    <div>
-                                      <h4 className="text-sm font-black text-white truncate">{parsed.name}</h4>
-                                      <p className="text-xs font-bold text-gray-400 mt-1 line-clamp-2">{parsed.address}</p>
-                                    </div>
-                                    <div className="flex gap-3 text-[10px] font-black uppercase tracking-wider text-emerald-400 mt-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => openMapPicker('add')}
-                                        className="hover:text-emerald-300 transition-colors"
-                                      >
-                                        Change Location
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setItinLocation('');
-                                          setItinLatitude('');
-                                          setItinLongitude('');
-                                          setItinCoordsInput('');
-                                        }}
-                                        className="text-rose-400 hover:text-rose-300 transition-colors"
-                                      >
-                                        Remove
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return (
-                              <div
+                        <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                              <button
+                                type="button"
                                 onClick={() => openMapPicker('add')}
-                                className="w-full rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center cursor-pointer hover:bg-white/[0.04] hover:border-emerald-500/40 transition-all duration-300 flex flex-col items-center justify-center group"
+                                className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"
                               >
-                                <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center text-gray-400 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-all duration-300 mb-3 border border-white/5">
-                                  <span className="material-symbols-outlined text-2xl">map</span>
-                                </div>
-                                <span className="text-sm font-black text-white">Select Location on Google Maps</span>
-                                <span className="text-xs font-bold text-gray-400 mt-1">Search or drop a pin to confirm activity location</span>
-                              </div>
-                            );
-                          })()}
+                                <span className="material-symbols-outlined text-[12px]">map</span>
+                                Map Picker
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Eiffel Tower, Paris"
+                              value={(() => {
+                                const parsed = parseJsonLocation(itinLocation);
+                                return parsed ? parsed.name : itinLocation;
+                              })()}
+                              onChange={(e) => handleLocationChange(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Coordinates / Google Maps Link</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. 48.8584, 2.2945 or maps link"
+                              value={itinCoordsInput}
+                              onChange={(e) => handleCoordsInputChange(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                        <div>
                         </div>
                         <div>
                           <div className="space-y-4">
@@ -2538,7 +2556,7 @@ export default function TourDashboard() {
               ) : (
                 <div className="space-y-10 relative">
                   {/* Dynamic Timeline Vertical Connecting Line */}
-                  <div className="absolute left-[37px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary via-emerald-500/50 to-orange-500/20 dark:from-primary/50 dark:via-emerald-500/30 dark:to-transparent hidden sm:block" />
+                  <div className="absolute left-[17px] sm:left-[37px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary via-emerald-500/50 to-orange-500/20 dark:from-primary/50 dark:via-emerald-500/30 dark:to-transparent block" />
 
                   {groupedItinerary.map(([groupName, items]) => {
                     const isExpanded = expandedGroups[groupName] ?? false;
@@ -2555,7 +2573,7 @@ export default function TourDashboard() {
                           </span>
                         </div>
 
-                        <div className="relative ml-0 sm:ml-9 space-y-6 py-2">
+                        <div className="relative ml-4 sm:ml-9 space-y-6 py-2">
                           {visibleItems.map((item, index) => {
                             const typeIcons: Record<string, string> = {
                               flight: 'flight_takeoff',
@@ -2591,11 +2609,11 @@ export default function TourDashboard() {
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.03 }}
-                                className="relative group pl-0 sm:pl-10"
+                                className="relative group pl-7 sm:pl-10"
                               >
-                                {/* Distance segment connection on timeline (Desktop only) */}
+                                {/* Distance segment connection on timeline (Desktop & Mobile) */}
                                 {distance !== null && (
-                                  <div className="absolute left-[16px] sm:left-[0px] top-[-26px] h-7 w-0.5 bg-emerald-500/70 hidden sm:flex items-center justify-center z-10">
+                                  <div className="absolute left-[-17px] sm:left-[0px] top-[-26px] h-7 w-0.5 bg-emerald-500/70 flex items-center justify-center z-10">
                                     <div className="absolute -translate-x-1/2 left-1/2 bg-emerald-500 text-white dark:bg-emerald-600 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-md whitespace-nowrap border border-white/10 flex items-center gap-1 hover:scale-105 transition-transform">
                                       <span className="material-symbols-outlined text-[9px] font-black">navigation</span>
                                       {formatDistance(distance)}
@@ -2607,7 +2625,7 @@ export default function TourDashboard() {
                                 <div 
                                   onClick={() => handleCycleStatus(item)}
                                   title="Click to cycle status"
-                                  className="absolute left-[-2px] sm:left-[-18px] top-1.5 flex size-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-gray-300 transition-all hover:scale-110 cursor-pointer z-20 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_rgba(19,109,236,0.3)]"
+                                  className="absolute left-[-17px] sm:left-[-18px] top-1.5 flex size-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-gray-300 transition-all hover:scale-110 cursor-pointer z-20 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_rgba(19,109,236,0.3)]"
                                 >
                                   <span className="material-symbols-outlined text-[18px]">{icon}</span>
                                 </div>
@@ -2920,65 +2938,41 @@ export default function TourDashboard() {
 
                       {/* Location + Notes + File */}
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="sm:col-span-2">
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Location</label>
-                          {(() => {
-                            const parsed = parseJsonLocation(editItinLocation);
-                            if (parsed) {
-                              return (
-                                <div className="relative group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex gap-4 transition-all duration-300 hover:bg-white/[0.05] hover:border-emerald-500/30">
-                                  <div className="relative w-20 h-20 rounded-xl bg-slate-900 border border-white/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                    {parsed.photoUrl ? (
-                                      <img src={parsed.photoUrl} alt={parsed.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="text-emerald-400 bg-emerald-500/10 w-full h-full flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-3xl">location_on</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                                    <div>
-                                      <h4 className="text-sm font-black text-white truncate">{parsed.name}</h4>
-                                      <p className="text-xs font-bold text-gray-400 mt-1 line-clamp-2">{parsed.address}</p>
-                                    </div>
-                                    <div className="flex gap-3 text-[10px] font-black uppercase tracking-wider text-emerald-400 mt-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => openMapPicker('edit')}
-                                        className="hover:text-emerald-300 transition-colors"
-                                      >
-                                        Change Location
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setEditItinLocation('');
-                                          setEditItinLatitude('');
-                                          setEditItinLongitude('');
-                                          setEditItinCoordsInput('');
-                                        }}
-                                        className="text-rose-400 hover:text-rose-300 transition-colors"
-                                      >
-                                        Remove
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return (
-                              <div
+                        <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                              <button
+                                type="button"
                                 onClick={() => openMapPicker('edit')}
-                                className="w-full rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center cursor-pointer hover:bg-white/[0.04] hover:border-emerald-500/40 transition-all duration-300 flex flex-col items-center justify-center group"
+                                className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"
                               >
-                                <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center text-gray-400 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-all duration-300 mb-3 border border-white/5">
-                                  <span className="material-symbols-outlined text-2xl">map</span>
-                                </div>
-                                <span className="text-sm font-black text-white">Select Location on Google Maps</span>
-                                <span className="text-xs font-bold text-gray-400 mt-1">Search or drop a pin to confirm activity location</span>
-                              </div>
-                            );
-                          })()}
+                                <span className="material-symbols-outlined text-[12px]">map</span>
+                                Map Picker
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Eiffel Tower, Paris"
+                              value={(() => {
+                                const parsed = parseJsonLocation(editItinLocation);
+                                return parsed ? parsed.name : editItinLocation;
+                              })()}
+                              onChange={(e) => handleEditLocationChange(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Coordinates / Google Maps Link</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. 48.8584, 2.2945 or maps link"
+                              value={editItinCoordsInput}
+                              onChange={(e) => handleEditCoordsInputChange(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
                         </div>
                         <div>
                           <div className="space-y-4">
