@@ -49,6 +49,7 @@ interface ItineraryItem {
   groupTitle?: string;
   attachmentId?: string;
   attachmentName?: string;
+  status?: 'Planned' | 'Booked' | 'Completed';
 }
 
 interface ChecklistItem {
@@ -60,6 +61,8 @@ interface ChecklistItem {
   description?: string;
   attachmentId?: string;
   attachmentName?: string;
+  priority?: 'High' | 'Medium' | 'Low';
+  quantity?: number;
 }
 
 interface TourTransaction {
@@ -98,6 +101,110 @@ function TourSpendingsSkeleton() {
     </div>
   );
 }
+
+function formatTime12h(timeStr: string | null | undefined): string {
+  if (!timeStr) return '';
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return timeStr;
+  let hours = parseInt(parts[0], 10);
+  const minutes = parts[1];
+  if (isNaN(hours)) return timeStr;
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // hour '0' should be '12'
+  return `${hours}:${minutes} ${ampm}`;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function getAvatarColor(name: string): string {
+  const colors = [
+    'bg-emerald-500 text-white',
+    'bg-teal-500 text-white',
+    'bg-amber-500 text-white',
+    'bg-rose-500 text-white',
+    'bg-sky-500 text-white',
+    'bg-blue-500 text-white',
+    'bg-slate-500 text-white',
+    'bg-orange-500 text-white',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+}
+
+function renderAssigneeAvatars(assigneeStr: string | null | undefined) {
+  if (!assigneeStr) return null;
+  const names = assigneeStr.split(',').map(n => n.trim()).filter(Boolean);
+  if (names.length === 0) return null;
+  
+  return (
+    <div className="flex -space-x-1.5 overflow-hidden">
+      {names.map((name, idx) => {
+        const initials = getInitials(name);
+        const colorClass = getAvatarColor(name);
+        return (
+          <div
+            key={idx}
+            title={name}
+            className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-black uppercase ring-1 ring-white dark:ring-slate-900 shrink-0 ${colorClass}`}
+          >
+            {initials}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const packingPresets = {
+  beach: [
+    { name: 'Swimwear', category: 'Clothing', priority: 'High', quantity: 2 },
+    { name: 'Sunscreen (SPF 50+)', category: 'Toiletries', priority: 'High', quantity: 1 },
+    { name: 'Sunglasses & Sun Hat', category: 'Clothing', priority: 'Medium', quantity: 1 },
+    { name: 'Beach Towel', category: 'Other', priority: 'Medium', quantity: 1 },
+    { name: 'Waterproof Phone Pouch', category: 'Electronics', priority: 'Low', quantity: 1 },
+    { name: 'Flip Flops', category: 'Clothing', priority: 'Medium', quantity: 1 },
+  ],
+  winter: [
+    { name: 'Heavy Coat / Parka', category: 'Clothing', priority: 'High', quantity: 1 },
+    { name: 'Thermal Base Layers', category: 'Clothing', priority: 'High', quantity: 3 },
+    { name: 'Woolen Socks & Gloves', category: 'Clothing', priority: 'High', quantity: 3 },
+    { name: 'Lip Balm & Moisturizer', category: 'Toiletries', priority: 'Medium', quantity: 1 },
+    { name: 'Beanie / Woolen Hat', category: 'Clothing', priority: 'Medium', quantity: 2 },
+  ],
+  adventure: [
+    { name: 'Hiking Shoes', category: 'Clothing', priority: 'High', quantity: 1 },
+    { name: 'Insect Repellent', category: 'Toiletries', priority: 'High', quantity: 1 },
+    { name: 'First Aid Kit', category: 'Other', priority: 'High', quantity: 1 },
+    { name: 'Reusable Water Bottle', category: 'Other', priority: 'High', quantity: 1 },
+    { name: 'Flashlight / Headlamp', category: 'Electronics', priority: 'Medium', quantity: 1 },
+    { name: 'Rain Jacket / Poncho', category: 'Clothing', priority: 'Medium', quantity: 1 },
+  ],
+  business: [
+    { name: 'Formal Suits / Blazers', category: 'Clothing', priority: 'High', quantity: 2 },
+    { name: 'Business Cards', category: 'Documents', priority: 'Medium', quantity: 50 },
+    { name: 'Laptop & Charger', category: 'Electronics', priority: 'High', quantity: 1 },
+    { name: 'Notebook & Pen', category: 'Other', priority: 'Low', quantity: 1 },
+    { name: 'Passport & Travel Visa', category: 'Documents', priority: 'High', quantity: 1 },
+  ],
+  casual: [
+    { name: 'Comfy Sneakers', category: 'Clothing', priority: 'High', quantity: 1 },
+    { name: 'T-Shirts & Jeans', category: 'Clothing', priority: 'High', quantity: 5 },
+    { name: 'Toothbrush & Paste', category: 'Toiletries', priority: 'High', quantity: 1 },
+    { name: 'Phone Charger', category: 'Electronics', priority: 'High', quantity: 1 },
+    { name: 'Deodorant / Cologne', category: 'Toiletries', priority: 'Medium', quantity: 1 },
+    { name: 'Cash / Credit Cards', category: 'Documents', priority: 'High', quantity: 1 },
+  ]
+};
 
 export default function TourDashboard() {
   const params = useParams<{ id: string }>();
@@ -164,6 +271,10 @@ export default function TourDashboard() {
   );
   const itinerary = useMemo(() => itineraryData?.itinerary ?? [], [itineraryData]);
 
+  const estimatedTotal = useMemo(() => {
+    return itinerary.reduce((sum, item) => sum + Number(item.cost || 0), 0);
+  }, [itinerary]);
+
   const [itinTitle, setItinTitle] = useState('');
   const [itinDay, setItinDay] = useState(1);
   const [itinTime, setItinTime] = useState('09:00');
@@ -174,9 +285,14 @@ export default function TourDashboard() {
   const [itinNotes, setItinNotes] = useState('');
   const [itinGroupTitle, setItinGroupTitle] = useState('');
   const [itinAttachment, setItinAttachment] = useState<File | null>(null);
+  const [itinStatus, setItinStatus] = useState<'Planned' | 'Booked' | 'Completed'>('Planned');
   const [showItinGroupSuggestions, setShowItinGroupSuggestions] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [isAddingItinerary, setIsAddingItinerary] = useState(false);
+
+  // Itinerary Filters
+  const [itinFilterType, setItinFilterType] = useState<string>('All');
+  const [itinSearchQuery, setItinSearchQuery] = useState<string>('');
 
   // Edit state — holds the item currently being edited (null = no edit in progress)
   const [editingItinItem, setEditingItinItem] = useState<ItineraryItem | null>(null);
@@ -189,6 +305,7 @@ export default function TourDashboard() {
   const [editItinType, setEditItinType] = useState<ItineraryItem['type']>('activity');
   const [editItinNotes, setEditItinNotes] = useState('');
   const [editItinGroupTitle, setEditItinGroupTitle] = useState('');
+  const [editItinStatus, setEditItinStatus] = useState<'Planned' | 'Booked' | 'Completed'>('Planned');
   const [editItinAttachment, setEditItinAttachment] = useState<File | null>(null);
   const [isSavingItinEdit, setIsSavingItinEdit] = useState(false);
   const [showEditGroupSuggestions, setShowEditGroupSuggestions] = useState(false);
@@ -210,10 +327,13 @@ export default function TourDashboard() {
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>(['Everyone']);
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   const [checkDescription, setCheckDescription] = useState('');
+  const [checkPriority, setCheckPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [checkQuantity, setCheckQuantity] = useState<number>(1);
   const [checkAttachment, setCheckAttachment] = useState<File | null>(null);
   const [newCustomCategory, setNewCustomCategory] = useState('');
   const [showCustomCatInput, setShowCustomCatInput] = useState(false);
   const [activeChecklistFilter, setActiveChecklistFilter] = useState<string>('All');
+  const [checkPriorityFilter, setCheckPriorityFilter] = useState<string>('All');
   const [isAddingChecklist, setIsAddingChecklist] = useState(false);
 
   const checkFileInputRef = useRef<HTMLInputElement>(null);
@@ -279,15 +399,31 @@ export default function TourDashboard() {
     };
   }, [tourId, mutateItinerary, mutateChecklist]);
 
+  const filteredItinerary = useMemo(() => {
+    let list = itinerary;
+    if (itinFilterType !== 'All') {
+      list = list.filter(item => item.type === itinFilterType);
+    }
+    if (itinSearchQuery.trim()) {
+      const query = itinSearchQuery.toLowerCase();
+      list = list.filter(item =>
+        item.title.toLowerCase().includes(query) ||
+        (item.location || '').toLowerCase().includes(query) ||
+        (item.notes || '').toLowerCase().includes(query)
+      );
+    }
+    return list;
+  }, [itinerary, itinFilterType, itinSearchQuery]);
+
   const uniqueGroupTitles = useMemo(() => {
     const titles = new Set<string>();
-    itinerary.forEach((item) => {
+    filteredItinerary.forEach((item) => {
       if (item.groupTitle) {
         titles.add(item.groupTitle);
       }
     });
     return Array.from(titles);
-  }, [itinerary]);
+  }, [filteredItinerary]);
 
   const filteredGroupSuggestions = useMemo(() => {
     const query = itinGroupTitle.toLowerCase().trim();
@@ -297,12 +433,12 @@ export default function TourDashboard() {
 
   const groupedItinerary = useMemo<[string, ItineraryItem[]][]>(() => {
     const groups = new Map<string, ItineraryItem[]>();
-    itinerary.forEach((item) => {
+    filteredItinerary.forEach((item) => {
       const groupName = item.groupTitle?.trim() || 'General Activities';
       groups.set(groupName, [...(groups.get(groupName) ?? []), item]);
     });
     return Array.from(groups.entries());
-  }, [itinerary]);
+  }, [filteredItinerary]);
 
   const handleToggleAssignee = (name: string) => {
     if (name === 'Everyone') {
@@ -342,6 +478,7 @@ export default function TourDashboard() {
     formData.append('type', itinType);
     formData.append('notes', itinNotes.trim());
     formData.append('groupTitle', groupTitle);
+    formData.append('status', itinStatus);
     if (itinAttachment) {
       formData.append('file', itinAttachment);
     }
@@ -358,6 +495,7 @@ export default function TourDashboard() {
       type: itinType,
       notes: itinNotes.trim() || undefined,
       groupTitle,
+      status: itinStatus,
       attachmentName: itinAttachment ? itinAttachment.name : undefined,
     };
 
@@ -375,6 +513,7 @@ export default function TourDashboard() {
     setItinTimeEnd('');
     setItinNotes('');
     setItinGroupTitle('');
+    setItinStatus('Planned');
     setItinAttachment(null);
     if (itinFileInputRef.current) itinFileInputRef.current.value = '';
     setIsAddingItinerary(false);
@@ -403,6 +542,7 @@ export default function TourDashboard() {
     setEditItinType(item.type);
     setEditItinNotes(item.notes || '');
     setEditItinGroupTitle(item.groupTitle || '');
+    setEditItinStatus(item.status || 'Planned');
     setEditItinAttachment(null);
     if (editItinFileInputRef.current) editItinFileInputRef.current.value = '';
   };
@@ -428,6 +568,7 @@ export default function TourDashboard() {
     formData.append('type', editItinType);
     formData.append('notes', editItinNotes.trim());
     formData.append('groupTitle', groupTitle);
+    formData.append('status', editItinStatus);
     if (editItinAttachment) formData.append('file', editItinAttachment);
 
     // Optimistic update
@@ -446,6 +587,7 @@ export default function TourDashboard() {
             type: editItinType,
             notes: editItinNotes.trim(),
             groupTitle,
+            status: editItinStatus,
           }
         : item
     ).sort((a, b) => {
@@ -470,6 +612,41 @@ export default function TourDashboard() {
     }
   };
 
+  const handleCycleStatus = async (item: ItineraryItem) => {
+    const statusOrder: ('Planned' | 'Booked' | 'Completed')[] = ['Planned', 'Booked', 'Completed'];
+    const currentIndex = statusOrder.indexOf(item.status || 'Planned');
+    const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+    
+    const previous = itinerary;
+    const updated = itinerary.map(i => i.id === item.id ? { ...i, status: nextStatus } : i);
+    mutateItinerary({ success: true, itinerary: updated }, { revalidate: false });
+    haptics.tap();
+
+    const formData = new FormData();
+    formData.append('title', item.title);
+    formData.append('day', String(item.day));
+    formData.append('time', item.time);
+    formData.append('timeEnd', item.timeEnd || '');
+    formData.append('location', item.location || '');
+    formData.append('costDisplay', item.costDisplay || '');
+    if (item.cost !== undefined && item.cost !== null) formData.append('cost', String(item.cost));
+    formData.append('type', item.type);
+    formData.append('notes', item.notes || '');
+    formData.append('groupTitle', item.groupTitle || 'General Activities');
+    formData.append('status', nextStatus);
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/itinerary?id=${item.id}`, {
+        method: 'PATCH',
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      mutateItinerary();
+    } catch {
+      mutateItinerary({ success: true, itinerary: previous }, { revalidate: true });
+    }
+  };
+
   const handleDeleteItinerary = async (id: string) => {
     const previous = itinerary;
     mutateItinerary({ success: true, itinerary: itinerary.filter(item => item.id !== id) }, { revalidate: false });
@@ -490,13 +667,16 @@ export default function TourDashboard() {
     e.preventDefault();
     if (!checkName.trim()) return;
 
-    const assignedToStr = selectedAssignees.join(', ');
+    const priorityVal = checkPriority;
+    const quantityVal = checkQuantity;
 
     const formData = new FormData();
     formData.append('name', checkName.trim());
     formData.append('category', checkCategory);
-    formData.append('assignedTo', assignedToStr);
+    formData.append('assignedTo', selectedAssignees.join(', '));
     formData.append('description', checkDescription.trim());
+    formData.append('priority', priorityVal);
+    formData.append('quantity', String(quantityVal));
     if (checkAttachment) {
       formData.append('file', checkAttachment);
     }
@@ -505,19 +685,24 @@ export default function TourDashboard() {
       id: 'temp_' + Date.now(),
       name: checkName.trim(),
       category: checkCategory,
-      assignedTo: assignedToStr,
+      assignedTo: selectedAssignees.join(', '),
       completed: false,
       description: checkDescription.trim() || undefined,
+      priority: priorityVal,
+      quantity: quantityVal,
       attachmentName: checkAttachment ? checkAttachment.name : undefined,
     };
 
     const previous = checklist;
     mutateChecklist({ success: true, checklist: [...checklist, optimisticItem], categories: customCategoriesList }, { revalidate: false });
 
+    // Reset fields
     setCheckName('');
     setCheckCategory('Other');
     setSelectedAssignees(['Everyone']);
     setCheckDescription('');
+    setCheckPriority('Medium');
+    setCheckQuantity(1);
     setCheckAttachment(null);
     if (checkFileInputRef.current) checkFileInputRef.current.value = '';
     setIsAddingChecklist(false);
@@ -529,6 +714,41 @@ export default function TourDashboard() {
         body: formData,
       });
       if (!res.ok) throw new Error();
+      mutateChecklist();
+    } catch {
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
+    }
+  };
+
+  const handleImportPreset = async (type: keyof typeof packingPresets) => {
+    const presetItems = packingPresets[type];
+    haptics.success();
+    
+    const previous = checklist;
+    const tempItems: ChecklistItem[] = presetItems.map((item, idx) => ({
+      id: 'temp_preset_' + Date.now() + '_' + idx,
+      name: item.name,
+      category: item.category,
+      assignedTo: 'Everyone',
+      completed: false,
+      priority: item.priority as any,
+      quantity: item.quantity,
+    }));
+    mutateChecklist({ success: true, checklist: [...checklist, ...tempItems], categories: customCategoriesList }, { revalidate: false });
+
+    try {
+      for (const item of presetItems) {
+        const formData = new FormData();
+        formData.append('name', item.name);
+        formData.append('category', item.category);
+        formData.append('assignedTo', 'Everyone');
+        formData.append('priority', item.priority);
+        formData.append('quantity', String(item.quantity));
+        await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
       mutateChecklist();
     } catch {
       mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
@@ -599,22 +819,25 @@ export default function TourDashboard() {
 
   const generateDefaultChecklist = async () => {
     const defaults = [
-      { name: 'Passports & Visas', category: 'Documents', assignedTo: 'Everyone' },
-      { name: 'Flight & Hotel Bookings', category: 'Documents', assignedTo: 'Everyone' },
-      { name: 'Local Currency / Cards', category: 'Documents', assignedTo: 'Everyone' },
-      { name: 'Phone Chargers & Power Banks', category: 'Electronics', assignedTo: 'Everyone' },
-      { name: 'Universal Travel Adapter', category: 'Electronics', assignedTo: 'Everyone' },
-      { name: 'Toothbrush & Travel Toiletries', category: 'Toiletries', assignedTo: 'Everyone' },
-      { name: 'First-aid & Daily Medicines', category: 'Other', assignedTo: 'Everyone' },
-      { name: 'Weather-appropriate Clothes', category: 'Clothing', assignedTo: 'Everyone' },
+      { name: 'Passports & Visas', category: 'Documents', assignedTo: 'Everyone', priority: 'High', quantity: 1 },
+      { name: 'Flight & Hotel Bookings', category: 'Documents', assignedTo: 'Everyone', priority: 'High', quantity: 1 },
+      { name: 'Local Currency / Cards', category: 'Documents', assignedTo: 'Everyone', priority: 'High', quantity: 1 },
+      { name: 'Phone Chargers & Power Banks', category: 'Electronics', assignedTo: 'Everyone', priority: 'Medium', quantity: 1 },
+      { name: 'Universal Travel Adapter', category: 'Electronics', assignedTo: 'Everyone', priority: 'Medium', quantity: 1 },
+      { name: 'Toothbrush & Travel Toiletries', category: 'Toiletries', assignedTo: 'Everyone', priority: 'Medium', quantity: 1 },
+      { name: 'First-aid & Daily Medicines', category: 'Other', assignedTo: 'Everyone', priority: 'High', quantity: 1 },
+      { name: 'Weather-appropriate Clothes', category: 'Clothing', assignedTo: 'Everyone', priority: 'High', quantity: 5 },
     ];
 
+    const previous = checklist;
     try {
       for (const item of defaults) {
         const formData = new FormData();
         formData.append('name', item.name);
         formData.append('category', item.category);
         formData.append('assignedTo', item.assignedTo);
+        formData.append('priority', item.priority);
+        formData.append('quantity', String(item.quantity));
         await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
           method: 'POST',
           body: formData,
@@ -623,7 +846,7 @@ export default function TourDashboard() {
       mutateChecklist();
       haptics.success();
     } catch {
-      // ignore
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
     }
   };
 
@@ -1311,32 +1534,93 @@ export default function TourDashboard() {
               transition={spring}
               className="space-y-6"
             >
-              <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div>
-                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Trip Itinerary</h2>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-                      Plan and view your day-by-day activities, reservations, and timings.
-                    </p>
+              {/* Itinerary Overview HUD & Control Bar */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div className="lg:col-span-2 glass-panel p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div>
+                      <h2 className="text-2xl font-black text-gray-950 dark:text-white">Trip Itinerary</h2>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                        Plan and view your day-by-day activities, reservations, and timings.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { haptics.tap(); setIsAddingItinerary(!isAddingItinerary); }}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover self-start sm:self-auto"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{isAddingItinerary ? 'close' : 'add'}</span>
+                      {isAddingItinerary ? 'Cancel' : 'Add Activity'}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => { haptics.tap(); setIsAddingItinerary(!isAddingItinerary); }}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover self-start sm:self-auto"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">{isAddingItinerary ? 'close' : 'add'}</span>
-                    {isAddingItinerary ? 'Cancel' : 'Add Activity'}
-                  </button>
+
+                  {/* Search and Quick Filters */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <div className="relative flex-1">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
+                      <input
+                        type="text"
+                        placeholder="Search activities, notes, locations..."
+                        value={itinSearchQuery}
+                        onChange={(e) => setItinSearchQuery(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] pl-9 pr-4 py-2 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                      />
+                    </div>
+                    <select
+                      value={itinFilterType}
+                      onChange={(e) => setItinFilterType(e.target.value)}
+                      className="rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-[#111827] px-3 py-2 text-xs font-bold text-gray-800 dark:text-white outline-none focus:border-primary"
+                    >
+                      <option value="All">All Types 🌐</option>
+                      <option value="activity">Activities 🎯</option>
+                      <option value="flight">Flights ✈️</option>
+                      <option value="hotel">Hotels 🏨</option>
+                      <option value="food">Food 🍽️</option>
+                      <option value="transport">Transport 🚗</option>
+                      <option value="other">Other 📦</option>
+                    </select>
+                  </div>
                 </div>
 
-                <AnimatePresence>
-                  {isAddingItinerary && (
+                {/* Estimate Cost HUD Card */}
+                <div className="glass-panel p-6 rounded-3xl relative overflow-hidden bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border-emerald-500/20 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[20px] text-emerald-500">monetization_on</span>
+                      Itinerary Budget HUD
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-semibold">Allocated estimated budget vs actual spendings</p>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-gray-400">Est. Total:</span>
+                      <span className="text-gray-900 dark:text-white">{fmt(estimatedTotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-gray-400">Actual Spent:</span>
+                      <span className="text-rose-500">{fmt(totalSpent)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-white/10 h-1.5 rounded-full overflow-hidden mt-2">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, estimatedTotal > 0 ? (totalSpent / estimatedTotal) * 100 : 0)}%` }}
+                        className={`h-full rounded-full ${totalSpent > estimatedTotal ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Activity Form */}
+              <AnimatePresence>
+                {isAddingItinerary && (
+                  <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
                     <motion.form
                       onSubmit={handleAddItinerary}
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="border-t border-gray-100 dark:border-white/5 pt-6 mt-4 space-y-4 overflow-hidden"
+                      className="space-y-4 overflow-hidden"
                     >
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
                         <div ref={itinGroupInputRef} className="relative sm:col-span-2">
@@ -1388,7 +1672,7 @@ export default function TourDashboard() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
                           <input
@@ -1417,7 +1701,6 @@ export default function TourDashboard() {
                             placeholder="e.g. 500 or 250-400"
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
-                          <p className="mt-1 ml-1 text-[10px] text-gray-500">Use a dash for a range, e.g. 250-400</p>
                         </div>
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
@@ -1434,9 +1717,19 @@ export default function TourDashboard() {
                             <option value="other">Other 📦</option>
                           </select>
                         </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
+                          <select
+                            value={itinStatus}
+                            onChange={e => setItinStatus(e.target.value as any)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          >
+                            <option value="Planned">Planned 🗓️</option>
+                            <option value="Booked">Booked ✅</option>
+                            <option value="Completed">Completed 🎉</option>
+                          </select>
+                        </div>
                       </div>
-
-
 
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
@@ -1477,35 +1770,40 @@ export default function TourDashboard() {
                         Save Activity
                       </button>
                     </motion.form>
-                  )}
-                </AnimatePresence>
-              </div>
+                  </div>
+                )}
+              </AnimatePresence>
 
-              {itinerary.length === 0 ? (
+              {filteredItinerary.length === 0 ? (
                 <div className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
                   <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">route</span>
-                  <h3 className="text-xl font-black text-gray-950 dark:text-white">Your itinerary is empty</h3>
+                  <h3 className="text-xl font-black text-gray-950 dark:text-white">No activities found</h3>
                   <p className="mt-2 max-w-sm text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Start planning your trip schedule by adding flight timings, hotel stays, and exciting activities!
+                    {itinerary.length > 0 ? 'Try clearing your search or category filters.' : 'Start planning your trip schedule by adding flight timings, hotel stays, and exciting activities!'}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => { haptics.tap(); setIsAddingItinerary(true); }}
-                    className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">add</span>
-                    Add First Activity
-                  </button>
+                  {itinerary.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { haptics.tap(); setIsAddingItinerary(true); }}
+                      className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">add</span>
+                      Add First Activity
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-10">
+                <div className="space-y-10 relative">
+                  {/* Dynamic Timeline Vertical Connecting Line */}
+                  <div className="absolute left-[37px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary via-emerald-500/50 to-orange-500/20 dark:from-primary/50 dark:via-emerald-500/30 dark:to-transparent hidden sm:block" />
+
                   {groupedItinerary.map(([groupName, items]) => {
                     const isExpanded = expandedGroups[groupName] ?? false;
                     const visibleItems = isExpanded ? items : items.slice(0, 5);
                     const showExpand = items.length > 5;
 
                     return (
-                      <div key={groupName} className="space-y-4">
+                      <div key={groupName} className="space-y-4 relative z-10">
                         <div className="flex items-center gap-3 border-b border-gray-200 dark:border-white/10 pb-2">
                           <span className="material-symbols-outlined text-[20px] text-primary">folder_open</span>
                           <h3 className="text-lg font-black text-gray-950 dark:text-white">{groupName}</h3>
@@ -1514,7 +1812,7 @@ export default function TourDashboard() {
                           </span>
                         </div>
 
-                        <div className="relative border-l border-gray-200 dark:border-white/10 ml-6 pl-8 space-y-6 py-2">
+                        <div className="relative ml-0 sm:ml-9 space-y-6 py-2">
                           {visibleItems.map((item, index) => {
                             const typeIcons: Record<string, string> = {
                               flight: 'flight_takeoff',
@@ -1525,15 +1823,29 @@ export default function TourDashboard() {
                               other: 'category'
                             };
                             const icon = typeIcons[item.type] || 'category';
+                            
+                            const statusMeta = {
+                              Planned: { bg: 'bg-amber-500/10 text-amber-500 border border-amber-500/20', label: 'Planned' },
+                              Booked: { bg: 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20', label: 'Booked' },
+                              Completed: { bg: 'bg-blue-500/10 text-blue-500 border border-blue-500/20', label: 'Completed' }
+                            };
+                            const currentStatus = item.status || 'Planned';
+                            const meta = statusMeta[currentStatus];
+
                             return (
                               <motion.div
                                 key={item.id}
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.03 }}
-                                className="relative group"
+                                className="relative group pl-0 sm:pl-10"
                               >
-                                <div className="absolute -left-[50px] top-1.5 flex size-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-gray-300 transition-transform group-hover:scale-110">
+                                {/* Glow timeline node */}
+                                <div 
+                                  onClick={() => handleCycleStatus(item)}
+                                  title="Click to cycle status"
+                                  className="absolute left-[-2px] sm:left-[-18px] top-1.5 flex size-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-gray-300 transition-all hover:scale-110 cursor-pointer z-20 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_rgba(19,109,236,0.3)]"
+                                >
                                   <span className="material-symbols-outlined text-[18px]">{icon}</span>
                                 </div>
 
@@ -1543,14 +1855,22 @@ export default function TourDashboard() {
                                       <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
                                         Day {item.day}
                                       </span>
-                                      {/* Time — shows range if timeEnd is set */}
-                                      <span className="text-sm font-mono font-bold text-gray-500 dark:text-gray-400">
-                                        {item.time}{item.timeEnd ? ` – ${item.timeEnd}` : ''}
+                                      {/* Time Range - AM/PM views */}
+                                      <span className="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                                        {formatTime12h(item.time)}{item.timeEnd ? ` – ${formatTime12h(item.timeEnd)}` : ''}
                                       </span>
-                                      <h4 className="text-base font-black text-gray-950 dark:text-white">{item.title}</h4>
+                                      {/* Quick Click-to-Cycle Status Badge */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCycleStatus(item)}
+                                        className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all hover:scale-105 cursor-pointer ${meta.bg}`}
+                                      >
+                                        {meta.label}
+                                      </button>
+                                      <h4 className="text-base font-black text-gray-950 dark:text-white ml-1">{item.title}</h4>
                                     </div>
                                     <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                                      {/* Cost — show costDisplay (range-aware) or fallback to formatted number */}
                                       {(item.costDisplay || item.cost) && (
                                         <span className="text-sm font-mono font-black text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-lg">
                                           Est. {item.costDisplay
@@ -1582,15 +1902,21 @@ export default function TourDashboard() {
                                   </div>
 
                                   {(item.location || item.notes || item.attachmentId) && (
-                                    <div className="mt-2 space-y-1.5">
+                                    <div className="mt-2 space-y-1.5 pl-0 sm:pl-1">
                                       {item.location && (
-                                        <p className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold">
-                                          <span className="material-symbols-outlined text-[15px] text-gray-400">pin_drop</span>
+                                        <a
+                                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-semibold"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <span className="material-symbols-outlined text-[15px] text-primary">pin_drop</span>
                                           {item.location}
-                                        </p>
+                                        </a>
                                       )}
                                       {item.notes && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 bg-white/[0.02] border border-white/[0.04] p-2 rounded-lg leading-relaxed italic">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 bg-white/[0.01] border border-gray-100 dark:border-white/[0.04] p-2.5 rounded-lg leading-relaxed italic">
                                           {item.notes}
                                         </p>
                                       )}
@@ -1716,7 +2042,7 @@ export default function TourDashboard() {
                       </div>
 
                       {/* Time Range + Cost + Type */}
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
                           <input
@@ -1744,7 +2070,6 @@ export default function TourDashboard() {
                             placeholder="e.g. 500 or 250-400"
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
-                          <p className="mt-1 ml-1 text-[10px] text-gray-500">Dash for range: 250-400</p>
                         </div>
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
@@ -1759,6 +2084,18 @@ export default function TourDashboard() {
                             <option value="food">Food 🍽️</option>
                             <option value="transport">Transport 🚗</option>
                             <option value="other">Other 📦</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
+                          <select
+                            value={editItinStatus}
+                            onChange={e => setEditItinStatus(e.target.value as any)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          >
+                            <option value="Planned">Planned 🗓️</option>
+                            <option value="Booked">Booked ✅</option>
+                            <option value="Completed">Completed 🎉</option>
                           </select>
                         </div>
                       </div>
@@ -1995,6 +2332,31 @@ export default function TourDashboard() {
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Priority</label>
+                            <select
+                              value={checkPriority}
+                              onChange={e => setCheckPriority(e.target.value as any)}
+                              className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                            >
+                              <option value="High">🔴 High Priority</option>
+                              <option value="Medium">🟡 Medium Priority</option>
+                              <option value="Low">🟢 Low Priority</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={checkQuantity}
+                              onChange={e => setCheckQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                              className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.04] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div>
                             <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description (Optional)</label>
                             <textarea
                               value={checkDescription}
@@ -2027,20 +2389,99 @@ export default function TourDashboard() {
                 </div>
 
                 {checklist.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {categoriesList.map(filter => (
-                      <button
-                        key={filter}
-                        onClick={() => setActiveChecklistFilter(filter)}
-                        className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                          activeChecklistFilter === filter
-                            ? 'bg-primary/20 text-primary border border-primary/30'
-                            : 'text-gray-500 border border-transparent hover:bg-gray-100 dark:hover:bg-white/5 dark:text-gray-400'
-                        }`}
-                      >
-                        {filter}
-                      </button>
-                    ))}
+                  <div className="space-y-4">
+                    {/* Preset Templates Row */}
+                    <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-gray-50 p-3.5 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.04]">
+                      <span className="text-xs font-black uppercase tracking-[0.16em] text-gray-400 mr-2 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[16px] text-amber-500">auto_awesome</span>
+                        Import Preset:
+                      </span>
+                      {(['beach', 'winter', 'adventure', 'business', 'casual'] as const).map(type => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => handleImportPreset(type)}
+                          className="rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 px-3 py-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-all capitalize shadow-sm"
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      {/* Category Tabs */}
+                      <div className="flex flex-wrap gap-2">
+                        {categoriesList.map(filter => {
+                          const itemsInCategory = filter === 'All' ? checklist : checklist.filter(c => c.category === filter);
+                          const total = itemsInCategory.length;
+                          const completed = itemsInCategory.filter(c => c.completed).length;
+                          const pct = total > 0 ? (completed / total) * 100 : 0;
+                          const radius = 6;
+                          const circumference = 2 * Math.PI * radius;
+                          const strokeDashoffset = circumference - (pct / 100) * circumference;
+
+                          return (
+                            <button
+                              key={filter}
+                              onClick={() => setActiveChecklistFilter(filter)}
+                              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                activeChecklistFilter === filter
+                                  ? 'bg-primary/20 text-primary border border-primary/30 shadow-sm'
+                                  : 'text-gray-500 border border-transparent hover:bg-gray-100 dark:hover:bg-white/5 dark:text-gray-400'
+                              }`}
+                            >
+                              {total > 0 && (
+                                <svg className="h-4 w-4 rotate-[-90deg] shrink-0">
+                                  <circle
+                                    className="text-gray-200 dark:text-white/10"
+                                    strokeWidth="2"
+                                    stroke="currentColor"
+                                    fill="transparent"
+                                    r={radius}
+                                    cx="8"
+                                    cy="8"
+                                  />
+                                  <circle
+                                    className={pct === 100 ? "text-emerald-500" : "text-primary"}
+                                    strokeWidth="2"
+                                    strokeDasharray={circumference}
+                                    strokeDashoffset={strokeDashoffset}
+                                    strokeLinecap="round"
+                                    stroke="currentColor"
+                                    fill="transparent"
+                                    r={radius}
+                                    cx="8"
+                                    cy="8"
+                                  />
+                                </svg>
+                              )}
+                              <span>{filter}</span>
+                              {total > 0 && (
+                                <span className="text-[10px] opacity-75 font-semibold">({completed}/{total})</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Priority Tabs */}
+                      <div className="flex flex-wrap gap-2 items-center text-xs font-bold text-gray-500">
+                        <span className="mr-2 uppercase tracking-wider text-[10px] font-black text-gray-400">Priority:</span>
+                        {['All', 'High', 'Medium', 'Low'].map(prio => (
+                          <button
+                            key={prio}
+                            onClick={() => setCheckPriorityFilter(prio)}
+                            className={`rounded-lg px-3 py-1 text-[11px] font-bold transition-all border ${
+                              checkPriorityFilter === prio
+                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                : 'text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            {prio === 'High' ? '🔴 High' : prio === 'Medium' ? '🟡 Medium' : prio === 'Low' ? '🟢 Low' : 'All'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -2064,38 +2505,59 @@ export default function TourDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {checklist
                       .filter(item => activeChecklistFilter === 'All' || item.category === activeChecklistFilter)
-                      .map((item, index) => (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.025 }}
-                          onClick={() => handleToggleChecklist(item.id)}
-                          className="glass-panel p-4 rounded-2xl cursor-pointer flex flex-col justify-between gap-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.04]"
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`size-6 rounded-lg border flex items-center justify-center transition-all ${
-                                item.completed
-                                  ? 'border-emerald-500 bg-emerald-500 text-white'
-                                  : 'border-gray-300 dark:border-white/20 bg-gray-50 dark:bg-white/[0.02]'
-                              }`}>
-                                {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through' : 'checklist-item-title'}`}>
-                                  {item.name}
-                                </h4>
-                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                  <span className="checklist-item-badge rounded px-1.5 py-0.5 text-[10px] font-black uppercase">
-                                    {item.category}
-                                  </span>
-                                  <span className="checklist-item-assignee text-[10px] font-bold">
-                                    👤 {item.assignedTo}
-                                  </span>
+                      .filter(item => checkPriorityFilter === 'All' || item.priority === checkPriorityFilter)
+                      .map((item, index) => {
+                        const prioColor = item.priority === 'High' 
+                          ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' 
+                          : item.priority === 'Low' 
+                            ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-500 border border-amber-500/20';
+
+                        return (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.025 }}
+                            onClick={() => handleToggleChecklist(item.id)}
+                            className="glass-panel p-4 rounded-2xl cursor-pointer flex flex-col justify-between gap-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.04]"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-3 min-w-0 w-full">
+                                <div className={`size-6 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+                                  item.completed
+                                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                                    : 'border-gray-300 dark:border-white/20 bg-gray-50 dark:bg-white/[0.02]'
+                                }`}>
+                                  {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through' : 'checklist-item-title'}`}>
+                                      {item.name}
+                                    </h4>
+                                    {(item.quantity ?? 1) > 1 && (
+                                      <span className="rounded bg-gray-100 dark:bg-white/10 px-1 py-0.5 text-[9px] font-black text-gray-500 dark:text-gray-400">
+                                        ×{item.quantity}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                    <span className="checklist-item-badge rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">
+                                      {item.category}
+                                    </span>
+                                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${prioColor}`}>
+                                      {item.priority || 'Medium'}
+                                    </span>
+                                    <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 pl-1 border-l border-gray-200 dark:border-white/10">
+                                      {renderAssigneeAvatars(item.assignedTo)}
+                                      <span className="ml-1 text-[9px] font-semibold text-gray-400 max-w-16 truncate">
+                                        {item.assignedTo === 'Everyone' ? 'Everyone' : item.assignedTo}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleDeleteChecklist(item.id); }}
@@ -2129,7 +2591,8 @@ export default function TourDashboard() {
                             </div>
                           )}
                         </motion.div>
-                      ))}
+                      );
+                    })}
                   </div>
                 )}
               </motion.div>

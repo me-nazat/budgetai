@@ -383,6 +383,20 @@ export async function ensureDbInitialized(): Promise<void> {
     await getClient().execute('ALTER TABLE tour_itinerary_items ADD COLUMN cost_display TEXT DEFAULT NULL');
   } catch { /* Ignore — column already exists */ }
 
+  // Support status field for itinerary items
+  try {
+    await getClient().execute("ALTER TABLE tour_itinerary_items ADD COLUMN status TEXT DEFAULT 'Planned'");
+  } catch { /* Ignore */ }
+
+  // Support priority and quantity fields for checklist items
+  try {
+    await getClient().execute("ALTER TABLE tour_checklist_items ADD COLUMN priority TEXT DEFAULT 'Medium'");
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute("ALTER TABLE tour_checklist_items ADD COLUMN quantity INTEGER DEFAULT 1");
+  } catch { /* Ignore */ }
+
   initialized = true;
 }
 

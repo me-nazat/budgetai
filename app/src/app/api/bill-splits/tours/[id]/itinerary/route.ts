@@ -54,7 +54,7 @@ export async function GET(request: Request, context: RouteContext) {
     const items = await queryAll(
       `SELECT id, tour_id as tourId, day, time, time_end as timeEnd, title, location,
               cost, cost_display as costDisplay, type, notes, group_title as groupTitle,
-              attachment_id as attachmentId, attachment_name as attachmentName
+              attachment_id as attachmentId, attachment_name as attachmentName, status
        FROM tour_itinerary_items
        WHERE tour_id = ?
        ORDER BY day ASC, time ASC`,
@@ -98,6 +98,7 @@ export async function POST(request: Request, context: RouteContext) {
     const cost = costVal ? parseFloat(costVal) : null;
     const type = (formData.get('type') as string) || 'activity';
     const notes = (formData.get('notes') as string) || '';
+    const status = (formData.get('status') as string) || 'Planned';
 
     let groupTitle = formData.get('groupTitle') as string;
     groupTitle = groupTitle?.trim() || 'General Activities';
@@ -133,9 +134,9 @@ export async function POST(request: Request, context: RouteContext) {
 
     const result = await run(
       `INSERT INTO tour_itinerary_items
-         (tour_id, day, time, time_end, title, location, cost, cost_display, type, notes, group_title, attachment_id, attachment_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tourId, day, time, timeEnd, title, location, cost, costDisplay, type, notes, groupTitle, attachmentId, attachmentName]
+         (tour_id, day, time, time_end, title, location, cost, cost_display, type, notes, group_title, attachment_id, attachment_name, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tourId, day, time, timeEnd, title, location, cost, costDisplay, type, notes, groupTitle, attachmentId, attachmentName, status]
     );
 
     const createdItem = {
@@ -153,6 +154,7 @@ export async function POST(request: Request, context: RouteContext) {
       groupTitle,
       attachmentId,
       attachmentName,
+      status,
     };
 
     broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE', data: createdItem });
@@ -186,8 +188,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Missing or invalid item ID' }, { status: 400 });
     }
 
-    const existing = await queryOne<{ id: number; attachment_id: string | null; attachment_name: string | null }>(
-      'SELECT id, attachment_id, attachment_name FROM tour_itinerary_items WHERE id = ? AND tour_id = ?',
+    const existing = await queryOne<{ id: number; attachment_id: string | null; attachment_name: string | null; status: string }>(
+      'SELECT id, attachment_id, attachment_name, status FROM tour_itinerary_items WHERE id = ? AND tour_id = ?',
       [itemId, tourId]
     );
     if (!existing) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
@@ -204,6 +206,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const cost = costVal ? parseFloat(costVal) : null;
     const type = (formData.get('type') as string) || 'activity';
     const notes = (formData.get('notes') as string) || '';
+    const status = (formData.get('status') as string) || existing.status;
     let groupTitle = (formData.get('groupTitle') as string) || '';
     groupTitle = groupTitle.trim() || 'General Activities';
 
@@ -241,13 +244,15 @@ export async function PATCH(request: Request, context: RouteContext) {
        SET title = ?, day = ?, time = ?, time_end = ?,
            location = ?, cost = ?, cost_display = ?,
            type = ?, notes = ?, group_title = ?,
-           attachment_id = ?, attachment_name = ?
+           attachment_id = ?, attachment_name = ?,
+           status = ?
        WHERE id = ? AND tour_id = ?`,
       [
         title, day, time, timeEnd,
         location, cost, costDisplay,
         type, notes, groupTitle,
         newAttachmentId, newAttachmentName,
+        status,
         itemId, tourId,
       ]
     );
@@ -267,6 +272,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       groupTitle,
       attachmentId: newAttachmentId,
       attachmentName: newAttachmentName,
+      status,
     };
 
     broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE', data: updatedItem });

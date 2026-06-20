@@ -70,6 +70,7 @@ export const tourItineraryItems = sqliteTable('tour_itinerary_items', {
   groupTitle: text('group_title').default('General Activities'),
   attachmentId: text('attachment_id'),
   attachmentName: text('attachment_name'),
+  status: text('status').default('Planned'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
@@ -100,6 +101,8 @@ export const tourChecklistItems = sqliteTable('tour_checklist_items', {
   description: text('description').default(''),
   attachmentId: text('attachment_id'),
   attachmentName: text('attachment_name'),
+  priority: text('priority').default('Medium'),
+  quantity: integer('quantity').default(1),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
