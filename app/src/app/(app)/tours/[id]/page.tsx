@@ -504,7 +504,7 @@ export default function TourDashboard() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAJx7KaRqx8ERhqK3pNRtqGo_w32k-hHjs';
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDYGr2i18DlybWf2QniuYXyQlnqW8tZjbI';
     
     const initializeServices = () => {
       setMapApiLoaded(true);
