@@ -55,7 +55,7 @@ interface ItineraryItem {
 }
 
 interface ChecklistItem {
-  id: string;
+  id: string | number;
   name: string;
   category: string;
   assignedTo: string;
@@ -627,88 +627,76 @@ export default function TourDashboard() {
   const autocompleteRequestIdRef = useRef(0);
   const googleMapsWaitIntervalRef = useRef<number | null>(null);
 
-  const initializeGoogleMapsServices = useCallback(() => {
-    if (typeof window === 'undefined') return false;
-    const maps = (window as any).google?.maps;
-    if (
-      !maps?.places?.AutocompleteService ||
-      !maps?.places?.AutocompleteSessionToken ||
-      !maps?.Geocoder
-    ) {
-      return false;
-    }
-
-    autocompleteServiceRef.current = new maps.places.AutocompleteService();
-    sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
-    geocoderRef.current = new maps.Geocoder();
-    if (googleMapsWaitIntervalRef.current) {
-      window.clearInterval(googleMapsWaitIntervalRef.current);
-      googleMapsWaitIntervalRef.current = null;
-    }
-    setMapApiLoaded(true);
-    setMapLoadError('');
-    return true;
-  }, []);
-
-  const waitForGoogleMapsServices = useCallback((timeoutMs = 8000) => {
-    if (initializeGoogleMapsServices()) return;
-    if (googleMapsWaitIntervalRef.current) {
-      window.clearInterval(googleMapsWaitIntervalRef.current);
-    }
-
-    const startedAt = Date.now();
-    googleMapsWaitIntervalRef.current = window.setInterval(() => {
-      if (initializeGoogleMapsServices()) {
-        return;
-      }
-
-      if (Date.now() - startedAt > timeoutMs) {
-        if (googleMapsWaitIntervalRef.current) {
-          window.clearInterval(googleMapsWaitIntervalRef.current);
-          googleMapsWaitIntervalRef.current = null;
-        }
-        setMapLoadError('Google Maps loaded, but Places services are not available. Confirm that the Places API is enabled for this key.');
-      }
-    }, 120);
-  }, [initializeGoogleMapsServices]);
-
-  useEffect(() => {
-    return () => {
-      if (googleMapsWaitIntervalRef.current) {
-        window.clearInterval(googleMapsWaitIntervalRef.current);
-        googleMapsWaitIntervalRef.current = null;
-      }
-    };
-  }, []);
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!isMapPickerOpen || mapApiLoaded) return;
-    if (initializeGoogleMapsServices()) return;
+    if (!isMapPickerOpen) return;
 
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyDYGr2i18DlybWf2QniuYXyQlnqW8tZjbI';
-    if (!apiKey) {
-      setMapLoadError('Google Maps API key is missing. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map picker.');
+    if (mapApiLoaded && autocompleteServiceRef.current && geocoderRef.current) {
       return;
     }
 
+    const win = window as any;
+    
+    // Check if Google Maps is already present and fully initialized in the window
+    if (win.google?.maps?.places?.AutocompleteService && win.google?.maps?.Geocoder) {
+      autocompleteServiceRef.current = new win.google.maps.places.AutocompleteService();
+      sessionTokenRef.current = new win.google.maps.places.AutocompleteSessionToken();
+      geocoderRef.current = new win.google.maps.Geocoder();
+      setMapApiLoaded(true);
+      setMapLoadError('');
+      return;
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDYGr2i18DlybWf2QniuYXyQlnqW8tZjbI';
     const scriptId = 'google-maps-api-script';
-    const existing = document.getElementById(scriptId);
-    if (existing) {
-      waitForGoogleMapsServices();
-      return;
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const startPolling = () => {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(() => {
+        if (win.google?.maps?.places?.AutocompleteService && win.google?.maps?.Geocoder) {
+          autocompleteServiceRef.current = new win.google.maps.places.AutocompleteService();
+          sessionTokenRef.current = new win.google.maps.places.AutocompleteSessionToken();
+          geocoderRef.current = new win.google.maps.Geocoder();
+          setMapApiLoaded(true);
+          setMapLoadError('');
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+        }
+      }, 100);
+    };
+
+    if (script) {
+      // Script is already present in the DOM, start polling immediately
+      startPolling();
+    } else {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geocoding&v=weekly`;
+      script.async = true;
+      script.defer = true;
+      
+      const handleScriptLoad = () => {
+        startPolling();
+      };
+      
+      const handleScriptError = () => {
+        setMapLoadError('Google Maps could not be loaded. Check connection or API key configuration.');
+      };
+
+      script.addEventListener('load', handleScriptLoad);
+      script.addEventListener('error', handleScriptError);
+      document.head.appendChild(script);
     }
 
-    const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => waitForGoogleMapsServices();
-    script.onerror = () => setMapLoadError('Google Maps could not be loaded. Check the API key, billing, and Maps/Places API enablement.');
-    document.head.appendChild(script);
-    waitForGoogleMapsServices();
-  }, [initializeGoogleMapsServices, isMapPickerOpen, mapApiLoaded, waitForGoogleMapsServices]);
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [isMapPickerOpen, mapApiLoaded]);
 
   useEffect(() => {
     if (!isMapPickerOpen || !mapApiLoaded || !mapContainerRef.current) return;
@@ -795,41 +783,101 @@ export default function TourDashboard() {
     }
 
     const maps = (window as any).google?.maps;
-    if (!maps?.places?.PlacesService) return Promise.resolve(null);
-
-    const serviceHost = mapRef.current || document.createElement('div');
-    const service = new maps.places.PlacesService(serviceHost);
-    const fields = includePhoto
-      ? ['place_id', 'name', 'formatted_address', 'geometry', 'url', 'photos']
-      : ['place_id', 'name', 'formatted_address', 'geometry', 'url'];
+    const placeId = prediction.place_id;
 
     return new Promise((resolve) => {
-      service.getDetails({
-        placeId: prediction.place_id,
-        fields,
-        sessionToken: sessionTokenRef.current || undefined,
-      }, (place: any, status: any) => {
-        if (status !== maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
-          resolve(null);
+      if (maps?.places?.PlacesService) {
+        try {
+          const serviceHost = mapRef.current || document.createElement('div');
+          const service = new maps.places.PlacesService(serviceHost);
+          const fields = includePhoto
+            ? ['place_id', 'name', 'formatted_address', 'geometry', 'url', 'photos']
+            : ['place_id', 'name', 'formatted_address', 'geometry', 'url'];
+
+          service.getDetails({
+            placeId,
+            fields,
+            sessionToken: sessionTokenRef.current || undefined,
+          }, (place: any, status: any) => {
+            if (status === maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+              const lat = place.geometry.location.lat().toString();
+              const lng = place.geometry.location.lng().toString();
+              const photoUrl = includePhoto && place.photos?.length
+                ? place.photos[0].getUrl({ maxWidth: 600, maxHeight: 420 })
+                : '';
+
+              resolve({
+                placeId: place.place_id || placeId,
+                name: place.name || prediction.structured_formatting?.main_text || prediction.description || '',
+                address: place.formatted_address || prediction.description || '',
+                latitude: lat,
+                longitude: lng,
+                googleMapsUrl: place.url || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+                photoUrl,
+              });
+              return;
+            } else {
+              console.warn('[LocationPicker] PlacesService getDetails failed with status:', status, '. Trying Geocoder fallback...');
+            }
+            
+            // Fallback to Geocoding API if Places API details failed
+            if (geocoderRef.current) {
+              geocoderRef.current.geocode({ placeId }, (results: any[], geoStatus: any) => {
+                if (geoStatus === 'OK' && results && results[0]) {
+                  const res = results[0];
+                  const lat = res.geometry?.location?.lat()?.toString() || '';
+                  const lng = res.geometry?.location?.lng()?.toString() || '';
+                  resolve({
+                    placeId,
+                    name: prediction.structured_formatting?.main_text || prediction.description || res.address_components?.[0]?.long_name || 'Selected Place',
+                    address: res.formatted_address || prediction.description || '',
+                    latitude: lat,
+                    longitude: lng,
+                    googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+                    photoUrl: '',
+                  });
+                } else {
+                  console.error('[LocationPicker] Geocoder fallback also failed:', geoStatus);
+                  setMapLoadError(`Details query failed (Places: ${status}, Geocode: ${geoStatus}). Check billing/Places API.`);
+                  resolve(null);
+                }
+              });
+            } else {
+              setMapLoadError(`Details query failed with status: ${status}. Check billing/Places API.`);
+              resolve(null);
+            }
+          });
           return;
+        } catch (err: any) {
+          console.error('[LocationPicker] PlacesService initialization threw:', err);
         }
+      }
 
-        const lat = place.geometry.location.lat().toString();
-        const lng = place.geometry.location.lng().toString();
-        const photoUrl = includePhoto && place.photos?.length
-          ? place.photos[0].getUrl({ maxWidth: 600, maxHeight: 420 })
-          : '';
-
-        resolve({
-          placeId: place.place_id || prediction.place_id,
-          name: place.name || prediction.structured_formatting?.main_text || prediction.description || '',
-          address: place.formatted_address || prediction.description || '',
-          latitude: lat,
-          longitude: lng,
-          googleMapsUrl: place.url || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
-          photoUrl,
+      // If PlacesService doesn't exist, try Geocoder directly
+      if (geocoderRef.current) {
+        geocoderRef.current.geocode({ placeId }, (results: any[], geoStatus: any) => {
+          if (geoStatus === 'OK' && results && results[0]) {
+            const res = results[0];
+            const lat = res.geometry?.location?.lat()?.toString() || '';
+            const lng = res.geometry?.location?.lng()?.toString() || '';
+            resolve({
+              placeId,
+              name: prediction.structured_formatting?.main_text || prediction.description || res.address_components?.[0]?.long_name || 'Selected Place',
+              address: res.formatted_address || prediction.description || '',
+              latitude: lat,
+              longitude: lng,
+              googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+              photoUrl: '',
+            });
+          } else {
+            console.error('[LocationPicker] Geocoder fallback directly failed:', geoStatus);
+            setMapLoadError(`Autocomplete details failed: ${geoStatus}. Check billing/Geocoding API.`);
+            resolve(null);
+          }
         });
-      });
+      } else {
+        resolve(null);
+      }
     });
   }, [mapApiLoaded]);
 
@@ -879,6 +927,10 @@ export default function TourDashboard() {
           void hydratePrediction(results[0], { commit: false, includePhoto: false, requestId });
         } else {
           setPredictions([]);
+          if (maps?.places && status !== maps.places.PlacesServiceStatus.OK && status !== maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+            console.error('[LocationPicker] Autocomplete service error status:', status);
+            setMapLoadError(`Autocomplete failed: ${status}. API key may be missing Places API, billing, or domain authorization.`);
+          }
         }
       });
     }, 300);
@@ -1089,6 +1141,7 @@ export default function TourDashboard() {
   const [editCheckQuantity, setEditCheckQuantity] = useState<number>(1);
   const [editCheckAssignees, setEditCheckAssignees] = useState<string[]>(['Everyone']);
   const [showEditCheckAssigneeDropdown, setShowEditCheckAssigneeDropdown] = useState(false);
+  const [isGeneratingAiSuggestions, setIsGeneratingAiSuggestions] = useState(false);
 
   const editCheckFileInputRef = useRef<HTMLInputElement>(null);
   const editCheckAssigneeDropdownRef = useRef<HTMLDivElement>(null);
@@ -1324,24 +1377,23 @@ export default function TourDashboard() {
 
     const groupTitle = editItinGroupTitle.trim() || 'General Activities';
     const costRaw = editItinCost.trim();
-    const costDisplay = costRaw || null;
     const costNum = costRaw ? parseFloat(costRaw.split('-')[0].trim()) : null;
 
     const formData = new FormData();
+    const finalLocation = buildLocationPayload(editItinLocation, editItinCoordsInput, editItinLatitude || '', editItinLongitude || '', editItinLocationSource);
     formData.append('title', editItinTitle.trim());
     formData.append('day', String(editItinDay));
     formData.append('time', editItinTime);
     formData.append('timeEnd', editItinTimeEnd.trim()); // empty string → clears end time
-    const finalLocation = buildLocationPayload(editItinLocation, editItinCoordsInput, editItinLatitude, editItinLongitude, editItinLocationSource);
     formData.append('location', finalLocation);
-    formData.append('costDisplay', costDisplay ?? '');
+    formData.append('costDisplay', editItinCost.trim());
     if (costNum !== null && !isNaN(costNum)) formData.append('cost', String(costNum));
     formData.append('type', editItinType);
     formData.append('notes', editItinNotes.trim());
     formData.append('groupTitle', groupTitle);
     formData.append('status', editItinStatus);
-    formData.append('latitude', editItinLatitude);
-    formData.append('longitude', editItinLongitude);
+    formData.append('latitude', editItinLatitude || '');
+    formData.append('longitude', editItinLongitude || '');
     if (editItinAttachment) formData.append('file', editItinAttachment);
 
     // Optimistic update
@@ -1356,7 +1408,7 @@ export default function TourDashboard() {
             timeEnd: editItinTimeEnd.trim() || null,
             location: finalLocation,
             cost: costNum ?? item.cost,
-            costDisplay,
+            costDisplay: editItinCost.trim(),
             type: editItinType,
             notes: editItinNotes.trim(),
             groupTitle,
@@ -1497,7 +1549,7 @@ export default function TourDashboard() {
       completed: isFullyCompleted,
     };
 
-    const updated = checklist.map(i => i.id === editingChecklistItem.id ? updatedItem : i);
+    const updated = checklist.map(i => String(i.id) === String(editingChecklistItem.id) ? updatedItem : i);
     mutateChecklist({ success: true, checklist: updated, categories: customCategoriesList }, { revalidate: false });
     setEditingChecklistItem(null);
     haptics.success();
@@ -1506,12 +1558,12 @@ export default function TourDashboard() {
     formData.append('id', String(editingChecklistItem.id));
     formData.append('name', editCheckName.trim());
     formData.append('category', editCheckCategory);
-    formData.append('assignedTo', assignedToString);
+    formData.append('assignedTo', assignedToString as string);
     formData.append('description', editCheckDescription.trim());
     formData.append('priority', editCheckPriority);
     formData.append('quantity', String(editCheckQuantity));
     formData.append('completed', String(isFullyCompleted));
-    formData.append('completedBy', editingChecklistItem.completedBy || '[]');
+    formData.append('completedBy', (editingChecklistItem.completedBy || '[]') as string);
 
     try {
       const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
@@ -1617,8 +1669,8 @@ export default function TourDashboard() {
     }
   };
 
-  const handleToggleChecklist = async (id: string) => {
-    const item = checklist.find(i => i.id === id);
+  const handleToggleChecklist = async (id: string | number) => {
+    const item = checklist.find(i => String(i.id) === String(id));
     if (!item) return;
 
     const completedByArr = getCompletedByArray(item.completedBy);
@@ -1644,7 +1696,7 @@ export default function TourDashboard() {
     const newCompleted = isFullyCompleted;
 
     const previous = checklist;
-    const updated = checklist.map(i => i.id === id ? { ...i, completed: newCompleted, completedBy: newCompletedByStr } : i);
+    const updated = checklist.map(i => String(i.id) === String(id) ? { ...i, completed: newCompleted, completedBy: newCompletedByStr } : i);
     mutateChecklist({ success: true, checklist: updated, categories: customCategoriesList }, { revalidate: false });
     haptics.tap();
 
@@ -1665,9 +1717,9 @@ export default function TourDashboard() {
     }
   };
 
-  const handleDeleteChecklist = async (id: string) => {
+  const handleDeleteChecklist = async (id: string | number) => {
     const previous = checklist;
-    mutateChecklist({ success: true, checklist: checklist.filter(item => item.id !== id), categories: customCategoriesList }, { revalidate: false });
+    mutateChecklist({ success: true, checklist: checklist.filter(item => String(item.id) !== String(id)), categories: customCategoriesList }, { revalidate: false });
     haptics.tap();
 
     try {
@@ -1698,6 +1750,68 @@ export default function TourDashboard() {
       haptics.success();
     } catch {
       // ignore error
+    }
+  };
+
+  const handleAiSuggestChecklist = async () => {
+    if (isGeneratingAiSuggestions) return;
+    setIsGeneratingAiSuggestions(true);
+    haptics.tap();
+
+    const previous = checklist;
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist/ai-suggest`);
+      if (!res.ok) throw new Error('Failed to generate suggestions');
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.suggestions)) {
+        throw new Error('Invalid suggestions data');
+      }
+
+      const suggestions = data.suggestions;
+      const existingNames = new Set(checklist.map(c => c.name.trim().toLowerCase()));
+      const newSuggestions = suggestions.filter((s: any) => s.name && !existingNames.has(s.name.trim().toLowerCase()));
+
+      if (newSuggestions.length === 0) {
+        haptics.success();
+        setIsGeneratingAiSuggestions(false);
+        return;
+      }
+
+      const tempItems: ChecklistItem[] = newSuggestions.map((item: any, idx: number) => ({
+        id: 'temp_ai_suggest_' + Date.now() + '_' + idx,
+        name: item.name,
+        category: item.category || 'Other',
+        assignedTo: 'Everyone',
+        completed: false,
+        priority: item.priority || 'Medium',
+        quantity: item.quantity || 1,
+      }));
+
+      mutateChecklist(
+        { success: true, checklist: [...checklist, ...tempItems], categories: customCategoriesList },
+        { revalidate: false }
+      );
+      haptics.success();
+
+      // Submit items to API
+      for (const item of newSuggestions) {
+        const formData = new FormData();
+        formData.append('name', item.name);
+        formData.append('category', item.category || 'Other');
+        formData.append('assignedTo', 'Everyone');
+        formData.append('priority', item.priority || 'Medium');
+        formData.append('quantity', String(item.quantity || 1));
+        await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
+      mutateChecklist();
+    } catch (err) {
+      console.error(err);
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
+    } finally {
+      setIsGeneratingAiSuggestions(false);
     }
   };
 
@@ -2538,197 +2652,196 @@ export default function TourDashboard() {
               {/* Add Activity Form */}
               <AnimatePresence>
                 {isAddingItinerary && (
-                  <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
+                  <div className="glass-panel p-6 rounded-3xl relative overflow-hidden bg-slate-900/30 border border-white/10">
                     <motion.form
                       onSubmit={handleAddItinerary}
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="space-y-4 overflow-hidden"
+                      className="space-y-6 overflow-hidden"
                     >
-	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-	                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_1.7fr_0.65fr_1fr]">
-	                        <div ref={itinGroupInputRef} className="relative">
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category Title</label>
-	                          <input
-	                            type="text"
-                            value={itinGroupTitle}
-                            onFocus={() => setShowItinGroupSuggestions(true)}
-                            onChange={e => { setItinGroupTitle(e.target.value); setShowItinGroupSuggestions(true); }}
-                            placeholder="e.g. Day 1, Day 1 (30 July)"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                          {showItinGroupSuggestions && filteredGroupSuggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-white/10 dark:bg-slate-900">
-                              {filteredGroupSuggestions.map(suggestion => (
-                                <button
-                                  key={suggestion}
-                                  type="button"
-                                  onClick={() => { setItinGroupTitle(suggestion); setShowItinGroupSuggestions(false); }}
-                                  className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
-                                >
-                                  {suggestion}
-                                </button>
-                              ))}
-	                            </div>
-	                          )}
-	                        </div>
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
-	                          <input
-	                            type="text"
-                            required
-                            value={itinTitle}
-                            onChange={e => setItinTitle(e.target.value)}
-                            placeholder="e.g. Eiffel Tower Visit"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
+                      <div className="space-y-4">
+                        {/* Row 1: Activity Details */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_1.7fr_0.65fr_1fr]">
+                          <div ref={itinGroupInputRef} className="relative">
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category Title</label>
+                            <input
+                              type="text"
+                              value={itinGroupTitle}
+                              onFocus={() => setShowItinGroupSuggestions(true)}
+                              onChange={e => { setItinGroupTitle(e.target.value); setShowItinGroupSuggestions(true); }}
+                              placeholder="e.g. Day 1, Day 1 (30 July)"
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                            {showItinGroupSuggestions && filteredGroupSuggestions.length > 0 && (
+                              <div className="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-white/10 dark:bg-slate-900">
+                                {filteredGroupSuggestions.map(suggestion => (
+                                  <button
+                                    key={suggestion}
+                                    type="button"
+                                    onClick={() => { setItinGroupTitle(suggestion); setShowItinGroupSuggestions(false); }}
+                                    className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+                                  >
+                                    {suggestion}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
+                            <input
+                              type="text"
+                              required
+                              value={itinTitle}
+                              onChange={e => setItinTitle(e.target.value)}
+                              placeholder="e.g. Eiffel Tower Visit"
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day #</label>
+                            <input
+                              type="number"
+                              required
+                              min="1"
+                              value={itinDay}
+                              onChange={e => setItinDay(Number(e.target.value))}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
+                            <select
+                              value={itinType}
+                              onChange={e => setItinType(e.target.value as any)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            >
+                              <option value="activity">Activity 🎯</option>
+                              <option value="flight">Flight ✈️</option>
+                              <option value="hotel">Hotel 🏨</option>
+                              <option value="food">Food 🍽️</option>
+                              <option value="transport">Transport 🚗</option>
+                              <option value="other">Other 📦</option>
+                            </select>
+                          </div>
                         </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day #</label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            value={itinDay}
-                            onChange={e => setItinDay(Number(e.target.value))}
-	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                          />
-	                        </div>
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
-	                          <select
-	                            value={itinType}
-	                            onChange={e => setItinType(e.target.value as any)}
-	                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                          >
-	                            <option value="activity">Activity 🎯</option>
-	                            <option value="flight">Flight ✈️</option>
-	                            <option value="hotel">Hotel 🏨</option>
-	                            <option value="food">Food 🍽️</option>
-	                            <option value="transport">Transport 🚗</option>
-	                            <option value="other">Other 📦</option>
-	                          </select>
-	                        </div>
-	                      </div>
-                      </div>
 
-	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-	                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
-	                          <input
-                            type="time"
-                            required
-                            value={itinTime}
-                            onChange={e => setItinTime(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
-                          />
+                        {/* Row 2: Timing, Cost & Status */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
+                            <input
+                              type="time"
+                              required
+                              value={itinTime}
+                              onChange={e => setItinTime(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">End Time <span className="text-gray-500 font-normal">(optional)</span></label>
+                            <input
+                              type="time"
+                              value={itinTimeEnd}
+                              onChange={e => setItinTimeEnd(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost (Optional)</label>
+                            <input
+                              type="text"
+                              value={itinCost}
+                              onChange={e => setItinCost(e.target.value)}
+                              placeholder="e.g. 500 or 250-400"
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
+                            <select
+                              value={itinStatus}
+                              onChange={e => setItinStatus(e.target.value as any)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            >
+                              <option value="Planned">Planned 🗓️</option>
+                              <option value="Booked">Booked ✅</option>
+                              <option value="Completed">Completed 🎉</option>
+                            </select>
+                          </div>
                         </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">End Time <span className="text-gray-500 font-normal">(optional)</span></label>
-                          <input
-                            type="time"
-                            value={itinTimeEnd}
-                            onChange={e => setItinTimeEnd(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost (Optional)</label>
-                          <input
-                            type="text"
-                            value={itinCost}
-                            onChange={e => setItinCost(e.target.value)}
-                            placeholder="e.g. 500 or 250-400"
-	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                          />
-	                        </div>
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
-	                          <select
-                            value={itinStatus}
-                            onChange={e => setItinStatus(e.target.value as any)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          >
-                            <option value="Planned">Planned 🗓️</option>
-                            <option value="Booked">Booked ✅</option>
-	                            <option value="Completed">Completed 🎉</option>
-	                          </select>
-	                        </div>
-	                      </div>
-                      </div>
 
-	                      <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.035] p-4">
-	                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
-	                            <div>
-	                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
-	                              <input
-                                type="text"
-                                required
-                                placeholder="e.g. Eiffel Tower, Paris"
-                                value={getLocationNameValue(itinLocation)}
-                                onChange={(e) => handleLocationChange(e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                              />
-                            </div>
-                            <div>
-                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps Link</label>
+                        {/* Row 3: Location Details & Interactive Map Button */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.5fr_1.5fr_1fr] items-end">
+                          <div>
+                            <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Eiffel Tower, Paris"
+                              value={getLocationNameValue(itinLocation)}
+                              onChange={(e) => handleLocationChange(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps Link</label>
+                            <input
+                              type="text"
+                              placeholder="Paste a Maps link or 48.8584, 2.2945"
+                              value={itinCoordsInput}
+                              onChange={(e) => handleCoordsInputChange(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-end">
+                            <label className="ml-1 hidden md:block text-xs font-black uppercase tracking-[0.16em] text-transparent select-none">Map</label>
+                            <button
+                              type="button"
+                              onClick={() => openMapPicker('add')}
+                              className="group mt-1 flex h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/15 px-4 text-sm font-bold tracking-wide text-emerald-100 shadow-[0_8px_20px_rgba(16,185,129,0.05)] transition-all duration-300 hover:border-emerald-400/50 hover:from-emerald-500/20 hover:to-teal-500/25 hover:text-white hover:shadow-[0_12px_28px_rgba(16,185,129,0.15)] focus:outline-none active:scale-[0.98]"
+                            >
+                              <span className="material-symbols-outlined text-[20px] transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110">travel_explore</span>
+                              Open Interactive Map
+                            </button>
+                          </div>
+                        </div>
+                        <FormLocationCard location={itinLocation} latitude={itinLatitude} longitude={itinLongitude} />
+
+                        {/* Row 4: Notes & Resources */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr]">
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+                            <textarea
+                              value={itinNotes}
+                              onChange={e => setItinNotes(e.target.value)}
+                              placeholder="Confirmation codes, reminders..."
+                              className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">File Attachment (Optional)</label>
+                            <label className="mt-1 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.035] px-4 py-4 text-center transition-colors hover:border-primary/50 hover:bg-white/[0.055]">
                               <input
-                                type="text"
-                                placeholder="Paste a Maps link or 48.8584, 2.2945"
-                                value={itinCoordsInput}
-                                onChange={(e) => handleCoordsInputChange(e.target.value)}
-	                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                              />
-	                            </div>
-	                            <div>
-	                              <button
-	                                type="button"
-	                                onClick={() => openMapPicker('add')}
-	                                className="group mt-1 flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-4 py-3 text-sm font-black text-emerald-100 shadow-[0_14px_30px_rgba(16,185,129,0.12)] transition-all hover:border-emerald-300/50 hover:bg-emerald-500/25 hover:shadow-[0_18px_38px_rgba(16,185,129,0.2)]"
-	                              >
-	                                <span className="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">travel_explore</span>
-	                                Select on Live Map
-	                              </button>
-	                            </div>
-	                          </div>
-	                          <FormLocationCard location={itinLocation} latitude={itinLatitude} longitude={itinLongitude} />
-	                      </div>
-
-	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-	                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-	                            <div>
-	                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
-	                              <textarea
-	                                value={itinNotes}
-	                                onChange={e => setItinNotes(e.target.value)}
-	                                placeholder="Confirmation codes, reminders..."
-	                                className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                              />
-	                            </div>
-                            <div>
-                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">File Attachment (Optional)</label>
-                              <label className="mt-1 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.035] px-4 py-4 text-center transition-colors hover:border-primary/50 hover:bg-white/[0.055]">
-                                <input
-                                  ref={itinFileInputRef}
-                                  type="file"
-                                  onChange={e => setItinAttachment(e.target.files?.[0] || null)}
-                                  className="sr-only"
-                                />
-                                <span className="material-symbols-outlined text-[24px] text-primary">upload_file</span>
-                                <span className="mt-1 max-w-full truncate text-sm font-black text-white">
-                                  {itinAttachment ? itinAttachment.name : 'Attach itinerary document'}
-                                </span>
-                                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">PDF, image, or booking file</span>
-                              </label>
-                            </div>
-	                        </div>
-	                      </div>
+                                ref={itinFileInputRef}
+                                type="file"
+                                onChange={e => setItinAttachment(e.target.files?.[0] || null)}
+                                className="sr-only"
+                              />
+                              <span className="material-symbols-outlined text-[24px] text-primary">upload_file</span>
+                              <span className="mt-1 max-w-full truncate text-sm font-black text-white">
+                                {itinAttachment ? itinAttachment.name : 'Attach itinerary document'}
+                              </span>
+                              <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">PDF, image, or booking file</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
 
                       <button
                         type="submit"
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-black text-white shadow-md hover:bg-primary-hover"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-black text-white shadow-md hover:bg-primary-hover transition-colors"
                       >
                         <span className="material-symbols-outlined text-[20px]">calendar_add_on</span>
                         Save Activity
@@ -3035,181 +3148,177 @@ export default function TourDashboard() {
                         </button>
                       </div>
 
-	                      {/* Group + Title + Day */}
-	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-	                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_1.7fr_0.65fr_1fr]">
-	                        <div ref={editGroupInputRef} className="relative">
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category</label>
-	                          <input
-                            type="text"
-                            value={editItinGroupTitle}
-                            onFocus={() => setShowEditGroupSuggestions(true)}
-                            onChange={e => { setEditItinGroupTitle(e.target.value); setShowEditGroupSuggestions(true); }}
-                            placeholder="e.g. Day 1"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                          {showEditGroupSuggestions && uniqueGroupTitles.filter(t => !editItinGroupTitle || t.toLowerCase().includes(editItinGroupTitle.toLowerCase())).length > 0 && (
-                            <div className="absolute left-0 right-0 z-20 mt-1 max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-slate-900 p-2 shadow-lg">
-                              {uniqueGroupTitles.filter(t => !editItinGroupTitle || t.toLowerCase().includes(editItinGroupTitle.toLowerCase())).map(s => (
-                                <button key={s} type="button"
-                                  onClick={() => { setEditItinGroupTitle(s); setShowEditGroupSuggestions(false); }}
-                                  className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 hover:bg-white/5"
-                                >{s}</button>
-                              ))}
-	                            </div>
-	                          )}
-	                        </div>
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
-	                          <input
-                            type="text"
-                            required
-                            value={editItinTitle}
-                            onChange={e => setEditItinTitle(e.target.value)}
-                            placeholder="e.g. Eiffel Tower Visit"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
+                      <div className="space-y-4">
+                        {/* Row 1: Activity Details */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_1.7fr_0.65fr_1fr]">
+                          <div ref={editGroupInputRef} className="relative">
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category</label>
+                            <input
+                              type="text"
+                              value={editItinGroupTitle}
+                              onFocus={() => setShowEditGroupSuggestions(true)}
+                              onChange={e => { setEditItinGroupTitle(e.target.value); setShowEditGroupSuggestions(true); }}
+                              placeholder="e.g. Day 1"
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                            {showEditGroupSuggestions && uniqueGroupTitles.filter(t => !editItinGroupTitle || t.toLowerCase().includes(editItinGroupTitle.toLowerCase())).length > 0 && (
+                              <div className="absolute left-0 right-0 z-20 mt-1 max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-slate-900 p-2 shadow-lg">
+                                {uniqueGroupTitles.filter(t => !editItinGroupTitle || t.toLowerCase().includes(editItinGroupTitle.toLowerCase())).map(s => (
+                                  <button key={s} type="button"
+                                    onClick={() => { setEditItinGroupTitle(s); setShowEditGroupSuggestions(false); }}
+                                    className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 hover:bg-white/5"
+                                  >{s}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
+                            <input
+                              type="text"
+                              required
+                              value={editItinTitle}
+                              onChange={e => setEditItinTitle(e.target.value)}
+                              placeholder="e.g. Eiffel Tower Visit"
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day #</label>
+                            <input
+                              type="number" required min="1"
+                              value={editItinDay}
+                              onChange={e => setEditItinDay(Number(e.target.value))}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
+                            <select
+                              value={editItinType}
+                              onChange={e => setEditItinType(e.target.value as any)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            >
+                              <option value="activity">Activity 🎯</option>
+                              <option value="flight">Flight ✈️</option>
+                              <option value="hotel">Hotel 🏨</option>
+                              <option value="food">Food 🍽️</option>
+                              <option value="transport">Transport 🚗</option>
+                              <option value="other">Other 📦</option>
+                            </select>
+                          </div>
                         </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Day #</label>
-                          <input
-                            type="number" required min="1"
-                            value={editItinDay}
-                            onChange={e => setEditItinDay(Number(e.target.value))}
-	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                          />
-	                        </div>
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
-	                          <select
-	                            value={editItinType}
-	                            onChange={e => setEditItinType(e.target.value as any)}
-	                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                          >
-	                            <option value="activity">Activity 🎯</option>
-	                            <option value="flight">Flight ✈️</option>
-	                            <option value="hotel">Hotel 🏨</option>
-	                            <option value="food">Food 🍽️</option>
-	                            <option value="transport">Transport 🚗</option>
-	                            <option value="other">Other 📦</option>
-	                          </select>
-	                        </div>
-	                      </div>
-                      </div>
 
-	                      {/* Time Range + Cost + Type */}
-	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-	                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
-	                          <input
-                            type="time" required
-                            value={editItinTime}
-                            onChange={e => setEditItinTime(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
-                          />
+                        {/* Row 2: Timing, Cost & Status */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
+                            <input
+                              type="time" required
+                              value={editItinTime}
+                              onChange={e => setEditItinTime(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">End Time <span className="text-gray-500 font-normal">(opt)</span></label>
+                            <input
+                              type="time"
+                              value={editItinTimeEnd}
+                              onChange={e => setEditItinTimeEnd(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost (Optional)</label>
+                            <input
+                              type="text"
+                              value={editItinCost}
+                              onChange={e => setEditItinCost(e.target.value)}
+                              placeholder="e.g. 500 or 250-400"
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
+                            <select
+                              value={editItinStatus}
+                              onChange={e => setEditItinStatus(e.target.value as any)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            >
+                              <option value="Planned">Planned 🗓️</option>
+                              <option value="Booked">Booked ✅</option>
+                              <option value="Completed">Completed 🎉</option>
+                            </select>
+                          </div>
                         </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">End Time <span className="text-gray-500 font-normal">(opt)</span></label>
-                          <input
-                            type="time"
-                            value={editItinTimeEnd}
-                            onChange={e => setEditItinTimeEnd(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary [color-scheme:dark]"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost (Optional)</label>
-                          <input
-                            type="text"
-                            value={editItinCost}
-                            onChange={e => setEditItinCost(e.target.value)}
-                            placeholder="e.g. 500 or 250-400"
-	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                          />
-	                        </div>
-	                        <div>
-	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
-	                          <select
-                            value={editItinStatus}
-                            onChange={e => setEditItinStatus(e.target.value as any)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          >
-                            <option value="Planned">Planned 🗓️</option>
-                            <option value="Booked">Booked ✅</option>
-	                            <option value="Completed">Completed 🎉</option>
-	                          </select>
-	                        </div>
-	                      </div>
-                      </div>
 
-	                      {/* Location + Notes + File */}
-	                      <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.035] p-4">
-	                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
-	                            <div>
-	                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
-	                              <input
-                                type="text"
-                                required
-                                placeholder="e.g. Eiffel Tower, Paris"
-                                value={getLocationNameValue(editItinLocation)}
-                                onChange={(e) => handleEditLocationChange(e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                              />
-                            </div>
-                            <div>
-                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps Link</label>
+                        {/* Row 3: Location Details & Interactive Map Button */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.5fr_1.5fr_1fr] items-end">
+                          <div>
+                            <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Eiffel Tower, Paris"
+                              value={getLocationNameValue(editItinLocation)}
+                              onChange={(e) => handleEditLocationChange(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps Link</label>
+                            <input
+                              type="text"
+                              placeholder="Paste a Maps link or 48.8584, 2.2945"
+                              value={editItinCoordsInput}
+                              onChange={(e) => handleEditCoordsInputChange(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-end">
+                            <label className="ml-1 hidden md:block text-xs font-black uppercase tracking-[0.16em] text-transparent select-none">Map</label>
+                            <button
+                              type="button"
+                              onClick={() => openMapPicker('edit')}
+                              className="group mt-1 flex h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/15 px-4 text-sm font-bold tracking-wide text-emerald-100 shadow-[0_8px_20px_rgba(16,185,129,0.05)] transition-all duration-300 hover:border-emerald-400/50 hover:from-emerald-500/20 hover:to-teal-500/25 hover:text-white hover:shadow-[0_12px_28px_rgba(16,185,129,0.15)] focus:outline-none active:scale-[0.98]"
+                            >
+                              <span className="material-symbols-outlined text-[20px] transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110">travel_explore</span>
+                              Open Interactive Map
+                            </button>
+                          </div>
+                        </div>
+                        <FormLocationCard location={editItinLocation} latitude={editItinLatitude} longitude={editItinLongitude} />
+
+                        {/* Row 4: Notes & Resources */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr]">
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+                            <textarea
+                              value={editItinNotes}
+                              onChange={e => setEditItinNotes(e.target.value)}
+                              placeholder="Confirmation codes, links..."
+                              className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Replace File (Optional)</label>
+                            <label className="mt-1 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.035] px-4 py-4 text-center transition-colors hover:border-primary/50 hover:bg-white/[0.055]">
                               <input
-                                type="text"
-                                placeholder="Paste a Maps link or 48.8584, 2.2945"
-                                value={editItinCoordsInput}
-                                onChange={(e) => handleEditCoordsInputChange(e.target.value)}
-	                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                              />
-	                            </div>
-	                            <div>
-	                              <button
-	                                type="button"
-	                                onClick={() => openMapPicker('edit')}
-	                                className="group mt-1 flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-4 py-3 text-sm font-black text-emerald-100 shadow-[0_14px_30px_rgba(16,185,129,0.12)] transition-all hover:border-emerald-300/50 hover:bg-emerald-500/25 hover:shadow-[0_18px_38px_rgba(16,185,129,0.2)]"
-	                              >
-	                                <span className="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">travel_explore</span>
-	                                Select on Live Map
-	                              </button>
-	                            </div>
-	                          </div>
-	                          <FormLocationCard location={editItinLocation} latitude={editItinLatitude} longitude={editItinLongitude} />
-	                      </div>
-
-	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-	                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-	                            <div>
-	                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
-	                              <textarea
-	                                value={editItinNotes}
-	                                onChange={e => setEditItinNotes(e.target.value)}
-	                                placeholder="Confirmation codes, links..."
-	                                className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-	                              />
-	                            </div>
-                            <div>
-                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Replace File (Optional)</label>
-                              <label className="mt-1 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.035] px-4 py-4 text-center transition-colors hover:border-primary/50 hover:bg-white/[0.055]">
-                                <input
-                                  ref={editItinFileInputRef}
-                                  type="file"
-                                  onChange={e => setEditItinAttachment(e.target.files?.[0] || null)}
-                                  className="sr-only"
-                                />
-                                <span className="material-symbols-outlined text-[24px] text-primary">upload_file</span>
-                                <span className="mt-1 max-w-full truncate text-sm font-black text-white">
-                                  {editItinAttachment?.name || editingItinItem?.attachmentName || 'Attach replacement document'}
-                                </span>
-                                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">PDF, image, or booking file</span>
-                              </label>
-                            </div>
-	                        </div>
-	                      </div>
+                                ref={editItinFileInputRef}
+                                type="file"
+                                onChange={e => setEditItinAttachment(e.target.files?.[0] || null)}
+                                className="sr-only"
+                              />
+                              <span className="material-symbols-outlined text-[24px] text-primary">upload_file</span>
+                              <span className="mt-1 max-w-full truncate text-sm font-black text-white">
+                                {editItinAttachment?.name || editingItinItem?.attachmentName || 'Attach replacement document'}
+                              </span>
+                              <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">PDF, image, or booking file</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
 
                       {/* Save / Cancel */}
                       <div className="flex gap-3 pt-2">
@@ -3432,6 +3541,27 @@ export default function TourDashboard() {
                           Generate Essentials
                         </button>
                       )}
+                      <button
+                        type="button"
+                        disabled={isGeneratingAiSuggestions}
+                        onClick={handleAiSuggestChecklist}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/15 border border-emerald-500/20 px-4 py-2.5 text-xs font-black text-emerald-400 hover:from-emerald-500/20 hover:to-teal-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                      >
+                        {isGeneratingAiSuggestions ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-[18px] animate-pulse">auto_awesome</span>
+                            AI Suggestions
+                          </>
+                        )}
+                      </button>
                       <button
                         type="button"
                         onClick={() => { haptics.tap(); setIsAddingChecklist(!isAddingChecklist); }}
