@@ -274,59 +274,113 @@ interface GooglePlaceDetails {
 const parseJsonLocation = (locStr: string | null | undefined): { name: string; address?: string; photoUrl?: string; googleMapsUrl?: string; latitude?: string; longitude?: string } | null => {
   if (!locStr) return null;
   const trimmed = locStr.trim();
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    try {
-      return JSON.parse(trimmed);
-    } catch (e) {
-      // Fallback to legacy string below
-    }
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.name !== 'string') return null;
+    return parsed;
+  } catch (e) {
+    return null;
   }
-  return {
-    name: trimmed,
-    address: 'Legacy Location',
-  };
 };
 
 const getFinalLocationPayload = (locationVal: string, coordsInput: string, lat: string, lng: string): string => {
   const trimmedLoc = locationVal.trim();
   const trimmedCoords = coordsInput.trim();
+  const parsedCoords = parseCoordinates(trimmedCoords);
+  const isMapLink = /^https?:\/\//i.test(trimmedCoords);
 
-  // Try parsing locationVal as JSON (e.g. from Map picker)
   if (trimmedLoc.startsWith('{') && trimmedLoc.endsWith('}')) {
     try {
       const parsed = JSON.parse(trimmedLoc);
-      // Update with any coords changes from the other field
+      parsed.name = typeof parsed.name === 'string' ? parsed.name.trim() : '';
       if (trimmedCoords) {
-        parsed.address = trimmedCoords;
-        parsed.latitude = lat;
-        parsed.longitude = lng;
-        parsed.googleMapsUrl = trimmedCoords.startsWith('http') ? trimmedCoords : (parsed.googleMapsUrl || '');
-      } else {
-        // Coords input was cleared
-        parsed.address = '';
-        parsed.latitude = '';
-        parsed.longitude = '';
-        parsed.googleMapsUrl = '';
+        parsed.latitude = parsedCoords?.lat || lat || parsed.latitude || '';
+        parsed.longitude = parsedCoords?.lng || lng || parsed.longitude || '';
+        if (isMapLink) {
+          parsed.googleMapsUrl = trimmedCoords;
+        } else if (parsedCoords) {
+          parsed.googleMapsUrl = parsed.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${parsedCoords.lat},${parsedCoords.lng}`;
+        }
+        parsed.address = parsed.address || (isMapLink ? 'Google Maps link' : trimmedCoords);
       }
       return JSON.stringify(parsed);
     } catch (e) {
-      // Fallback
+      // Fall back to legacy plain text below.
     }
   }
 
-  // If it's a plain string but they provided coords/link
   if (trimmedCoords) {
+    const manualLat = parsedCoords?.lat || lat || '';
+    const manualLng = parsedCoords?.lng || lng || '';
     return JSON.stringify({
       name: trimmedLoc,
-      address: trimmedCoords,
-      latitude: lat,
-      longitude: lng,
-      googleMapsUrl: trimmedCoords.startsWith('http') ? trimmedCoords : '',
+      address: isMapLink ? 'Google Maps link' : trimmedCoords,
+      latitude: manualLat,
+      longitude: manualLng,
+      googleMapsUrl: isMapLink ? trimmedCoords : (manualLat && manualLng ? `https://www.google.com/maps/search/?api=1&query=${manualLat},${manualLng}` : ''),
+      photoUrl: '',
     });
   }
 
   return trimmedLoc;
 };
+
+const getLocationNameValue = (locationVal: string): string => {
+  const parsed = parseJsonLocation(locationVal);
+  return parsed ? parsed.name : locationVal;
+};
+
+const getLocationAuxValue = (locationVal: string, latitude?: string | null, longitude?: string | null): string => {
+  const parsed = parseJsonLocation(locationVal);
+  if (parsed?.googleMapsUrl) return parsed.googleMapsUrl;
+  if (latitude && longitude) return `${latitude}, ${longitude}`;
+  if (parsed?.latitude && parsed?.longitude) return `${parsed.latitude}, ${parsed.longitude}`;
+  return '';
+};
+
+function FormLocationCard({
+  location,
+  latitude,
+  longitude,
+}: {
+  location: string;
+  latitude?: string | null;
+  longitude?: string | null;
+}) {
+  const parsed = parseJsonLocation(location);
+  if (!parsed) return null;
+
+  const mapsUrl = parsed.googleMapsUrl || (latitude && longitude
+    ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.name)}`);
+
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 shadow-[0_14px_34px_rgba(0,0,0,0.18)]">
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-slate-950">
+        {parsed.photoUrl ? (
+          <img src={parsed.photoUrl} alt={parsed.name} className="h-full w-full object-cover" />
+        ) : (
+          <span className="material-symbols-outlined text-emerald-400">location_on</span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-black text-white">{parsed.name}</p>
+        <p className="mt-0.5 line-clamp-2 text-xs font-semibold text-gray-400">{parsed.address || 'Confirmed map location'}</p>
+      </div>
+      <a
+        href={mapsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+        onClick={(e) => e.stopPropagation()}
+        title="Open in Google Maps"
+      >
+        <span className="material-symbols-outlined text-[17px]">open_in_new</span>
+      </a>
+    </div>
+  );
+}
 
 const mapDarkStyles = [
   { elementType: "geometry", stylers: [{ color: "#0A0E1A" }] },
@@ -529,6 +583,7 @@ export default function TourDashboard() {
 
   // Google Places Map States
   const [mapApiLoaded, setMapApiLoaded] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState('');
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [mapPickerTarget, setMapPickerTarget] = useState<'add' | 'edit'>('add');
   const [mapSearchQuery, setMapSearchQuery] = useState('');
@@ -545,10 +600,16 @@ export default function TourDashboard() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDYGr2i18DlybWf2QniuYXyQlnqW8tZjbI';
+    if (!isMapPickerOpen || mapApiLoaded) return;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+    if (!apiKey) {
+      setMapLoadError('Google Maps API key is missing. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map picker.');
+      return;
+    }
     
     const initializeServices = () => {
       setMapApiLoaded(true);
+      setMapLoadError('');
       const win = window as any;
       if (win.google && win.google.maps) {
         autocompleteServiceRef.current = new win.google.maps.places.AutocompleteService();
@@ -580,8 +641,9 @@ export default function TourDashboard() {
     script.async = true;
     script.defer = true;
     script.onload = initializeServices;
+    script.onerror = () => setMapLoadError('Google Maps could not be loaded. Check the API key, billing, and Maps/Places API enablement.');
     document.head.appendChild(script);
-  }, []);
+  }, [isMapPickerOpen, mapApiLoaded]);
 
   useEffect(() => {
     if (!mapSearchQuery.trim() || !autocompleteServiceRef.current || !mapApiLoaded) {
@@ -688,6 +750,7 @@ export default function TourDashboard() {
   const openMapPicker = (target: 'add' | 'edit') => {
     setMapPickerTarget(target);
     setIsMapPickerOpen(true);
+    setMapLoadError('');
     setMapSearchQuery('');
     setPredictions([]);
     
@@ -784,19 +847,20 @@ export default function TourDashboard() {
       setItinLocation(serialized);
       setItinLatitude(placeToSave.latitude);
       setItinLongitude(placeToSave.longitude);
-      setItinCoordsInput(placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : '');
+      setItinCoordsInput(placeToSave.googleMapsUrl || (placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : ''));
     } else {
       setEditItinLocation(serialized);
       setEditItinLatitude(placeToSave.latitude);
       setEditItinLongitude(placeToSave.longitude);
-      setEditItinCoordsInput(placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : '');
+      setEditItinCoordsInput(placeToSave.googleMapsUrl || (placeToSave.latitude ? `${placeToSave.latitude}, ${placeToSave.longitude}` : ''));
     }
     
     setIsMapPickerOpen(false);
   };
 
   const handleLocationChange = (val: string) => {
-    setItinLocation(val);
+    const existing = parseJsonLocation(itinLocation);
+    setItinLocation(existing ? JSON.stringify({ ...existing, name: val }) : val);
     const parsed = parseCoordinates(val);
     if (parsed) {
       setItinLatitude(parsed.lat);
@@ -807,6 +871,16 @@ export default function TourDashboard() {
 
   const handleCoordsInputChange = (val: string) => {
     setItinCoordsInput(val);
+    const existing = parseJsonLocation(itinLocation);
+    if (existing) {
+      const parsedLinkCoords = parseCoordinates(val);
+      setItinLocation(JSON.stringify({
+        ...existing,
+        googleMapsUrl: /^https?:\/\//i.test(val.trim()) ? val.trim() : existing.googleMapsUrl,
+        latitude: parsedLinkCoords?.lat || existing.latitude || itinLatitude,
+        longitude: parsedLinkCoords?.lng || existing.longitude || itinLongitude,
+      }));
+    }
     const parsed = parseCoordinates(val);
     if (parsed) {
       setItinLatitude(parsed.lat);
@@ -830,7 +904,8 @@ export default function TourDashboard() {
   };
 
   const handleEditLocationChange = (val: string) => {
-    setEditItinLocation(val);
+    const existing = parseJsonLocation(editItinLocation);
+    setEditItinLocation(existing ? JSON.stringify({ ...existing, name: val }) : val);
     const parsed = parseCoordinates(val);
     if (parsed) {
       setEditItinLatitude(parsed.lat);
@@ -841,6 +916,16 @@ export default function TourDashboard() {
 
   const handleEditCoordsInputChange = (val: string) => {
     setEditItinCoordsInput(val);
+    const existing = parseJsonLocation(editItinLocation);
+    if (existing) {
+      const parsedLinkCoords = parseCoordinates(val);
+      setEditItinLocation(JSON.stringify({
+        ...existing,
+        googleMapsUrl: /^https?:\/\//i.test(val.trim()) ? val.trim() : existing.googleMapsUrl,
+        latitude: parsedLinkCoords?.lat || existing.latitude || editItinLatitude,
+        longitude: parsedLinkCoords?.lng || existing.longitude || editItinLongitude,
+      }));
+    }
     const parsed = parseCoordinates(val);
     if (parsed) {
       setEditItinLatitude(parsed.lat);
@@ -1120,7 +1205,7 @@ export default function TourDashboard() {
     setEditItinStatus(item.status || 'Planned');
     setEditItinLatitude(item.latitude || '');
     setEditItinLongitude(item.longitude || '');
-    setEditItinCoordsInput(item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : '');
+    setEditItinCoordsInput(getLocationAuxValue(item.location || '', item.latitude, item.longitude));
     setEditItinAttachment(null);
     if (editItinFileInputRef.current) editItinFileInputRef.current.value = '';
   };
@@ -2460,44 +2545,45 @@ export default function TourDashboard() {
                             <option value="Booked">Booked ✅</option>
                             <option value="Completed">Completed 🎉</option>
                           </select>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                        <div className="lg:col-span-2">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px]">
+                            <div>
+                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. Eiffel Tower, Paris"
+                                value={getLocationNameValue(itinLocation)}
+                                onChange={(e) => handleLocationChange(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                              />
+                            </div>
+                            <div>
+                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps Link</label>
+                              <input
+                                type="text"
+                                placeholder="Paste a Maps link or 48.8584, 2.2945"
+                                value={itinCoordsInput}
+                                onChange={(e) => handleCoordsInputChange(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                              />
+                            </div>
+                            <div className="flex items-end">
                               <button
                                 type="button"
                                 onClick={() => openMapPicker('add')}
-                                className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"
+                                className="flex h-[46px] w-11 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 shadow-sm transition-colors hover:bg-emerald-500/20 hover:text-emerald-200"
+                                title="Pick from Google Maps"
                               >
-                                <span className="material-symbols-outlined text-[12px]">map</span>
-                                Map Picker
+                                <span className="material-symbols-outlined text-[20px]">map</span>
                               </button>
                             </div>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. Eiffel Tower, Paris"
-                              value={(() => {
-                                const parsed = parseJsonLocation(itinLocation);
-                                return parsed ? parsed.name : itinLocation;
-                              })()}
-                              onChange={(e) => handleLocationChange(e.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                            />
                           </div>
-                          <div>
-                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Coordinates / Google Maps Link</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. 48.8584, 2.2945 or maps link"
-                              value={itinCoordsInput}
-                              onChange={(e) => handleCoordsInputChange(e.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                            />
-                          </div>
-                        </div>
-                        <div>
+                          <FormLocationCard location={itinLocation} latitude={itinLatitude} longitude={itinLongitude} />
                         </div>
                         <div>
                           <div className="space-y-4">
@@ -2937,42 +3023,42 @@ export default function TourDashboard() {
                       </div>
 
                       {/* Location + Notes + File */}
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                        <div className="lg:col-span-2">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px]">
+                            <div>
+                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. Eiffel Tower, Paris"
+                                value={getLocationNameValue(editItinLocation)}
+                                onChange={(e) => handleEditLocationChange(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                              />
+                            </div>
+                            <div>
+                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps Link</label>
+                              <input
+                                type="text"
+                                placeholder="Paste a Maps link or 48.8584, 2.2945"
+                                value={editItinCoordsInput}
+                                onChange={(e) => handleEditCoordsInputChange(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                              />
+                            </div>
+                            <div className="flex items-end">
                               <button
                                 type="button"
                                 onClick={() => openMapPicker('edit')}
-                                className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"
+                                className="flex h-[46px] w-11 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 shadow-sm transition-colors hover:bg-emerald-500/20 hover:text-emerald-200"
+                                title="Pick from Google Maps"
                               >
-                                <span className="material-symbols-outlined text-[12px]">map</span>
-                                Map Picker
+                                <span className="material-symbols-outlined text-[20px]">map</span>
                               </button>
                             </div>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. Eiffel Tower, Paris"
-                              value={(() => {
-                                const parsed = parseJsonLocation(editItinLocation);
-                                return parsed ? parsed.name : editItinLocation;
-                              })()}
-                              onChange={(e) => handleEditLocationChange(e.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                            />
                           </div>
-                          <div>
-                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Coordinates / Google Maps Link</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. 48.8584, 2.2945 or maps link"
-                              value={editItinCoordsInput}
-                              onChange={(e) => handleEditCoordsInputChange(e.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                            />
-                          </div>
+                          <FormLocationCard location={editItinLocation} latitude={editItinLatitude} longitude={editItinLongitude} />
                         </div>
                         <div>
                           <div className="space-y-4">
@@ -3956,7 +4042,7 @@ export default function TourDashboard() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-black text-white flex items-center gap-2">
                     <span className="material-symbols-outlined text-emerald-400">map</span>
-                    Map Location Picker
+                    Location Picker
                   </h3>
                   <button
                     type="button"
@@ -3966,6 +4052,12 @@ export default function TourDashboard() {
                     <span className="material-symbols-outlined text-sm">close</span>
                   </button>
                 </div>
+
+                {mapLoadError && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-bold leading-relaxed text-amber-100">
+                    {mapLoadError}
+                  </div>
+                )}
                 
                 {/* Autocomplete Search input */}
                 <div className="relative">
@@ -4017,9 +4109,11 @@ export default function TourDashboard() {
                       <div>
                         <h4 className="text-sm font-black text-white">{tempSelectedPlace.name}</h4>
                         <p className="text-xs font-bold text-gray-400 mt-1">{tempSelectedPlace.address}</p>
-                        <p className="text-[10px] font-mono text-emerald-400/80 mt-2 bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10 w-fit">
-                          {parseFloat(tempSelectedPlace.latitude).toFixed(6)}, {parseFloat(tempSelectedPlace.longitude).toFixed(6)}
-                        </p>
+                        {Number.isFinite(parseFloat(tempSelectedPlace.latitude)) && Number.isFinite(parseFloat(tempSelectedPlace.longitude)) && (
+                          <p className="text-[10px] font-mono text-emerald-400/80 mt-2 bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10 w-fit">
+                            {parseFloat(tempSelectedPlace.latitude).toFixed(6)}, {parseFloat(tempSelectedPlace.longitude).toFixed(6)}
+                          </p>
+                        )}
                       </div>
                       
                       <button
@@ -4044,6 +4138,16 @@ export default function TourDashboard() {
               {/* Right Panel: Interactive Map */}
               <div className="flex-1 relative min-h-[300px] md:min-h-0 bg-[#0A0E1A]">
                 <div ref={mapContainerRef} className="w-full h-full" />
+                {!mapApiLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#0A0E1A]">
+                    <div className="rounded-2xl border border-white/10 bg-slate-950/80 px-5 py-4 text-center shadow-2xl">
+                      <span className="material-symbols-outlined mb-2 text-3xl text-emerald-400">map</span>
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-white">
+                        {mapLoadError ? 'Map unavailable' : 'Loading map'}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Draggable indicator hint overlay */}
                 <div className="absolute top-4 right-4 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-black text-gray-300 pointer-events-none uppercase tracking-wider flex items-center gap-1.5 shadow-lg">
