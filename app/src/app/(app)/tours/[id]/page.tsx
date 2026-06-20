@@ -261,6 +261,110 @@ const packingPresets = {
   ]
 };
 
+
+interface GooglePlaceDetails {
+  name: string;
+  address: string;
+  latitude: string;
+  longitude: string;
+  googleMapsUrl: string;
+  photoUrl: string;
+}
+
+const parseJsonLocation = (locStr: string | null | undefined): { name: string; address?: string; photoUrl?: string; googleMapsUrl?: string } | null => {
+  if (!locStr) return null;
+  const trimmed = locStr.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      return JSON.parse(trimmed);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+};
+
+const mapDarkStyles = [
+  { elementType: "geometry", stylers: [{ color: "#0A0E1A" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0A0E1A" }, { weight: 2 }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#94a3b8" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#e2e8f0" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#64748b" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#0A0F1D" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#475569" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#1e293b" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#0F172A" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#64748b" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#334155" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1e293b" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#cbd5e1" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#1e293b" }],
+  },
+  {
+    featureType: "transit.station",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#cbd5e1" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#080c16" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#475569" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#080c16" }],
+  },
+];
+
 export default function TourDashboard() {
   const params = useParams<{ id: string }>();
   const tourId = params.id;
@@ -378,6 +482,257 @@ export default function TourDashboard() {
 
   const [itinCoordsInput, setItinCoordsInput] = useState('');
   const [editItinCoordsInput, setEditItinCoordsInput] = useState('');
+
+  // Google Places Map States
+  const [mapApiLoaded, setMapApiLoaded] = useState(false);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
+  const [mapPickerTarget, setMapPickerTarget] = useState<'add' | 'edit'>('add');
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [predictions, setPredictions] = useState<any[]>([]);
+  const [tempSelectedPlace, setTempSelectedPlace] = useState<GooglePlaceDetails | null>(null);
+
+  // Refs for Google Map elements
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const autocompleteServiceRef = useRef<any>(null);
+  const sessionTokenRef = useRef<any>(null);
+  const geocoderRef = useRef<any>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAJx7KaRqx8ERhqK3pNRtqGo_w32k-hHjs';
+    
+    const initializeServices = () => {
+      setMapApiLoaded(true);
+      const win = window as any;
+      if (win.google && win.google.maps) {
+        autocompleteServiceRef.current = new win.google.maps.places.AutocompleteService();
+        sessionTokenRef.current = new win.google.maps.places.AutocompleteSessionToken();
+        geocoderRef.current = new win.google.maps.Geocoder();
+      }
+    };
+
+    const win = window as any;
+    if (win.google && win.google.maps) {
+      initializeServices();
+      return;
+    }
+
+    const scriptId = 'google-maps-api-script';
+    const existing = document.getElementById(scriptId);
+    if (existing) {
+      existing.addEventListener('load', initializeServices);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeServices;
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!mapSearchQuery.trim() || !autocompleteServiceRef.current || !mapApiLoaded) {
+      setPredictions([]);
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      autocompleteServiceRef.current?.getPlacePredictions({
+        input: mapSearchQuery,
+        sessionToken: sessionTokenRef.current || undefined
+      }, (results: any[], status: any) => {
+        const win = window as any;
+        if (win.google && win.google.maps && status === win.google.maps.places.PlacesServiceStatus.OK && results) {
+          setPredictions(results);
+        } else {
+          setPredictions([]);
+        }
+      });
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [mapSearchQuery, mapApiLoaded]);
+
+  useEffect(() => {
+    if (!isMapPickerOpen || !mapApiLoaded || !mapContainerRef.current) return;
+
+    let initialLat = 40.7128;
+    let initialLng = -74.0060;
+    let initialZoom = 12;
+
+    if (tempSelectedPlace && tempSelectedPlace.latitude && tempSelectedPlace.longitude) {
+      const latNum = parseFloat(tempSelectedPlace.latitude);
+      const lngNum = parseFloat(tempSelectedPlace.longitude);
+      if (!isNaN(latNum) && !isNaN(lngNum)) {
+        initialLat = latNum;
+        initialLng = lngNum;
+        initialZoom = 15;
+      }
+    }
+
+    const win = window as any;
+    const mapOptions = {
+      center: { lat: initialLat, lng: initialLng },
+      zoom: initialZoom,
+      styles: mapDarkStyles,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      zoomControl: true,
+      zoomControlOptions: {
+        position: win.google.maps.ControlPosition.RIGHT_BOTTOM
+      }
+    };
+
+    const map = new win.google.maps.Map(mapContainerRef.current, mapOptions);
+    mapRef.current = map;
+
+    const marker = new win.google.maps.Marker({
+      position: { lat: initialLat, lng: initialLng },
+      map: map,
+      draggable: true,
+      animation: win.google.maps.Animation.DROP
+    });
+    markerRef.current = marker;
+
+    const handleCoordinateUpdate = (lat: number, lng: number) => {
+      if (!geocoderRef.current) return;
+      geocoderRef.current.geocode({ location: { lat, lng } }, (results: any[], status: any) => {
+        if (status === 'OK' && results && results[0]) {
+          const res = results[0];
+          const placeName = res.address_components[0]?.long_name || 'Dropped Pin';
+          setTempSelectedPlace({
+            name: placeName,
+            address: res.formatted_address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+            latitude: lat.toString(),
+            longitude: lng.toString(),
+            googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+            photoUrl: ''
+          });
+        }
+      });
+    };
+
+    marker.addListener('dragend', () => {
+      const pos = marker.getPosition();
+      if (pos) {
+        handleCoordinateUpdate(pos.lat(), pos.lng());
+      }
+    });
+
+    map.addListener('click', (e: any) => {
+      const pos = e.latLng;
+      if (pos) {
+        marker.setPosition(pos);
+        handleCoordinateUpdate(pos.lat(), pos.lng());
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMapPickerOpen, mapApiLoaded]);
+
+  const openMapPicker = (target: 'add' | 'edit') => {
+    setMapPickerTarget(target);
+    setIsMapPickerOpen(true);
+    setMapSearchQuery('');
+    setPredictions([]);
+    
+    const existingLocStr = target === 'add' ? itinLocation : editItinLocation;
+    const parsed = parseJsonLocation(existingLocStr);
+    
+    if (parsed && parsed.address) {
+      const lat = target === 'add' ? itinLatitude : editItinLatitude;
+      const lng = target === 'add' ? itinLongitude : editItinLongitude;
+      setTempSelectedPlace({
+        name: parsed.name,
+        address: parsed.address,
+        latitude: lat,
+        longitude: lng,
+        googleMapsUrl: parsed.googleMapsUrl || '',
+        photoUrl: parsed.photoUrl || ''
+      });
+    } else {
+      const lat = target === 'add' ? itinLatitude : editItinLatitude;
+      const lng = target === 'add' ? itinLongitude : editItinLongitude;
+      if (lat && lng) {
+        setTempSelectedPlace({
+          name: existingLocStr || 'Selected Location',
+          address: `${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}`,
+          latitude: lat,
+          longitude: lng,
+          googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+          photoUrl: ''
+        });
+      } else {
+        setTempSelectedPlace(null);
+      }
+    }
+  };
+
+  const selectPrediction = (prediction: any) => {
+    if (!mapApiLoaded || !mapRef.current || !markerRef.current) return;
+    
+    const dummyDiv = document.createElement('div');
+    const win = window as any;
+    const service = new win.google.maps.places.PlacesService(dummyDiv);
+    
+    service.getDetails({
+      placeId: prediction.place_id,
+      fields: ['name', 'formatted_address', 'geometry', 'url', 'photos']
+    }, (place: any, status: any) => {
+      if (status === win.google.maps.places.PlacesServiceStatus.OK && place && place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat().toString();
+        const lng = place.geometry.location.lng().toString();
+        
+        let photoUrl = '';
+        if (place.photos && place.photos.length > 0) {
+          photoUrl = place.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 });
+        }
+        
+        const details: GooglePlaceDetails = {
+          name: place.name || prediction.structured_formatting.main_text || '',
+          address: place.formatted_address || prediction.description || '',
+          latitude: lat,
+          longitude: lng,
+          googleMapsUrl: place.url || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+          photoUrl: photoUrl
+        };
+        
+        setTempSelectedPlace(details);
+        setMapSearchQuery(details.name);
+        setPredictions([]);
+        
+        const latLng = place.geometry.location;
+        mapRef.current?.setCenter(latLng);
+        mapRef.current?.setZoom(16);
+        markerRef.current?.setPosition(latLng);
+      }
+    });
+  };
+
+  const confirmLocation = () => {
+    if (!tempSelectedPlace) return;
+    
+    const serialized = JSON.stringify(tempSelectedPlace);
+    
+    if (mapPickerTarget === 'add') {
+      setItinLocation(serialized);
+      setItinLatitude(tempSelectedPlace.latitude);
+      setItinLongitude(tempSelectedPlace.longitude);
+      setItinCoordsInput(`${tempSelectedPlace.latitude}, ${tempSelectedPlace.longitude}`);
+    } else {
+      setEditItinLocation(serialized);
+      setEditItinLatitude(tempSelectedPlace.latitude);
+      setEditItinLongitude(tempSelectedPlace.longitude);
+      setEditItinCoordsInput(`${tempSelectedPlace.latitude}, ${tempSelectedPlace.longitude}`);
+    }
+    
+    setIsMapPickerOpen(false);
+  };
 
   const handleLocationChange = (val: string) => {
     setItinLocation(val);
@@ -2045,44 +2400,88 @@ export default function TourDashboard() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
-                          <input
-                            type="text"
-                            value={itinLocation}
-                            onChange={e => handleLocationChange(e.target.value)}
-                            placeholder="e.g. Paris, France"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="sm:col-span-2">
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Location</label>
+                          {(() => {
+                            const parsed = parseJsonLocation(itinLocation);
+                            if (parsed) {
+                              return (
+                                <div className="relative group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex gap-4 transition-all duration-300 hover:bg-white/[0.05] hover:border-emerald-500/30">
+                                  <div className="relative w-20 h-20 rounded-xl bg-slate-900 border border-white/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                    {parsed.photoUrl ? (
+                                      <img src={parsed.photoUrl} alt={parsed.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="text-emerald-400 bg-emerald-500/10 w-full h-full flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-3xl">location_on</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                                    <div>
+                                      <h4 className="text-sm font-black text-white truncate">{parsed.name}</h4>
+                                      <p className="text-xs font-bold text-gray-400 mt-1 line-clamp-2">{parsed.address}</p>
+                                    </div>
+                                    <div className="flex gap-3 text-[10px] font-black uppercase tracking-wider text-emerald-400 mt-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => openMapPicker('add')}
+                                        className="hover:text-emerald-300 transition-colors"
+                                      >
+                                        Change Location
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setItinLocation('');
+                                          setItinLatitude('');
+                                          setItinLongitude('');
+                                          setItinCoordsInput('');
+                                        }}
+                                        className="text-rose-400 hover:text-rose-300 transition-colors"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div
+                                onClick={() => openMapPicker('add')}
+                                className="w-full rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center cursor-pointer hover:bg-white/[0.04] hover:border-emerald-500/40 transition-all duration-300 flex flex-col items-center justify-center group"
+                              >
+                                <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center text-gray-400 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-all duration-300 mb-3 border border-white/5">
+                                  <span className="material-symbols-outlined text-2xl">map</span>
+                                </div>
+                                <span className="text-sm font-black text-white">Select Location on Google Maps</span>
+                                <span className="text-xs font-bold text-gray-400 mt-1">Search or drop a pin to confirm activity location</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps URL / Coords</label>
-                          <input
-                            type="text"
-                            value={itinCoordsInput}
-                            onChange={e => handleCoordsInputChange(e.target.value)}
-                            placeholder="Paste maps link or lat,lng"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
-                          <textarea
-                            value={itinNotes}
-                            onChange={e => setItinNotes(e.target.value)}
-                            placeholder="Confirmation codes, reminders, reservation links..."
-                            className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">File Attachment (Optional)</label>
-                          <input
-                            ref={itinFileInputRef}
-                            type="file"
-                            onChange={e => setItinAttachment(e.target.files?.[0] || null)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
+                          <div className="space-y-4">
+                            <div>
+                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+                              <textarea
+                                value={itinNotes}
+                                onChange={e => setItinNotes(e.target.value)}
+                                placeholder="Confirmation codes, reminders..."
+                                className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                              />
+                            </div>
+                            <div>
+                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">File Attachment (Optional)</label>
+                              <input
+                                ref={itinFileInputRef}
+                                type="file"
+                                onChange={e => setItinAttachment(e.target.files?.[0] || null)}
+                                className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-primary"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -2248,30 +2647,71 @@ export default function TourDashboard() {
                                   {(item.location || item.notes || item.attachmentId) && (
                                     <div className="mt-2 space-y-1.5 pl-0 sm:pl-1">
                                       {item.location && (
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          <a
-                                            href={item.latitude && item.longitude ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-semibold"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            <span className="material-symbols-outlined text-[15px] text-primary">pin_drop</span>
-                                            {item.location}
-                                          </a>
-                                          {item.latitude && item.longitude && (
-                                            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
-                                              <span className="material-symbols-outlined text-[9px]">location_on</span>
-                                              GPS Coords
-                                            </span>
-                                          )}
-                                          {distance !== null && (
-                                            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20 sm:hidden">
-                                              <span className="material-symbols-outlined text-[9px]">navigation</span>
-                                              {formatDistance(distance)} from prev
-                                            </span>
-                                          )}
-                                        </div>
+                                        (() => {
+                                          const parsed = parseJsonLocation(item.location);
+                                          if (parsed) {
+                                            return (
+                                              <div className="mt-2 flex items-center gap-3 overflow-hidden rounded-xl border border-white/5 bg-white/[0.02] p-2.5 hover:bg-white/[0.04] transition-colors max-w-md">
+                                                <div className="relative w-12 h-12 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 flex items-center justify-center border border-white/5">
+                                                  {parsed.photoUrl ? (
+                                                    <img src={parsed.photoUrl} alt={parsed.name} className="w-full h-full object-cover" />
+                                                  ) : (
+                                                    <div className="text-emerald-400 bg-emerald-500/10 w-full h-full flex items-center justify-center">
+                                                      <span className="material-symbols-outlined text-lg">location_on</span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <a
+                                                    href={parsed.googleMapsUrl || (item.latitude && item.longitude ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.name)}`)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs font-black text-white hover:text-emerald-400 hover:underline flex items-center gap-1.5"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  >
+                                                    {parsed.name}
+                                                    <span className="material-symbols-outlined text-[10px] text-emerald-400">open_in_new</span>
+                                                  </a>
+                                                  {parsed.address && (
+                                                    <p className="text-[10px] font-bold text-gray-400 mt-0.5 truncate">{parsed.address}</p>
+                                                  )}
+                                                </div>
+                                                {distance !== null && (
+                                                  <div className="flex-shrink-0 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] font-mono text-amber-500 flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[10px]">navigation</span>
+                                                    {formatDistance(distance)}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          }
+                                          return (
+                                            <div className="flex flex-wrap items-center gap-2">
+                                              <a
+                                                href={item.latitude && item.longitude ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location || '')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-semibold"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <span className="material-symbols-outlined text-[15px] text-primary">pin_drop</span>
+                                                {item.location}
+                                              </a>
+                                              {item.latitude && item.longitude && (
+                                                <span className="inline-flex items-center gap-1 text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
+                                                  <span className="material-symbols-outlined text-[9px]">location_on</span>
+                                                  GPS Coords
+                                                </span>
+                                              )}
+                                              {distance !== null && (
+                                                <span className="inline-flex items-center gap-1 text-[9px] font-mono text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20 sm:hidden">
+                                                  <span className="material-symbols-outlined text-[9px]">navigation</span>
+                                                  {formatDistance(distance)} from prev
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })()
                                       )}
                                       {item.notes && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400 bg-white/[0.01] border border-gray-100 dark:border-white/[0.04] p-2.5 rounded-lg leading-relaxed italic">
@@ -2459,50 +2899,94 @@ export default function TourDashboard() {
                       </div>
 
                       {/* Location + Notes + File */}
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
-                          <input
-                            type="text"
-                            value={editItinLocation}
-                            onChange={e => handleEditLocationChange(e.target.value)}
-                            placeholder="e.g. Paris, France"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="sm:col-span-2">
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500 mb-1 block">Location</label>
+                          {(() => {
+                            const parsed = parseJsonLocation(editItinLocation);
+                            if (parsed) {
+                              return (
+                                <div className="relative group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex gap-4 transition-all duration-300 hover:bg-white/[0.05] hover:border-emerald-500/30">
+                                  <div className="relative w-20 h-20 rounded-xl bg-slate-900 border border-white/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                    {parsed.photoUrl ? (
+                                      <img src={parsed.photoUrl} alt={parsed.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="text-emerald-400 bg-emerald-500/10 w-full h-full flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-3xl">location_on</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                                    <div>
+                                      <h4 className="text-sm font-black text-white truncate">{parsed.name}</h4>
+                                      <p className="text-xs font-bold text-gray-400 mt-1 line-clamp-2">{parsed.address}</p>
+                                    </div>
+                                    <div className="flex gap-3 text-[10px] font-black uppercase tracking-wider text-emerald-400 mt-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => openMapPicker('edit')}
+                                        className="hover:text-emerald-300 transition-colors"
+                                      >
+                                        Change Location
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditItinLocation('');
+                                          setEditItinLatitude('');
+                                          setEditItinLongitude('');
+                                          setEditItinCoordsInput('');
+                                        }}
+                                        className="text-rose-400 hover:text-rose-300 transition-colors"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div
+                                onClick={() => openMapPicker('edit')}
+                                className="w-full rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center cursor-pointer hover:bg-white/[0.04] hover:border-emerald-500/40 transition-all duration-300 flex flex-col items-center justify-center group"
+                              >
+                                <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center text-gray-400 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-all duration-300 mb-3 border border-white/5">
+                                  <span className="material-symbols-outlined text-2xl">map</span>
+                                </div>
+                                <span className="text-sm font-black text-white">Select Location on Google Maps</span>
+                                <span className="text-xs font-bold text-gray-400 mt-1">Search or drop a pin to confirm activity location</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps URL / Coords</label>
-                          <input
-                            type="text"
-                            value={editItinCoordsInput}
-                            onChange={e => handleEditCoordsInputChange(e.target.value)}
-                            placeholder="Paste maps link or lat,lng"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
-                          <textarea
-                            value={editItinNotes}
-                            onChange={e => setEditItinNotes(e.target.value)}
-                            placeholder="Confirmation codes, links..."
-                            className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Replace File (Optional)</label>
-                          <input
-                            ref={editItinFileInputRef}
-                            type="file"
-                            onChange={e => setEditItinAttachment(e.target.files?.[0] || null)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none"
-                          />
-                          {editingItinItem?.attachmentName && !editItinAttachment && (
-                            <p className="mt-1 ml-1 text-[10px] text-gray-400 flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[12px]">attachment</span>
-                              {editingItinItem.attachmentName}
-                            </p>
-                          )}
+                          <div className="space-y-4">
+                            <div>
+                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+                              <textarea
+                                value={editItinNotes}
+                                onChange={e => setEditItinNotes(e.target.value)}
+                                placeholder="Confirmation codes, links..."
+                                className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                              />
+                            </div>
+                            <div>
+                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Replace File (Optional)</label>
+                              <input
+                                ref={editItinFileInputRef}
+                                type="file"
+                                onChange={e => setEditItinAttachment(e.target.files?.[0] || null)}
+                                className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none"
+                              />
+                              {editingItinItem?.attachmentName && !editItinAttachment && (
+                                <p className="mt-1 ml-1 text-[10px] text-gray-400 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[12px]">attachment</span>
+                                  {editingItinItem.attachmentName}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -3434,6 +3918,129 @@ export default function TourDashboard() {
         </AnimatePresence>,
         document.body
       )}
+      <AnimatePresence>
+        {isMapPickerOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4 md:p-10">
+            {/* Backdrop blur */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMapPickerOpen(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+            
+            {/* Modal Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative z-10 w-full h-full sm:h-[80vh] max-w-5xl rounded-none sm:rounded-3xl border border-white/10 bg-[#0A0D1A] overflow-hidden flex flex-col md:flex-row shadow-2xl"
+            >
+              {/* Left Panel: Search & Place Details */}
+              <div className="w-full md:w-[380px] border-r border-white/10 flex flex-col p-6 space-y-4 bg-[#0A0D1A]/95 z-10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-400">map</span>
+                    Map Location Picker
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsMapPickerOpen(false)}
+                    className="w-8 h-8 rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+                
+                {/* Autocomplete Search input */}
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-lg">search</span>
+                  <input
+                    type="text"
+                    value={mapSearchQuery}
+                    onChange={(e) => setMapSearchQuery(e.target.value)}
+                    placeholder="Search address, city, place..."
+                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white outline-none focus:border-emerald-500 transition-colors"
+                  />
+                  {mapSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMapSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      <span className="material-symbols-outlined text-sm">clear</span>
+                    </button>
+                  )}
+                </div>
+                
+                {/* Autocomplete suggestions */}
+                {predictions.length > 0 && (
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#111625] p-1.5 space-y-0.5 divide-y divide-white/5">
+                    {predictions.map((p) => (
+                      <button
+                        key={p.place_id}
+                        type="button"
+                        onClick={() => selectPrediction(p)}
+                        className="w-full text-left rounded-lg p-2.5 hover:bg-white/[0.04] transition-colors"
+                      >
+                        <p className="text-xs font-black text-white truncate">{p.structured_formatting.main_text}</p>
+                        <p className="text-[10px] font-bold text-gray-400 truncate mt-0.5">{p.structured_formatting.secondary_text}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Contextual Place Card */}
+                <div className="flex-1 flex flex-col justify-end">
+                  {tempSelectedPlace ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
+                      {tempSelectedPlace.photoUrl && (
+                        <div className="w-full h-32 rounded-xl bg-slate-900 overflow-hidden border border-white/5">
+                          <img src={tempSelectedPlace.photoUrl} alt={tempSelectedPlace.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="text-sm font-black text-white">{tempSelectedPlace.name}</h4>
+                        <p className="text-xs font-bold text-gray-400 mt-1">{tempSelectedPlace.address}</p>
+                        <p className="text-[10px] font-mono text-emerald-400/80 mt-2 bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10 w-fit">
+                          {parseFloat(tempSelectedPlace.latitude).toFixed(6)}, {parseFloat(tempSelectedPlace.longitude).toFixed(6)}
+                        </p>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={confirmLocation}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-black text-white shadow-md hover:bg-emerald-600 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                        Confirm this location
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="h-48 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-4">
+                      <span className="material-symbols-outlined text-4xl text-gray-600 mb-2">pin_drop</span>
+                      <p className="text-xs font-black text-gray-400">No Location Selected</p>
+                      <p className="text-[10px] font-medium text-gray-500 mt-1 max-w-[200px]">Search for a place or click anywhere on the map to drop a pin.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Right Panel: Interactive Map */}
+              <div className="flex-1 relative min-h-[300px] md:min-h-0 bg-[#0A0E1A]">
+                <div ref={mapContainerRef} className="w-full h-full" />
+                
+                {/* Draggable indicator hint overlay */}
+                <div className="absolute top-4 right-4 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-black text-gray-300 pointer-events-none uppercase tracking-wider flex items-center gap-1.5 shadow-lg">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Click map or drag pin to adjust
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
