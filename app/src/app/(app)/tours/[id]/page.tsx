@@ -264,6 +264,7 @@ export default function TourDashboard() {
 
   // Navigation state
   const [activeTab, setActiveTab] = useState<'ledger' | 'itinerary' | 'checklist' | 'settlements'>('ledger');
+  const [ledgerSubTab, setLedgerSubTab] = useState<'transactions' | 'analytics' | 'balances'>('transactions');
 
   // Itinerary Planner state
   const { data: itineraryData, mutate: mutateItinerary } = useSWR<{ success: boolean; itinerary: ItineraryItem[] }>(
@@ -1259,8 +1260,48 @@ export default function TourDashboard() {
               transition={spring}
               className="space-y-8"
             >
+              {/* Mobile Sub-tab Switcher */}
+              <div className="lg:hidden flex p-1 bg-gray-100 dark:bg-white/[0.04] rounded-2xl border border-gray-200 dark:border-white/10 mb-6">
+                <button
+                  type="button"
+                  onClick={() => { haptics.tap(); setLedgerSubTab('transactions'); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                    ledgerSubTab === 'transactions'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-sm border border-gray-200/50 dark:border-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                  Ledger
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { haptics.tap(); setLedgerSubTab('balances'); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                    ledgerSubTab === 'balances'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-sm border border-gray-200/50 dark:border-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+                  Balances
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { haptics.tap(); setLedgerSubTab('analytics'); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                    ledgerSubTab === 'analytics'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-sm border border-gray-200/50 dark:border-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">analytics</span>
+                  Analytics
+                </button>
+              </div>
+
               {/* Split-Screen Analytics: Spending Trends & Expense Distribution */}
-              <div className="flex flex-col lg:flex-row gap-5">
+              <div className={`flex flex-col lg:flex-row gap-5 ${ledgerSubTab !== 'analytics' ? 'hidden lg:flex' : ''}`}>
                   <TiltCard className="w-full lg:w-[60%] shrink-0 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'none' }}>
                       <div className="flex justify-between items-center mb-6">
                           <div>
@@ -1300,7 +1341,7 @@ export default function TourDashboard() {
               </div>
 
               {/* Injected Balances Overview */}
-              <div className="mt-8">
+              <div className={`mt-8 ${ledgerSubTab !== 'balances' ? 'hidden lg:block' : ''}`}>
                 <h3 className="text-xl font-black text-gray-950 dark:text-white mb-4">Balances Overview</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {balances.map((participant) => (
@@ -1322,7 +1363,7 @@ export default function TourDashboard() {
               </div>
 
               {/* Transactions Ledger */}
-              <div className="mt-10">
+              <div className={`mt-10 ${ledgerSubTab !== 'transactions' ? 'hidden lg:block' : ''}`}>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <h2 className="text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
                   <div className="flex items-center gap-2">
