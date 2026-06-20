@@ -269,6 +269,7 @@ interface GooglePlaceDetails {
   longitude: string;
   googleMapsUrl: string;
   photoUrl: string;
+  placeId?: string;
 }
 
 const parseJsonLocation = (locStr: string | null | undefined): { name: string; address?: string; photoUrl?: string; googleMapsUrl?: string; latitude?: string; longitude?: string } | null => {
@@ -597,76 +598,72 @@ export default function TourDashboard() {
   const geocoderRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const autocompleteRequestIdRef = useRef(0);
+
+  const initializeGoogleMapsServices = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    const maps = (window as any).google?.maps;
+    if (
+      !maps?.places?.AutocompleteService ||
+      !maps?.places?.AutocompleteSessionToken ||
+      !maps?.Geocoder
+    ) {
+      return false;
+    }
+
+    autocompleteServiceRef.current = new maps.places.AutocompleteService();
+    sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+    geocoderRef.current = new maps.Geocoder();
+    setMapApiLoaded(true);
+    setMapLoadError('');
+    return true;
+  }, []);
+
+  const waitForGoogleMapsServices = useCallback((timeoutMs = 8000) => {
+    if (initializeGoogleMapsServices()) return;
+
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      if (initializeGoogleMapsServices()) {
+        window.clearInterval(intervalId);
+        return;
+      }
+
+      if (Date.now() - startedAt > timeoutMs) {
+        window.clearInterval(intervalId);
+        setMapLoadError('Google Maps loaded, but Places services are not available. Confirm that the Places API is enabled for this key.');
+      }
+    }, 120);
+  }, [initializeGoogleMapsServices]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!isMapPickerOpen || mapApiLoaded) return;
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+    if (initializeGoogleMapsServices()) return;
+
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyDYGr2i18DlybWf2QniuYXyQlnqW8tZjbI';
     if (!apiKey) {
       setMapLoadError('Google Maps API key is missing. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map picker.');
-      return;
-    }
-    
-    const initializeServices = () => {
-      setMapApiLoaded(true);
-      setMapLoadError('');
-      const win = window as any;
-      if (win.google && win.google.maps) {
-        autocompleteServiceRef.current = new win.google.maps.places.AutocompleteService();
-        sessionTokenRef.current = new win.google.maps.places.AutocompleteSessionToken();
-        geocoderRef.current = new win.google.maps.Geocoder();
-      }
-    };
-
-    const win = window as any;
-    if (win.google && win.google.maps) {
-      initializeServices();
       return;
     }
 
     const scriptId = 'google-maps-api-script';
     const existing = document.getElementById(scriptId);
     if (existing) {
-      if (win.google && win.google.maps) {
-        initializeServices();
-      } else {
-        existing.addEventListener('load', initializeServices);
-      }
+      waitForGoogleMapsServices();
       return;
     }
 
     const script = document.createElement('script');
     script.id = scriptId;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;
-    script.onload = initializeServices;
+    script.onload = () => waitForGoogleMapsServices();
     script.onerror = () => setMapLoadError('Google Maps could not be loaded. Check the API key, billing, and Maps/Places API enablement.');
     document.head.appendChild(script);
-  }, [isMapPickerOpen, mapApiLoaded]);
-
-  useEffect(() => {
-    if (!mapSearchQuery.trim() || !autocompleteServiceRef.current || !mapApiLoaded) {
-      setPredictions([]);
-      return;
-    }
-
-    const handler = setTimeout(() => {
-      autocompleteServiceRef.current?.getPlacePredictions({
-        input: mapSearchQuery,
-        sessionToken: sessionTokenRef.current || undefined
-      }, (results: any[], status: any) => {
-        const win = window as any;
-        if (win.google && win.google.maps && status === win.google.maps.places.PlacesServiceStatus.OK && results) {
-          setPredictions(results);
-        } else {
-          setPredictions([]);
-        }
-      });
-    }, 300);
-
-    return () => clearTimeout(handler);
-  }, [mapSearchQuery, mapApiLoaded]);
+    waitForGoogleMapsServices();
+  }, [initializeGoogleMapsServices, isMapPickerOpen, mapApiLoaded, waitForGoogleMapsServices]);
 
   useEffect(() => {
     if (!isMapPickerOpen || !mapApiLoaded || !mapContainerRef.current) return;
@@ -747,6 +744,103 @@ export default function TourDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMapPickerOpen, mapApiLoaded]);
 
+  const getPredictionDetails = useCallback((prediction: any, includePhoto = false): Promise<GooglePlaceDetails | null> => {
+    if (!mapApiLoaded || typeof window === 'undefined' || !prediction?.place_id) {
+      return Promise.resolve(null);
+    }
+
+    const maps = (window as any).google?.maps;
+    if (!maps?.places?.PlacesService) return Promise.resolve(null);
+
+    const serviceHost = mapRef.current || document.createElement('div');
+    const service = new maps.places.PlacesService(serviceHost);
+    const fields = includePhoto
+      ? ['place_id', 'name', 'formatted_address', 'geometry', 'url', 'photos']
+      : ['place_id', 'name', 'formatted_address', 'geometry', 'url'];
+
+    return new Promise((resolve) => {
+      service.getDetails({
+        placeId: prediction.place_id,
+        fields,
+        sessionToken: sessionTokenRef.current || undefined,
+      }, (place: any, status: any) => {
+        if (status !== maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
+          resolve(null);
+          return;
+        }
+
+        const lat = place.geometry.location.lat().toString();
+        const lng = place.geometry.location.lng().toString();
+        const photoUrl = includePhoto && place.photos?.length
+          ? place.photos[0].getUrl({ maxWidth: 600, maxHeight: 420 })
+          : '';
+
+        resolve({
+          placeId: place.place_id || prediction.place_id,
+          name: place.name || prediction.structured_formatting?.main_text || prediction.description || '',
+          address: place.formatted_address || prediction.description || '',
+          latitude: lat,
+          longitude: lng,
+          googleMapsUrl: place.url || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+          photoUrl,
+        });
+      });
+    });
+  }, [mapApiLoaded]);
+
+  const hydratePrediction = useCallback(async (
+    prediction: any,
+    options: { commit?: boolean; includePhoto?: boolean; requestId?: number } = {},
+  ) => {
+    const details = await getPredictionDetails(prediction, Boolean(options.includePhoto));
+    if (!details) return;
+    if (options.requestId && autocompleteRequestIdRef.current !== options.requestId) return;
+
+    setTempSelectedPlace(details);
+    if (options.commit) {
+      setMapSearchQuery(details.name);
+      setPredictions([]);
+    }
+
+    const lat = parseFloat(details.latitude);
+    const lng = parseFloat(details.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const maps = (window as any).google?.maps;
+    const latLng = maps ? new maps.LatLng(lat, lng) : { lat, lng };
+    mapRef.current?.setCenter(latLng);
+    mapRef.current?.setZoom(options.commit ? 16 : 14);
+    markerRef.current?.setPosition(latLng);
+  }, [getPredictionDetails]);
+
+  useEffect(() => {
+    if (!mapSearchQuery.trim() || !autocompleteServiceRef.current || !mapApiLoaded) {
+      setPredictions([]);
+      return;
+    }
+
+    const requestId = autocompleteRequestIdRef.current + 1;
+    autocompleteRequestIdRef.current = requestId;
+
+    const handler = setTimeout(() => {
+      autocompleteServiceRef.current?.getPlacePredictions({
+        input: mapSearchQuery,
+        sessionToken: sessionTokenRef.current || undefined
+      }, (results: any[], status: any) => {
+        if (autocompleteRequestIdRef.current !== requestId) return;
+        const maps = (window as any).google?.maps;
+        if (maps?.places && status === maps.places.PlacesServiceStatus.OK && results?.length) {
+          setPredictions(results);
+          void hydratePrediction(results[0], { commit: false, includePhoto: false, requestId });
+        } else {
+          setPredictions([]);
+        }
+      });
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [hydratePrediction, mapSearchQuery, mapApiLoaded]);
+
   const openMapPicker = (target: 'add' | 'edit') => {
     setMapPickerTarget(target);
     setIsMapPickerOpen(true);
@@ -787,48 +881,17 @@ export default function TourDashboard() {
   };
 
   const selectPrediction = (prediction: any) => {
-    if (!mapApiLoaded || !mapRef.current || !markerRef.current) return;
-    
-    const dummyDiv = document.createElement('div');
-    const win = window as any;
-    const service = new win.google.maps.places.PlacesService(dummyDiv);
-    
-    service.getDetails({
-      placeId: prediction.place_id,
-      fields: ['name', 'formatted_address', 'geometry', 'url', 'photos']
-    }, (place: any, status: any) => {
-      if (status === win.google.maps.places.PlacesServiceStatus.OK && place && place.geometry && place.geometry.location) {
-        const lat = place.geometry.location.lat().toString();
-        const lng = place.geometry.location.lng().toString();
-        
-        let photoUrl = '';
-        if (place.photos && place.photos.length > 0) {
-          photoUrl = place.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 });
-        }
-        
-        const details: GooglePlaceDetails = {
-          name: place.name || prediction.structured_formatting.main_text || '',
-          address: place.formatted_address || prediction.description || '',
-          latitude: lat,
-          longitude: lng,
-          googleMapsUrl: place.url || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
-          photoUrl: photoUrl
-        };
-        
-        setTempSelectedPlace(details);
-        setMapSearchQuery(details.name);
-        setPredictions([]);
-        
-        const latLng = place.geometry.location;
-        mapRef.current?.setCenter(latLng);
-        mapRef.current?.setZoom(16);
-        markerRef.current?.setPosition(latLng);
-      }
-    });
+    void hydratePrediction(prediction, { commit: true, includePhoto: true });
   };
 
-  const confirmLocation = () => {
+  const confirmLocation = async () => {
     let placeToSave = tempSelectedPlace;
+    if (placeToSave?.placeId && !placeToSave.photoUrl) {
+      const matchedPrediction = predictions.find((prediction) => prediction.place_id === placeToSave?.placeId);
+      if (matchedPrediction) {
+        placeToSave = await getPredictionDetails(matchedPrediction, true) || placeToSave;
+      }
+    }
     if (!placeToSave && mapSearchQuery.trim()) {
       placeToSave = {
         name: mapSearchQuery.trim(),
@@ -856,6 +919,10 @@ export default function TourDashboard() {
     }
     
     setIsMapPickerOpen(false);
+    const maps = (window as any).google?.maps;
+    if (maps?.places?.AutocompleteSessionToken) {
+      sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+    }
   };
 
   const handleLocationChange = (val: string) => {
@@ -2439,11 +2506,12 @@ export default function TourDashboard() {
                       exit={{ opacity: 0, height: 0 }}
                       className="space-y-4 overflow-hidden"
                     >
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
-                        <div ref={itinGroupInputRef} className="relative sm:col-span-2">
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category Title</label>
-                          <input
-                            type="text"
+	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+	                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_1.7fr_0.65fr_1fr]">
+	                        <div ref={itinGroupInputRef} className="relative">
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category Title</label>
+	                          <input
+	                            type="text"
                             value={itinGroupTitle}
                             onFocus={() => setShowItinGroupSuggestions(true)}
                             onChange={e => { setItinGroupTitle(e.target.value); setShowItinGroupSuggestions(true); }}
@@ -2462,13 +2530,13 @@ export default function TourDashboard() {
                                   {suggestion}
                                 </button>
                               ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
-                          <input
-                            type="text"
+	                            </div>
+	                          )}
+	                        </div>
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
+	                          <input
+	                            type="text"
                             required
                             value={itinTitle}
                             onChange={e => setItinTitle(e.target.value)}
@@ -2484,15 +2552,32 @@ export default function TourDashboard() {
                             min="1"
                             value={itinDay}
                             onChange={e => setItinDay(Number(e.target.value))}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
+	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                          />
+	                        </div>
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
+	                          <select
+	                            value={itinType}
+	                            onChange={e => setItinType(e.target.value as any)}
+	                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                          >
+	                            <option value="activity">Activity 🎯</option>
+	                            <option value="flight">Flight ✈️</option>
+	                            <option value="hotel">Hotel 🏨</option>
+	                            <option value="food">Food 🍽️</option>
+	                            <option value="transport">Transport 🚗</option>
+	                            <option value="other">Other 📦</option>
+	                          </select>
+	                        </div>
+	                      </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
-                          <input
+	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+	                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
+	                          <input
                             type="time"
                             required
                             value={itinTime}
@@ -2516,44 +2601,29 @@ export default function TourDashboard() {
                             value={itinCost}
                             onChange={e => setItinCost(e.target.value)}
                             placeholder="e.g. 500 or 250-400"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
-                          <select
-                            value={itinType}
-                            onChange={e => setItinType(e.target.value as any)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          >
-                            <option value="activity">Activity 🎯</option>
-                            <option value="flight">Flight ✈️</option>
-                            <option value="hotel">Hotel 🏨</option>
-                            <option value="food">Food 🍽️</option>
-                            <option value="transport">Transport 🚗</option>
-                            <option value="other">Other 📦</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
-                          <select
+	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                          />
+	                        </div>
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
+	                          <select
                             value={itinStatus}
                             onChange={e => setItinStatus(e.target.value as any)}
                             className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           >
                             <option value="Planned">Planned 🗓️</option>
                             <option value="Booked">Booked ✅</option>
-                            <option value="Completed">Completed 🎉</option>
-                          </select>
-                        </div>
+	                            <option value="Completed">Completed 🎉</option>
+	                          </select>
+	                        </div>
+	                      </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        <div className="lg:col-span-2">
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px]">
-                            <div>
-                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
-                              <input
+	                      <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.035] p-4">
+	                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
+	                            <div>
+	                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+	                              <input
                                 type="text"
                                 required
                                 placeholder="e.g. Eiffel Tower, Paris"
@@ -2569,45 +2639,45 @@ export default function TourDashboard() {
                                 placeholder="Paste a Maps link or 48.8584, 2.2945"
                                 value={itinCoordsInput}
                                 onChange={(e) => handleCoordsInputChange(e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                              />
-                            </div>
-                            <div className="flex items-end">
-                              <button
-                                type="button"
-                                onClick={() => openMapPicker('add')}
-                                className="flex h-[46px] w-11 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 shadow-sm transition-colors hover:bg-emerald-500/20 hover:text-emerald-200"
-                                title="Pick from Google Maps"
-                              >
-                                <span className="material-symbols-outlined text-[20px]">map</span>
-                              </button>
-                            </div>
-                          </div>
-                          <FormLocationCard location={itinLocation} latitude={itinLatitude} longitude={itinLongitude} />
-                        </div>
-                        <div>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
-                              <textarea
-                                value={itinNotes}
-                                onChange={e => setItinNotes(e.target.value)}
-                                placeholder="Confirmation codes, reminders..."
-                                className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                              />
-                            </div>
-                            <div>
+	                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                              />
+	                            </div>
+	                            <div>
+	                              <button
+	                                type="button"
+	                                onClick={() => openMapPicker('add')}
+	                                className="group mt-1 flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-4 py-3 text-sm font-black text-emerald-100 shadow-[0_14px_30px_rgba(16,185,129,0.12)] transition-all hover:border-emerald-300/50 hover:bg-emerald-500/25 hover:shadow-[0_18px_38px_rgba(16,185,129,0.2)]"
+	                              >
+	                                <span className="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">travel_explore</span>
+	                                Select on Live Map
+	                              </button>
+	                            </div>
+	                          </div>
+	                          <FormLocationCard location={itinLocation} latitude={itinLatitude} longitude={itinLongitude} />
+	                      </div>
+
+	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+	                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+	                            <div>
+	                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+	                              <textarea
+	                                value={itinNotes}
+	                                onChange={e => setItinNotes(e.target.value)}
+	                                placeholder="Confirmation codes, reminders..."
+	                                className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                              />
+	                            </div>
+	                            <div>
                               <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">File Attachment (Optional)</label>
                               <input
                                 ref={itinFileInputRef}
                                 type="file"
                                 onChange={e => setItinAttachment(e.target.files?.[0] || null)}
-                                className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-primary"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+	                                className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-primary"
+	                              />
+	                            </div>
+	                        </div>
+	                      </div>
 
                       <button
                         type="submit"
@@ -2900,7 +2970,7 @@ export default function TourDashboard() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 30, scale: 0.97 }}
                       transition={spring}
-                      className="relative z-10 w-full max-w-2xl max-h-[90dvh] overflow-y-auto rounded-t-[2rem] sm:rounded-[2rem] border border-white/10 bg-[#0A0E1A]/98 shadow-2xl backdrop-blur-xl p-6 sm:p-8 space-y-5"
+	                      className="relative z-10 w-full max-w-5xl max-h-[90dvh] overflow-y-auto rounded-t-[2rem] sm:rounded-[2rem] border border-white/10 bg-[#0A0E1A]/98 shadow-2xl backdrop-blur-xl p-6 sm:p-8 space-y-5"
                       onClick={e => e.stopPropagation()}
                     >
                       {/* Header */}
@@ -2918,11 +2988,12 @@ export default function TourDashboard() {
                         </button>
                       </div>
 
-                      {/* Group + Title + Day */}
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
-                        <div ref={editGroupInputRef} className="relative sm:col-span-2">
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category</label>
-                          <input
+	                      {/* Group + Title + Day */}
+	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+	                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_1.7fr_0.65fr_1fr]">
+	                        <div ref={editGroupInputRef} className="relative">
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Group Category</label>
+	                          <input
                             type="text"
                             value={editItinGroupTitle}
                             onFocus={() => setShowEditGroupSuggestions(true)}
@@ -2938,12 +3009,12 @@ export default function TourDashboard() {
                                   className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 hover:bg-white/5"
                                 >{s}</button>
                               ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
-                          <input
+	                            </div>
+	                          )}
+	                        </div>
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Activity Title</label>
+	                          <input
                             type="text"
                             required
                             value={editItinTitle}
@@ -2958,16 +3029,33 @@ export default function TourDashboard() {
                             type="number" required min="1"
                             value={editItinDay}
                             onChange={e => setEditItinDay(Number(e.target.value))}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
+	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                          />
+	                        </div>
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
+	                          <select
+	                            value={editItinType}
+	                            onChange={e => setEditItinType(e.target.value as any)}
+	                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                          >
+	                            <option value="activity">Activity 🎯</option>
+	                            <option value="flight">Flight ✈️</option>
+	                            <option value="hotel">Hotel 🏨</option>
+	                            <option value="food">Food 🍽️</option>
+	                            <option value="transport">Transport 🚗</option>
+	                            <option value="other">Other 📦</option>
+	                          </select>
+	                        </div>
+	                      </div>
                       </div>
 
-                      {/* Time Range + Cost + Type */}
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
-                          <input
+	                      {/* Time Range + Cost + Type */}
+	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+	                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Start Time <span className="text-primary">*</span></label>
+	                          <input
                             type="time" required
                             value={editItinTime}
                             onChange={e => setEditItinTime(e.target.value)}
@@ -2990,45 +3078,30 @@ export default function TourDashboard() {
                             value={editItinCost}
                             onChange={e => setEditItinCost(e.target.value)}
                             placeholder="e.g. 500 or 250-400"
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Type</label>
-                          <select
-                            value={editItinType}
-                            onChange={e => setEditItinType(e.target.value as any)}
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                          >
-                            <option value="activity">Activity 🎯</option>
-                            <option value="flight">Flight ✈️</option>
-                            <option value="hotel">Hotel 🏨</option>
-                            <option value="food">Food 🍽️</option>
-                            <option value="transport">Transport 🚗</option>
-                            <option value="other">Other 📦</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
-                          <select
+	                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                          />
+	                        </div>
+	                        <div>
+	                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Status</label>
+	                          <select
                             value={editItinStatus}
                             onChange={e => setEditItinStatus(e.target.value as any)}
                             className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           >
                             <option value="Planned">Planned 🗓️</option>
                             <option value="Booked">Booked ✅</option>
-                            <option value="Completed">Completed 🎉</option>
-                          </select>
-                        </div>
+	                            <option value="Completed">Completed 🎉</option>
+	                          </select>
+	                        </div>
+	                      </div>
                       </div>
 
-                      {/* Location + Notes + File */}
-                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        <div className="lg:col-span-2">
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px]">
-                            <div>
-                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
-                              <input
+	                      {/* Location + Notes + File */}
+	                      <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.035] p-4">
+	                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
+	                            <div>
+	                              <label className="ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location Name</label>
+	                              <input
                                 type="text"
                                 required
                                 placeholder="e.g. Eiffel Tower, Paris"
@@ -3044,34 +3117,35 @@ export default function TourDashboard() {
                                 placeholder="Paste a Maps link or 48.8584, 2.2945"
                                 value={editItinCoordsInput}
                                 onChange={(e) => handleEditCoordsInputChange(e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                              />
-                            </div>
-                            <div className="flex items-end">
-                              <button
-                                type="button"
-                                onClick={() => openMapPicker('edit')}
-                                className="flex h-[46px] w-11 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 shadow-sm transition-colors hover:bg-emerald-500/20 hover:text-emerald-200"
-                                title="Pick from Google Maps"
-                              >
-                                <span className="material-symbols-outlined text-[20px]">map</span>
-                              </button>
-                            </div>
-                          </div>
-                          <FormLocationCard location={editItinLocation} latitude={editItinLatitude} longitude={editItinLongitude} />
-                        </div>
-                        <div>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
-                              <textarea
-                                value={editItinNotes}
-                                onChange={e => setEditItinNotes(e.target.value)}
-                                placeholder="Confirmation codes, links..."
-                                className="mt-1 min-h-[46px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
-                              />
-                            </div>
-                            <div>
+	                                className="mt-1 w-full rounded-xl border border-white/10 bg-[#0A0D1A] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                              />
+	                            </div>
+	                            <div>
+	                              <button
+	                                type="button"
+	                                onClick={() => openMapPicker('edit')}
+	                                className="group mt-1 flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-4 py-3 text-sm font-black text-emerald-100 shadow-[0_14px_30px_rgba(16,185,129,0.12)] transition-all hover:border-emerald-300/50 hover:bg-emerald-500/25 hover:shadow-[0_18px_38px_rgba(16,185,129,0.2)]"
+	                              >
+	                                <span className="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">travel_explore</span>
+	                                Select on Live Map
+	                              </button>
+	                            </div>
+	                          </div>
+	                          <FormLocationCard location={editItinLocation} latitude={editItinLatitude} longitude={editItinLongitude} />
+	                      </div>
+
+	                      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+	                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+	                            <div>
+	                              <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Notes</label>
+	                              <textarea
+	                                value={editItinNotes}
+	                                onChange={e => setEditItinNotes(e.target.value)}
+	                                placeholder="Confirmation codes, links..."
+	                                className="mt-1 min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+	                              />
+	                            </div>
+	                            <div>
                               <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Replace File (Optional)</label>
                               <input
                                 ref={editItinFileInputRef}
@@ -3083,12 +3157,11 @@ export default function TourDashboard() {
                                 <p className="mt-1 ml-1 text-[10px] text-gray-400 flex items-center gap-1">
                                   <span className="material-symbols-outlined text-[12px]">attachment</span>
                                   {editingItinItem.attachmentName}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+	                                </p>
+	                              )}
+	                            </div>
+	                        </div>
+	                      </div>
 
                       {/* Save / Cancel */}
                       <div className="flex gap-3 pt-2">
