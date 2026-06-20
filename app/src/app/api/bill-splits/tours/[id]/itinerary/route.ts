@@ -54,7 +54,8 @@ export async function GET(request: Request, context: RouteContext) {
     const items = await queryAll(
       `SELECT id, tour_id as tourId, day, time, time_end as timeEnd, title, location,
               cost, cost_display as costDisplay, type, notes, group_title as groupTitle,
-              attachment_id as attachmentId, attachment_name as attachmentName, status
+              attachment_id as attachmentId, attachment_name as attachmentName, status,
+              latitude, longitude
        FROM tour_itinerary_items
        WHERE tour_id = ?
        ORDER BY day ASC, time ASC`,
@@ -99,6 +100,8 @@ export async function POST(request: Request, context: RouteContext) {
     const type = (formData.get('type') as string) || 'activity';
     const notes = (formData.get('notes') as string) || '';
     const status = (formData.get('status') as string) || 'Planned';
+    const latitude = (formData.get('latitude') as string) || null;
+    const longitude = (formData.get('longitude') as string) || null;
 
     let groupTitle = formData.get('groupTitle') as string;
     groupTitle = groupTitle?.trim() || 'General Activities';
@@ -134,9 +137,9 @@ export async function POST(request: Request, context: RouteContext) {
 
     const result = await run(
       `INSERT INTO tour_itinerary_items
-         (tour_id, day, time, time_end, title, location, cost, cost_display, type, notes, group_title, attachment_id, attachment_name, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tourId, day, time, timeEnd, title, location, cost, costDisplay, type, notes, groupTitle, attachmentId, attachmentName, status]
+         (tour_id, day, time, time_end, title, location, cost, cost_display, type, notes, group_title, attachment_id, attachment_name, status, latitude, longitude)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tourId, day, time, timeEnd, title, location, cost, costDisplay, type, notes, groupTitle, attachmentId, attachmentName, status, latitude, longitude]
     );
 
     const createdItem = {
@@ -155,6 +158,8 @@ export async function POST(request: Request, context: RouteContext) {
       attachmentId,
       attachmentName,
       status,
+      latitude,
+      longitude,
     };
 
     broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE', data: createdItem });
@@ -207,6 +212,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     const type = (formData.get('type') as string) || 'activity';
     const notes = (formData.get('notes') as string) || '';
     const status = (formData.get('status') as string) || existing.status;
+    const latitude = (formData.get('latitude') as string) || null;
+    const longitude = (formData.get('longitude') as string) || null;
     let groupTitle = (formData.get('groupTitle') as string) || '';
     groupTitle = groupTitle.trim() || 'General Activities';
 
@@ -245,14 +252,14 @@ export async function PATCH(request: Request, context: RouteContext) {
            location = ?, cost = ?, cost_display = ?,
            type = ?, notes = ?, group_title = ?,
            attachment_id = ?, attachment_name = ?,
-           status = ?
+           status = ?, latitude = ?, longitude = ?
        WHERE id = ? AND tour_id = ?`,
       [
         title, day, time, timeEnd,
         location, cost, costDisplay,
         type, notes, groupTitle,
         newAttachmentId, newAttachmentName,
-        status,
+        status, latitude, longitude,
         itemId, tourId,
       ]
     );
@@ -273,6 +280,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       attachmentId: newAttachmentId,
       attachmentName: newAttachmentName,
       status,
+      latitude,
+      longitude,
     };
 
     broadcastTourUpdate(tourId, { type: 'ITINERARY_CHANGE', data: updatedItem });

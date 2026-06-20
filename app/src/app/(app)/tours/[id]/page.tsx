@@ -50,6 +50,8 @@ interface ItineraryItem {
   attachmentId?: string;
   attachmentName?: string;
   status?: 'Planned' | 'Booked' | 'Completed';
+  latitude?: string | null;
+  longitude?: string | null;
 }
 
 interface ChecklistItem {
@@ -63,6 +65,7 @@ interface ChecklistItem {
   attachmentName?: string;
   priority?: 'High' | 'Medium' | 'Low';
   quantity?: number;
+  completedBy?: string | null;
 }
 
 interface TourTransaction {
@@ -165,6 +168,58 @@ function renderAssigneeAvatars(assigneeStr: string | null | undefined) {
   );
 }
 
+function parseCoordinates(input: string): { lat: string; lng: string } | null {
+  if (!input) return null;
+  const plainRegex = /^\s*([0-9.-]+)\s*,\s*([0-9.-]+)\s*$/;
+  const plainMatch = input.match(plainRegex);
+  if (plainMatch) {
+    return { lat: plainMatch[1].trim(), lng: plainMatch[2].trim() };
+  }
+  const urlAtRegex = /@([0-9.-]+),([0-9.-]+)/;
+  const urlAtMatch = input.match(urlAtRegex);
+  if (urlAtMatch) {
+    return { lat: urlAtMatch[1], lng: urlAtMatch[2] };
+  }
+  const urlQueryRegex = /[?&](query|q|ll)=([0-9.-]+),([0-9.-]+)/;
+  const urlQueryMatch = input.match(urlQueryRegex);
+  if (urlQueryMatch) {
+    return { lat: urlQueryMatch[2], lng: urlQueryMatch[3] };
+  }
+  return null;
+}
+
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function formatDistance(distKm: number): string {
+  if (distKm < 1) {
+    return `${Math.round(distKm * 1000)} m`;
+  }
+  return `${distKm.toFixed(1)} km`;
+}
+
+const hasCoords = (itm: any) => {
+  return itm && itm.latitude && itm.longitude && !isNaN(parseFloat(itm.latitude)) && !isNaN(parseFloat(itm.longitude));
+};
+
+const getCompletedByArray = (completedByStr: string | null | undefined): string[] => {
+  if (!completedByStr) return [];
+  try {
+    const parsed = JSON.parse(completedByStr);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {}
+  return [];
+};
+
 const packingPresets = {
   beach: [
     { name: 'Swimwear', category: 'Clothing', priority: 'High', quantity: 2 },
@@ -240,6 +295,10 @@ export default function TourDashboard() {
   }, [rawTransactions]);
 
   const currentUserId = userData?.user?.id as number | undefined;
+  const currentUserName = useMemo(() => {
+    const p = participants.find(p => p.userId === currentUserId);
+    return p ? p.name : (userData?.user?.name || 'Someone');
+  }, [participants, currentUserId, userData]);
   const isLoading = tourLoading || (!tourData && !tourError);
   const error = tourError ? (tourError.message || 'Unable to load tour.') : (tourData && !tourData.success ? tourData.error : null);
 
@@ -290,6 +349,8 @@ export default function TourDashboard() {
   const [showItinGroupSuggestions, setShowItinGroupSuggestions] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [isAddingItinerary, setIsAddingItinerary] = useState(false);
+  const [itinLatitude, setItinLatitude] = useState('');
+  const [itinLongitude, setItinLongitude] = useState('');
 
   // Itinerary Filters
   const [itinFilterType, setItinFilterType] = useState<string>('All');
@@ -312,6 +373,79 @@ export default function TourDashboard() {
   const [showEditGroupSuggestions, setShowEditGroupSuggestions] = useState(false);
   const editGroupInputRef = useRef<HTMLDivElement>(null);
   const editItinFileInputRef = useRef<HTMLInputElement>(null);
+  const [editItinLatitude, setEditItinLatitude] = useState('');
+  const [editItinLongitude, setEditItinLongitude] = useState('');
+
+  const [itinCoordsInput, setItinCoordsInput] = useState('');
+  const [editItinCoordsInput, setEditItinCoordsInput] = useState('');
+
+  const handleLocationChange = (val: string) => {
+    setItinLocation(val);
+    const parsed = parseCoordinates(val);
+    if (parsed) {
+      setItinLatitude(parsed.lat);
+      setItinLongitude(parsed.lng);
+      setItinCoordsInput(val);
+    }
+  };
+
+  const handleCoordsInputChange = (val: string) => {
+    setItinCoordsInput(val);
+    const parsed = parseCoordinates(val);
+    if (parsed) {
+      setItinLatitude(parsed.lat);
+      setItinLongitude(parsed.lng);
+    } else {
+      const parts = val.split(',');
+      if (parts.length === 2) {
+        const lat = parts[0].trim();
+        const lng = parts[1].trim();
+        if (!isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+          setItinLatitude(lat);
+          setItinLongitude(lng);
+          return;
+        }
+      }
+      if (!val.trim()) {
+        setItinLatitude('');
+        setItinLongitude('');
+      }
+    }
+  };
+
+  const handleEditLocationChange = (val: string) => {
+    setEditItinLocation(val);
+    const parsed = parseCoordinates(val);
+    if (parsed) {
+      setEditItinLatitude(parsed.lat);
+      setEditItinLongitude(parsed.lng);
+      setEditItinCoordsInput(val);
+    }
+  };
+
+  const handleEditCoordsInputChange = (val: string) => {
+    setEditItinCoordsInput(val);
+    const parsed = parseCoordinates(val);
+    if (parsed) {
+      setEditItinLatitude(parsed.lat);
+      setEditItinLongitude(parsed.lng);
+    } else {
+      const parts = val.split(',');
+      if (parts.length === 2) {
+        const lat = parts[0].trim();
+        const lng = parts[1].trim();
+        if (!isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+          setEditItinLatitude(lat);
+          setEditItinLongitude(lng);
+          return;
+        }
+      }
+      if (!val.trim()) {
+        setEditItinLatitude('');
+        setEditItinLongitude('');
+      }
+    }
+  };
 
   const itinFileInputRef = useRef<HTMLInputElement>(null);
   const itinGroupInputRef = useRef<HTMLDivElement>(null);
@@ -340,6 +474,19 @@ export default function TourDashboard() {
   const checkFileInputRef = useRef<HTMLInputElement>(null);
   const assigneeDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Edit Checklist state
+  const [editingChecklistItem, setEditingChecklistItem] = useState<ChecklistItem | null>(null);
+  const [editCheckName, setEditCheckName] = useState('');
+  const [editCheckCategory, setEditCheckCategory] = useState('Other');
+  const [editCheckDescription, setEditCheckDescription] = useState('');
+  const [editCheckPriority, setEditCheckPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [editCheckQuantity, setEditCheckQuantity] = useState<number>(1);
+  const [editCheckAssignees, setEditCheckAssignees] = useState<string[]>(['Everyone']);
+  const [showEditCheckAssigneeDropdown, setShowEditCheckAssigneeDropdown] = useState(false);
+
+  const editCheckFileInputRef = useRef<HTMLInputElement>(null);
+  const editCheckAssigneeDropdownRef = useRef<HTMLDivElement>(null);
+
   // Close suggestions and dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -351,6 +498,9 @@ export default function TourDashboard() {
       }
       if (editGroupInputRef.current && !editGroupInputRef.current.contains(event.target as Node)) {
         setShowEditGroupSuggestions(false);
+      }
+      if (editCheckAssigneeDropdownRef.current && !editCheckAssigneeDropdownRef.current.contains(event.target as Node)) {
+        setShowEditCheckAssigneeDropdown(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -480,6 +630,8 @@ export default function TourDashboard() {
     formData.append('notes', itinNotes.trim());
     formData.append('groupTitle', groupTitle);
     formData.append('status', itinStatus);
+    if (itinLatitude) formData.append('latitude', itinLatitude);
+    if (itinLongitude) formData.append('longitude', itinLongitude);
     if (itinAttachment) {
       formData.append('file', itinAttachment);
     }
@@ -497,6 +649,8 @@ export default function TourDashboard() {
       notes: itinNotes.trim() || undefined,
       groupTitle,
       status: itinStatus,
+      latitude: itinLatitude || null,
+      longitude: itinLongitude || null,
       attachmentName: itinAttachment ? itinAttachment.name : undefined,
     };
 
@@ -516,6 +670,9 @@ export default function TourDashboard() {
     setItinGroupTitle('');
     setItinStatus('Planned');
     setItinAttachment(null);
+    setItinLatitude('');
+    setItinLongitude('');
+    setItinCoordsInput('');
     if (itinFileInputRef.current) itinFileInputRef.current.value = '';
     setIsAddingItinerary(false);
     haptics.success();
@@ -544,6 +701,9 @@ export default function TourDashboard() {
     setEditItinNotes(item.notes || '');
     setEditItinGroupTitle(item.groupTitle || '');
     setEditItinStatus(item.status || 'Planned');
+    setEditItinLatitude(item.latitude || '');
+    setEditItinLongitude(item.longitude || '');
+    setEditItinCoordsInput(item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : '');
     setEditItinAttachment(null);
     if (editItinFileInputRef.current) editItinFileInputRef.current.value = '';
   };
@@ -570,6 +730,8 @@ export default function TourDashboard() {
     formData.append('notes', editItinNotes.trim());
     formData.append('groupTitle', groupTitle);
     formData.append('status', editItinStatus);
+    formData.append('latitude', editItinLatitude);
+    formData.append('longitude', editItinLongitude);
     if (editItinAttachment) formData.append('file', editItinAttachment);
 
     // Optimistic update
@@ -589,6 +751,8 @@ export default function TourDashboard() {
             notes: editItinNotes.trim(),
             groupTitle,
             status: editItinStatus,
+            latitude: editItinLatitude || null,
+            longitude: editItinLongitude || null,
           }
         : item
     ).sort((a, b) => {
@@ -661,6 +825,93 @@ export default function TourDashboard() {
       mutateItinerary();
     } catch {
       mutateItinerary({ success: true, itinerary: previous }, { revalidate: true });
+    }
+  };
+
+  const handleToggleEditCheckAssignee = (name: string) => {
+    if (name === 'Everyone') {
+      setEditCheckAssignees(['Everyone']);
+    } else {
+      let updated = editCheckAssignees.filter(a => a !== 'Everyone');
+      if (updated.includes(name)) {
+        updated = updated.filter(a => a !== name);
+      } else {
+        updated.push(name);
+      }
+      if (updated.length === 0) {
+        updated = ['Everyone'];
+      }
+      setEditCheckAssignees(updated);
+    }
+  };
+
+  const openEditChecklist = (item: ChecklistItem) => {
+    setEditingChecklistItem(item);
+    setEditCheckName(item.name);
+    setEditCheckCategory(item.category);
+    setEditCheckDescription(item.description || '');
+    setEditCheckPriority(item.priority || 'Medium');
+    setEditCheckQuantity(item.quantity || 1);
+    
+    const assignees = item.assignedTo ? item.assignedTo.split(',').map(s => s.trim()).filter(Boolean) : ['Everyone'];
+    setEditCheckAssignees(assignees.length > 0 ? assignees : ['Everyone']);
+    setShowEditCheckAssigneeDropdown(false);
+  };
+
+  const handleEditChecklist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingChecklistItem || !editCheckName.trim()) return;
+
+    const previous = checklist;
+    const assignedToString = editCheckAssignees.includes('Everyone') ? 'Everyone' : editCheckAssignees.join(', ');
+
+    // Recalculate if it should be completed based on the new assignee list and existing completedBy list
+    const completedByArr = getCompletedByArray(editingChecklistItem.completedBy);
+    const requiredCheckmarkers = (() => {
+      if (assignedToString === 'Everyone') {
+        return participants.map(p => p.name);
+      }
+      return assignedToString.split(',').map(s => s.trim()).filter(Boolean);
+    })();
+    const isFullyCompleted = requiredCheckmarkers.length > 0 && 
+      requiredCheckmarkers.every(name => completedByArr.includes(name));
+
+    const updatedItem: ChecklistItem = {
+      ...editingChecklistItem,
+      name: editCheckName.trim(),
+      category: editCheckCategory,
+      description: editCheckDescription.trim(),
+      priority: editCheckPriority,
+      quantity: editCheckQuantity,
+      assignedTo: assignedToString,
+      completed: isFullyCompleted,
+    };
+
+    const updated = checklist.map(i => i.id === editingChecklistItem.id ? updatedItem : i);
+    mutateChecklist({ success: true, checklist: updated, categories: customCategoriesList }, { revalidate: false });
+    setEditingChecklistItem(null);
+    haptics.success();
+
+    const formData = new FormData();
+    formData.append('id', String(editingChecklistItem.id));
+    formData.append('name', editCheckName.trim());
+    formData.append('category', editCheckCategory);
+    formData.append('assignedTo', assignedToString);
+    formData.append('description', editCheckDescription.trim());
+    formData.append('priority', editCheckPriority);
+    formData.append('quantity', String(editCheckQuantity));
+    formData.append('completed', String(isFullyCompleted));
+    formData.append('completedBy', editingChecklistItem.completedBy || '[]');
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      mutateChecklist();
+    } catch {
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
     }
   };
 
@@ -760,15 +1011,37 @@ export default function TourDashboard() {
     const item = checklist.find(i => i.id === id);
     if (!item) return;
 
-    const newCompleted = !item.completed;
+    const completedByArr = getCompletedByArray(item.completedBy);
+    let newCompletedByArr = [...completedByArr];
+    
+    if (completedByArr.includes(currentUserName)) {
+      newCompletedByArr = newCompletedByArr.filter(name => name !== currentUserName);
+    } else {
+      newCompletedByArr.push(currentUserName);
+    }
+
+    const requiredCheckmarkers = (() => {
+      if (!item.assignedTo || item.assignedTo === 'Everyone') {
+        return participants.map(p => p.name);
+      }
+      return item.assignedTo.split(',').map(s => s.trim()).filter(Boolean);
+    })();
+
+    const isFullyCompleted = requiredCheckmarkers.length > 0 && 
+      requiredCheckmarkers.every(name => newCompletedByArr.includes(name));
+
+    const newCompletedByStr = JSON.stringify(newCompletedByArr);
+    const newCompleted = isFullyCompleted;
+
     const previous = checklist;
-    const updated = checklist.map(i => i.id === id ? { ...i, completed: newCompleted } : i);
+    const updated = checklist.map(i => i.id === id ? { ...i, completed: newCompleted, completedBy: newCompletedByStr } : i);
     mutateChecklist({ success: true, checklist: updated, categories: customCategoriesList }, { revalidate: false });
     haptics.tap();
 
     const formData = new FormData();
     formData.append('id', String(id));
     formData.append('completed', String(newCompleted));
+    formData.append('completedBy', newCompletedByStr);
 
     try {
       const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
@@ -1772,14 +2045,24 @@ export default function TourDashboard() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
                           <input
                             type="text"
                             value={itinLocation}
-                            onChange={e => setItinLocation(e.target.value)}
+                            onChange={e => handleLocationChange(e.target.value)}
                             placeholder="e.g. Paris, France"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps URL / Coords</label>
+                          <input
+                            type="text"
+                            value={itinCoordsInput}
+                            onChange={e => handleCoordsInputChange(e.target.value)}
+                            placeholder="Paste maps link or lat,lng"
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
                         </div>
@@ -1872,6 +2155,16 @@ export default function TourDashboard() {
                             };
                             const currentStatus = item.status || 'Planned';
                             const meta = statusMeta[currentStatus];
+                                    const prevItem = index > 0 ? visibleItems[index - 1] : null;
+                            const hasDistance = prevItem && hasCoords(prevItem) && hasCoords(item);
+                            const distance = hasDistance
+                              ? haversineDistance(
+                                  parseFloat(prevItem.latitude!),
+                                  parseFloat(prevItem.longitude!),
+                                  parseFloat(item.latitude!),
+                                  parseFloat(item.longitude!)
+                                )
+                              : null;
 
                             return (
                               <motion.div
@@ -1881,6 +2174,16 @@ export default function TourDashboard() {
                                 transition={{ delay: index * 0.03 }}
                                 className="relative group pl-0 sm:pl-10"
                               >
+                                {/* Distance segment connection on timeline (Desktop only) */}
+                                {distance !== null && (
+                                  <div className="absolute left-[16px] sm:left-[0px] top-[-26px] h-7 w-0.5 bg-emerald-500/70 hidden sm:flex items-center justify-center z-10">
+                                    <div className="absolute -translate-x-1/2 left-1/2 bg-emerald-500 text-white dark:bg-emerald-600 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-md whitespace-nowrap border border-white/10 flex items-center gap-1 hover:scale-105 transition-transform">
+                                      <span className="material-symbols-outlined text-[9px] font-black">navigation</span>
+                                      {formatDistance(distance)}
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* Glow timeline node */}
                                 <div 
                                   onClick={() => handleCycleStatus(item)}
@@ -1945,16 +2248,30 @@ export default function TourDashboard() {
                                   {(item.location || item.notes || item.attachmentId) && (
                                     <div className="mt-2 space-y-1.5 pl-0 sm:pl-1">
                                       {item.location && (
-                                        <a
-                                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-semibold"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <span className="material-symbols-outlined text-[15px] text-primary">pin_drop</span>
-                                          {item.location}
-                                        </a>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <a
+                                            href={item.latitude && item.longitude ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-semibold"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <span className="material-symbols-outlined text-[15px] text-primary">pin_drop</span>
+                                            {item.location}
+                                          </a>
+                                          {item.latitude && item.longitude && (
+                                            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
+                                              <span className="material-symbols-outlined text-[9px]">location_on</span>
+                                              GPS Coords
+                                            </span>
+                                          )}
+                                          {distance !== null && (
+                                            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20 sm:hidden">
+                                              <span className="material-symbols-outlined text-[9px]">navigation</span>
+                                              {formatDistance(distance)} from prev
+                                            </span>
+                                          )}
+                                        </div>
                                       )}
                                       {item.notes && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400 bg-white/[0.01] border border-gray-100 dark:border-white/[0.04] p-2.5 rounded-lg leading-relaxed italic">
@@ -2142,14 +2459,24 @@ export default function TourDashboard() {
                       </div>
 
                       {/* Location + Notes + File */}
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                         <div>
                           <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Location</label>
                           <input
                             type="text"
                             value={editItinLocation}
-                            onChange={e => setEditItinLocation(e.target.value)}
+                            onChange={e => handleEditLocationChange(e.target.value)}
                             placeholder="e.g. Paris, France"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Google Maps URL / Coords</label>
+                          <input
+                            type="text"
+                            value={editItinCoordsInput}
+                            onChange={e => handleEditCoordsInputChange(e.target.value)}
+                            placeholder="Paste maps link or lat,lng"
                             className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           />
                         </div>
@@ -2199,6 +2526,167 @@ export default function TourDashboard() {
                             <span className="material-symbols-outlined text-[18px]">save</span>
                           )}
                           {isSavingItinEdit ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </motion.form>
+                  </div>
+                )}
+              </AnimatePresence>
+
+              {/* ── Edit Checklist Item Modal ── */}
+              <AnimatePresence>
+                {editingChecklistItem && (
+                  <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center px-0 sm:px-4">
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setEditingChecklistItem(null)}
+                      className="absolute inset-0 bg-slate-950/80 backdrop-blur-lg"
+                    />
+                    <motion.form
+                      onSubmit={handleEditChecklist}
+                      initial={{ opacity: 0, y: 40, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 30, scale: 0.97 }}
+                      transition={spring}
+                      className="relative z-10 w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-t-[2rem] sm:rounded-[2rem] border border-white/10 bg-[#0A0E1A]/98 shadow-2xl backdrop-blur-xl p-6 sm:p-8 space-y-5 text-left"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Edit Item</p>
+                          <h2 className="mt-1 text-xl font-black text-white">Update Checklist Item</h2>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingChecklistItem(null)}
+                          className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                      </div>
+
+                      {/* Inputs */}
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Item Name</label>
+                          <input
+                            type="text"
+                            required
+                            value={editCheckName}
+                            onChange={e => setEditCheckName(e.target.value)}
+                            placeholder="e.g. Passport, Sunglasses"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div>
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
+                          <select
+                            value={editCheckCategory}
+                            onChange={e => setEditCheckCategory(e.target.value)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                          >
+                            <option value="Documents">Documents 📄</option>
+                            <option value="Clothing">Clothing 👕</option>
+                            <option value="Electronics">Electronics 🔌</option>
+                            <option value="Toiletries">Toiletries 🧴</option>
+                            <option value="Other">Other 📦</option>
+                            {customCategoriesList.map(cat => (
+                              <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div ref={editCheckAssigneeDropdownRef} className="relative">
+                          <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Assigned To</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowEditCheckAssigneeDropdown(!showEditCheckAssigneeDropdown)}
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white text-left outline-none focus:border-primary flex justify-between items-center"
+                          >
+                            <span className="truncate">{editCheckAssignees.join(', ')}</span>
+                            <span className="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+                          </button>
+                          {showEditCheckAssigneeDropdown && (
+                            <div className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#0F172A] p-2.5 shadow-lg space-y-1">
+                              <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={editCheckAssignees.includes('Everyone')}
+                                  onChange={() => handleToggleEditCheckAssignee('Everyone')}
+                                  className="rounded border-white/20 bg-transparent text-primary focus:ring-primary"
+                                />
+                                <span className="text-xs font-bold text-gray-300">Everyone</span>
+                              </label>
+                              {participants.map(p => (
+                                <label key={p.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={editCheckAssignees.includes(p.name)}
+                                    onChange={() => handleToggleEditCheckAssignee(p.name)}
+                                    className="rounded border-white/20 bg-transparent text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs font-bold text-gray-300">{p.name}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Priority</label>
+                            <select
+                              value={editCheckPriority}
+                              onChange={e => setEditCheckPriority(e.target.value as any)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            >
+                              <option value="High">High 🔴</option>
+                              <option value="Medium">Medium 🟡</option>
+                              <option value="Low">Low 🟢</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={editCheckQuantity}
+                              onChange={e => setEditCheckQuantity(parseInt(e.target.value, 10) || 1)}
+                              className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description (Optional)</label>
+                        <textarea
+                          value={editCheckDescription}
+                          onChange={e => setEditCheckDescription(e.target.value)}
+                          placeholder="e.g. Brand, color, size, pack location..."
+                          className="mt-1 min-h-[60px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      {/* Save / Cancel */}
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingChecklistItem(null)}
+                          className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-3 text-sm font-black text-white hover:bg-white/[0.08]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 rounded-xl bg-primary py-3 text-sm font-black text-white shadow-md hover:bg-primary-hover"
+                        >
+                          Save Changes
                         </button>
                       </div>
                     </motion.form>
@@ -2554,6 +3042,10 @@ export default function TourDashboard() {
                             ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                             : 'bg-amber-500/10 text-amber-500 border border-amber-500/20';
 
+                        const completedByArr = getCompletedByArray(item.completedBy);
+                        const isMyCompleted = completedByArr.includes(currentUserName);
+                        const isDoneInMyView = isMyCompleted || item.completed;
+
                         return (
                           <motion.div
                             key={item.id}
@@ -2566,15 +3058,15 @@ export default function TourDashboard() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex items-center gap-3 min-w-0 w-full">
                                 <div className={`size-6 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
-                                  item.completed
+                                  isDoneInMyView
                                     ? 'border-emerald-500 bg-emerald-500 text-white'
                                     : 'border-gray-300 dark:border-white/20 bg-gray-50 dark:bg-white/[0.02]'
                                 }`}>
-                                  {item.completed && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
+                                  {isDoneInMyView && <span className="material-symbols-outlined text-[16px] font-bold">check</span>}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2">
-                                    <h4 className={`text-sm font-black truncate ${item.completed ? 'checklist-item-title is-completed line-through' : 'checklist-item-title'}`}>
+                                    <h4 className={`text-sm font-black truncate ${isDoneInMyView ? 'checklist-item-title is-completed line-through text-gray-400 dark:text-gray-500' : 'checklist-item-title text-gray-900 dark:text-white'}`}>
                                       {item.name}
                                     </h4>
                                     {(item.quantity ?? 1) > 1 && (
@@ -2597,15 +3089,32 @@ export default function TourDashboard() {
                                       </span>
                                     </div>
                                   </div>
+                                  {completedByArr.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/5 px-2 py-0.5 rounded-lg border border-emerald-500/10 w-fit">
+                                      <span className="material-symbols-outlined text-[11px] font-black">done_all</span>
+                                      <span>Done by: {completedByArr.join(', ')}</span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleDeleteChecklist(item.id); }}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-rose-500/10 hover:text-rose-500 transition-colors shrink-0"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); openEditChecklist(item); }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-white transition-colors"
+                                  title="Edit item"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteChecklist(item.id); }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                                  title="Delete item"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
                           </div>
 
                           {(item.description || item.attachmentId) && (

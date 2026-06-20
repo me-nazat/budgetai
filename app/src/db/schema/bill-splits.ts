@@ -71,6 +71,8 @@ export const tourItineraryItems = sqliteTable('tour_itinerary_items', {
   attachmentId: text('attachment_id'),
   attachmentName: text('attachment_name'),
   status: text('status').default('Planned'),
+  latitude: text('latitude'),
+  longitude: text('longitude'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
@@ -103,6 +105,7 @@ export const tourChecklistItems = sqliteTable('tour_checklist_items', {
   attachmentName: text('attachment_name'),
   priority: text('priority').default('Medium'),
   quantity: integer('quantity').default(1),
+  completedBy: text('completed_by').default('[]'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 

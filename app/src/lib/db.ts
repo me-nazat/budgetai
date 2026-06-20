@@ -397,6 +397,18 @@ export async function ensureDbInitialized(): Promise<void> {
     await getClient().execute("ALTER TABLE tour_checklist_items ADD COLUMN quantity INTEGER DEFAULT 1");
   } catch { /* Ignore */ }
 
+  try {
+    await getClient().execute("ALTER TABLE tour_checklist_items ADD COLUMN completed_by TEXT DEFAULT '[]'");
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute("ALTER TABLE tour_itinerary_items ADD COLUMN latitude TEXT DEFAULT NULL");
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute("ALTER TABLE tour_itinerary_items ADD COLUMN longitude TEXT DEFAULT NULL");
+  } catch { /* Ignore */ }
+
   initialized = true;
 }
 

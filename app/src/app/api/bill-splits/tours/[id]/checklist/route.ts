@@ -49,7 +49,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   try {
     const checklistItems = await queryAll(
-      `SELECT id, tour_id as tourId, name, category, assigned_to as assignedTo, completed, description, attachment_id as attachmentId, attachment_name as attachmentName, priority, quantity
+      `SELECT id, tour_id as tourId, name, category, assigned_to as assignedTo, completed, description, attachment_id as attachmentId, attachment_name as attachmentName, priority, quantity, completed_by as completedBy
        FROM tour_checklist_items
        WHERE tour_id = ?
        ORDER BY created_at ASC`,
@@ -98,6 +98,7 @@ export async function POST(request: Request, context: RouteContext) {
     const assignedTo = (formData.get('assignedTo') as string) || 'Everyone';
     const completedVal = formData.get('completed') as string | null;
     const completed = completedVal === 'true' || completedVal === '1' ? 1 : 0;
+    const completedBy = formData.get('completedBy') as string | null;
     const description = (formData.get('description') as string) || '';
     const priority = formData.get('priority') as string | null;
     const quantityVal = formData.get('quantity') as string | null;
@@ -114,16 +115,18 @@ export async function POST(request: Request, context: RouteContext) {
       // We might toggle completion only, or update fields
       if (formData.has('completed') && !formData.has('name')) {
         // Just completion toggle
+        const completedByVal = formData.get('completedBy') as string | null;
         await run(
-          'UPDATE tour_checklist_items SET completed = ? WHERE id = ? AND tour_id = ?',
-          [completed, itemId, tourId]
+          'UPDATE tour_checklist_items SET completed = ?, completed_by = ? WHERE id = ? AND tour_id = ?',
+          [completed, completedByVal || '[]', itemId, tourId]
         );
         broadcastTourUpdate(tourId, {
           type: 'TOGGLE_PACKED',
-          data: { id: itemId, completed: !!completed },
+          data: { id: itemId, completed: !!completed, completedBy: completedByVal || '[]' },
         });
       } else {
         // Full update
+        const completedByVal = formData.get('completedBy') as string | null;
         await run(
           `UPDATE tour_checklist_items 
            SET name = COALESCE(?, name), 
@@ -132,14 +135,15 @@ export async function POST(request: Request, context: RouteContext) {
                completed = COALESCE(?, completed), 
                description = COALESCE(?, description),
                priority = COALESCE(?, priority),
-               quantity = COALESCE(?, quantity)
+               quantity = COALESCE(?, quantity),
+               completed_by = COALESCE(?, completed_by)
            WHERE id = ? AND tour_id = ?`,
-          [name, category, assignedTo, completed, description, priority, quantity, itemId, tourId]
+          [name, category, assignedTo, completed, description, priority, quantity, completedByVal, itemId, tourId]
         );
         
         broadcastTourUpdate(tourId, {
           type: 'ITEM_MUTATE',
-          data: { id: itemId, name, category, assignedTo, completed: !!completed, description, priority, quantity },
+          data: { id: itemId, name, category, assignedTo, completed: !!completed, description, priority, quantity, completedBy: completedByVal },
         });
       }
 
@@ -179,12 +183,13 @@ export async function POST(request: Request, context: RouteContext) {
 
     const itemPriority = priority || 'Medium';
     const itemQuantity = quantity !== null && !isNaN(quantity) ? quantity : 1;
+    const itemCompletedBy = completedBy || '[]';
 
     const result = await run(
       `INSERT INTO tour_checklist_items (
-        tour_id, name, category, assigned_to, completed, description, attachment_id, attachment_name, priority, quantity
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tourId, name, category, assignedTo, completed, description, attachmentId, attachmentName, itemPriority, itemQuantity]
+        tour_id, name, category, assigned_to, completed, description, attachment_id, attachment_name, priority, quantity, completed_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tourId, name, category, assignedTo, completed, description, attachmentId, attachmentName, itemPriority, itemQuantity, itemCompletedBy]
     );
 
     const createdItem = {
@@ -199,6 +204,7 @@ export async function POST(request: Request, context: RouteContext) {
       attachmentName,
       priority: itemPriority,
       quantity: itemQuantity,
+      completedBy: itemCompletedBy,
     };
     const clientItem = toClientChecklistItem(createdItem, tourId);
 
