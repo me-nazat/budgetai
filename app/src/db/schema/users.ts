@@ -83,6 +83,12 @@ export const users = sqliteTable('users', {
    */
   passwordUpdatedAt: text('password_updated_at'),
 
+  /** JSON-stringified array representing the desktop dashboard layout widget order and visibility. */
+  dashboardLayout: text('dashboard_layout'),
+
+  /** JSON-stringified array representing the mobile dashboard layout widget order and visibility. */
+  mobileWidgetOrder: text('mobile_widget_order'),
+
   /** Account creation timestamp (UTC ISO-8601). */
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });

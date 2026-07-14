@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/security/session-manager';
 import { run, ensureDbInitialized } from '@/lib/db';
 import { maybeCreateBudgetAlert } from '@/lib/alerts';
+import { AutomationRulesService } from '@/services/automation-rules.service';
+import { AuditService } from '@/services/audit.service';
 
 interface TransactionPayload {
     id?: string; // Client-side ID for tracking
@@ -40,6 +42,9 @@ export async function POST(request: Request) {
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        const ip = request.headers.get('x-forwarded-for') || 'unknown';
+        const userAgent = request.headers.get('user-agent') || undefined;
 
         const { transactions } = (await request.json()) as {
             transactions: TransactionPayload[];
@@ -132,10 +137,18 @@ export async function POST(request: Request) {
                         try {
                             const sets = [];
                             const params: unknown[] = [];
+                            let finalCategory = tx.category;
+                            let matchedRuleId: number | null = null;
+
+                            if (tx.description && tx.category) {
+                                const autoMatch = await AutomationRulesService.applyRules(session.userId, tx.description, tx.category);
+                                finalCategory = autoMatch.category;
+                                matchedRuleId = autoMatch.matchedRuleId;
+                            }
 
                             if (tx.type) { sets.push('type = ?'); params.push(tx.type); }
                             if (tx.amount > 0) { sets.push('amount = ?'); params.push(tx.amount); }
-                            if (tx.category) { sets.push('category = ?'); params.push(tx.category); }
+                            if (finalCategory) { sets.push('category = ?'); params.push(finalCategory); }
                             if (tx.description) { sets.push('description = ?'); params.push(tx.description); }
                             if (tx.date) { sets.push('date = ?'); params.push(tx.date); }
 
@@ -146,6 +159,25 @@ export async function POST(request: Request) {
                                     params
                                 );
                             }
+
+                            if (matchedRuleId) {
+                                AuditService.logAction({
+                                    userId: session.userId,
+                                    action: 'UPDATE',
+                                    entityType: 'automation_rule',
+                                    entityId: matchedRuleId,
+                                    newValue: {
+                                        event: 'rule_applied',
+                                        transactionId: tx.txId,
+                                        description: tx.description,
+                                        originalCategory: tx.category,
+                                        appliedCategory: finalCategory,
+                                    },
+                                    ip,
+                                    userAgent,
+                                });
+                            }
+
                             processedIds.push(tx.client_txn_id);
                         } catch (e) {
                             console.error(`Error editing transaction ${tx.txId}:`, e);
@@ -157,17 +189,38 @@ export async function POST(request: Request) {
                 } else {
                     // Default is 'add'
                     try {
-                        await run(
+                        const autoMatch = await AutomationRulesService.applyRules(session.userId, tx.description, tx.category);
+                        const finalCategory = autoMatch.category;
+
+                        const result = await run(
                             'INSERT INTO transactions (user_id, type, amount, category, description, date) VALUES (?, ?, ?, ?, ?, ?)',
-                            [session.userId, tx.type, tx.amount, tx.category, tx.description, tx.date]
+                            [session.userId, tx.type, tx.amount, finalCategory, tx.description, tx.date]
                         );
+
+                        if (autoMatch.matchedRuleId) {
+                            AuditService.logAction({
+                                userId: session.userId,
+                                action: 'UPDATE',
+                                entityType: 'automation_rule',
+                                entityId: autoMatch.matchedRuleId,
+                                newValue: {
+                                    event: 'rule_applied',
+                                    transactionId: result.lastInsertRowid,
+                                    description: tx.description,
+                                    originalCategory: tx.category,
+                                    appliedCategory: finalCategory,
+                                },
+                                ip,
+                                userAgent,
+                            });
+                        }
 
                         if (tx.type === 'expense') {
                             await maybeCreateBudgetAlert({
                                 userId: session.userId,
                                 type: tx.type,
                                 amount: tx.amount,
-                                category: tx.category,
+                                category: finalCategory,
                                 date: tx.date,
                             });
                         }

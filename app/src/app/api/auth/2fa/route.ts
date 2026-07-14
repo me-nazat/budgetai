@@ -64,3 +64,18 @@ export const PUT = apiHandler(
     return NextResponse.json({ message: '2FA enabled successfully' });
   })
 );
+
+/**
+ * DELETE /api/auth/2fa
+ *
+ * Disables TOTP 2FA for the current user.
+ *
+ * @security Requires authentication.
+ */
+export const DELETE = apiHandler(
+  withAuth<any>(async (_request, { userId }) => {
+    await AuthService.disableTOTP(userId);
+    return NextResponse.json({ message: '2FA disabled successfully' });
+  })
+);
+

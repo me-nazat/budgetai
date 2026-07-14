@@ -12,6 +12,8 @@ import {
 import { validateInput } from '@/lib/types/api';
 import { CreateTransactionDTO, UpdateTransactionDTO } from '@/lib/types/dto';
 import { invalidateDashboardCache } from '@/lib/redis';
+import { AutomationRulesService } from '@/services/automation-rules.service';
+import { AuditService } from '@/services/audit.service';
 
 async function ensureCustomCategory(userId: number, type: string, categoryName: string) {
     const name = categoryName.trim().replace(/\s+/g, ' ');
@@ -95,12 +97,35 @@ export const POST = apiHandler(
         const body = await request.json();
         const data = validateInput(CreateTransactionDTO, body);
         const { type, amount, description, notes, date, category: categoryName } = data;
-        await ensureCustomCategory(userId, type, categoryName);
+
+        const autoMatch = await AutomationRulesService.applyRules(userId, description, categoryName);
+        const finalCategory = autoMatch.category;
+        await ensureCustomCategory(userId, type, finalCategory);
 
         const result = await run(
             'INSERT INTO transactions (user_id, type, amount, category, description, date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [userId, type, amount, categoryName, description, date, notes]
+            [userId, type, amount, finalCategory, description, date, notes]
         );
+
+        if (autoMatch.matchedRuleId) {
+            const ip = request.headers.get('x-forwarded-for') || 'unknown';
+            const userAgent = request.headers.get('user-agent') || undefined;
+            AuditService.logAction({
+                userId,
+                action: 'UPDATE',
+                entityType: 'automation_rule',
+                entityId: autoMatch.matchedRuleId,
+                newValue: {
+                    event: 'rule_applied',
+                    transactionId: result.lastInsertRowid,
+                    description,
+                    originalCategory: categoryName,
+                    appliedCategory: finalCategory,
+                },
+                ip,
+                userAgent,
+            });
+        }
 
         // Invalidate dashboard cache
         await invalidateDashboardCache(userId);
@@ -110,7 +135,7 @@ export const POST = apiHandler(
                 userId: userId,
                 type,
                 amount,
-                category: categoryName,
+                category: finalCategory,
                 date,
             });
         }).catch(err => console.error('Budget alert failed:', err));
@@ -144,15 +169,38 @@ export const PUT = apiHandler(
         const body = await request.json();
         const data = validateInput(UpdateTransactionDTO, body);
         const { id, type, amount, description, notes, date, category: categoryName } = data;
-        await ensureCustomCategory(userId, type, categoryName);
+
+        const autoMatch = await AutomationRulesService.applyRules(userId, description, categoryName);
+        const finalCategory = autoMatch.category;
+        await ensureCustomCategory(userId, type, finalCategory);
 
         const result = await run(
             'UPDATE transactions SET type = ?, amount = ?, category = ?, description = ?, date = ?, notes = ? WHERE id = ? AND user_id = ?',
-            [type, amount, categoryName, description, date, notes, id, userId]
+            [type, amount, finalCategory, description, date, notes, id, userId]
         );
 
         if (result.rowsAffected === 0) {
             return NextResponse.json({ error: 'Transaction not found or unauthorized' }, { status: 404 });
+        }
+
+        if (autoMatch.matchedRuleId) {
+            const ip = request.headers.get('x-forwarded-for') || 'unknown';
+            const userAgent = request.headers.get('user-agent') || undefined;
+            AuditService.logAction({
+                userId,
+                action: 'UPDATE',
+                entityType: 'automation_rule',
+                entityId: autoMatch.matchedRuleId,
+                newValue: {
+                    event: 'rule_applied',
+                    transactionId: id,
+                    description,
+                    originalCategory: categoryName,
+                    appliedCategory: finalCategory,
+                },
+                ip,
+                userAgent,
+            });
         }
 
         // Invalidate dashboard cache
@@ -163,7 +211,7 @@ export const PUT = apiHandler(
                 userId: userId,
                 type,
                 amount,
-                category: categoryName,
+                category: finalCategory,
                 date,
             });
         }).catch(err => console.error('Budget alert failed:', err));

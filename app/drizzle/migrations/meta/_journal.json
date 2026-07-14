@@ -22,6 +22,13 @@
       "when": 1781769197644,
       "tag": "0002_material_pyro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784044272107,
+      "tag": "0003_slow_punisher",
+      "breakpoints": true
     }
   ]
 }

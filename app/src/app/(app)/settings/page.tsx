@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { CURRENCIES, CurrencyCode } from '@/lib/currency';
 import type { Variants } from 'framer-motion';
 import { motion } from 'framer-motion';
+import { Toaster, toast } from 'sonner';
 
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -29,6 +30,46 @@ export default function SettingsPage() {
     const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false);
     const [avatarHovered, setAvatarHovered] = useState(false);
 
+    // 2FA states
+    const [totpEnabled, setTotpEnabled] = useState(false);
+    const [totpSetupData, setTotpSetupData] = useState<{ uri: string; backupCodes: string[]; secret?: string } | null>(null);
+    const [totpCode, setTotpCode] = useState('');
+    const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
+    const [totpBackupCodesToShow, setTotpBackupCodesToShow] = useState<string[] | null>(null);
+    const [isDisabling2FA, setIsDisabling2FA] = useState(false);
+    const [isEnabling2FA, setIsEnabling2FA] = useState(false);
+
+    // Passkeys states
+    const [passkeys, setPasskeys] = useState<any[]>([]);
+    const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
+    const [passkeyName, setPasskeyName] = useState('');
+    const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+
+    // Sessions states
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [revokingSessions, setRevokingSessions] = useState<Record<number, boolean>>({});
+    const [isRevokingAll, setIsRevokingAll] = useState(false);
+
+    const fetchPasskeys = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth/passkeys');
+            const data = await res.json();
+            if (data.passkeys) setPasskeys(data.passkeys);
+        } catch (err) {
+            console.error('Failed to fetch passkeys', err);
+        }
+    }, []);
+
+    const fetchSessions = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth/sessions');
+            const data = await res.json();
+            if (data.sessions) setSessions(data.sessions);
+        } catch (err) {
+            console.error('Failed to fetch sessions', err);
+        }
+    }, []);
+
     useEffect(() => {
         const observer = new MutationObserver(() => {
             setIsDark(document.documentElement.classList.contains('dark'));
@@ -37,19 +78,26 @@ export default function SettingsPage() {
 
         fetch('/api/auth/me').then(r => r.json()).then(d => {
             if (d.user) {
-                setName(d.user.name); setEmail(d.user.email); setCurrency((d.user.currency || 'BDT') as CurrencyCode);
-                setNotifyBudget(!!d.user.notify_budget); setNotifyOverspend(!!d.user.notify_overspend);
+                setName(d.user.name || ''); 
+                setEmail(d.user.email || ''); 
+                setCurrency((d.user.currency || 'BDT') as CurrencyCode);
+                setNotifyBudget(d.user.notifyBudget !== undefined ? !!d.user.notifyBudget : !!d.user.notify_budget); 
+                setNotifyOverspend(d.user.notifyOverspend !== undefined ? !!d.user.notifyOverspend : !!d.user.notify_overspend);
+                setTotpEnabled(!!d.user.totpEnabled);
             }
         });
 
+        fetchPasskeys();
+        fetchSessions();
+
         return () => observer.disconnect();
-    }, []);
+    }, [fetchPasskeys, fetchSessions]);
 
     const save = async () => {
         setSaving(true);
         await fetch('/api/settings', {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, currency, notify_budget: notifyBudget, notify_overspend: notifyOverspend })
+            body: JSON.stringify({ name, currency, notifyBudget, notifyOverspend })
         });
         localStorage.setItem('budget-ai-currency', currency);
         setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000);
@@ -71,6 +119,162 @@ export default function SettingsPage() {
         localStorage.removeItem('wealth-ai-auth-state');
         document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         window.location.href = '/login';
+    };
+
+    const handleStart2FASetup = async () => {
+        try {
+            const res = await fetch('/api/auth/2fa', { method: 'POST' });
+            const data = await res.json();
+            if (data.uri && data.backupCodes) {
+                const url = new URL(data.uri);
+                const secret = url.searchParams.get('secret') || '';
+                setTotpSetupData({ uri: data.uri, backupCodes: data.backupCodes, secret });
+                setIs2FAModalOpen(true);
+            }
+        } catch (err) {
+            toast.error('Failed to initiate 2FA setup');
+        }
+    };
+
+    const handleConfirm2FA = async () => {
+        if (!totpSetupData) return;
+        setIsEnabling2FA(true);
+        try {
+            const res = await fetch('/api/auth/2fa', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    verificationCode: totpCode,
+                    secret: totpSetupData.secret,
+                    backupCodes: totpSetupData.backupCodes,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setTotpEnabled(true);
+                setIs2FAModalOpen(false);
+                setTotpBackupCodesToShow(totpSetupData.backupCodes);
+                setTotpCode('');
+                setTotpSetupData(null);
+                toast.success('Two-factor authentication enabled successfully!');
+            } else {
+                toast.error(data.error?.message || 'Invalid verification code');
+            }
+        } catch (err) {
+            toast.error('Failed to confirm 2FA setup');
+        } finally {
+            setIsEnabling2FA(false);
+        }
+    };
+
+    const handleDisable2FA = async () => {
+        if (!confirm('Are you sure you want to disable Two-Factor Authentication? This will reduce your account security.')) return;
+        setIsDisabling2FA(true);
+        try {
+            const res = await fetch('/api/auth/2fa', { method: 'DELETE' });
+            if (res.ok) {
+                setTotpEnabled(false);
+                toast.success('Two-factor authentication disabled successfully.');
+            } else {
+                toast.error('Failed to disable 2FA');
+            }
+        } catch (err) {
+            toast.error('Error disabling 2FA');
+        } finally {
+            setIsDisabling2FA(false);
+        }
+    };
+
+    const handleRegisterPasskey = async () => {
+        if (!passkeyName) {
+            toast.error('Please enter a name for your passkey');
+            return;
+        }
+        setIsRegisteringPasskey(true);
+        try {
+            const res = await fetch('/api/auth/passkeys/register/options', { method: 'POST' });
+            if (!res.ok) throw new Error('Failed to fetch registration options');
+            const options = await res.json();
+
+            const { startRegistration } = await import('@simplewebauthn/browser');
+            const credential = await startRegistration({ optionsJSON: options });
+
+            const verifyRes = await fetch('/api/auth/passkeys/register/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ response: credential, name: passkeyName }),
+            });
+            const verifyData = await verifyRes.json();
+
+            if (verifyRes.ok) {
+                toast.success('Passkey registered successfully!');
+                setIsPasskeyModalOpen(false);
+                setPasskeyName('');
+                fetchPasskeys();
+            } else {
+                toast.error(verifyData.error || 'Failed to verify passkey');
+            }
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || 'Failed to register passkey. Make sure you are using a secure origin (localhost or HTTPS).');
+        } finally {
+            setIsRegisteringPasskey(false);
+        }
+    };
+
+    const handleDeletePasskey = async (passkeyId: number) => {
+        if (!confirm('Are you sure you want to delete this passkey?')) return;
+        try {
+            const res = await fetch('/api/auth/passkeys', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ passkeyId }),
+            });
+            if (res.ok) {
+                toast.success('Passkey deleted successfully.');
+                fetchPasskeys();
+            } else {
+                toast.error('Failed to delete passkey');
+            }
+        } catch (err) {
+            toast.error('Error deleting passkey');
+        }
+    };
+
+    const handleRevokeSession = async (sessionId: number) => {
+        if (!confirm('Are you sure you want to terminate this session?')) return;
+        setRevokingSessions(prev => ({ ...prev, [sessionId]: true }));
+        try {
+            const res = await fetch(`/api/auth/sessions/${sessionId}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast.success('Session terminated.');
+                fetchSessions();
+            } else {
+                toast.error('Failed to revoke session');
+            }
+        } catch (err) {
+            toast.error('Error revoking session');
+        } finally {
+            setRevokingSessions(prev => ({ ...prev, [sessionId]: false }));
+        }
+    };
+
+    const handleRevokeAllSessions = async () => {
+        if (!confirm('Are you sure you want to sign out of all other sessions?')) return;
+        setIsRevokingAll(true);
+        try {
+            const res = await fetch('/api/auth/sessions', { method: 'DELETE' });
+            if (res.ok) {
+                toast.success('All other sessions revoked.');
+                fetchSessions();
+            } else {
+                toast.error('Failed to revoke sessions');
+            }
+        } catch (err) {
+            toast.error('Error revoking sessions');
+        } finally {
+            setIsRevokingAll(false);
+        }
     };
 
     return (
@@ -193,6 +397,107 @@ export default function SettingsPage() {
                         ))}
                     </motion.div>
 
+                    {/* Security */}
+                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
+                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
+                            <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Security</p>
+                        </div>
+                        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d]">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-primary text-[18px]">vibration</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">2FA (TOTP)</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={totpEnabled ? handleDisable2FA : handleStart2FASetup}
+                                    disabled={isDisabling2FA}
+                                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${totpEnabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                >
+                                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-500 ease-spring ${totpEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                                </button>
+                            </div>
+
+                            {totpBackupCodesToShow && (
+                                <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                    <p className="text-xs font-bold mb-1">✓ 2FA Activated!</p>
+                                    <p className="text-[10px] leading-relaxed mb-2">Save these backup codes. They will not be shown again:</p>
+                                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px] select-all bg-black/20 p-2 rounded-lg text-center tracking-wider">
+                                        {totpBackupCodesToShow.map((code, idx) => (
+                                            <div key={idx}>{code}</div>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => setTotpBackupCodesToShow(null)} className="mt-2 text-[10px] font-bold underline hover:text-emerald-300">
+                                        Saved
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d] space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-indigo-500 text-[18px]">fingerprint</span>
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Passkeys</span>
+                                </div>
+                                <button
+                                    onClick={() => setIsPasskeyModalOpen(true)}
+                                    className="px-3 py-1.5 bg-primary text-white text-[11px] font-bold rounded-lg"
+                                >
+                                    Add
+                                </button>
+                            </div>
+
+                            {passkeys.length > 0 && (
+                                <div className="space-y-1.5 pt-1.5 border-t border-gray-100 dark:border-white/5">
+                                    {passkeys.map((p) => (
+                                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/10">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold truncate text-gray-800 dark:text-gray-200">{p.name}</p>
+                                            </div>
+                                            <button onClick={() => handleDeletePasskey(p.id)} className="text-rose-500 p-1">
+                                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="px-4 py-3.5 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-amber-500 text-[18px]">devices</span>
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Active Sessions</span>
+                                </div>
+                            </div>
+                            <div className="space-y-1.5 pt-1.5 border-t border-gray-100 dark:border-white/5">
+                                {sessions.map((s) => (
+                                    <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/10">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xs font-bold truncate text-gray-800 dark:text-gray-200">{s.deviceName}</p>
+                                            <p className="text-[9px] text-gray-400 truncate">IP: {s.ipAddress}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRevokeSession(s.id)}
+                                            disabled={revokingSessions[s.id]}
+                                            className="text-rose-500 p-1 disabled:opacity-50"
+                                        >
+                                            <span className="material-symbols-outlined text-[16px]">logout</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
+
                     {/* Sign Out */}
                     <motion.div variants={itemVariants}>
                         <button
@@ -293,6 +598,151 @@ export default function SettingsPage() {
                                 ))}
                             </div>
                         </motion.div>
+                        {/* Security Card */}
+                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-8 space-y-8">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary">security</span>Security Settings
+                            </h2>
+
+                            {/* 2FA Section */}
+                            <div className="p-6 rounded-2xl bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-100 dark:border-white/5 transition-colors">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-primary">vibration</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Two-Factor Authentication (TOTP)</h3>
+                                            <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
+                                                Protect your account with a temporary verification code from your authenticator app.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={totpEnabled ? handleDisable2FA : handleStart2FASetup}
+                                        disabled={isDisabling2FA}
+                                        className={`relative w-14 h-7 rounded-full transition-colors duration-300 outline-none shadow-inner shrink-0 ${totpEnabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                    >
+                                        <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-500 ease-spring ${totpEnabled ? 'translate-x-7' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+
+                                {totpBackupCodesToShow && (
+                                    <div className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                        <p className="text-xs font-bold mb-2">✓ Two-Factor Authentication Activated!</p>
+                                        <p className="text-[11px] leading-relaxed mb-3">
+                                            Save these backup codes in a secure place. They will not be shown again. Each code can be used once if you lose access to your authenticator.
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2 font-mono text-xs select-all bg-black/20 p-3 rounded-lg text-center tracking-wider">
+                                            {totpBackupCodesToShow.map((code, idx) => (
+                                                <div key={idx}>{code}</div>
+                                            ))}
+                                        </div>
+                                        <button onClick={() => setTotpBackupCodesToShow(null)} className="mt-3 text-xs font-bold underline hover:text-emerald-300 block">
+                                            I have saved these codes
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Passkeys Section */}
+                            <div className="p-6 rounded-2xl bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-100 dark:border-white/5 transition-colors space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-indigo-500">fingerprint</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Passkeys</h3>
+                                            <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
+                                                Sign in securely using biometric verification (Face ID, Touch ID) or a physical hardware security key.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsPasskeyModalOpen(true)}
+                                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
+                                    >
+                                        Add Passkey
+                                    </button>
+                                </div>
+
+                                {passkeys.length > 0 ? (
+                                    <div className="space-y-2 pt-2 border-t border-gray-200/50 dark:border-[#30363d]/50">
+                                        {passkeys.map((p) => (
+                                            <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-white/40 dark:bg-black/20 border border-gray-100 dark:border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="material-symbols-outlined text-gray-400 dark:text-text-muted">key</span>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-gray-900 dark:text-white">{p.name}</p>
+                                                        <p className="text-[10px] text-gray-400 dark:text-text-muted/60 mt-0.5">
+                                                            Registered {new Date(p.createdAt).toLocaleDateString()}
+                                                            {p.lastUsedAt && ` • Used ${new Date(p.lastUsedAt).toLocaleDateString()}`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleDeletePasskey(p.id)} className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg active:scale-95 transition-transform">
+                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-[11px] text-gray-400 dark:text-text-muted/60 italic pt-2">No passkeys registered yet.</p>
+                                )}
+                            </div>
+
+                            {/* Active Sessions Section */}
+                            <div className="p-6 rounded-2xl bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-100 dark:border-white/5 transition-colors space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-amber-500">devices</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Active Sessions</h3>
+                                            <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
+                                                List of active devices logged into your account.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {sessions.length > 1 && (
+                                        <button
+                                            onClick={handleRevokeAllSessions}
+                                            disabled={isRevokingAll}
+                                            className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold rounded-xl transition-all disabled:opacity-50"
+                                        >
+                                            {isRevokingAll ? 'Revoking...' : 'Revoke All Others'}
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2 pt-2 border-t border-gray-200/50 dark:border-[#30363d]/50">
+                                    {sessions.map((s) => (
+                                        <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white/40 dark:bg-black/20 border border-gray-100 dark:border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <span className="material-symbols-outlined text-gray-400 dark:text-text-muted">
+                                                    {s.deviceName?.toLowerCase()?.includes('phone') || s.deviceName?.toLowerCase()?.includes('android') || s.deviceName?.toLowerCase()?.includes('iphone') ? 'smartphone' : 'laptop'}
+                                                </span>
+                                                <div>
+                                                    <p className="text-xs font-bold text-gray-900 dark:text-white">{s.deviceName}</p>
+                                                    <p className="text-[10px] text-gray-400 dark:text-text-muted/60 mt-0.5">
+                                                        IP: {s.ipAddress} • Active: {new Date(s.lastUsedAt || s.createdAt).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRevokeSession(s.id)}
+                                                disabled={revokingSessions[s.id]}
+                                                className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg active:scale-95 transition-transform disabled:opacity-50"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px]">logout</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
 
                     {/* Right Column */}
@@ -373,6 +823,128 @@ export default function SettingsPage() {
                     </button>
                 </motion.div>
             </div>
+
+            <Toaster position="top-right" richColors />
+
+            {/* 2FA Setup Modal/Drawer */}
+            {(is2FAModalOpen && totpSetupData) && (
+                <>
+                    {/* Backdrop */}
+                    <div className="fixed inset-0 bg-slate-950/55 z-[99] backdrop-blur-md transition-opacity" onClick={() => setIs2FAModalOpen(false)} />
+
+                    {/* Mobile Sheet / Desktop Modal */}
+                    <div className={`
+                        fixed z-[100] overflow-hidden transition-all duration-[400ms] transform
+                        lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-[480px] lg:rounded-3xl lg:border lg:h-auto
+                        bottom-0 left-0 w-full rounded-t-[2rem] border-t max-h-[90vh] flex flex-col
+                        bg-white dark:bg-[#0A0E1A] border-gray-200/80 dark:border-white/10 shadow-2xl
+                    `}>
+                        {/* Mobile Drag Handle */}
+                        <div className="w-full flex justify-center py-3 shrink-0 lg:hidden" onClick={() => setIs2FAModalOpen(false)}>
+                            <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />
+                        </div>
+
+                        {/* Modal/Drawer Header */}
+                        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 shrink-0">
+                            <h3 className="text-gray-900 dark:text-white font-black text-lg">Set Up Two-Factor Auth</h3>
+                            <button onClick={() => setIs2FAModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 transition-colors">
+                                <span className="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                        </div>
+
+                        {/* Modal/Drawer Content */}
+                        <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh] lg:max-h-[600px] scrollbar-none">
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">1</span>
+                                    <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">Scan this QR code with Google Authenticator or another TOTP app:</p>
+                                </div>
+
+                                <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-100 shadow-inner max-w-[200px] mx-auto">
+                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(totpSetupData.uri)}`} alt="2FA QR Code" className="w-[180px] h-[180px] object-contain" />
+                                </div>
+
+                                <div className="flex items-start gap-3 pt-2">
+                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">2</span>
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">Or enter this key manually:</p>
+                                        <p className="font-mono text-xs font-bold tracking-wider text-primary select-all bg-gray-100 dark:bg-white/5 px-3 py-2 rounded-xl mt-2 break-all text-center">{totpSetupData.secret}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3 pt-2 border-t border-gray-100 dark:border-white/5">
+                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">3</span>
+                                    <div className="flex-1 space-y-3">
+                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">Enter the 6-digit confirmation code from your app:</p>
+                                        <input
+                                            type="text"
+                                            value={totpCode}
+                                            onChange={e => setTotpCode(e.target.value)}
+                                            placeholder="000000"
+                                            maxLength={6}
+                                            className="w-full text-center px-4 py-3 rounded-xl font-mono text-lg tracking-[0.5rem] border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-black/40 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleConfirm2FA}
+                                disabled={isEnabling2FA || totpCode.length !== 6}
+                                className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-black/10 dark:shadow-white/10"
+                            >
+                                {isEnabling2FA ? 'Verifying...' : 'Enable 2FA'}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Add Passkey Modal/Drawer */}
+            {isPasskeyModalOpen && (
+                <>
+                    <div className="fixed inset-0 bg-slate-950/55 z-[99] backdrop-blur-md transition-opacity" onClick={() => setIsPasskeyModalOpen(false)} />
+
+                    <div className={`
+                        fixed z-[100] overflow-hidden transition-all duration-[400ms] transform
+                        lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-[400px] lg:rounded-3xl lg:border lg:h-auto
+                        bottom-0 left-0 w-full rounded-t-[2rem] border-t max-h-[80vh] flex flex-col
+                        bg-white dark:bg-[#0A0E1A] border-gray-200/80 dark:border-white/10 shadow-2xl
+                    `}>
+                        <div className="w-full flex justify-center py-3 shrink-0 lg:hidden" onClick={() => setIsPasskeyModalOpen(false)}>
+                            <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />
+                        </div>
+
+                        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 shrink-0">
+                            <h3 className="text-gray-900 dark:text-white font-black text-lg">Add Passkey</h3>
+                            <button onClick={() => setIsPasskeyModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 transition-colors">
+                                <span className="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Passkey Name</label>
+                                <input
+                                    type="text"
+                                    value={passkeyName}
+                                    onChange={e => setPasskeyName(e.target.value)}
+                                    placeholder="e.g. iPhone, YubiKey, MacBook"
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-black/40 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleRegisterPasskey}
+                                disabled={isRegisteringPasskey || !passkeyName}
+                                className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-black/10 dark:shadow-white/10"
+                            >
+                                {isRegisteringPasskey ? 'Registering...' : 'Register Passkey'}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </motion.div>
     );
 }

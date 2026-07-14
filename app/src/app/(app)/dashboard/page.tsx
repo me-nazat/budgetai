@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Toaster, toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
-import { useDashboard, useUser, useMarketNews, useExchangeRates, DashboardData } from '@/hooks/useApi';
+import { useDashboard, useUser, useMarketNews, useExchangeRates, useLayout, DashboardData } from '@/hooks/useApi';
 import { useSWRConfig } from 'swr';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
@@ -122,6 +123,118 @@ export default function DashboardPage() {
     const marketNews = useMarketNews();
     const exchangeRates = useExchangeRates(currency);
     const { categories: customCats } = useCustomCategories('all');
+
+    // Layout Personalization (Module 7)
+    const { layout: layoutData, mutate: mutateLayout } = useLayout();
+    const [isLayoutOpen, setIsLayoutOpen] = useState(false);
+    const [layoutTab, setLayoutTab] = useState<'desktop' | 'mobile'>('desktop');
+    const [tempDesktopLayout, setTempDesktopLayout] = useState<string[]>([]);
+    const [tempMobileLayout, setTempMobileLayout] = useState<string[]>([]);
+    const [layoutSubmitting, setLayoutSubmitting] = useState(false);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+    const desktopLayout = layoutData?.dashboardLayout || [
+        'net_worth',
+        'spending_trends',
+        'predictive',
+        'top_categories',
+        'recent_activity',
+        'budget_alerts',
+        'intel_hub',
+    ];
+
+    const mobileLayout = layoutData?.mobileWidgetOrder || [
+        'net_worth',
+        'quick_stats',
+        'ai_insight',
+        'recent_activity',
+        'budget_alerts',
+        'intel_hub',
+    ];
+
+    useEffect(() => {
+        if (layoutData) {
+            setTempDesktopLayout(layoutData.dashboardLayout);
+            setTempMobileLayout(layoutData.mobileWidgetOrder);
+        }
+    }, [layoutData]);
+
+    const handleMoveDesktop = (index: number, direction: 'up' | 'down') => {
+        const nextLayout = [...tempDesktopLayout];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= nextLayout.length) return;
+        const temp = nextLayout[index];
+        nextLayout[index] = nextLayout[targetIndex];
+        nextLayout[targetIndex] = temp;
+        setTempDesktopLayout(nextLayout);
+    };
+
+    const handleMoveMobile = (index: number, direction: 'up' | 'down') => {
+        const nextLayout = [...tempMobileLayout];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= nextLayout.length) return;
+        const temp = nextLayout[index];
+        nextLayout[index] = nextLayout[targetIndex];
+        nextLayout[targetIndex] = temp;
+        setTempMobileLayout(nextLayout);
+    };
+
+    const handleToggleDesktop = (widgetId: string) => {
+        if (tempDesktopLayout.includes(widgetId)) {
+            setTempDesktopLayout(tempDesktopLayout.filter(w => w !== widgetId));
+        } else {
+            setTempDesktopLayout([...tempDesktopLayout, widgetId]);
+        }
+    };
+
+    const handleToggleMobile = (widgetId: string) => {
+        if (tempMobileLayout.includes(widgetId)) {
+            setTempMobileLayout(tempMobileLayout.filter(w => w !== widgetId));
+        } else {
+            setTempMobileLayout([...tempMobileLayout, widgetId]);
+        }
+    };
+
+    const handleDragStart = (index: number) => {
+        setDraggedIndex(index);
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (index: number) => {
+        if (draggedIndex === null || draggedIndex === index) return;
+        const nextLayout = [...tempDesktopLayout];
+        const item = nextLayout.splice(draggedIndex, 1)[0];
+        nextLayout.splice(index, 0, item);
+        setTempDesktopLayout(nextLayout);
+        setDraggedIndex(null);
+    };
+
+    const saveLayout = async () => {
+        setLayoutSubmitting(true);
+        try {
+            const res = await fetch('/api/settings/layout', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dashboardLayout: tempDesktopLayout,
+                    mobileWidgetOrder: tempMobileLayout,
+                }),
+            });
+            if (!res.ok) throw new Error();
+            await mutateLayout();
+            toast.success('Layout saved successfully!');
+            setIsLayoutOpen(false);
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to save layout');
+        } finally {
+            setLayoutSubmitting(false);
+        }
+    };
+
     const [selectedDetailTx, setSelectedDetailTx] = useState<any | null>(null);
     const [editingTx, setEditingTx] = useState<EditableDashboardTransaction | null>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
@@ -444,156 +557,249 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                <div className="mb-5 grid grid-cols-2 gap-2">
-                    <label className="flex items-center gap-2 rounded-2xl border border-gray-200/70 bg-white/80 px-3 py-2.5 text-xs font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
-                        <span className="material-symbols-outlined text-[17px] text-primary">calendar_month</span>
+                <div className="mb-5 grid grid-cols-3 gap-2">
+                    <label className="flex items-center gap-1.5 rounded-2xl border border-gray-200/70 bg-white/80 px-2 py-2.5 text-[11px] font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-[15px] text-primary">calendar_month</span>
                         <select
                             value={selectedMonth}
                             onChange={e => setSelectedMonth(e.target.value)}
-                            className="min-w-0 flex-1 bg-transparent text-xs font-bold outline-none"
+                            className="min-w-0 flex-1 bg-transparent text-[11px] font-bold outline-none"
                         >
                             {monthOptions.map(m => (
-                                <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label}</option>
+                                <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label.split(' ')[0]}</option>
                             ))}
                         </select>
                     </label>
-                    <label className="flex items-center gap-2 rounded-2xl border border-gray-200/70 bg-white/80 px-3 py-2.5 text-xs font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
-                        <span className="material-symbols-outlined text-[17px] text-primary">view_week</span>
+                    <label className="flex items-center gap-1.5 rounded-2xl border border-gray-200/70 bg-white/80 px-2 py-2.5 text-[11px] font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-[15px] text-primary">view_week</span>
                         <select
                             value={selectedWeek}
                             onChange={e => setSelectedWeek(e.target.value)}
-                            className="min-w-0 flex-1 bg-transparent text-xs font-bold outline-none"
+                            className="min-w-0 flex-1 bg-transparent text-[11px] font-bold outline-none"
                         >
                             {weekOptions.map(w => (
-                                <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label}</option>
+                                <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label.replace(' (1st-7th)', '').replace(' (8th-14th)', '').replace(' (15th-21st)', '').replace(' (22nd-End)', '')}</option>
                             ))}
                         </select>
                     </label>
+                    <button
+                        onClick={() => {
+                            if (layoutData) {
+                                setTempDesktopLayout(layoutData.dashboardLayout);
+                                setTempMobileLayout(layoutData.mobileWidgetOrder);
+                            }
+                            setLayoutTab('mobile');
+                            setIsLayoutOpen(true);
+                        }}
+                        className="flex items-center justify-center gap-1 rounded-2xl border border-gray-200/70 bg-white/80 px-2 py-2.5 text-[11px] font-bold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300"
+                    >
+                        <span className="material-symbols-outlined text-[16px] text-primary">dashboard_customize</span>
+                        <span>Layout</span>
+                    </button>
                 </div>
 
-                {/* NEW FEATURE: Quick Stats Bar */}
-                <div className="flex overflow-x-auto custom-scrollbar gap-3 mb-6 pb-2 snap-x stagger-children">
-                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out both' }}>
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-emerald-500 text-[18px]">savings</span></div>
-                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Savings Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%</p></div>
-                    </div>
-                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.1s both' }}>
-                        <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-rose-500 text-[18px]">speed</span></div>
-                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Burn Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{sym}{(data.expenses.current / Math.max(1, new Date().getDate())).toFixed(0)}/d</p></div>
-                    </div>
-                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.2s both' }}>
-                        <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-amber-500 text-[18px]">warning</span></div>
-                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Active Alerts</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.budgetAlerts.filter(b => b.percentage >= 80).length}</p></div>
-                    </div>
-                </div>
-
-                {/* Total Balance Card (Redesigned) */}
-                <div className="relative rounded-[2rem] p-6 mb-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe hover:scale-[1.02] transition-transform duration-500">
-                    {/* Animated background layers */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" style={{ animationDuration: '4s' }} />
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3 animate-pulse" style={{ animationDuration: '5s', animationDirection: 'reverse' }} />
-
-                    {/* Glass Overlay */}
-                    <div className="absolute inset-0 bg-white/5 dark:bg-black/10 backdrop-blur-[2px]" />
-
-                    {/* Content */}
-                    <div className="relative z-10">
-                        <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Total Balance</p>
-                        <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear flex items-baseline gap-1">
-                            <span className="text-2xl text-white/70">{sym}</span>
-                            <AnimatedCounter value={data.balance} delay={0.1} />
-                        </h3>
-
-                        <div className="flex gap-3">
-                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <div className="w-5 h-5 rounded-full bg-emerald-400/20 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-emerald-300 text-[12px] font-bold">arrow_downward</span>
+                {/* Dynamic Mobile Layout */}
+                <div className="flex flex-col gap-5">
+                    {mobileLayout.map((widgetId) => {
+                        if (widgetId === 'quick_stats') {
+                            return (
+                                <div key={widgetId} className="flex overflow-x-auto custom-scrollbar gap-3 pb-2 snap-x stagger-children">
+                                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out both' }}>
+                                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-emerald-500 text-[18px]">savings</span></div>
+                                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Savings Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%</p></div>
                                     </div>
-                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Income</span>
-                                </div>
-                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
-                                    <span className="text-xs text-white/70">{sym}</span>
-                                    <AnimatedCounter value={data.earnings.current} delay={0.2} />
-                                </p>
-                            </div>
-                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-white text-[12px] font-bold">arrow_upward</span>
+                                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.1s both' }}>
+                                        <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-rose-500 text-[18px]">speed</span></div>
+                                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Burn Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{sym}{(data.expenses.current / Math.max(1, new Date().getDate())).toFixed(0)}/d</p></div>
                                     </div>
-                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Expense</span>
+                                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.2s both' }}>
+                                        <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-amber-500 text-[18px]">warning</span></div>
+                                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Active Alerts</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.budgetAlerts.filter(b => b.percentage >= 80).length}</p></div>
+                                    </div>
                                 </div>
-                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
-                                    <span className="text-xs text-white/70">{sym}</span>
-                                    <AnimatedCounter value={data.expenses.current} delay={0.3} />
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            );
+                        }
 
+                        if (widgetId === 'net_worth') {
+                            return (
+                                <div key={widgetId} className="relative rounded-[2rem] p-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe hover:scale-[1.02] transition-transform duration-500">
+                                    {/* Animated background layers */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" style={{ animationDuration: '4s' }} />
+                                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3 animate-pulse" style={{ animationDuration: '5s', animationDirection: 'reverse' }} />
 
-                {/* AI Insight Card (Redesigned) */}
-                <div className="relative glass-panel rounded-2xl p-5 mb-6 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgb(16,185,129)]" />
-                    <div className="flex items-start gap-3">
-                        <div className="relative shrink-0 mt-0.5">
-                            <div className="absolute inset-0 bg-emerald-400 blur-md rounded-full animate-pulse opacity-50" style={{ animationDuration: '3s' }} />
-                            <div className="relative w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
-                                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl animate-bounce-in" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5">AI Insight</p>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                                {data.netSavings > 0
-                                    ? `Great job! You've saved ${fmt(data.netSavings)} this period. Your savings rate is ${data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%.`
-                                    : `Heads up — you're spending more than you earn this period. Consider reviewing your top expense categories.`}
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                                    {/* Glass Overlay */}
+                                    <div className="absolute inset-0 bg-white/5 dark:bg-black/10 backdrop-blur-[2px]" />
 
-                {/* Recent Transactions (Interactive Redesign) */}
-                <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
-                        <Link href="/transactions" className="inline-flex items-center gap-1 text-xs font-bold text-primary transition-colors hover:text-blue-600 dark:text-emerald-400">
-                            All transactions
-                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                        </Link>
-                    </div>
-                    <div className="space-y-3">
-                        {data.recentTransactions.length === 0 ? (
-                            <div className="bg-gray-50 dark:bg-[#161b22] border border-gray-100 dark:border-[#30363d] rounded-2xl p-8 text-center shadow-inner">
-                                <div className="w-12 h-12 bg-gray-100 dark:bg-[#21262d] rounded-full flex items-center justify-center mx-auto mb-3">
-                                    <span className="material-symbols-outlined text-2xl text-gray-400 dark:text-gray-500">receipt_long</span>
+                                    {/* Content */}
+                                    <div className="relative z-10">
+                                        <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Total Balance</p>
+                                        <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear flex items-baseline gap-1">
+                                            <span className="text-2xl text-white/70">{sym}</span>
+                                            <AnimatedCounter value={data.balance} delay={0.1} />
+                                        </h3>
+
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-5 h-5 rounded-full bg-emerald-400/20 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-emerald-300 text-[12px] font-bold">arrow_downward</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Income</span>
+                                                </div>
+                                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
+                                                    <span className="text-xs text-white/70">{sym}</span>
+                                                    <AnimatedCounter value={data.earnings.current} delay={0.2} />
+                                                </p>
+                                            </div>
+                                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-white text-[12px] font-bold">arrow_upward</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Expense</span>
+                                                </div>
+                                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
+                                                    <span className="text-xs text-white/70">{sym}</span>
+                                                    <AnimatedCounter value={data.expenses.current} delay={0.3} />
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
-                            </div>
-                        ) : data.recentTransactions.slice(0, 7).map(t => (
-                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible glass-panel rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group category-accent" style={{ borderLeftColor: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) }}>
-                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
-                                    <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                        {getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}
-                                    </span>
+                            );
+                        }
+
+                        if (widgetId === 'ai_insight') {
+                            return (
+                                <div key={widgetId} className="relative glass-panel rounded-2xl p-5 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgb(16,185,129)]" />
+                                    <div className="flex items-start gap-3">
+                                        <div className="relative shrink-0 mt-0.5">
+                                            <div className="absolute inset-0 bg-emerald-400 blur-md rounded-full animate-pulse opacity-50" style={{ animationDuration: '3s' }} />
+                                            <div className="relative w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
+                                                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl animate-bounce-in" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5">AI Insight</p>
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                                                {data.netSavings > 0
+                                                    ? `Great job! You've saved ${fmt(data.netSavings)} this period. Your savings rate is ${data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%.`
+                                                    : `Heads up — you're spending more than you earn this period. Consider reviewing your top expense categories.`}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
-                                    <p className="text-xs font-medium text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                            );
+                        }
+
+                        if (widgetId === 'recent_activity') {
+                            return (
+                                <div key={widgetId} className="mb-2">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
+                                        <Link href="/transactions" className="inline-flex items-center gap-1 text-xs font-bold text-primary transition-colors hover:text-blue-600 dark:text-emerald-400">
+                                            All transactions
+                                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                        </Link>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {data.recentTransactions.length === 0 ? (
+                                            <div className="bg-gray-50 dark:bg-[#161b22] border border-gray-100 dark:border-[#30363d] rounded-2xl p-8 text-center shadow-inner">
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-[#21262d] rounded-full flex items-center justify-center mx-auto mb-3">
+                                                    <span className="material-symbols-outlined text-2xl text-gray-400 dark:text-gray-500">receipt_long</span>
+                                                </div>
+                                                <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
+                                            </div>
+                                        ) : data.recentTransactions.slice(0, 7).map(t => (
+                                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible glass-panel rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group category-accent" style={{ borderLeftColor: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) }}>
+                                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
+                                                    <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                        {getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
+                                                    <p className="text-xs font-medium text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                                                </div>
+                                                <div className="ml-auto flex shrink-0 items-center gap-1">
+                                                    <p className={`text-base font-bold ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
+                                                        {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
+                                                    </p>
+                                                    {renderActionMenu(t)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="ml-auto flex shrink-0 items-center gap-1">
-                                    <p className={`text-base font-bold ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
-                                        {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
-                                    </p>
-                                    {renderActionMenu(t)}
+                            );
+                        }
+
+                        if (widgetId === 'budget_alerts') {
+                            return (
+                                <div key={widgetId} className="glass-panel p-5 rounded-2xl">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-amber-500">warning</span>
+                                            Budget Alerts
+                                        </h3>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {data.budgetAlerts.length === 0 ? (
+                                            <p className="text-xs text-gray-500 text-center py-4">No active budget alerts</p>
+                                        ) : (
+                                            data.budgetAlerts.map(b => (
+                                                <div key={b.category} className="space-y-1">
+                                                    <div className="flex justify-between text-xs font-semibold">
+                                                        <span className="text-gray-700 dark:text-gray-300">{b.category}</span>
+                                                        <span className={b.percentage >= 100 ? 'text-rose-500' : b.percentage >= 80 ? 'text-amber-500' : 'text-gray-500'}>
+                                                            {b.percentage.toFixed(0)}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-[#21262d] overflow-hidden">
+                                                        <div 
+                                                            className={`h-full rounded-full transition-all duration-500 ${b.percentage >= 100 ? 'bg-rose-500' : b.percentage >= 80 ? 'bg-amber-500' : 'bg-blue-500'}`} 
+                                                            style={{ width: `${Math.min(100, b.percentage)}%` }} 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            );
+                        }
+
+                        if (widgetId === 'intel_hub') {
+                            return (
+                                <div key={widgetId} className="glass-panel rounded-2xl flex flex-col overflow-hidden bg-white dark:bg-surface-dark">
+                                    <div className="p-4 border-b border-gray-150 dark:border-white/5 bg-gray-50/50 dark:bg-black/20 flex justify-between items-center">
+                                        <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-blue-500 text-lg">insights</span>
+                                            Intelligence Hub
+                                        </h3>
+                                    </div>
+                                    <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        {marketNews.slice(0, 3).map(news => (
+                                            <div key={news.id} className="block p-3 rounded-xl border border-gray-100 dark:border-[#30363d] bg-gray-50/20 dark:bg-[#161b22]/20">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-150 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400">
+                                                        {news.sentiment}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400">{news.time}</span>
+                                                </div>
+                                                <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-snug">{news.title}</h4>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        return null;
+                    })}
                 </div>
             </div>
 
@@ -634,6 +840,20 @@ export default function DashboardPage() {
                                 ))}
                             </select>
                         </div>
+                        <button
+                            onClick={() => {
+                                if (layoutData) {
+                                    setTempDesktopLayout(layoutData.dashboardLayout);
+                                    setTempMobileLayout(layoutData.mobileWidgetOrder);
+                                }
+                                setLayoutTab('desktop');
+                                setIsLayoutOpen(true);
+                            }}
+                            className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#30363d] hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">dashboard_customize</span>
+                            <span>Customize</span>
+                        </button>
                     </div>
                 </header>
 

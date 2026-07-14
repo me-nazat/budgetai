@@ -104,6 +104,11 @@ export function useExchangeRates(currency: string) {
     return (!data?.rates || data?.error) ? null : data;
 }
 
+export function useLayout() {
+    const { data, error, isLoading, mutate } = useSWR<{ dashboardLayout: string[]; mobileWidgetOrder: string[] }>('/api/settings/layout');
+    return { layout: data, error, isLoading, mutate };
+}
+
 // ────────────────────────────────────────────────────────────
 // Note: Cache Invalidation is now handled via useInvalidate.ts 
 // because SWRConfig uses an isolated map which global mutate cannot reach.

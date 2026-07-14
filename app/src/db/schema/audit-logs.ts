@@ -56,6 +56,9 @@ export const AUDIT_ENTITY_TYPES = [
   'chat_message',
   'user',
   'session',
+  'debt',
+  'automation_rule',
+  'household',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];

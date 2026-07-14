@@ -416,4 +416,41 @@ export class UserRepository {
       })
       .where(eq(userPasskeys.credentialId, credentialId));
   }
+
+  /**
+   * Revokes a specific session by its database ID.
+   *
+   * @param id - The session database ID.
+   * @param userId - The user's ID.
+   */
+  static async revokeSessionById(id: number, userId: number): Promise<void> {
+    await db
+      .update(userSessions)
+      .set({ revoked: 1 })
+      .where(
+        and(
+          eq(userSessions.id, id),
+          eq(userSessions.userId, userId)
+        )
+      );
+  }
+
+  /**
+   * Deactivates a passkey credential by its database ID.
+   *
+   * @param id - The passkey database ID.
+   * @param userId - The user's ID.
+   */
+  static async deletePasskey(id: number, userId: number): Promise<void> {
+    await db
+      .update(userPasskeys)
+      .set({ active: 0 })
+      .where(
+        and(
+          eq(userPasskeys.id, id),
+          eq(userPasskeys.userId, userId)
+        )
+      );
+  }
 }
+

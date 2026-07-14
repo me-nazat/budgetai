@@ -130,8 +130,8 @@ export async function POST(request: Request, context: RouteContext) {
         const removeAttachment = formData.get('removeAttachment') === 'true';
         const file = formData.get('file') as File | null;
         
-        let newAttachmentId: string | undefined = undefined;
-        let newAttachmentName: string | undefined = undefined;
+        let newAttachmentId: string | null | undefined = undefined;
+        let newAttachmentName: string | null | undefined = undefined;
 
         if (removeAttachment) {
           newAttachmentId = null;

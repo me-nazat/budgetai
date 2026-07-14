@@ -409,6 +409,62 @@ export async function ensureDbInitialized(): Promise<void> {
     await getClient().execute("ALTER TABLE tour_itinerary_items ADD COLUMN longitude TEXT DEFAULT NULL");
   } catch { /* Ignore */ }
 
+  try {
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS debts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        debt_type TEXT NOT NULL CHECK(debt_type IN ('credit_card', 'personal_loan', 'student_loan', 'bnpl', 'other')),
+        balance REAL NOT NULL,
+        initial_balance REAL NOT NULL,
+        encrypted_balance TEXT,
+        interest_rate_apr REAL NOT NULL,
+        minimum_payment REAL NOT NULL,
+        due_day_of_month INTEGER,
+        linked_recurring_transaction_id INTEGER,
+        created_at TEXT DEFAULT (datetime('now')) NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (linked_recurring_transaction_id) REFERENCES recurring_transactions(id) ON DELETE SET NULL
+      )
+    `);
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_debts_user ON debts(user_id)');
+  } catch { /* Ignore */ }
+
+  // Module 7: Dashboard widget layout customization columns
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN dashboard_layout TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN mobile_widget_order TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+
+  // Module 6: Automation rules DDL
+  try {
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS automation_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        trigger_type TEXT NOT NULL CHECK(trigger_type IN ('description_contains')),
+        trigger_value TEXT NOT NULL,
+        action_type TEXT NOT NULL CHECK(action_type IN ('set_category')),
+        action_value TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now')) NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_automation_rules_user ON automation_rules(user_id)');
+  } catch { /* Ignore */ }
+
   initialized = true;
 }
 

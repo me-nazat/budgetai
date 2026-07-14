@@ -378,3 +378,68 @@ export const customCategories = sqliteTable(
 
 export type CustomCategory = typeof customCategories.$inferSelect;
 export type NewCustomCategory = typeof customCategories.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   DEBTS — Debt Payoff Planner Storage
+   ═══════════════════════════════════════════════════════════════ */
+
+export const debts = sqliteTable(
+  'debts',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    debtType: text('debt_type', {
+      enum: ['credit_card', 'personal_loan', 'student_loan', 'bnpl', 'other'],
+    }).notNull(),
+    balance: real('balance').notNull(),
+    initialBalance: real('initial_balance').notNull(),
+    encryptedBalance: text('encrypted_balance'),
+    interestRateApr: real('interest_rate_apr').notNull(),
+    minimumPayment: real('minimum_payment').notNull(),
+    dueDayOfMonth: integer('due_day_of_month'),
+    linkedRecurringTransactionId: integer('linked_recurring_transaction_id')
+      .references(() => recurringTransactions.id, { onDelete: 'set null' }),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_debts_user').on(table.userId),
+  ]
+);
+
+export type Debt = typeof debts.$inferSelect;
+export type NewDebt = typeof debts.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTOMATION RULES — Custom category categorization triggers
+   ═══════════════════════════════════════════════════════════════ */
+
+export const automationRules = sqliteTable(
+  'automation_rules',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    triggerType: text('trigger_type', { enum: ['description_contains'] }).notNull(),
+    triggerValue: text('trigger_value').notNull(),
+    actionType: text('action_type', { enum: ['set_category'] }).notNull(),
+    actionValue: text('action_value').notNull(),
+    active: integer('active').notNull().default(1),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_automation_rules_user').on(table.userId),
+  ]
+);
+
+export type AutomationRule = typeof automationRules.$inferSelect;
+export type NewAutomationRule = typeof automationRules.$inferInsert;
+

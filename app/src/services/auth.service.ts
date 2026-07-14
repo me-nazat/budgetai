@@ -278,7 +278,7 @@ export class AuthService {
    *
    * @internal
    */
-  private static async completeLogin(
+  public static async completeLogin(
     user: { id: number; name: string; email: string; currency: string | null },
     ctx: AuthRequestContext,
     rememberMe?: boolean
@@ -506,6 +506,28 @@ export class AuthService {
       entityId: String(userId),
     });
   }
+
+  /**
+   * Disables TOTP 2FA for a user.
+   *
+   * @param userId - The user's ID.
+   *
+   * @throws {NotFoundError} If the user doesn't exist.
+   */
+  static async disableTOTP(userId: number): Promise<void> {
+    const user = await UserRepository.findById(userId);
+    if (!user) throw new NotFoundError('User not found', ErrorCode.USER_NOT_FOUND);
+
+    await UserRepository.disable2FA(userId);
+
+    AuditService.logAction({
+      userId,
+      action: '2FA_DISABLE',
+      entityType: 'user',
+      entityId: String(userId),
+    });
+  }
+
 
   /**
    * Gets the current user's profile (public fields only).

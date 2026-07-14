@@ -17,9 +17,12 @@ const menuItems = [
     { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
     { href: '/tours', icon: 'flight_takeoff', label: 'Tour Manager' },
     { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
+    { href: '/debts', icon: 'credit_card', label: 'Debt Planner' },
+    { href: '/forecast', icon: 'timeline', label: 'Cash Flow Forecast' },
     { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
     { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
     { href: '/recurring-subscriptions', icon: 'repeat', label: 'Recurring & Subs' },
+    { href: '/automation-rules', icon: 'auto_awesome', label: 'Automation Rules' },
     { href: '/notifications', icon: 'notifications', label: 'Alerts' },
 ];
 

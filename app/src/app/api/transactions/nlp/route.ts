@@ -8,6 +8,8 @@ import { run } from '@/lib/db';
 import { maybeCreateBudgetAlert } from '@/lib/alerts';
 import { isStandardCategory, resolveColor, resolveIcon } from '@/lib/categoryUtils';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AutomationRulesService } from '@/services/automation-rules.service';
+import { AuditService } from '@/services/audit.service';
 
 const NLP_SYSTEM = `You parse natural-language financial entries into structured JSON.
 Given a sentence, extract:
@@ -82,21 +84,44 @@ export const POST = apiHandler(
 
         await ensureCustomCategory(userId, type, category);
 
+        const autoMatch = await AutomationRulesService.applyRules(userId, description, category);
+        const finalCategory = autoMatch.category;
+
         const result = await run(
             'INSERT INTO transactions (user_id, type, amount, category, description, date) VALUES (?, ?, ?, ?, ?, ?)',
-            [userId, type, amount, category, description, date]
+            [userId, type, amount, finalCategory, description, date]
         );
+
+        if (autoMatch.matchedRuleId) {
+            const ip = request.headers.get('x-forwarded-for') || 'unknown';
+            const userAgent = request.headers.get('user-agent') || undefined;
+            AuditService.logAction({
+                userId,
+                action: 'UPDATE',
+                entityType: 'automation_rule',
+                entityId: autoMatch.matchedRuleId,
+                newValue: {
+                    event: 'rule_applied',
+                    transactionId: result.lastInsertRowid,
+                    description,
+                    originalCategory: category,
+                    appliedCategory: finalCategory,
+                },
+                ip,
+                userAgent,
+            });
+        }
 
         await maybeCreateBudgetAlert({
             userId: userId,
             type,
             amount,
-            category,
+            category: finalCategory,
             date,
         });
 
         return NextResponse.json({
-            transaction: { id: result.lastInsertRowid, type, amount, category, description, date },
+            transaction: { id: result.lastInsertRowid, type, amount, category: finalCategory, description, date },
         });
     }),
     { rateLimit: 'aiChat' }
