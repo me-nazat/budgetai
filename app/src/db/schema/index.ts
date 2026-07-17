@@ -431,6 +431,8 @@ export const automationRules = sqliteTable(
     actionType: text('action_type', { enum: ['set_category'] }).notNull(),
     actionValue: text('action_value').notNull(),
     active: integer('active').notNull().default(1),
+    /** Priority for rule execution order (lower = first). */
+    priority: integer('priority').notNull().default(0),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -443,3 +445,282 @@ export const automationRules = sqliteTable(
 export type AutomationRule = typeof automationRules.$inferSelect;
 export type NewAutomationRule = typeof automationRules.$inferInsert;
 
+/* ═══════════════════════════════════════════════════════════════
+   PUSH SUBSCRIPTIONS — Web Push notification subscriptions (Module 2)
+   ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Stores Web Push API subscription data per user/device.
+ *
+ * @security
+ * - `auth` and `p256dh` are cryptographic keys — treat as sensitive.
+ * - Subscriptions are automatically cleaned up when they expire or fail.
+ */
+export const pushSubscriptions = sqliteTable(
+  'push_subscriptions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    /** The push service endpoint URL. */
+    endpoint: text('endpoint').notNull(),
+
+    /** The p256dh public key for encryption. */
+    p256dh: text('p256dh').notNull(),
+
+    /** The auth secret for encryption. */
+    auth: text('auth').notNull(),
+
+    /** Push notification categories the user has enabled (JSON array). */
+    enabledCategories: text('enabled_categories').default('["budget","subscriptions","goals","security"]'),
+
+    /** Quiet hours start (HH:mm format, null = no quiet hours). */
+    quietHoursStart: text('quiet_hours_start'),
+
+    /** Quiet hours end (HH:mm format). */
+    quietHoursEnd: text('quiet_hours_end'),
+
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_push_subs_user').on(table.userId),
+    index('idx_push_subs_endpoint').on(table.endpoint),
+  ]
+);
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   INVESTMENT HOLDINGS — Portfolio Tracker (Module 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Investment holdings table — tracks user's investment positions.
+ *
+ * @remarks
+ * - `ticker` is the stock/crypto symbol (e.g., AAPL, BTC).
+ * - `avg_cost_basis` is the average purchase price per unit.
+ * - Live prices are fetched from external APIs and cached in memory.
+ */
+export const investmentHoldings = sqliteTable(
+  'investment_holdings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    /** Asset type classification. */
+    assetType: text('asset_type', {
+      enum: ['stock', 'etf', 'crypto', 'bond', 'mutual_fund', 'other'],
+    }).notNull(),
+
+    /** Ticker/symbol (e.g., AAPL, BTC-USD). */
+    ticker: text('ticker').notNull(),
+
+    /** Human-readable name (e.g., "Apple Inc."). */
+    name: text('name').notNull(),
+
+    /** Number of units held. */
+    quantity: real('quantity').notNull(),
+
+    /** Average cost basis per unit in user's currency. */
+    avgCostBasis: real('avg_cost_basis').notNull(),
+
+    /** Currency of the holding (e.g., USD). */
+    currency: text('currency').notNull().default('USD'),
+
+    /** Optional notes. */
+    notes: text('notes'),
+
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_investments_user').on(table.userId),
+    index('idx_investments_ticker').on(table.userId, table.ticker),
+  ]
+);
+
+export type InvestmentHolding = typeof investmentHoldings.$inferSelect;
+export type NewInvestmentHolding = typeof investmentHoldings.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTOMATION AUDIT LOG — Rule execution history (Module 6)
+   ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Tracks every time an automation rule fires, enabling undo.
+ */
+export const automationAuditLog = sqliteTable(
+  'automation_audit_log',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    /** The rule that fired. */
+    ruleId: integer('rule_id')
+      .references(() => automationRules.id, { onDelete: 'set null' }),
+
+    /** The transaction that was affected. */
+    transactionId: integer('transaction_id'),
+
+    /** What action was performed. */
+    actionPerformed: text('action_performed').notNull(),
+
+    /** Previous value before the rule changed it. */
+    previousValue: text('previous_value'),
+
+    /** New value after the rule changed it. */
+    newValue: text('new_value'),
+
+    /** Whether this action has been undone. */
+    undone: integer('undone').notNull().default(0),
+
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_auto_audit_user').on(table.userId, table.createdAt),
+  ]
+);
+
+export type AutomationAuditLogEntry = typeof automationAuditLog.$inferSelect;
+export type NewAutomationAuditLogEntry = typeof automationAuditLog.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD LAYOUTS — Custom widget ordering (Module 7)
+   ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Stores per-user dashboard widget layout preferences.
+ */
+export const dashboardLayouts = sqliteTable('dashboard_layouts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  /** JSON array of widget IDs in display order. */
+  widgetOrder: text('widget_order').notNull().default('[]'),
+
+  /** The pinned "hero" widget ID (displayed prominently at top). */
+  heroWidget: text('hero_widget'),
+
+  /** JSON object of widget visibility: { [widgetId]: boolean }. */
+  hiddenWidgets: text('hidden_widgets').default('{}'),
+
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export type DashboardLayout = typeof dashboardLayouts.$inferSelect;
+export type NewDashboardLayout = typeof dashboardLayouts.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   HOUSEHOLDS — Shared family/household spaces (Module 9)
+   ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Households table — a shared financial space for families/roommates.
+ */
+export const households = sqliteTable('households', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+
+  /** Display name (e.g., "Smith Family", "Apartment 4B"). */
+  name: text('name').notNull(),
+
+  /** Unique invite code for joining. */
+  inviteCode: text('invite_code').notNull(),
+
+  /** User who created this household. */
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export type Household = typeof households.$inferSelect;
+export type NewHousehold = typeof households.$inferInsert;
+
+/**
+ * Household members — many-to-many between users and households.
+ */
+export const householdMembers = sqliteTable(
+  'household_members',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    householdId: integer('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    /** Role within the household. */
+    role: text('role', { enum: ['owner', 'member'] }).notNull().default('member'),
+
+    joinedAt: text('joined_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_hh_members_household').on(table.householdId),
+    index('idx_hh_members_user').on(table.userId),
+  ]
+);
+
+export type HouseholdMember = typeof householdMembers.$inferSelect;
+export type NewHouseholdMember = typeof householdMembers.$inferInsert;
+
+/**
+ * Household expenses — shared expenses within a household.
+ */
+export const householdExpenses = sqliteTable(
+  'household_expenses',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    householdId: integer('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+
+    /** The member who paid/logged the expense. */
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    description: text('description').notNull(),
+    amount: real('amount').notNull(),
+    category: text('category').notNull().default('Other'),
+
+    /** Who should share this expense: 'all' or JSON array of user IDs. */
+    splitBetween: text('split_between').notNull().default('all'),
+
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_hh_expenses_household').on(table.householdId, table.createdAt),
+    index('idx_hh_expenses_user').on(table.userId),
+  ]
+);
+
+export type HouseholdExpense = typeof householdExpenses.$inferSelect;
+export type NewHouseholdExpense = typeof householdExpenses.$inferInsert;

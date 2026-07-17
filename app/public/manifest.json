@@ -1,0 +1,28 @@
+{
+  "name": "Wealth AI",
+  "short_name": "Wealth AI",
+  "description": "AI-powered personal finance management — budgets, savings, investments, and more.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0A0E1A",
+  "theme_color": "#136dec",
+  "orientation": "any",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/wealth-ai-logo-v2.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/wealth-ai-logo-v2.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

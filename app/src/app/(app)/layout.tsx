@@ -6,6 +6,7 @@ import AppRouteTransition from '@/components/AppRouteTransition';
 import CommandPalette from '@/components/CommandPalette';
 import PageTransition from '@/components/PageTransition';
 import GuestGuard from '@/components/GuestGuard';
+import InstallPrompt from '@/components/InstallPrompt';
 
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 
@@ -26,6 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         </GuestGuard>
                     </main>
                     <MobileTabBar />
+                    <InstallPrompt />
                 </div>
             </CurrencyProvider>
         </SWRProvider>

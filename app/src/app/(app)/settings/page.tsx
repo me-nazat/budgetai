@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CURRENCIES, CurrencyCode } from '@/lib/currency';
 import type { Variants } from 'framer-motion';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 
 const containerVariants: Variants = {
@@ -46,9 +46,17 @@ export default function SettingsPage() {
     const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
 
     // Sessions states
-    const [sessions, setSessions] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<Array<{ id: number; deviceName: string; ipAddress: string; lastUsedAt: string; createdAt: string; isCurrentDevice: boolean }>>([]);
     const [revokingSessions, setRevokingSessions] = useState<Record<number, boolean>>({});
     const [isRevokingAll, setIsRevokingAll] = useState(false);
+
+    // Login activity states
+    const [loginActivity, setLoginActivity] = useState<Array<{ id: number; action: string; ipAddress: string; deviceName: string; success: boolean; reason?: string; createdAt: string }>>([]);
+    const [showLoginActivity, setShowLoginActivity] = useState(false);
+
+    // Mobile swipe state
+    const [swipedSessionId, setSwipedSessionId] = useState<number | null>(null);
+    const touchStartX = useRef<number>(0);
 
     const fetchPasskeys = useCallback(async () => {
         try {
@@ -70,6 +78,53 @@ export default function SettingsPage() {
         }
     }, []);
 
+    const fetchLoginActivity = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth/login-activity');
+            const data = await res.json();
+            if (data.activity) setLoginActivity(data.activity);
+        } catch (err) {
+            console.error('Failed to fetch login activity', err);
+        }
+    }, []);
+
+    /** Downloads backup/recovery codes as a .txt file */
+    const downloadRecoveryCodes = (codes: string[]) => {
+        const content = [
+            'Wealth AI — Recovery Codes',
+            '================================',
+            'Store these codes in a safe place.',
+            'Each code can only be used once.',
+            '',
+            ...codes.map((code, i) => `${i + 1}. ${code}`),
+            '',
+            `Generated: ${new Date().toISOString()}`,
+        ].join('\n');
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'wealth-ai-recovery-codes.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Recovery codes downloaded!');
+    };
+
+    /** Mobile swipe-to-revoke handlers */
+    const handleTouchStart = (e: React.TouchEvent, sessionId: number) => {
+        touchStartX.current = e.touches[0].clientX;
+        if (swipedSessionId !== sessionId) setSwipedSessionId(null);
+    };
+    const handleTouchEnd = (e: React.TouchEvent, sessionId: number, isCurrentDevice: boolean) => {
+        if (isCurrentDevice) return;
+        const diff = touchStartX.current - e.changedTouches[0].clientX;
+        if (diff > 80) {
+            setSwipedSessionId(sessionId);
+        } else if (diff < -40) {
+            setSwipedSessionId(null);
+        }
+    };
+
     useEffect(() => {
         const observer = new MutationObserver(() => {
             setIsDark(document.documentElement.classList.contains('dark'));
@@ -89,9 +144,10 @@ export default function SettingsPage() {
 
         fetchPasskeys();
         fetchSessions();
+        fetchLoginActivity();
 
         return () => observer.disconnect();
-    }, [fetchPasskeys, fetchSessions]);
+    }, [fetchPasskeys, fetchSessions, fetchLoginActivity]);
 
     const save = async () => {
         setSaving(true);
@@ -430,9 +486,14 @@ export default function SettingsPage() {
                                             <div key={idx}>{code}</div>
                                         ))}
                                     </div>
-                                    <button onClick={() => setTotpBackupCodesToShow(null)} className="mt-2 text-[10px] font-bold underline hover:text-emerald-300">
-                                        Saved
-                                    </button>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <button onClick={() => downloadRecoveryCodes(totpBackupCodesToShow)} className="text-[10px] font-bold underline hover:text-emerald-300 flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-[12px]">download</span> Download .txt
+                                        </button>
+                                        <button onClick={() => setTotpBackupCodesToShow(null)} className="text-[10px] font-bold underline hover:text-emerald-300">
+                                            I&apos;ve saved them
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -480,20 +541,103 @@ export default function SettingsPage() {
                             </div>
                             <div className="space-y-1.5 pt-1.5 border-t border-gray-100 dark:border-white/5">
                                 {sessions.map((s) => (
-                                    <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/10">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-xs font-bold truncate text-gray-800 dark:text-gray-200">{s.deviceName}</p>
-                                            <p className="text-[9px] text-gray-400 truncate">IP: {s.ipAddress}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleRevokeSession(s.id)}
-                                            disabled={revokingSessions[s.id]}
-                                            className="text-rose-500 p-1 disabled:opacity-50"
+                                    <div
+                                        key={s.id}
+                                        className="relative overflow-hidden rounded-lg"
+                                        onTouchStart={(e) => handleTouchStart(e, s.id)}
+                                        onTouchEnd={(e) => handleTouchEnd(e, s.id, s.isCurrentDevice)}
+                                    >
+                                        {/* Swipe-to-revoke background */}
+                                        {!s.isCurrentDevice && (
+                                            <div className="absolute inset-y-0 right-0 w-20 bg-rose-500 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-white text-[18px]">logout</span>
+                                            </div>
+                                        )}
+                                        <div
+                                            className={`relative flex items-center justify-between p-2.5 bg-gray-50 dark:bg-black/10 transition-transform duration-200 ${swipedSessionId === s.id ? '-translate-x-20' : 'translate-x-0'}`}
                                         >
-                                            <span className="material-symbols-outlined text-[16px]">logout</span>
-                                        </button>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="text-xs font-bold truncate text-gray-800 dark:text-gray-200">{s.deviceName}</p>
+                                                    {s.isCurrentDevice && (
+                                                        <span className="shrink-0 px-1.5 py-0.5 text-[8px] font-bold rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">
+                                                            This device
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[9px] text-gray-400 truncate">IP: {s.ipAddress} · {s.lastUsedAt ? new Date(s.lastUsedAt).toLocaleDateString() : 'Active'}</p>
+                                            </div>
+                                            {!s.isCurrentDevice && (
+                                                <button
+                                                    onClick={() => handleRevokeSession(s.id)}
+                                                    disabled={revokingSessions[s.id]}
+                                                    className="text-rose-500 p-1 disabled:opacity-50 hidden lg:block"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">logout</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                        {/* Swipe confirm button (visible when swiped) */}
+                                        {swipedSessionId === s.id && (
+                                            <button
+                                                onClick={() => { handleRevokeSession(s.id); setSwipedSessionId(null); }}
+                                                className="absolute inset-y-0 right-0 w-20 bg-rose-500 flex items-center justify-center active:bg-rose-600"
+                                            >
+                                                <span className="text-white text-[10px] font-bold">Revoke</span>
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
+                            </div>
+
+                            {/* Login Activity Timeline (Mobile) */}
+                            <div className="pt-3 border-t border-gray-100 dark:border-white/5">
+                                <button
+                                    onClick={() => setShowLoginActivity(!showLoginActivity)}
+                                    className="flex items-center justify-between w-full py-1"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-gray-400 text-[16px]">history</span>
+                                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Login Activity</span>
+                                    </div>
+                                    <span className={`material-symbols-outlined text-gray-400 text-[16px] transition-transform ${showLoginActivity ? 'rotate-180' : ''}`}>expand_more</span>
+                                </button>
+                                <AnimatePresence>
+                                    {showLoginActivity && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="space-y-1.5 pt-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                                {loginActivity.length === 0 ? (
+                                                    <p className="text-[10px] text-gray-400 text-center py-2">No login activity recorded yet</p>
+                                                ) : (
+                                                    loginActivity.map((event) => (
+                                                        <div key={event.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50/50 dark:bg-white/[0.02]">
+                                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${event.success ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
+                                                                <span className={`material-symbols-outlined text-[12px] ${event.success ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                    {event.action === 'LOGOUT' ? 'logout' : event.success ? 'check' : 'close'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 truncate">
+                                                                    {event.action === 'LOGIN' ? 'Signed in' : event.action === 'LOGOUT' ? 'Signed out' : 'Failed login'}
+                                                                    {event.reason && <span className="text-gray-400 font-normal"> · {event.reason}</span>}
+                                                                </p>
+                                                                <p className="text-[9px] text-gray-400 truncate">{event.deviceName} · {event.ipAddress}</p>
+                                                            </div>
+                                                            <span className="text-[9px] text-gray-400 shrink-0 tabular-nums">
+                                                                {new Date(event.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                            </span>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     </motion.div>
@@ -638,9 +782,14 @@ export default function SettingsPage() {
                                                 <div key={idx}>{code}</div>
                                             ))}
                                         </div>
-                                        <button onClick={() => setTotpBackupCodesToShow(null)} className="mt-3 text-xs font-bold underline hover:text-emerald-300 block">
-                                            I have saved these codes
-                                        </button>
+                                        <div className="flex items-center gap-4 mt-3">
+                                            <button onClick={() => downloadRecoveryCodes(totpBackupCodesToShow)} className="text-xs font-bold underline hover:text-emerald-300 flex items-center gap-1.5">
+                                                <span className="material-symbols-outlined text-[14px]">download</span> Download as .txt
+                                            </button>
+                                            <button onClick={() => setTotpBackupCodesToShow(null)} className="text-xs font-bold underline hover:text-emerald-300 block">
+                                                I have saved these codes
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -719,27 +868,84 @@ export default function SettingsPage() {
 
                                 <div className="space-y-2 pt-2 border-t border-gray-200/50 dark:border-[#30363d]/50">
                                     {sessions.map((s) => (
-                                        <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white/40 dark:bg-black/20 border border-gray-100 dark:border-white/5">
+                                        <div key={s.id} className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${s.isCurrentDevice ? 'bg-emerald-500/5 dark:bg-emerald-500/5 border-emerald-500/20' : 'bg-white/40 dark:bg-black/20 border-gray-100 dark:border-white/5'}`}>
                                             <div className="flex items-center gap-3">
                                                 <span className="material-symbols-outlined text-gray-400 dark:text-text-muted">
                                                     {s.deviceName?.toLowerCase()?.includes('phone') || s.deviceName?.toLowerCase()?.includes('android') || s.deviceName?.toLowerCase()?.includes('iphone') ? 'smartphone' : 'laptop'}
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-bold text-gray-900 dark:text-white">{s.deviceName}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-xs font-bold text-gray-900 dark:text-white">{s.deviceName}</p>
+                                                        {s.isCurrentDevice && (
+                                                            <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                This device
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-[10px] text-gray-400 dark:text-text-muted/60 mt-0.5">
                                                         IP: {s.ipAddress} • Active: {new Date(s.lastUsedAt || s.createdAt).toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleRevokeSession(s.id)}
-                                                disabled={revokingSessions[s.id]}
-                                                className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg active:scale-95 transition-transform disabled:opacity-50"
-                                            >
-                                                <span className="material-symbols-outlined text-[18px]">logout</span>
-                                            </button>
+                                            {!s.isCurrentDevice && (
+                                                <button
+                                                    onClick={() => handleRevokeSession(s.id)}
+                                                    disabled={revokingSessions[s.id]}
+                                                    className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg active:scale-95 transition-transform disabled:opacity-50"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">logout</span>
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
+                                </div>
+
+                                {/* Login Activity Timeline (Desktop) */}
+                                <div className="pt-4 mt-4 border-t border-gray-200/50 dark:border-[#30363d]/50">
+                                    <button
+                                        onClick={() => setShowLoginActivity(!showLoginActivity)}
+                                        className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors group"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px] text-gray-400 group-hover:text-primary transition-colors">history</span>
+                                        Login Activity
+                                        <span className={`material-symbols-outlined text-[16px] text-gray-400 transition-transform ${showLoginActivity ? 'rotate-180' : ''}`}>expand_more</span>
+                                    </button>
+                                    <AnimatePresence>
+                                        {showLoginActivity && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="space-y-1.5 pt-3 max-h-64 overflow-y-auto custom-scrollbar">
+                                                    {loginActivity.length === 0 ? (
+                                                        <p className="text-xs text-gray-400 text-center py-4">No login activity recorded yet</p>
+                                                    ) : (
+                                                        loginActivity.map((event) => (
+                                                            <div key={event.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/40 dark:bg-black/10 border border-gray-100 dark:border-white/5">
+                                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${event.success ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
+                                                                    <span className={`material-symbols-outlined text-[14px] ${event.success ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                        {event.action === 'LOGOUT' ? 'logout' : event.success ? 'check_circle' : 'cancel'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                                                        {event.action === 'LOGIN' ? 'Successful sign-in' : event.action === 'LOGOUT' ? 'Signed out' : 'Failed login attempt'}
+                                                                        {event.reason && <span className="text-gray-400 font-normal"> — {event.reason}</span>}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-gray-400 mt-0.5">{event.deviceName} · {event.ipAddress}</p>
+                                                                </div>
+                                                                <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
+                                                                    {new Date(event.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             </div>
                         </motion.div>

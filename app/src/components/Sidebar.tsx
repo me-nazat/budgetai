@@ -33,6 +33,7 @@ const navGroups = [
             { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
             { href: '/debts', icon: 'credit_card', label: 'Debt Planner' },
             { href: '/forecast', icon: 'timeline', label: 'Cash Flow Forecast' },
+            { href: '/investments', icon: 'trending_up', label: 'Investments' },
             { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
             { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
         ],

@@ -33,7 +33,9 @@ const fraunces = Fraunces({
 
 
 export const viewport: Viewport = {
-  themeColor: "#0A0A0A",
+  themeColor: "#136dec",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export const metadata: Metadata = {
@@ -54,6 +56,11 @@ export default function RootLayout({
         <meta name="description" content="AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights." />
         <meta property="og:title" content="Wealth AI — Smart Finance" />
         <meta property="og:description" content="AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights." />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Wealth AI" />
+        <link rel="apple-touch-icon" href="/wealth-ai-logo-v2.png" />
         <ThemeScript />
       </head>
       <body className={`${geist.variable} ${outfit.variable} ${playfair.variable} ${fraunces.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
