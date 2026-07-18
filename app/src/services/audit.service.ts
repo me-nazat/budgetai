@@ -224,10 +224,11 @@ export class AuditService {
     email: string,
     ip?: string,
     userAgent?: string,
-    reason?: string
+    reason?: string,
+    userId?: number
   ): void {
     AuditService.logAction({
-      userId: null,
+      userId: userId || null,
       action: 'LOGIN_FAILED',
       entityType: 'session',
       metadata: { email: email.slice(0, 3) + '***', reason },

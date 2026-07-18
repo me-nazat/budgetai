@@ -55,7 +55,7 @@ export default function AutomationRulesPage() {
 
   // Compute list of categories for dropdown
   const allCategories = [
-    ...CATEGORIES_EXPENSE,
+    ...CATEGORIES_EXPENSE.map(c => c.label),
     ...(customCats ? customCats.map(c => c.name) : []),
   ];
 

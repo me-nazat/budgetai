@@ -6,6 +6,13 @@ import type { Variants } from 'framer-motion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 
+function parseLocalDate(dateStr: string | null | undefined): Date | null {
+    if (!dateStr) return null;
+    const formatted = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+    const parsed = new Date(formatted);
+    return isNaN(parsed.getTime()) ? new Date(dateStr) : parsed;
+}
+
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
@@ -565,7 +572,7 @@ export default function SettingsPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className="text-[9px] text-gray-400 truncate">IP: {s.ipAddress} · {s.lastUsedAt ? new Date(s.lastUsedAt).toLocaleDateString() : 'Active'}</p>
+                                                <p className="text-[9px] text-gray-400 truncate">IP: {s.ipAddress} · {s.lastUsedAt ? (parseLocalDate(s.lastUsedAt)?.toLocaleDateString() || 'Invalid Date') : 'Active'}</p>
                                             </div>
                                             {!s.isCurrentDevice && (
                                                 <button
@@ -629,7 +636,7 @@ export default function SettingsPage() {
                                                                 <p className="text-[9px] text-gray-400 truncate">{event.deviceName} · {event.ipAddress}</p>
                                                             </div>
                                                             <span className="text-[9px] text-gray-400 shrink-0 tabular-nums">
-                                                                {new Date(event.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                {parseLocalDate(event.createdAt)?.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                                             </span>
                                                         </div>
                                                     ))
@@ -825,8 +832,8 @@ export default function SettingsPage() {
                                                     <div>
                                                         <p className="text-xs font-bold text-gray-900 dark:text-white">{p.name}</p>
                                                         <p className="text-[10px] text-gray-400 dark:text-text-muted/60 mt-0.5">
-                                                            Registered {new Date(p.createdAt).toLocaleDateString()}
-                                                            {p.lastUsedAt && ` • Used ${new Date(p.lastUsedAt).toLocaleDateString()}`}
+                                                            Registered {parseLocalDate(p.createdAt)?.toLocaleDateString()}
+                                                            {p.lastUsedAt && ` • Used ${parseLocalDate(p.lastUsedAt)?.toLocaleDateString()}`}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -883,7 +890,7 @@ export default function SettingsPage() {
                                                         )}
                                                     </div>
                                                     <p className="text-[10px] text-gray-400 dark:text-text-muted/60 mt-0.5">
-                                                        IP: {s.ipAddress} • Active: {new Date(s.lastUsedAt || s.createdAt).toLocaleString()}
+                                                        IP: {s.ipAddress} • Active: {parseLocalDate(s.lastUsedAt || s.createdAt)?.toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>
@@ -937,7 +944,7 @@ export default function SettingsPage() {
                                                                     <p className="text-[10px] text-gray-400 mt-0.5">{event.deviceName} · {event.ipAddress}</p>
                                                                 </div>
                                                                 <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
-                                                                    {new Date(event.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                    {parseLocalDate(event.createdAt)?.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                                 </span>
                                                             </div>
                                                         ))

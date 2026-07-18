@@ -23,6 +23,7 @@
 import { drizzle } from 'drizzle-orm/libsql';
 import { createClient, type Client } from '@libsql/client';
 import * as schema from './schema';
+import { env } from '../lib/env';
 
 /**
  * Singleton libSQL client instance.
@@ -33,24 +34,15 @@ let libsqlClient: Client | null = null;
 /**
  * Creates and returns the libSQL client singleton.
  *
- * @throws {Error} If `TURSO_DATABASE_URL` environment variable is not set.
  * @returns {Client} The libSQL client instance.
  *
  * @complexity O(1) — returns cached instance after first call.
  */
 function getLibSqlClient(): Client {
   if (!libsqlClient) {
-    const url = process.env.TURSO_DATABASE_URL;
-    if (!url) {
-      throw new Error(
-        'TURSO_DATABASE_URL environment variable is not set. ' +
-        'Please configure it in your .env.local file.'
-      );
-    }
-
     libsqlClient = createClient({
-      url,
-      authToken: process.env.TURSO_AUTH_TOKEN,
+      url: env.TURSO_DATABASE_URL,
+      authToken: env.TURSO_AUTH_TOKEN,
     });
   }
   return libsqlClient;

@@ -226,7 +226,7 @@ export class AuthService {
     // Verify password
     const passwordValid = await bcrypt.compare(validated.password, user.passwordHash);
     if (!passwordValid) {
-      AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_password');
+      AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_password', user.id);
       if (ctx.ip) recordFailedAttempt(ctx.ip);
       throw new AuthenticationError(
         'Invalid email or password',
@@ -242,7 +242,7 @@ export class AuthService {
         const isValid = verifyTOTP(validated.totpCode, decryptedSecret);
 
         if (!isValid) {
-          AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_totp');
+          AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_totp', user.id);
           throw new AuthenticationError(
             'Invalid 2FA code',
             ErrorCode.TWO_FACTOR_INVALID
