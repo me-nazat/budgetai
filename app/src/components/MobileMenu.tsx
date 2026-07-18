@@ -8,6 +8,7 @@ import useSWR from 'swr';
 
 const menuItems = [
     { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
+    { href: '/accounts', icon: 'account_balance', label: 'Accounts' },
     { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
     { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
     { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },

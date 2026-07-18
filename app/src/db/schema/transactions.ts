@@ -15,6 +15,7 @@ import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { tours, tourParticipants } from './bill-splits';
+import { accounts } from './accounts';
 
 
 /**
@@ -41,10 +42,16 @@ export const transactions = sqliteTable('transactions', {
     .references(() => users.id, { onDelete: 'cascade' }),
 
   /**
-   * Transaction type: 'expense' or 'earning'.
+   * Transaction type: 'expense', 'earning', or 'transfer'.
    * Enforced by CHECK constraint at the database level.
    */
-  type: text('type', { enum: ['expense', 'earning'] }).notNull(),
+  type: text('type', { enum: ['expense', 'earning', 'transfer'] }).notNull(),
+
+  /** Reference to the account/wallet this transaction belongs to */
+  accountId: integer('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+
+  /** Reference to the destination account/wallet if this is a transfer */
+  toAccountId: integer('to_account_id').references(() => accounts.id, { onDelete: 'set null' }),
 
   /**
    * Transaction amount as a decimal number.

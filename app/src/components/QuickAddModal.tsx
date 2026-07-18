@@ -40,7 +40,7 @@ interface QuickAddModalProps {
 }
 
 export default function QuickAddModal({ isOpen, onClose, initialTransaction, initialDate, onSaveSuccess }: QuickAddModalProps) {
-    const [type, setType] = useState<'expense' | 'earning'>('expense');
+    const [type, setType] = useState<'expense' | 'earning' | 'transfer'>('expense');
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('');
     const [description, setDescription] = useState('');
@@ -50,6 +50,22 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
     const [submitting, setSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [attachments, setAttachments] = useState<File[]>([]);
+
+    // Account ledger states
+    const [accountId, setAccountId] = useState<string>('');
+    const [toAccountId, setToAccountId] = useState<string>('');
+    const [accounts, setAccounts] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetch('/api/accounts')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.accounts) setAccounts(data.accounts);
+                })
+                .catch(err => console.error(err));
+        }
+    }, [isOpen]);
     const [qaScanningId, setQaScanningId] = useState<number | null>(null);
     const invalidateFinancialData = useInvalidateFinancialData();
     const { mutate } = useSWRConfig();
@@ -90,6 +106,8 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                 setDescription(initialTransaction.description || '');
                 setNotes(initialTransaction.notes || '');
                 setDate(initialTransaction.date || new Date().toISOString().split('T')[0]);
+                setAccountId(initialTransaction.accountId?.toString() || '');
+                setToAccountId(initialTransaction.toAccountId?.toString() || '');
             } else if (initialDate) {
                 setDate(initialDate);
             }
@@ -155,6 +173,8 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
         setAttachments([]);
         setIsCreatingCustom(false);
         setShowRecentCustom(false);
+        setAccountId('');
+        setToAccountId('');
     };
 
     const handleClose = () => {
@@ -245,7 +265,12 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
             return;
         }
         setDescriptionError(false);
-        if (!amount || isNaN(parsed) || parsed <= 0 || !category) return;
+        const activeCategory = type === 'transfer' ? 'Transfer' : category;
+        if (!amount || isNaN(parsed) || parsed <= 0 || !activeCategory) return;
+        if (type === 'transfer' && (!accountId || !toAccountId)) {
+            alert('Please select both source and destination accounts.');
+            return;
+        }
         
         isSavingRef.current = true;
         setSubmitting(true);
@@ -254,10 +279,12 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
             actionType: 'add' as const,
             type,
             amount: parsed,
-            category,
+            category: activeCategory,
             description: description.trim(),
             date,
             notes: notes.trim() || undefined,
+            accountId: accountId ? parseInt(accountId, 10) : undefined,
+            toAccountId: toAccountId ? parseInt(toAccountId, 10) : undefined,
         };
 
         try {
@@ -436,6 +463,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                             {/* Type Toggle */}
                             <div className="flex bg-gray-100 dark:bg-[#0A0E1A] rounded-xl p-1 mb-6">
                                 <button
+                                    type="button"
                                     onClick={() => { setType('expense'); setCategory(''); setIsCreatingCustom(false); setShowRecentCustom(false); }}
                                     className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === 'expense'
                                         ? 'bg-rose-500 text-white shadow-sm'
@@ -445,6 +473,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                     Expense
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => { setType('earning'); setCategory(''); setIsCreatingCustom(false); setShowRecentCustom(false); }}
                                     className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === 'earning'
                                         ? 'bg-emerald-500 text-white shadow-sm'
@@ -452,6 +481,16 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                         }`}
                                 >
                                     Income
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setType('transfer'); setCategory('Transfer'); setIsCreatingCustom(false); setShowRecentCustom(false); }}
+                                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === 'transfer'
+                                        ? 'bg-primary text-white shadow-sm'
+                                        : 'text-gray-500 dark:text-gray-400'
+                                        }`}
+                                >
+                                    Transfer
                                 </button>
                             </div>
 
@@ -486,9 +525,60 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                 </div>
                             </div>
 
-                            {/* Category Pills */}
+                            {/* Wallet/Account Selector */}
                             <div className="mb-5">
-                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Category</label>
+                                {type === 'transfer' ? (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">From Account</label>
+                                            <select
+                                                value={accountId}
+                                                onChange={e => setAccountId(e.target.value)}
+                                                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary text-sm"
+                                                required
+                                            >
+                                                <option value="" className="dark:bg-[#0A0E1A]">Select Source</option>
+                                                {accounts.map(a => (
+                                                    <option key={a.id} value={a.id} className="dark:bg-[#0A0E1A]">{a.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">To Account</label>
+                                            <select
+                                                value={toAccountId}
+                                                onChange={e => setToAccountId(e.target.value)}
+                                                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary text-sm"
+                                                required
+                                            >
+                                                <option value="" className="dark:bg-[#0A0E1A]">Select Destination</option>
+                                                {accounts.map(a => (
+                                                    <option key={a.id} value={a.id} className="dark:bg-[#0A0E1A]">{a.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Wallet/Account</label>
+                                        <select
+                                            value={accountId}
+                                            onChange={e => setAccountId(e.target.value)}
+                                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary text-sm"
+                                        >
+                                            <option value="" className="dark:bg-[#0A0E1A]">Select Account (Optional)</option>
+                                            {accounts.map(a => (
+                                                <option key={a.id} value={a.id} className="dark:bg-[#0A0E1A]">{a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Category Pills */}
+                            {type !== 'transfer' && (
+                                <div className="mb-5">
+                                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Category</label>
                                 <div className="flex flex-wrap gap-2">
                                     {allCategories.map(cat => {
                                         const isSelected = category === cat.label;
@@ -539,6 +629,7 @@ export default function QuickAddModal({ isOpen, onClose, initialTransaction, ini
                                     </button>
                                 </div>
                             </div>
+                            )}
 
                             {/* Description (Required) */}
                             <div className="mb-4">

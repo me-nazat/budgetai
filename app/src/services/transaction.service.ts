@@ -19,6 +19,8 @@ import { TransactionRepository, type TransactionFilters } from '@/repositories/t
 import { NotificationRepository } from '@/repositories/notification.repository';
 import { BudgetRepository } from '@/repositories/budget.repository';
 import { AuditService } from '@/services/audit.service';
+import { AccountRepository } from '@/repositories/account.repository';
+import { AccountService } from '@/services/account.service';
 import {
   CreateTransactionDTO,
   UpdateTransactionDTO,
@@ -119,6 +121,24 @@ export class TransactionService {
       ...validated,
     });
 
+    // Update account balances
+    if (transaction.accountId) {
+      if (transaction.type === 'expense') {
+        await AccountRepository.updateBalance(transaction.accountId, -transaction.amount);
+      } else if (transaction.type === 'earning') {
+        await AccountRepository.updateBalance(transaction.accountId, transaction.amount);
+      } else if (transaction.type === 'transfer') {
+        await AccountRepository.updateBalance(transaction.accountId, -transaction.amount);
+        if (transaction.toAccountId) {
+          await AccountRepository.updateBalance(transaction.toAccountId, transaction.amount);
+        }
+      }
+      // Check low balance alert (non-blocking)
+      AccountService.checkLowBalanceAlert(userId, transaction.accountId).catch((err) => {
+        console.error('[transaction-service] Low balance alert check failed:', err);
+      });
+    }
+
     // Fire-and-forget audit log
     AuditService.logCreate(
       userId,
@@ -129,6 +149,8 @@ export class TransactionService {
         amount: validated.amount,
         category: validated.category,
         date: validated.date,
+        accountId: validated.accountId,
+        toAccountId: validated.toAccountId,
       },
       ctx.ip,
       ctx.userAgent
@@ -174,12 +196,28 @@ export class TransactionService {
       );
     }
 
+    // Revert old account balances
+    if (oldTransaction.accountId) {
+      if (oldTransaction.type === 'expense') {
+        await AccountRepository.updateBalance(oldTransaction.accountId, oldTransaction.amount);
+      } else if (oldTransaction.type === 'earning') {
+        await AccountRepository.updateBalance(oldTransaction.accountId, -oldTransaction.amount);
+      } else if (oldTransaction.type === 'transfer') {
+        await AccountRepository.updateBalance(oldTransaction.accountId, oldTransaction.amount);
+        if (oldTransaction.toAccountId) {
+          await AccountRepository.updateBalance(oldTransaction.toAccountId, -oldTransaction.amount);
+        }
+      }
+    }
+
     const updated = await TransactionRepository.update(userId, validated.id, {
       type: validated.type,
       amount: validated.amount,
       category: validated.category,
       description: validated.description,
       date: validated.date,
+      accountId: validated.accountId,
+      toAccountId: validated.toAccountId,
     });
 
     if (!updated) {
@@ -187,6 +225,24 @@ export class TransactionService {
         'Transaction not found after update',
         ErrorCode.TRANSACTION_NOT_FOUND
       );
+    }
+
+    // Apply new account balances
+    if (updated.accountId) {
+      if (updated.type === 'expense') {
+        await AccountRepository.updateBalance(updated.accountId, -updated.amount);
+      } else if (updated.type === 'earning') {
+        await AccountRepository.updateBalance(updated.accountId, updated.amount);
+      } else if (updated.type === 'transfer') {
+        await AccountRepository.updateBalance(updated.accountId, -updated.amount);
+        if (updated.toAccountId) {
+          await AccountRepository.updateBalance(updated.toAccountId, updated.amount);
+        }
+      }
+      // Check low balance alert (non-blocking)
+      AccountService.checkLowBalanceAlert(userId, updated.accountId).catch((err) => {
+        console.error('[transaction-service] Low balance alert check failed:', err);
+      });
     }
 
     // Audit log with before/after
@@ -199,12 +255,16 @@ export class TransactionService {
         amount: oldTransaction.amount,
         category: oldTransaction.category,
         date: oldTransaction.date,
+        accountId: oldTransaction.accountId,
+        toAccountId: oldTransaction.toAccountId,
       },
       {
         type: validated.type,
         amount: validated.amount,
         category: validated.category,
         date: validated.date,
+        accountId: validated.accountId,
+        toAccountId: validated.toAccountId,
       },
       ctx.ip,
       ctx.userAgent
@@ -236,6 +296,20 @@ export class TransactionService {
       );
     }
 
+    // Revert account balances
+    if (deleted.accountId) {
+      if (deleted.type === 'expense') {
+        await AccountRepository.updateBalance(deleted.accountId, deleted.amount);
+      } else if (deleted.type === 'earning') {
+        await AccountRepository.updateBalance(deleted.accountId, -deleted.amount);
+      } else if (deleted.type === 'transfer') {
+        await AccountRepository.updateBalance(deleted.accountId, deleted.amount);
+        if (deleted.toAccountId) {
+          await AccountRepository.updateBalance(deleted.toAccountId, -deleted.amount);
+        }
+      }
+    }
+
     AuditService.logDelete(
       userId,
       'transaction',
@@ -245,6 +319,8 @@ export class TransactionService {
         amount: deleted.amount,
         category: deleted.category,
         date: deleted.date,
+        accountId: deleted.accountId,
+        toAccountId: deleted.toAccountId,
       },
       ctx.ip,
       ctx.userAgent
@@ -334,6 +410,8 @@ export class TransactionService {
       description: (record.description as string) || '',
       date: record.date as string,
       createdAt: record.createdAt as string | undefined,
+      accountId: record.accountId as number | undefined | null,
+      toAccountId: record.toAccountId as number | undefined | null,
     };
   }
 }

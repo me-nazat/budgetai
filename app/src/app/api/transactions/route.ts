@@ -1,221 +1,73 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { apiHandler } from "@/lib/middleware/api-handler";
-import { withAuth } from "@/lib/middleware/with-auth";
-import { queryAll, queryOne, run } from '@/lib/db';
-import { maybeCreateBudgetAlert } from '@/lib/alerts';
-import { isStandardCategory, resolveColor, resolveIcon } from '@/lib/categoryUtils';
-import {
-    clampPaginationLimit, clampPaginationOffset, isValidDate, isValidType
-} from '@/lib/validation';
-import { validateInput } from '@/lib/types/api';
-import { CreateTransactionDTO, UpdateTransactionDTO } from '@/lib/types/dto';
-import { invalidateDashboardCache } from '@/lib/redis';
-import { AutomationRulesService } from '@/services/automation-rules.service';
-import { AuditService } from '@/services/audit.service';
-
-async function ensureCustomCategory(userId: number, type: string, categoryName: string) {
-    const name = categoryName.trim().replace(/\s+/g, ' ');
-    if (!name || isStandardCategory(name)) return;
-
-    const existing = await queryOne<{ id: number }>(
-        'SELECT id FROM custom_categories WHERE user_id = ? AND type = ? AND LOWER(name) = LOWER(?) LIMIT 1',
-        [userId, type, name]
-    );
-
-    if (existing) return;
-
-    try {
-        await run(
-            'INSERT INTO custom_categories (user_id, name, type, icon, color) VALUES (?, ?, ?, ?, ?)',
-            [userId, name, type, resolveIcon(name), resolveColor(name)]
-        );
-    } catch (error) {
-        const message = error instanceof Error ? error.message : '';
-        if (!message.includes('UNIQUE constraint failed')) throw error;
-    }
-}
+import { apiHandler } from '@/lib/middleware/api-handler';
+import { withAuth } from '@/lib/middleware/with-auth';
+import { TransactionService } from '@/services/transaction.service';
+import { clampPaginationLimit, clampPaginationOffset } from '@/lib/validation';
 
 export const GET = apiHandler(
-    withAuth(async (request: NextRequest, { userId }) => {
-        const { searchParams } = new URL(request.url);
-        const startDate = searchParams.get('start');
-        const endDate = searchParams.get('end');
-        const category = searchParams.get('category');
-        const type = searchParams.get('type');
-        const limit = clampPaginationLimit(searchParams.get('limit') || '100');
-        const offset = clampPaginationOffset(searchParams.get('offset') || '0');
+  withAuth(async (request: NextRequest, { userId }) => {
+    const { searchParams } = new URL(request.url);
+    const start = searchParams.get('start') || undefined;
+    const end = searchParams.get('end') || undefined;
+    const category = searchParams.get('category') || undefined;
+    const type = searchParams.get('type') as any || undefined;
+    const limit = clampPaginationLimit(searchParams.get('limit') || '100');
+    const offset = clampPaginationOffset(searchParams.get('offset') || '0');
+    const accountId = searchParams.get('accountId') ? parseInt(searchParams.get('accountId')!, 10) : undefined;
 
-        // Validate optional filter params
-        if (startDate && !isValidDate(startDate)) {
-            return NextResponse.json({ error: 'Invalid start date format (YYYY-MM-DD)' }, { status: 400 });
-        }
-        if (endDate && !isValidDate(endDate)) {
-            return NextResponse.json({ error: 'Invalid end date format (YYYY-MM-DD)' }, { status: 400 });
-        }
-        if (type && !isValidType(type)) {
-            return NextResponse.json({ error: 'Invalid type (must be expense or earning)' }, { status: 400 });
-        }
+    const result = await TransactionService.getAll(userId, {
+      start,
+      end,
+      category,
+      type,
+      limit,
+      offset,
+      accountId,
+    });
 
-        let sql = 'SELECT * FROM transactions WHERE user_id = ?';
-        const params: unknown[] = [userId];
-
-        if (startDate) { sql += ' AND date >= ?'; params.push(startDate); }
-        if (endDate) { sql += ' AND date <= ?'; params.push(endDate); }
-        if (category) { sql += ' AND category = ?'; params.push(category); }
-        if (type) { sql += ' AND type = ?'; params.push(type); }
-
-        sql += ' ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
-
-        const transactions = await queryAll<Record<string, unknown>>(sql, params);
-        const formattedTransactions = transactions.map(tx => {
-            if (typeof tx.date === 'string') {
-                tx.date = tx.date.split('T')[0].split(' ')[0];
-            }
-            return tx;
-        });
-
-        // Get total count
-        let countSql = 'SELECT COUNT(*) as total FROM transactions WHERE user_id = ?';
-        const countParams: unknown[] = [userId];
-        if (startDate) { countSql += ' AND date >= ?'; countParams.push(startDate); }
-        if (endDate) { countSql += ' AND date <= ?'; countParams.push(endDate); }
-        if (category) { countSql += ' AND category = ?'; countParams.push(category); }
-        if (type) { countSql += ' AND type = ?'; countParams.push(type); }
-
-        const countResult = await queryAll<{ total: number }>(countSql, countParams);
-        const total = countResult[0]?.total || 0;
-
-        return NextResponse.json({ transactions: formattedTransactions, total });
-    })
+    return NextResponse.json(result);
+  })
 );
 
 export const POST = apiHandler(
-    withAuth(async (request: NextRequest, { userId }) => {
-        const body = await request.json();
-        const data = validateInput(CreateTransactionDTO, body);
-        const { type, amount, description, notes, date, category: categoryName } = data;
+  withAuth(async (request: NextRequest, { userId }) => {
+    const body = await request.json();
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || undefined;
 
-        const autoMatch = await AutomationRulesService.applyRules(userId, description, categoryName);
-        const finalCategory = autoMatch.category;
-        await ensureCustomCategory(userId, type, finalCategory);
-
-        const result = await run(
-            'INSERT INTO transactions (user_id, type, amount, category, description, date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [userId, type, amount, finalCategory, description, date, notes]
-        );
-
-        if (autoMatch.matchedRuleId) {
-            const ip = request.headers.get('x-forwarded-for') || 'unknown';
-            const userAgent = request.headers.get('user-agent') || undefined;
-            AuditService.logAction({
-                userId,
-                action: 'UPDATE',
-                entityType: 'automation_rule',
-                entityId: autoMatch.matchedRuleId,
-                newValue: {
-                    event: 'rule_applied',
-                    transactionId: result.lastInsertRowid,
-                    description,
-                    originalCategory: categoryName,
-                    appliedCategory: finalCategory,
-                },
-                ip,
-                userAgent,
-            });
-        }
-
-        // Invalidate dashboard cache
-        await invalidateDashboardCache(userId);
-
-        Promise.resolve().then(() => {
-            return maybeCreateBudgetAlert({
-                userId: userId,
-                type,
-                amount,
-                category: finalCategory,
-                date,
-            });
-        }).catch(err => console.error('Budget alert failed:', err));
-
-        return NextResponse.json({ id: result.lastInsertRowid });
-    })
-);
-
-export const DELETE = apiHandler(
-    withAuth(async (request: NextRequest, { userId }) => {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
-        if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
-
-        const numId = parseInt(id, 10);
-        if (!Number.isFinite(numId) || numId < 1) {
-            return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
-        }
-
-        await run('DELETE FROM transactions WHERE id = ? AND user_id = ?', [numId, userId]);
-
-        // Invalidate dashboard cache
-        await invalidateDashboardCache(userId);
-
-        return NextResponse.json({ success: true });
-    })
+    const newTx = await TransactionService.create(userId, body, { ip, userAgent });
+    return NextResponse.json(newTx, { status: 201 });
+  })
 );
 
 export const PUT = apiHandler(
-    withAuth(async (request: NextRequest, { userId }) => {
-        const body = await request.json();
-        const data = validateInput(UpdateTransactionDTO, body);
-        const { id, type, amount, description, notes, date, category: categoryName } = data;
+  withAuth(async (request: NextRequest, { userId }) => {
+    const body = await request.json();
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || undefined;
 
-        const autoMatch = await AutomationRulesService.applyRules(userId, description, categoryName);
-        const finalCategory = autoMatch.category;
-        await ensureCustomCategory(userId, type, finalCategory);
+    const updatedTx = await TransactionService.update(userId, body, { ip, userAgent });
+    return NextResponse.json(updatedTx);
+  })
+);
 
-        const result = await run(
-            'UPDATE transactions SET type = ?, amount = ?, category = ?, description = ?, date = ?, notes = ? WHERE id = ? AND user_id = ?',
-            [type, amount, finalCategory, description, date, notes, id, userId]
-        );
+export const DELETE = apiHandler(
+  withAuth(async (request: NextRequest, { userId }) => {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-        if (result.rowsAffected === 0) {
-            return NextResponse.json({ error: 'Transaction not found or unauthorized' }, { status: 404 });
-        }
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    }
 
-        if (autoMatch.matchedRuleId) {
-            const ip = request.headers.get('x-forwarded-for') || 'unknown';
-            const userAgent = request.headers.get('user-agent') || undefined;
-            AuditService.logAction({
-                userId,
-                action: 'UPDATE',
-                entityType: 'automation_rule',
-                entityId: autoMatch.matchedRuleId,
-                newValue: {
-                    event: 'rule_applied',
-                    transactionId: id,
-                    description,
-                    originalCategory: categoryName,
-                    appliedCategory: finalCategory,
-                },
-                ip,
-                userAgent,
-            });
-        }
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || undefined;
 
-        // Invalidate dashboard cache
-        await invalidateDashboardCache(userId);
-
-        Promise.resolve().then(() => {
-            return maybeCreateBudgetAlert({
-                userId: userId,
-                type,
-                amount,
-                category: finalCategory,
-                date,
-            });
-        }).catch(err => console.error('Budget alert failed:', err));
-
-        return NextResponse.json({ success: true });
-    })
+    await TransactionService.delete(userId, numId, { ip, userAgent });
+    return NextResponse.json({ success: true });
+  })
 );

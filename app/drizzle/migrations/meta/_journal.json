@@ -29,6 +29,13 @@
       "when": 1784044272107,
       "tag": "0003_slow_punisher",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1784368247787,
+      "tag": "0004_flaky_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

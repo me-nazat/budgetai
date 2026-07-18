@@ -7,6 +7,8 @@
 import { RecurringRepository, type CreateRecurringInput } from '@/repositories/recurring.repository';
 import { TransactionRepository } from '@/repositories/transaction.repository';
 import { AuditService } from '@/services/audit.service';
+import { TransactionService } from '@/services/transaction.service';
+import { AccountService } from '@/services/account.service';
 import { validateInput } from '@/lib/types/api';
 import { CreateRecurringDTO, type RecurringResponseDTO } from '@/lib/types/dto';
 import { NotFoundError, ErrorCode } from '@/lib/types/errors';
@@ -158,14 +160,18 @@ export class RecurringService {
 
     for (const record of dueRecords) {
       try {
-        // Create the actual transaction
-        await TransactionRepository.create({
-          userId: record.userId,
+        // Resolve primary account if available
+        const userAccounts = await AccountService.list(record.userId);
+        const accountId = userAccounts.length > 0 ? userAccounts[0].id : undefined;
+
+        // Create the actual transaction through the service layer
+        await TransactionService.create(record.userId, {
           type: record.type as 'expense' | 'earning',
           amount: record.amount,
           category: record.category,
           description: `[Auto] ${record.name}`,
           date: today,
+          accountId,
         });
 
         // Calculate next execution date

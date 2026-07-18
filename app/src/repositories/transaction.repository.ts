@@ -30,22 +30,26 @@ import { encryptField, encryptNumber, decryptField } from '@/lib/crypto/encrypti
  */
 export interface CreateTransactionInput {
   userId: number;
-  type: 'expense' | 'earning';
+  type: 'expense' | 'earning' | 'transfer';
   amount: number;
   category: string;
   description: string;
   date: string;
+  accountId?: number | null;
+  toAccountId?: number | null;
 }
 
 /**
  * Input data for updating an existing transaction.
  */
 export interface UpdateTransactionInput {
-  type: 'expense' | 'earning';
+  type: 'expense' | 'earning' | 'transfer';
   amount: number;
   category: string;
   description: string;
   date: string;
+  accountId?: number | null;
+  toAccountId?: number | null;
 }
 
 /**
@@ -55,9 +59,10 @@ export interface TransactionFilters {
   start?: string;
   end?: string;
   category?: string;
-  type?: 'expense' | 'earning';
+  type?: 'expense' | 'earning' | 'transfer';
   limit?: number;
   offset?: number;
+  accountId?: number;
 }
 
 /**
@@ -104,6 +109,9 @@ export class TransactionRepository {
     if (filters.category) {
       conditions.push(eq(transactions.category, filters.category));
     }
+    if (filters.accountId) {
+      conditions.push(sql`(${transactions.accountId} = ${filters.accountId} OR ${transactions.toAccountId} = ${filters.accountId})`);
+    }
 
     const results = await db
       .select()
@@ -140,6 +148,9 @@ export class TransactionRepository {
     }
     if (filters.category) {
       conditions.push(eq(transactions.category, filters.category));
+    }
+    if (filters.accountId) {
+      conditions.push(sql`(${transactions.accountId} = ${filters.accountId} OR ${transactions.toAccountId} = ${filters.accountId})`);
     }
 
     const result = await db
@@ -198,6 +209,8 @@ export class TransactionRepository {
           ? encryptField(data.description, 'transaction-description')
           : undefined,
         date: data.date,
+        accountId: data.accountId,
+        toAccountId: data.toAccountId,
       })
       .returning();
 
@@ -231,6 +244,8 @@ export class TransactionRepository {
           ? encryptField(data.description, 'transaction-description')
           : undefined,
         date: data.date,
+        accountId: data.accountId,
+        toAccountId: data.toAccountId,
       })
       .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
       .returning();

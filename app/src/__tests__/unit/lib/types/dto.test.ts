@@ -172,7 +172,7 @@ describe('CreateTransactionDTO', () => {
   it('should reject invalid type', () => {
     expect(
       CreateTransactionDTO.safeParse({
-        type: 'transfer',
+        type: 'invalid_type',
         amount: 100,
       }).success
     ).toBe(false);

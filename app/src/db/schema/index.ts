@@ -28,6 +28,11 @@ export {
   type NewTransaction,
 } from './transactions';
 export {
+  accounts,
+  type Account,
+  type NewAccount,
+} from './accounts';
+export {
   auditLogs,
   type AuditLog,
   type NewAuditLog,

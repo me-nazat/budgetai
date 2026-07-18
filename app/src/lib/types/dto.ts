@@ -54,8 +54,8 @@ export const amountSchema = z
   );
 
 /** Transaction type enum. */
-export const transactionTypeSchema = z.enum(['expense', 'earning'] as const, {
-  message: 'Type must be "expense" or "earning"',
+export const transactionTypeSchema = z.enum(['expense', 'earning', 'transfer'] as const, {
+  message: 'Type must be "expense", "earning", or "transfer"',
 });
 
 /** Date string in YYYY-MM-DD format with validation. */
@@ -182,6 +182,30 @@ export const TwoFactorVerifyDTO = z.object({
 export type TwoFactorVerifyDTO = z.infer<typeof TwoFactorVerifyDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
+   ACCOUNT DTOs
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Create account request body. */
+export const CreateAccountDTO = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name must be at most 100 characters'),
+  type: z.enum(['cash', 'bank', 'card', 'mobile_wallet', 'other'] as const),
+  currency: z.string().min(3).max(3).default('BDT'),
+  openingBalance: z.number().default(0),
+  colorTag: z.string().default('#136dec'),
+}).strict();
+export type CreateAccountDTO = z.infer<typeof CreateAccountDTO>;
+
+/** Update account request body. */
+export const UpdateAccountDTO = z.object({
+  name: z.string().min(1).max(100).optional(),
+  type: z.enum(['cash', 'bank', 'card', 'mobile_wallet', 'other'] as const).optional(),
+  currency: z.string().min(3).max(3).optional(),
+  colorTag: z.string().optional(),
+  isArchived: z.boolean().optional(),
+}).strict();
+export type UpdateAccountDTO = z.infer<typeof UpdateAccountDTO>;
+
+/* ═══════════════════════════════════════════════════════════════
    TRANSACTION DTOs
    ═══════════════════════════════════════════════════════════════ */
 
@@ -193,6 +217,8 @@ export const CreateTransactionDTO = z.object({
   description: descriptionSchema,
   date: optionalDateSchema,
   notes: z.string().max(1000).optional().default(''),
+  accountId: z.number().int().positive().optional().nullable(),
+  toAccountId: z.number().int().positive().optional().nullable(),
 }).strict();
 export type CreateTransactionDTO = z.infer<typeof CreateTransactionDTO>;
 
@@ -205,6 +231,8 @@ export const UpdateTransactionDTO = z.object({
   description: descriptionSchema,
   date: optionalDateSchema,
   notes: z.string().max(1000).optional().default(''),
+  accountId: z.number().int().positive().optional().nullable(),
+  toAccountId: z.number().int().positive().optional().nullable(),
 }).strict();
 export type UpdateTransactionDTO = z.infer<typeof UpdateTransactionDTO>;
 
@@ -216,6 +244,7 @@ export const TransactionQueryDTO = z.object({
   type: transactionTypeSchema.optional(),
   limit: paginationLimitSchema,
   offset: paginationOffsetSchema,
+  accountId: z.union([z.number(), z.string().transform(Number)]).pipe(z.number().int().positive()).optional(),
 }).strict();
 export type TransactionQueryDTO = z.infer<typeof TransactionQueryDTO>;
 
@@ -228,6 +257,8 @@ export const TransactionResponseDTO = z.object({
   description: z.string(),
   date: z.string(),
   createdAt: z.string().optional(),
+  accountId: z.number().optional().nullable(),
+  toAccountId: z.number().optional().nullable(),
 }).strict();
 export type TransactionResponseDTO = z.infer<typeof TransactionResponseDTO>;
 
