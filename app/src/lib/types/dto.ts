@@ -349,7 +349,7 @@ export type GoalResponseDTO = z.infer<typeof GoalResponseDTO>;
 /** Create recurring transaction request body. */
 export const CreateRecurringDTO = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  type: transactionTypeSchema,
+  type: z.enum(['expense', 'earning'] as const),
   amount: amountSchema,
   category: categorySchema,
   frequency: frequencySchema,

@@ -35,7 +35,12 @@ export class AccountService {
     if (!existing) {
       throw new NotFoundError('Account not found');
     }
-    const updated = await AccountRepository.update(id, userId, validated);
+    const { isArchived, ...rest } = validated;
+    const updatePayload = {
+      ...rest,
+      ...(isArchived !== undefined ? { isArchived: isArchived ? 1 : 0 } : {}),
+    };
+    const updated = await AccountRepository.update(id, userId, updatePayload);
     if (!updated) throw new NotFoundError('Account not found');
     return updated;
   }

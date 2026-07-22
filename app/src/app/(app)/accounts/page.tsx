@@ -232,7 +232,7 @@ export default function AccountsPage() {
           <div className="absolute top-[-10%] right-[-10%] w-[30%] h-[50%] rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
           <p className="text-gray-500 dark:text-gray-400 text-xs uppercase font-bold tracking-wider">Total Combined Balance</p>
           <h2 className="text-4xl font-black mt-2 font-outfit tracking-tight text-primary">
-            {fmt(netBalance, 'BDT')}
+            {fmt(netBalance)}
           </h2>
         </div>
 
@@ -297,7 +297,7 @@ export default function AccountsPage() {
                 <div className="mt-8">
                   <p className="text-gray-500 dark:text-gray-400 text-xs">Current Balance</p>
                   <p className="text-2xl font-black mt-1 font-outfit tracking-tight" style={{ color: acc.type === 'card' ? '#FF2A5F' : undefined }}>
-                    {acc.type === 'card' ? '-' : ''}{fmt(acc.currentBalance, acc.currency)}
+                    {acc.type === 'card' ? '-' : ''}{fmt(acc.currentBalance)}
                   </p>
                 </div>
               </div>
