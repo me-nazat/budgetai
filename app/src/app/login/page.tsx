@@ -88,8 +88,13 @@ function LoginForm() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, rememberMe }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || (typeof data.error === 'string' ? data.error : 'Login failed'));
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                const errMsg = data?.error?.message 
+                    || (typeof data?.error === 'string' ? data.error : data?.message)
+                    || (res.status === 401 ? 'Invalid email or password' : 'An unexpected error occurred. Please try again later.');
+                throw new Error(errMsg);
+            }
             
             if (data.requires2FA) {
                 setShow2FAChallenge(true);
@@ -125,8 +130,13 @@ function LoginForm() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, rememberMe, totpCode }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || (typeof data.error === 'string' ? data.error : 'Invalid 2FA code'));
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                const errMsg = data?.error?.message 
+                    || (typeof data?.error === 'string' ? data.error : data?.message)
+                    || 'Invalid 2FA code';
+                throw new Error(errMsg);
+            }
 
             // Signal successful authentication for cache warming
             if (typeof window !== 'undefined') {

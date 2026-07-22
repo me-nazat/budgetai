@@ -71,8 +71,9 @@ function validateEnv(): ValidatedServerEnv {
   }
 
   const parsed = result.success ? result.data : serverEnvSchema.parse({
-    ...process.env,
     TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL || 'file:local.db',
+    JWT_SECRET: process.env.JWT_SECRET || 'wealth-ai-test-secret-key-32chars-long-minimum!',
+    ...process.env,
   });
 
   // Automatically fallback to JWT_SECRET if ENCRYPTION_MASTER_KEY is missing

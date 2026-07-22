@@ -224,7 +224,16 @@ export class AuthService {
     }
 
     // Verify password
-    const passwordValid = await bcrypt.compare(validated.password, user.passwordHash);
+    if (!user.passwordHash) {
+      AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'missing_password_hash', user.id);
+      if (ctx.ip) recordFailedAttempt(ctx.ip);
+      throw new AuthenticationError(
+        'Invalid email or password',
+        ErrorCode.INVALID_CREDENTIALS
+      );
+    }
+
+    const passwordValid = await bcrypt.compare(validated.password, user.passwordHash).catch(() => false);
     if (!passwordValid) {
       AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_password', user.id);
       if (ctx.ip) recordFailedAttempt(ctx.ip);

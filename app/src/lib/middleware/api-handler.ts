@@ -161,6 +161,20 @@ export function apiHandler<TContext extends NextRouteContext = NextRouteContext>
         );
       }
 
+      // ── JSON Parsing / Syntax Errors ──
+      if (error instanceof SyntaxError) {
+        console.warn(
+          `[api] ${method} ${path} → 400 INVALID_JSON (${duration}ms):`,
+          error.message
+        );
+        return apiError(
+          new ValidationError(
+            'Invalid request payload or malformed JSON',
+            ErrorCode.INVALID_INPUT
+          )
+        );
+      }
+
       // ── Application Errors (expected) ──
       if (error instanceof AppError) {
         if (!error.isOperational) {
