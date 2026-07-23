@@ -66,6 +66,14 @@ export async function processDataActions(actions: DataAction[], userId: number):
                     count,
                     detail: `Updated ${count} ${action.target} record${count !== 1 ? 's' : ''}`,
                 });
+            } else if (action.type === 'create') {
+                const count = await executeCreate(action, userId, currentMonth, currentYear);
+                results.push({
+                    action: 'create',
+                    target: action.target,
+                    count,
+                    detail: `Created ${count} ${action.target} record${count !== 1 ? 's' : ''}`,
+                });
             }
         } catch (error) {
             console.error('Action error:', action, error);
@@ -198,6 +206,77 @@ async function executeEdit(action: DataAction, userId: number, currentMonth: num
         const latest = await queryOne<{ id: number }>('SELECT id FROM net_worth WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', [userId]);
         if (!latest) return 0;
         return (await run(`UPDATE net_worth SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`, [...setParams, latest.id, userId])).rowsAffected;
+    }
+
+    return 0;
+}
+
+async function executeCreate(action: DataAction, userId: number, currentMonth: number, currentYear: number): Promise<number> {
+    const u = action.updates || {};
+
+    if (action.target === 'transactions') {
+        const type = u.type || 'expense';
+        const amount = u.amount;
+        const category = u.category || 'Other';
+        const description = u.description || '';
+        const date = u.date || new Date().toISOString().split('T')[0];
+
+        if (!amount || amount <= 0) return 0;
+
+        const result = await run(
+            'INSERT INTO transactions (user_id, type, amount, category, description, date) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, type, amount, category, description, date]
+        );
+
+        if (result.rowsAffected > 0 && type === 'expense') {
+            await maybeCreateBudgetAlert({
+                userId,
+                type,
+                amount,
+                category,
+                date,
+            });
+        }
+
+        return result.rowsAffected;
+    }
+
+    if (action.target === 'budgets') {
+        const category = u.category;
+        const monthlyLimit = u.monthly_limit || u.amount;
+        if (!category || !monthlyLimit) return 0;
+
+        const month = u.month || currentMonth;
+        const year = u.year || currentYear;
+
+        // Upsert: if budget exists for this category+month+year, update it
+        const existing = await queryOne<{ id: number }>(
+            'SELECT id FROM budgets WHERE user_id = ? AND LOWER(category) = LOWER(?) AND month = ? AND year = ?',
+            [userId, category, month, year]
+        );
+
+        if (existing) {
+            return (await run(
+                'UPDATE budgets SET monthly_limit = ? WHERE id = ? AND user_id = ?',
+                [monthlyLimit, existing.id, userId]
+            )).rowsAffected;
+        }
+
+        return (await run(
+            'INSERT INTO budgets (user_id, category, monthly_limit, month, year) VALUES (?, ?, ?, ?, ?)',
+            [userId, category, monthlyLimit, month, year]
+        )).rowsAffected;
+    }
+
+    if (action.target === 'savings_goals') {
+        const name = u.description || u.name || 'Untitled Goal';
+        const targetAmount = u.amount || u.target_amount;
+        if (!targetAmount) return 0;
+
+        return (await run(
+            'INSERT INTO savings_goals (user_id, name, target_amount, current_amount, target_date) VALUES (?, ?, ?, 0, ?)',
+            [userId, name, targetAmount, u.date || null]
+        )).rowsAffected;
     }
 
     return 0;

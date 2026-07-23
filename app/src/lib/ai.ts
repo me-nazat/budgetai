@@ -21,8 +21,8 @@ export interface AttachmentInput {
 }
 
 export interface DataAction {
-    type: 'edit' | 'delete' | 'reset';
-    target: 'transactions' | 'budgets' | 'networth' | 'notifications' | 'chat_history' | 'all';
+    type: 'edit' | 'delete' | 'reset' | 'create';
+    target: 'transactions' | 'budgets' | 'networth' | 'notifications' | 'chat_history' | 'savings_goals' | 'all';
     filter?: {
         id?: number;
         ids?: number[];
@@ -41,6 +41,10 @@ export interface DataAction {
         type?: 'expense' | 'earning';
         monthly_limit?: number;
         note?: string;
+        name?: string;
+        target_amount?: number;
+        month?: number;
+        year?: number;
     };
 }
 

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
+import PrivacyToggle from '@/components/PrivacyToggle';
 
 const navGroups = [
     {
@@ -24,11 +25,13 @@ const navGroups = [
             { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
             { href: '/reports', icon: 'bar_chart', label: 'Reports' },
             { href: '/overview', icon: 'analytics', label: 'Overview' },
+            { href: '/benchmarks', icon: 'leaderboard', label: 'Benchmarks' },
         ],
     },
     {
         label: 'Financial Tools',
         items: [
+            { href: '/household', icon: 'family_restroom', label: 'Household' },
             { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
             { href: '/tours', icon: 'flight_takeoff', label: 'Tour Manager' },
             { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
@@ -37,6 +40,14 @@ const navGroups = [
             { href: '/investments', icon: 'trending_up', label: 'Investments' },
             { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
             { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
+        ],
+    },
+    {
+        label: 'Smart Tools',
+        items: [
+            { href: '/tax-center', icon: 'receipt', label: 'Tax Center' },
+            { href: '/documents', icon: 'folder_open', label: 'Documents' },
+            { href: '/bank-import', icon: 'upload_file', label: 'Bank Import' },
         ],
     },
     {
@@ -195,6 +206,7 @@ export default function Sidebar() {
                             <span className="material-symbols-outlined group-hover:rotate-45 transition-transform duration-300">settings</span>
                             <span className="text-sm font-medium">Settings</span>
                         </Link>
+                        <PrivacyToggle />
                         <button
                             onClick={toggleTheme}
                             className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
