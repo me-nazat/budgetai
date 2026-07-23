@@ -278,8 +278,11 @@ export const savingsGoals = sqliteTable(
     /** Encrypted saved amount. */
     encryptedSavedAmount: text('encrypted_saved_amount'),
 
-    /** Optional deadline date (YYYY-MM-DD). */
+    /** Deadline date (YYYY-MM-DD). */
     deadline: text('deadline'),
+
+    /** Last milestone hit percentage (0, 25, 50, 75, 100) for Module 15. */
+    lastMilestoneHit: integer('last_milestone_hit').default(0),
 
     createdAt: text('created_at').default(sql`(datetime('now'))`),
   },
@@ -333,6 +336,12 @@ export const recurringTransactions = sqliteTable(
 
     /** Whether this recurring entry is active. 1 = active, 0 = paused. */
     active: integer('active').default(1),
+
+    /** Nullable reference to a household space for Module 10 auto-split. */
+    householdId: integer('household_id').references(() => households.id, { onDelete: 'set null' }),
+
+    /** Optional auto-split rule configuration (JSON string). */
+    splitRule: text('split_rule'),
 
     createdAt: text('created_at').default(sql`(datetime('now'))`),
   },
@@ -850,6 +859,9 @@ export const documents = sqliteTable(
     fileUrl: text('file_url').notNull(),
     fileType: text('file_type').notNull(),
     ocrText: text('ocr_text'),
+    embedding: text('embedding'),
+    documentType: text('document_type').notNull().default('other'),
+    linkedTransactionId: integer('linked_transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
     createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
   },
   (table) => [
@@ -1039,4 +1051,69 @@ export const aiInsightsCache = sqliteTable(
 
 export type AiInsightCache = typeof aiInsightsCache.$inferSelect;
 export type NewAiInsightCache = typeof aiInsightsCache.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   NEW MODULE 11 & MODULE 16 TABLES
+   ═══════════════════════════════════════════════════════════════ */
+
+export const userDemographics = sqliteTable('user_demographics', {
+  userId: integer('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  ageBracket: text('age_bracket').notNull(),
+  householdSizeBracket: text('household_size_bracket').notNull(),
+  regionBracket: text('region_bracket').notNull(),
+  optedInAt: text('opted_in_at').notNull().default(sql`(datetime('now'))`),
+});
+
+export type UserDemographic = typeof userDemographics.$inferSelect;
+export type NewUserDemographic = typeof userDemographics.$inferInsert;
+
+export const percentileSnapshots = sqliteTable(
+  'percentile_snapshots',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    month: text('month').notNull(),
+    savingsRatePercentile: real('savings_rate_percentile').notNull(),
+    healthScore: real('health_score').notNull(),
+    cohortId: text('cohort_id'),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_percentile_snapshots_user').on(table.userId, table.month),
+  ]
+);
+
+export type PercentileSnapshot = typeof percentileSnapshots.$inferSelect;
+export type NewPercentileSnapshot = typeof percentileSnapshots.$inferInsert;
+
+export const bankImportReviewQueue = sqliteTable(
+  'bank_import_review_queue',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    importBatchId: integer('import_batch_id'),
+    parsedRowData: text('parsed_row_data').notNull(),
+    possibleMatchTransactionId: integer('possible_match_transaction_id')
+      .references(() => transactions.id, { onDelete: 'set null' }),
+    matchConfidence: real('match_confidence').notNull().default(0.5),
+    resolution: text('resolution', { enum: ['pending', 'kept_both', 'merged', 'discarded'] })
+      .notNull()
+      .default('pending'),
+    resolvedAt: text('resolved_at'),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_bank_import_review_user').on(table.userId, table.resolution),
+  ]
+);
+
+export type BankImportReviewQueueItem = typeof bankImportReviewQueue.$inferSelect;
+export type NewBankImportReviewQueueItem = typeof bankImportReviewQueue.$inferInsert;
+
 

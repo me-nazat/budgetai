@@ -4,22 +4,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { HouseholdRepository } from '@/repositories/household.repository';
+import { HouseholdService } from '@/services/household.service';
 
 export const GET = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
-    const userHousehold = await HouseholdRepository.getHouseholdForUser(userId);
-    if (!userHousehold) {
-      return NextResponse.json({ recommendations: [], householdId: null });
+    const households = await HouseholdRepository.findByUserId(userId);
+    if (households.length === 0) {
+      return NextResponse.json({ recommendations: [], householdId: null, memberBalances: [] });
     }
 
-    const recommendations = await HouseholdRepository.calculateNetSettlements(
-      userHousehold.household.id
-    );
+    const primaryHousehold = households[0];
+    const { memberBalances, suggestedSettlements } = await HouseholdService.calculateBalances(primaryHousehold.id);
 
     return NextResponse.json({
-      householdId: userHousehold.household.id,
-      householdName: userHousehold.household.name,
-      recommendations,
+      householdId: primaryHousehold.id,
+      householdName: primaryHousehold.name,
+      memberBalances,
+      recommendations: suggestedSettlements,
     });
   })
 );
@@ -33,12 +34,12 @@ export const POST = apiHandler(
       return NextResponse.json({ error: 'Missing required settlement parameters' }, { status: 400 });
     }
 
-    const settlement = await HouseholdRepository.recordSettlement({
-      householdId: parseInt(householdId, 10),
-      payerId: parseInt(payerId, 10),
-      payeeId: parseInt(payeeId, 10),
-      amount: parseFloat(amount),
-    });
+    const settlement = await HouseholdService.settleUp(
+      parseInt(householdId, 10),
+      parseInt(payerId, 10),
+      parseInt(payeeId, 10),
+      parseFloat(amount)
+    );
 
     return NextResponse.json(settlement, { status: 201 });
   })

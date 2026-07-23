@@ -1,47 +1,87 @@
+/**
+ * @fileoverview Household repository — pure data access layer.
+ *
+ * Handles database operations for households, household_members,
+ * household_expenses, household_category_caps, and household_settlements.
+ *
+ * @module repositories/household.repository
+ */
+
 import { db } from '@/db/client';
 import {
   households,
   householdMembers,
   householdExpenses,
-  householdSettlements,
   householdCategoryCaps,
+  householdSettlements,
   users,
+  type Household,
+  type HouseholdMember,
+  type HouseholdExpense,
+  type HouseholdCategoryCap,
+  type HouseholdSettlement,
 } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
-
-export interface SettlementRecommendation {
-  payerId: number;
-  payerName: string;
-  payeeId: number;
-  payeeName: string;
-  amount: number;
-}
+import { eq, and, inArray } from 'drizzle-orm';
 
 export class HouseholdRepository {
-  /** Get household by ID */
-  static async getHouseholdById(householdId: number) {
-    const [hh] = await db.select().from(households).where(eq(households.id, householdId));
-    return hh || null;
+  /**
+   * Find household by ID.
+   */
+  static async findById(id: number): Promise<Household | null> {
+    const [row] = await db.select().from(households).where(eq(households.id, id)).limit(1);
+    return row || null;
   }
 
-  /** Get household for user */
-  static async getHouseholdForUser(userId: number) {
-    const members = await db
-      .select({
-        household: households,
-        role: householdMembers.role,
-      })
+  /**
+   * Find household by unique invite code.
+   */
+  static async findByInviteCode(code: string): Promise<Household | null> {
+    const [row] = await db.select().from(households).where(eq(households.inviteCode, code)).limit(1);
+    return row || null;
+  }
+
+  /**
+   * Find all households for a user.
+   */
+  static async findByUserId(userId: number): Promise<Household[]> {
+    const memberRows = await db
+      .select({ householdId: householdMembers.householdId })
       .from(householdMembers)
-      .innerJoin(households, eq(householdMembers.householdId, households.id))
       .where(eq(householdMembers.userId, userId));
-    return members[0] || null;
+
+    if (memberRows.length === 0) return [];
+    const ids = memberRows.map((m) => m.householdId);
+
+    return db.select().from(households).where(inArray(households.id, ids));
   }
 
-  /** Get household members with user details */
-  static async getMembers(householdId: number) {
-    return await db
+  /**
+   * Create a new household space.
+   */
+  static async createHousehold(name: string, inviteCode: string, createdBy: number): Promise<Household> {
+    const [created] = await db
+      .insert(households)
+      .values({ name, inviteCode, createdBy })
+      .returning();
+
+    // Auto-add creator as owner
+    await db.insert(householdMembers).values({
+      householdId: created.id,
+      userId: createdBy,
+      role: 'owner',
+    });
+
+    return created;
+  }
+
+  /**
+   * Get members of a household with user profiles.
+   */
+  static async findMembers(householdId: number) {
+    return db
       .select({
         id: householdMembers.id,
+        householdId: householdMembers.householdId,
         userId: householdMembers.userId,
         role: householdMembers.role,
         joinedAt: householdMembers.joinedAt,
@@ -53,9 +93,32 @@ export class HouseholdRepository {
       .where(eq(householdMembers.householdId, householdId));
   }
 
-  /** Get household expenses */
-  static async getExpenses(householdId: number) {
-    return await db
+  /**
+   * Add a member to a household.
+   */
+  static async addMember(householdId: number, userId: number, role: 'owner' | 'member' = 'member'): Promise<HouseholdMember> {
+    const [member] = await db
+      .insert(householdMembers)
+      .values({ householdId, userId, role })
+      .returning();
+    return member;
+  }
+
+  /**
+   * Remove a member from a household.
+   */
+  static async removeMember(householdId: number, userId: number): Promise<boolean> {
+    await db
+      .delete(householdMembers)
+      .where(and(eq(householdMembers.householdId, householdId), eq(householdMembers.userId, userId)));
+    return true;
+  }
+
+  /**
+   * Get all household expenses.
+   */
+  static async findExpenses(householdId: number) {
+    return db
       .select({
         id: householdExpenses.id,
         householdId: householdExpenses.householdId,
@@ -70,189 +133,124 @@ export class HouseholdRepository {
       .from(householdExpenses)
       .innerJoin(users, eq(householdExpenses.userId, users.id))
       .where(eq(householdExpenses.householdId, householdId))
-      .orderBy(sql`${householdExpenses.createdAt} DESC`);
+      .orderBy(householdExpenses.createdAt);
   }
 
-  /** Log a household expense */
-  static async addExpense(data: {
-    householdId: number;
-    userId: number;
-    description: string;
-    amount: number;
-    category?: string;
-    splitBetween?: string;
-  }) {
+  /**
+   * Log a new household expense.
+   */
+  static async createExpense(
+    householdId: number,
+    userId: number,
+    description: string,
+    amount: number,
+    category: string = 'Other',
+    splitBetween: string = 'all'
+  ): Promise<HouseholdExpense> {
     const [expense] = await db
       .insert(householdExpenses)
-      .values({
-        householdId: data.householdId,
-        userId: data.userId,
-        description: data.description,
-        amount: data.amount,
-        category: data.category || 'Other',
-        splitBetween: data.splitBetween || 'all',
-      })
+      .values({ householdId, userId, description, amount, category, splitBetween })
       .returning();
     return expense;
   }
 
-  /** Calculate net-settlements for a household (Algorithmic Net-Settlement Engine) */
-  static async calculateNetSettlements(householdId: number): Promise<SettlementRecommendation[]> {
-    const members = await this.getMembers(householdId);
-    const expenses = await this.getExpenses(householdId);
-    const settlements = await db
-      .select()
-      .from(householdSettlements)
-      .where(and(eq(householdSettlements.householdId, householdId), eq(householdSettlements.status, 'settled')));
-
-    if (members.length < 2) return [];
-
-    const memberMap = new Map<number, string>();
-    const balances = new Map<number, number>();
-
-    members.forEach((m) => {
-      memberMap.set(m.userId, m.userName);
-      balances.set(m.userId, 0);
-    });
-
-    // 1. Calculate expense shares
-    for (const exp of expenses) {
-      let targetUserIds = members.map((m) => m.userId);
-      if (exp.splitBetween !== 'all') {
-        try {
-          const parsed = JSON.parse(exp.splitBetween);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            targetUserIds = parsed;
-          }
-        } catch {
-          // fallback to all
-        }
-      }
-
-      const share = exp.amount / targetUserIds.length;
-
-      // Payer gets credit
-      balances.set(exp.userId, (balances.get(exp.userId) || 0) + exp.amount);
-
-      // Participants get debited
-      targetUserIds.forEach((uid) => {
-        balances.set(uid, (balances.get(uid) || 0) - share);
-      });
-    }
-
-    // 2. Adjust for prior settled payments
-    for (const s of settlements) {
-      balances.set(s.payerId, (balances.get(s.payerId) || 0) + s.amount);
-      balances.set(s.payeeId, (balances.get(s.payeeId) || 0) - s.amount);
-    }
-
-    // 3. Debt simplification algorithm (Greedy balance matching)
-    const debtors: { userId: number; amount: number }[] = [];
-    const creditors: { userId: number; amount: number }[] = [];
-
-    balances.forEach((bal, userId) => {
-      if (bal < -0.01) {
-        debtors.push({ userId, amount: -bal });
-      } else if (bal > 0.01) {
-        creditors.push({ userId, amount: bal });
-      }
-    });
-
-    debtors.sort((a, b) => b.amount - a.amount);
-    creditors.sort((a, b) => b.amount - a.amount);
-
-    const recommendations: SettlementRecommendation[] = [];
-
-    let i = 0;
-    let j = 0;
-
-    while (i < debtors.length && j < creditors.length) {
-      const debtor = debtors[i];
-      const creditor = creditors[j];
-      const settlementAmount = Math.min(debtor.amount, creditor.amount);
-
-      if (settlementAmount > 0.01) {
-        recommendations.push({
-          payerId: debtor.userId,
-          payerName: memberMap.get(debtor.userId) || `User #${debtor.userId}`,
-          payeeId: creditor.userId,
-          payeeName: memberMap.get(creditor.userId) || `User #${creditor.userId}`,
-          amount: Math.round(settlementAmount * 100) / 100,
-        });
-      }
-
-      debtor.amount -= settlementAmount;
-      creditor.amount -= settlementAmount;
-
-      if (debtor.amount <= 0.01) i++;
-      if (creditor.amount <= 0.01) j++;
-    }
-
-    return recommendations;
+  /**
+   * Delete a household expense.
+   */
+  static async deleteExpense(expenseId: number, householdId: number): Promise<boolean> {
+    await db
+      .delete(householdExpenses)
+      .where(and(eq(householdExpenses.id, expenseId), eq(householdExpenses.householdId, householdId)));
+    return true;
   }
 
-  /** Log a settlement payment */
-  static async recordSettlement(data: {
-    householdId: number;
-    payerId: number;
-    payeeId: number;
-    amount: number;
-  }) {
+  /**
+   * Get all settlements for a household.
+   */
+  static async findSettlements(householdId: number) {
+    return db
+      .select()
+      .from(householdSettlements)
+      .where(eq(householdSettlements.householdId, householdId))
+      .orderBy(householdSettlements.createdAt);
+  }
+
+  /**
+   * Create or log a settlement transfer.
+   */
+  static async createSettlement(
+    householdId: number,
+    payerId: number,
+    payeeId: number,
+    amount: number,
+    status: 'pending' | 'settled' = 'pending'
+  ): Promise<HouseholdSettlement> {
     const [settlement] = await db
       .insert(householdSettlements)
       .values({
-        householdId: data.householdId,
-        payerId: data.payerId,
-        payeeId: data.payeeId,
-        amount: data.amount,
-        status: 'settled',
-        settledAt: new Date().toISOString(),
+        householdId,
+        payerId,
+        payeeId,
+        amount,
+        status,
+        settledAt: status === 'settled' ? new Date().toISOString() : null,
       })
       .returning();
     return settlement;
   }
 
-  /** Get household category caps */
-  static async getCategoryCaps(householdId: number) {
-    return await db
+  /**
+   * Mark a settlement as settled.
+   */
+  static async markSettlementAsSettled(settlementId: number): Promise<HouseholdSettlement | null> {
+    const [updated] = await db
+      .update(householdSettlements)
+      .set({
+        status: 'settled',
+        settledAt: new Date().toISOString(),
+      })
+      .where(eq(householdSettlements.id, settlementId))
+      .returning();
+    return updated || null;
+  }
+
+  /**
+   * Get category caps for a household.
+   */
+  static async findCategoryCaps(householdId: number): Promise<HouseholdCategoryCap[]> {
+    return db
       .select()
       .from(householdCategoryCaps)
       .where(eq(householdCategoryCaps.householdId, householdId));
   }
 
-  /** Upsert category cap */
-  static async setCategoryCap(data: {
-    householdId: number;
-    category: string;
-    capAmount: number;
-    allocatedByUserId: number;
-  }) {
-    const existing = await db
+  /**
+   * Upsert a category cap.
+   */
+  static async setCategoryCap(
+    householdId: number,
+    category: string,
+    capAmount: number,
+    allocatedByUserId: number
+  ): Promise<HouseholdCategoryCap> {
+    const [existing] = await db
       .select()
       .from(householdCategoryCaps)
-      .where(
-        and(
-          eq(householdCategoryCaps.householdId, data.householdId),
-          eq(householdCategoryCaps.category, data.category)
-        )
-      );
+      .where(and(eq(householdCategoryCaps.householdId, householdId), eq(householdCategoryCaps.category, category)));
 
-    if (existing.length > 0) {
+    if (existing) {
       const [updated] = await db
         .update(householdCategoryCaps)
-        .set({
-          capAmount: data.capAmount,
-          allocatedByUserId: data.allocatedByUserId,
-        })
-        .where(eq(householdCategoryCaps.id, existing[0].id))
+        .set({ capAmount, allocatedByUserId })
+        .where(eq(householdCategoryCaps.id, existing.id))
         .returning();
       return updated;
     }
 
-    const [inserted] = await db
+    const [created] = await db
       .insert(householdCategoryCaps)
-      .values(data)
+      .values({ householdId, category, capAmount, allocatedByUserId })
       .returning();
-    return inserted;
+    return created;
   }
 }

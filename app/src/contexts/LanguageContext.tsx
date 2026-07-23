@@ -22,7 +22,7 @@ interface LanguageContextValue {
   t: (key: string, fallback?: string) => string;
 }
 
-const dictionaries: Record<Locale, Record<string, string>> = {
+const dictionaries: Record<Locale, Record<string, any>> = {
   en,
   bn,
 };
@@ -63,7 +63,16 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback((key: string, fallback?: string): string => {
     const dict = dictionaries[locale] || dictionaries.en;
-    return dict[key] || fallback || key;
+    const parts = key.split('.');
+    let curr: any = dict;
+    for (const p of parts) {
+      if (curr && typeof curr === 'object' && p in curr) {
+        curr = curr[p];
+      } else {
+        return fallback || key;
+      }
+    }
+    return typeof curr === 'string' ? curr : fallback || key;
   }, [locale]);
 
   return (

@@ -156,7 +156,7 @@ export class TransactionService {
       ctx.userAgent
     );
 
-    // Check budget alerts for expenses (non-blocking)
+    // Check budget alerts & process round-up sweeps for expenses (non-blocking)
     if (validated.type === 'expense') {
       TransactionService.checkBudgetAlert(
         userId,
@@ -165,6 +165,11 @@ export class TransactionService {
       ).catch((err) => {
         console.error('[transaction-service] Budget alert check failed:', err);
       });
+
+      // Module 15: Wire micro-savings round-up sweep
+      import('@/repositories/roundUp.repository')
+        .then(({ RoundUpRepository }) => RoundUpRepository.processRoundUpForExpense(userId, validated.amount))
+        .catch((err) => console.error('[transaction-service] Round-up sweep failed:', err));
     }
 
     return TransactionService.toResponseDTO(transaction);

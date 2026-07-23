@@ -34,5 +34,48 @@
   "delete": "Delete",
   "language": "Language",
   "english": "English",
-  "bengali": "বাংলা"
+  "bengali": "বাংলা",
+  "householdPage": {
+    "title": "Household Budgeting & Settlement",
+    "balancesTab": "Balances & Settlement",
+    "expensesTab": "Shared Expenses",
+    "capsTab": "Category Caps",
+    "suggestedSettlements": "Suggested Settlements",
+    "noExpenses": "No household expenses logged yet.",
+    "markAsPaid": "Mark as Paid",
+    "settleUp": "Settle Up",
+    "owedToYou": "owed to you",
+    "youOwe": "you owe"
+  },
+  "benchmarksPage": {
+    "title": "Demographic Financial Benchmarking",
+    "globalCohort": "Global Average",
+    "myCohort": "My Demographic Cohort",
+    "optInTitle": "Improve My Benchmarks",
+    "optInDesc": "Opt in to compare your savings and spending percentiles against users in your age group and household size.",
+    "savingsRatePercentile": "Savings Rate Percentile",
+    "healthScore": "Financial Health Score"
+  },
+  "taxPage": {
+    "title": "Smart Tax Center & Deduction Tagging",
+    "exportPdf": "Export PDF Schedule",
+    "exportExcel": "Export Excel Workbook",
+    "exportCsv": "Export CSV",
+    "reviewQueue": "Deduction Review Queue",
+    "accept": "Accept Tag",
+    "dismiss": "Dismiss"
+  },
+  "documentsPage": {
+    "title": "AI Document Vault & Semantic Search",
+    "searchPlaceholder": "Search document content or meaning (e.g. 'flight ticket to Singapore')...",
+    "suggestedLink": "Suggested Transaction Match",
+    "linkTransaction": "Link Transaction"
+  },
+  "bankImportPage": {
+    "title": "Smart Bank Statement Reconciliation",
+    "reviewQueue": "Possible Duplicates Queue",
+    "keepBoth": "Keep Both",
+    "merge": "Merge",
+    "discard": "Discard Duplicate"
+  }
 }

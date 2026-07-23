@@ -22,7 +22,7 @@ export interface AttachmentInput {
 
 export interface DataAction {
     type: 'edit' | 'delete' | 'reset' | 'create';
-    target: 'transactions' | 'budgets' | 'networth' | 'notifications' | 'chat_history' | 'savings_goals' | 'all';
+    target: 'transactions' | 'budgets' | 'networth' | 'notifications' | 'chat_history' | 'savings_goals' | 'debts' | 'recurring' | 'investments' | 'household_expenses' | 'bill_splits' | 'all';
     filter?: {
         id?: number;
         ids?: number[];

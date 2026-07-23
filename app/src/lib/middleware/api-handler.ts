@@ -124,6 +124,38 @@ export function apiHandler<TContext extends NextRouteContext = NextRouteContext>
       // ── Execute Handler ──
       const response = await handler(request, routeContext);
 
+      // ── Server-Side Privacy Mode Redaction (Module 14) ──
+      const privacyHeader = request.headers.get('X-Privacy-Mode') || request.headers.get('x-privacy-mode');
+      if (privacyHeader === '1' || privacyHeader === 'true') {
+        const sensitivePaths = ['/api/dashboard', '/api/networth', '/api/accounts', '/api/households/expenses'];
+        if (sensitivePaths.some((p) => path.startsWith(p))) {
+          try {
+            const clone = response.clone();
+            const data = await clone.json();
+            const redact = (obj: any): any => {
+              if (!obj || typeof obj !== 'object') return obj;
+              if (Array.isArray(obj)) return obj.map(redact);
+              const copy = { ...obj };
+              for (const key of Object.keys(copy)) {
+                if (['amount', 'balance', 'currentBalance', 'totalNetWorth', 'netWorth', 'savedAmount'].includes(key) && typeof copy[key] === 'number') {
+                  copy[key] = 0;
+                } else if (typeof copy[key] === 'object') {
+                  copy[key] = redact(copy[key]);
+                }
+              }
+              return copy;
+            };
+            const redactedData = redact(data);
+            return NextResponse.json(redactedData, {
+              status: response.status,
+              headers: response.headers,
+            });
+          } catch {
+            // Ignore if non-JSON response
+          }
+        }
+      }
+
       // ── Logging ──
       const duration = (performance.now() - startTime).toFixed(1);
       const status = response.status;

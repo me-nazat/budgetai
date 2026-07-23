@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/client';
-import { users, budgets, savingsGoals, recurringTransactions } from '@/db/schema';
+import { users, budgets, savingsGoals, recurringTransactions, debts } from '@/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { PushService } from '@/services/push.service';
 import { PushRepository } from '@/repositories/push.repository';
@@ -132,6 +132,25 @@ export async function GET(request: NextRequest) {
             url: '/recurring-subscriptions',
           });
           results.subscriptionReminders++;
+        }
+
+        // ─── Module 18: Debt Payoff / Due Date Reminders ───
+        const debtsList = await db
+          .select()
+          .from(debts)
+          .where(and(eq(debts.userId, userId), gte(debts.balance, 0.01)));
+
+        const currentDay = now.getDate();
+        for (const debt of debtsList) {
+          if (debt.dueDayOfMonth && Math.abs(debt.dueDayOfMonth - currentDay) <= 3) {
+            await PushService.sendToUser(userId, {
+              title: `💳 Debt Payment Due: ${debt.name}`,
+              body: `Minimum payment for "${debt.name}" is due on day ${debt.dueDayOfMonth} of the month.`,
+              tag: 'debts',
+              url: '/debts',
+            });
+            results.subscriptionReminders++;
+          }
         }
 
         // ─── Goal Milestones ───

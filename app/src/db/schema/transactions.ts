@@ -108,6 +108,9 @@ export const transactions = sqliteTable('transactions', {
   /** Split type for shared expenses */
   splitType: text('split_type', { enum: ['equal', 'percentage', 'exact'] }).default('equal'),
 
+  /** Tax deduction tag flag for Module 12 AI smart tax review queue. */
+  taxSuggested: integer('tax_suggested').default(0),
+
   /** Record creation timestamp (UTC ISO-8601). */
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => [

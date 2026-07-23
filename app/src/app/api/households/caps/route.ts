@@ -7,12 +7,12 @@ import { HouseholdRepository } from '@/repositories/household.repository';
 
 export const GET = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
-    const userHousehold = await HouseholdRepository.getHouseholdForUser(userId);
-    if (!userHousehold) {
+    const households = await HouseholdRepository.findByUserId(userId);
+    if (households.length === 0) {
       return NextResponse.json({ caps: [] });
     }
 
-    const caps = await HouseholdRepository.getCategoryCaps(userHousehold.household.id);
+    const caps = await HouseholdRepository.findCategoryCaps(households[0].id);
     return NextResponse.json({ caps });
   })
 );
@@ -26,12 +26,12 @@ export const PUT = apiHandler(
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    const cap = await HouseholdRepository.setCategoryCap({
-      householdId: parseInt(householdId, 10),
-      category: category.trim(),
-      capAmount: parseFloat(capAmount),
-      allocatedByUserId: userId,
-    });
+    const cap = await HouseholdRepository.setCategoryCap(
+      parseInt(householdId, 10),
+      category.trim(),
+      parseFloat(capAmount),
+      userId
+    );
 
     return NextResponse.json(cap);
   })

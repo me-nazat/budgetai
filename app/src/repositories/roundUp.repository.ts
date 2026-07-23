@@ -101,4 +101,50 @@ export class RoundUpRepository {
       .where(eq(goalMilestones.goalId, goalId))
       .orderBy(goalMilestones.milestonePercentage);
   }
+
+  /** Process automatic round-up sweep for an expense transaction (Module 15) */
+  static async processRoundUpForExpense(userId: number, expenseAmount: number) {
+    const settings = await this.getSettings(userId);
+    if (!settings || !settings.enabled || !settings.targetGoalId) return null;
+
+    const roundUpDiff = this.calculateRoundUp(
+      expenseAmount,
+      settings.roundingTier || 1.0,
+      settings.multiplier || 1.0
+    );
+
+    if (roundUpDiff <= 0) return null;
+
+    // Fetch target goal
+    const [goal] = await db
+      .select()
+      .from(savingsGoals)
+      .where(and(eq(savingsGoals.id, settings.targetGoalId), eq(savingsGoals.userId, userId)));
+
+    if (!goal) return null;
+
+    const newSavedAmount = (goal.savedAmount || 0) + roundUpDiff;
+
+    // Update goal saved amount
+    await db
+      .update(savingsGoals)
+      .set({ savedAmount: newSavedAmount })
+      .where(eq(savingsGoals.id, goal.id));
+
+    // Check milestone hit (25%, 50%, 75%, 100%)
+    const pct = Math.floor((newSavedAmount / goal.targetAmount) * 100);
+    const thresholds = [100, 75, 50, 25];
+    for (const t of thresholds) {
+      if (pct >= t && (goal.lastMilestoneHit || 0) < t) {
+        await db
+          .update(savingsGoals)
+          .set({ lastMilestoneHit: t })
+          .where(eq(savingsGoals.id, goal.id));
+        await this.recordMilestone(goal.id, t);
+        break;
+      }
+    }
+
+    return { roundUpDiff, newSavedAmount, goalId: goal.id };
+  }
 }
