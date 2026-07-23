@@ -1,57 +1,77 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/security/session-manager';
-import { run } from '@/lib/db';
-import { DataAction, ParsedFinancialData } from '@/lib/ai';
-import { getFinancialContextBundle } from '@/lib/financialContext';
-import { processDataActions, storeFinancialData } from '@/lib/chatActions';
+import { NextRequest, NextResponse } from 'next/server';
+import { apiHandler } from '@/lib/middleware/api-handler';
+import { withAuth } from '@/lib/middleware/with-auth';
+import { AiInsightsRepository } from '@/repositories/aiInsights.repository';
+import { TransactionService } from '@/services/transaction.service';
+import { BudgetRepository } from '@/repositories/budget.repository';
+import { GoalRepository } from '@/repositories/goal.repository';
 
-export async function POST(request: Request) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = apiHandler(
+  withAuth(async (request: NextRequest, { userId }) => {
+    const body = await request.json();
+    const { executionId, action, toolName, parameters } = body;
 
-        const body = await request.json();
-        const financialData = Array.isArray(body.financialData) ? body.financialData as ParsedFinancialData[] : [];
-        const actions = Array.isArray(body.actions) ? body.actions as DataAction[] : [];
-        const sessionId = typeof body.sessionId === 'string' ? body.sessionId : `session_${Date.now()}`;
-        const mode = body.mode === 'silent' ? 'silent' : 'chat';
-        const today = new Date().toISOString().split('T')[0];
-        const contextBundle = await getFinancialContextBundle(session.userId, sessionId);
-
-        const [transactions, actionResults] = await Promise.all([
-            storeFinancialData(financialData, session.userId, today, contextBundle.currencySymbol),
-            processDataActions(actions, session.userId),
-        ]);
-
-        const details: string[] = [];
-        if (transactions.length > 0) {
-            details.push(`${transactions.length} transaction${transactions.length === 1 ? '' : 's'} saved`);
-        }
-        if (actionResults.length > 0) {
-            details.push(...actionResults.map(r => r.detail));
-        }
-
-        const message = details.length > 0
-            ? `Confirmed and saved: ${details.join(' | ')}`
-            : 'Nothing new was saved from that attachment.';
-
-        await run(
-            'INSERT INTO chat_messages (user_id, role, content, mode, session_id) VALUES (?, ?, ?, ?, ?)',
-            [session.userId, 'system', message, mode, sessionId]
+    if (action === 'cancel') {
+      if (executionId) {
+        await AiInsightsRepository.updateToolExecutionStatus(
+          parseInt(executionId, 10),
+          userId,
+          'cancelled'
         );
-
-        return NextResponse.json({
-            message,
-            transactions,
-            actionResults,
-            sessionId,
-            mode,
-        });
-    } catch (error) {
-        console.error('Chat confirmation error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+      }
+      return NextResponse.json({ status: 'cancelled', message: 'Action cancelled by user' });
     }
-}
 
+    // Execute requested tool mutation safely
+    let result: any = null;
+
+    try {
+      if (toolName === 'create_transaction' || toolName === 'add_expense') {
+        result = await TransactionService.create(userId, {
+          name: parameters.name || 'AI Added Transaction',
+          amount: parseFloat(parameters.amount),
+          type: parameters.type || 'expense',
+          category: parameters.category || 'Other',
+          date: parameters.date || new Date().toISOString().split('T')[0],
+        });
+      } else if (toolName === 'create_budget' || toolName === 'set_budget') {
+        const now = new Date();
+        result = await BudgetRepository.create({
+          userId,
+          category: parameters.category,
+          monthlyLimit: parseFloat(parameters.amount || parameters.monthlyLimit),
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        });
+      } else if (toolName === 'create_goal' || toolName === 'add_goal') {
+        result = await GoalRepository.create({
+          userId,
+          name: parameters.name,
+          targetAmount: parseFloat(parameters.targetAmount || parameters.amount),
+          savedAmount: 0,
+          deadline: parameters.deadline || undefined,
+        });
+      } else {
+        return NextResponse.json({ error: `Unknown tool name: ${toolName}` }, { status: 400 });
+      }
+
+      if (executionId) {
+        await AiInsightsRepository.updateToolExecutionStatus(
+          parseInt(executionId, 10),
+          userId,
+          'executed'
+        );
+      }
+
+      return NextResponse.json({
+        status: 'executed',
+        message: 'Tool action confirmed and executed successfully',
+        result,
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message || 'Execution failed' }, { status: 500 });
+    }
+  })
+);

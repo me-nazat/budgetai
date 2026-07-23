@@ -16,6 +16,7 @@
 import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
+import { transactions } from './transactions';
 
 /* ═══════════════════════════════════════════════════════════════
    RE-EXPORTS — Core tables defined in their own modules
@@ -729,3 +730,313 @@ export const householdExpenses = sqliteTable(
 
 export type HouseholdExpense = typeof householdExpenses.$inferSelect;
 export type NewHouseholdExpense = typeof householdExpenses.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 10: HOUSEHOLD SETTLEMENTS & CATEGORY CAPS
+   ═══════════════════════════════════════════════════════════════ */
+
+export const householdSettlements = sqliteTable(
+  'household_settlements',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    householdId: integer('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    payerId: integer('payer_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    payeeId: integer('payee_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    amount: real('amount').notNull(),
+    status: text('status', { enum: ['pending', 'settled'] }).notNull().default('pending'),
+    settledAt: text('settled_at'),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_hh_settlements_household').on(table.householdId),
+    index('idx_hh_settlements_payer').on(table.payerId),
+  ]
+);
+
+export type HouseholdSettlement = typeof householdSettlements.$inferSelect;
+export type NewHouseholdSettlement = typeof householdSettlements.$inferInsert;
+
+export const householdCategoryCaps = sqliteTable(
+  'household_category_caps',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    householdId: integer('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    category: text('category').notNull(),
+    capAmount: real('cap_amount').notNull(),
+    allocatedByUserId: integer('allocated_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_hh_caps_household').on(table.householdId, table.category),
+  ]
+);
+
+export type HouseholdCategoryCap = typeof householdCategoryCaps.$inferSelect;
+export type NewHouseholdCategoryCap = typeof householdCategoryCaps.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 11: ANONYMOUS PEER BENCHMARKS
+   ═══════════════════════════════════════════════════════════════ */
+
+export const benchmarkDemographics = sqliteTable(
+  'benchmark_demographics',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    ageTier: text('age_tier').notNull(),
+    regionCode: text('region_code').notNull(),
+    incomeBracket: text('income_bracket').notNull(),
+    category: text('category').notNull(),
+    p50Amount: real('p50_amount').notNull(),
+    p90Amount: real('p90_amount').notNull(),
+  },
+  (table) => [
+    index('idx_benchmark_demo_cohort').on(table.ageTier, table.regionCode, table.incomeBracket),
+  ]
+);
+
+export type BenchmarkDemographic = typeof benchmarkDemographics.$inferSelect;
+export type NewBenchmarkDemographic = typeof benchmarkDemographics.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 12: TAX DEDUCTION ITEMS
+   ═══════════════════════════════════════════════════════════════ */
+
+export const taxDeductionItems = sqliteTable(
+  'tax_deduction_items',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    transactionId: integer('transaction_id')
+      .references(() => transactions.id, { onDelete: 'set null' }),
+    taxYear: integer('tax_year').notNull(),
+    deductionCategory: text('deduction_category').notNull(),
+    deductibleAmount: real('deductible_amount').notNull(),
+    receiptDocumentId: integer('receipt_document_id'),
+    status: text('status').notNull().default('verified'),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_tax_deductions_user_year').on(table.userId, table.taxYear),
+  ]
+);
+
+export type TaxDeductionItem = typeof taxDeductionItems.$inferSelect;
+export type NewTaxDeductionItem = typeof taxDeductionItems.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 13: DOCUMENTS & EMBEDDINGS
+   ═══════════════════════════════════════════════════════════════ */
+
+export const documents = sqliteTable(
+  'documents',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    fileName: text('file_name').notNull(),
+    fileUrl: text('file_url').notNull(),
+    fileType: text('file_type').notNull(),
+    ocrText: text('ocr_text'),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_documents_user').on(table.userId),
+  ]
+);
+
+export type Document = typeof documents.$inferSelect;
+export type NewDocument = typeof documents.$inferInsert;
+
+export const documentEmbeddings = sqliteTable(
+  'document_embeddings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    documentId: integer('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    embeddingVector: text('embedding_vector').notNull(),
+    chunkText: text('chunk_text').notNull(),
+  },
+  (table) => [
+    index('idx_doc_embeddings_doc').on(table.documentId),
+  ]
+);
+
+export type DocumentEmbedding = typeof documentEmbeddings.$inferSelect;
+export type NewDocumentEmbedding = typeof documentEmbeddings.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 15: ROUND UP SETTINGS & MILESTONES
+   ═══════════════════════════════════════════════════════════════ */
+
+export const roundUpSettings = sqliteTable(
+  'round_up_settings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    enabled: integer('enabled').notNull().default(1),
+    roundingTier: real('rounding_tier').notNull().default(1.0),
+    multiplier: real('multiplier').notNull().default(1.0),
+    targetGoalId: integer('target_goal_id')
+      .references(() => savingsGoals.id, { onDelete: 'set null' }),
+    updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_round_up_user').on(table.userId),
+  ]
+);
+
+export type RoundUpSettings = typeof roundUpSettings.$inferSelect;
+export type NewRoundUpSettings = typeof roundUpSettings.$inferInsert;
+
+export const goalMilestones = sqliteTable(
+  'goal_milestones',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    goalId: integer('goal_id')
+      .notNull()
+      .references(() => savingsGoals.id, { onDelete: 'cascade' }),
+    milestonePercentage: integer('milestone_percentage').notNull(),
+    achievedAt: text('achieved_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_goal_milestones_goal').on(table.goalId),
+  ]
+);
+
+export type GoalMilestone = typeof goalMilestones.$inferSelect;
+export type NewGoalMilestone = typeof goalMilestones.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 16: BANK STATEMENT IMPORT BATCHES
+   ═══════════════════════════════════════════════════════════════ */
+
+export const statementImportBatches = sqliteTable(
+  'statement_import_batches',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    bankName: text('bank_name').notNull(),
+    fileName: text('file_name').notNull(),
+    totalRecords: integer('total_records').notNull().default(0),
+    status: text('status').notNull().default('completed'),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_statement_batches_user').on(table.userId),
+  ]
+);
+
+export type StatementImportBatch = typeof statementImportBatches.$inferSelect;
+export type NewStatementImportBatch = typeof statementImportBatches.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 18: GOOGLE CALENDAR SYNC
+   ═══════════════════════════════════════════════════════════════ */
+
+export const calendarSyncTokens = sqliteTable(
+  'calendar_sync_tokens',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accessToken: text('access_token').notNull(),
+    refreshToken: text('refresh_token').notNull(),
+    calendarId: text('calendar_id').notNull().default('primary'),
+    expiresAt: text('expires_at').notNull(),
+  },
+  (table) => [
+    index('idx_calendar_tokens_user').on(table.userId),
+  ]
+);
+
+export type CalendarSyncToken = typeof calendarSyncTokens.$inferSelect;
+export type NewCalendarSyncToken = typeof calendarSyncTokens.$inferInsert;
+
+export const calendarSyncEvents = sqliteTable(
+  'calendar_sync_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    entityType: text('entity_type').notNull(),
+    entityId: integer('entity_id').notNull(),
+    googleEventId: text('google_event_id').notNull(),
+    lastSyncedAt: text('last_synced_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_calendar_events_user').on(table.userId, table.entityType, table.entityId),
+  ]
+);
+
+export type CalendarSyncEvent = typeof calendarSyncEvents.$inferSelect;
+export type NewCalendarSyncEvent = typeof calendarSyncEvents.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULE 19: CHAT TOOL EXECUTIONS & AI INSIGHTS CACHE
+   ═══════════════════════════════════════════════════════════════ */
+
+export const chatToolExecutions = sqliteTable(
+  'chat_tool_executions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    chatMessageId: integer('chat_message_id'),
+    toolName: text('tool_name').notNull(),
+    parametersJson: text('parameters_json').notNull(),
+    status: text('status', { enum: ['pending', 'confirmed', 'cancelled', 'executed'] })
+      .notNull()
+      .default('pending'),
+    executedAt: text('executed_at'),
+  },
+  (table) => [
+    index('idx_chat_tools_user').on(table.userId),
+  ]
+);
+
+export type ChatToolExecution = typeof chatToolExecutions.$inferSelect;
+export type NewChatToolExecution = typeof chatToolExecutions.$inferInsert;
+
+export const aiInsightsCache = sqliteTable(
+  'ai_insights_cache',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    insightType: text('insight_type').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    actionPayload: text('action_payload'),
+    isDismissed: integer('is_dismissed').notNull().default(0),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_ai_insights_user').on(table.userId, table.isDismissed),
+  ]
+);
+
+export type AiInsightCache = typeof aiInsightsCache.$inferSelect;
+export type NewAiInsightCache = typeof aiInsightsCache.$inferInsert;
+

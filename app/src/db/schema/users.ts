@@ -89,6 +89,15 @@ export const users = sqliteTable('users', {
   /** JSON-stringified array representing the mobile dashboard layout widget order and visibility. */
   mobileWidgetOrder: text('mobile_widget_order'),
 
+  /** Peer benchmark data opt-in preference. 1 = opted in, 0 = opted out. */
+  benchmarkOptIn: integer('benchmark_opt_in').default(0),
+
+  /** Demographic age tier for peer benchmarking (e.g. '18-24', '25-34', '35-44', '45-54', '55+'). */
+  demographicAgeTier: text('demographic_age_tier'),
+
+  /** Demographic region code for peer benchmarking (e.g. 'US-NY', 'US-CA', 'BD-DH', 'GLOBAL'). */
+  demographicRegion: text('demographic_region'),
+
   /** Account creation timestamp (UTC ISO-8601). */
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });

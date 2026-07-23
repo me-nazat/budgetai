@@ -82,7 +82,7 @@ function HouseholdSkeleton() {
 
 export default function HouseholdPage() {
   const { fmt, fmtRaw } = useCurrency();
-  const { customCategories } = useCustomCategories();
+  const { categories: customCategories } = useCustomCategories();
   const { data, isLoading, error } = useSWR<{ households: Household[] }>('/api/households');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -358,7 +358,7 @@ function ExpenseLedger({
 }: {
   household: Household;
   fmt: (n: number) => string;
-  customCategories: Array<{ name: string; type: string }>;
+  customCategories: Array<{ name: string; icon: string; color: string }>;
   onAddClick: () => void;
 }) {
   const expenses = household.recentExpenses;
