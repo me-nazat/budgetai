@@ -249,7 +249,12 @@ export async function setSessionCookies(
   refreshToken: string,
   rememberMe?: boolean
 ): Promise<void> {
-  const cookieStore = await cookies();
+  let cookieStore;
+  try {
+    cookieStore = await cookies();
+  } catch {
+    return;
+  }
   let isSecure = process.env.NODE_ENV === 'production';
   
   try {

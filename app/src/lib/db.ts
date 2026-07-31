@@ -443,6 +443,18 @@ export async function ensureDbInitialized(): Promise<void> {
     await getClient().execute('ALTER TABLE users ADD COLUMN mobile_widget_order TEXT DEFAULT NULL');
   } catch { /* Ignore */ }
 
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN benchmark_opt_in INTEGER DEFAULT 0');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN demographic_age_tier TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN demographic_region TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+
   // Module 6: Automation rules DDL
   try {
     await getClient().execute(`
