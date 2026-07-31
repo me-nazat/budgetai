@@ -39,14 +39,11 @@ export function useLanguage() {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
-
-  useEffect(() => {
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (typeof window === 'undefined') return 'en';
     const stored = localStorage.getItem('appLanguage') as Locale;
-    if (stored && (stored === 'en' || stored === 'bn')) {
-      setLocaleState(stored);
-    }
-  }, []);
+    return (stored === 'en' || stored === 'bn') ? stored : 'en';
+  });
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);

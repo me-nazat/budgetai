@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler } from 'chart.js';
+import confetti from 'canvas-confetti';
+import { Toaster, toast } from 'sonner';
 import { useCurrency } from '@/hooks/useCurrency';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
 interface NetWorthEntry { id: number; amount: number; note: string; created_at: string; }
-interface Goal { id: number; name: string; target_amount: number; saved_amount: number; deadline: string | null; linked_account: string | null; created_at: string; }
+interface Goal { id: number; name: string; target_amount: number; saved_amount: number; deadline: string | null; linked_account: string | null; created_at: string; last_milestone_hit?: number; }
 
 function monthsUntil(deadline: string | null) {
     if (!deadline) return 12;
@@ -76,11 +78,16 @@ export default function WealthGoalsPage() {
 
     const contribute = async (id: number) => {
         if (!contribAmt || parseFloat(contribAmt) <= 0) return;
-        await fetch('/api/goals', {
+        const res = await fetch('/api/goals', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, contribution: parseFloat(contribAmt) }),
         });
+        const data = await res.json();
+        
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        toast.success(`Added ${fmt(parseFloat(contribAmt))} to goal! 🎉`);
+
         setContribId(null);
         setContribAmt('');
         await load();
@@ -133,7 +140,9 @@ export default function WealthGoalsPage() {
     ];
 
     return (
-        <div className="p-4 lg:p-8 max-w-[1500px] mx-auto page-enter">
+        <div className="p-4 lg:p-8 max-w-[1500px] mx-auto page-enter pb-24">
+            <Toaster position="top-center" richColors />
+
             {/* ENHANCED HEADER */}
             <div className="mb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                 <div>
@@ -148,12 +157,12 @@ export default function WealthGoalsPage() {
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <button onClick={() => { setShowWorthForm(v => !v); setShowGoalForm(false); }} 
-                        className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 ${showWorthForm ? 'bg-gray-800 text-white dark:bg-white dark:text-black shadow-gray-400/20' : 'bg-primary text-white shadow-primary/30 hover:bg-blue-600'}`}>
+                        className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 min-h-[44px] ${showWorthForm ? 'bg-gray-800 text-white dark:bg-white dark:text-black shadow-gray-400/20' : 'bg-primary text-white shadow-primary/30 hover:bg-blue-600'}`}>
                         <span className="material-symbols-outlined text-[20px]">{showWorthForm ? 'close' : 'add_chart'}</span>
                         {showWorthForm ? 'Cancel Update' : 'Update Net Worth'}
                     </button>
                     <button onClick={() => { setShowGoalForm(v => !v); setShowWorthForm(false); }} 
-                        className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 border ${showGoalForm ? 'bg-gray-100 border-gray-300 text-gray-800 dark:bg-white/10 dark:border-white/20 dark:text-white' : 'bg-white border-gray-200 text-gray-800 hover:border-emerald-500 hover:text-emerald-600 dark:bg-bg-dark dark:border-white/10 dark:text-gray-200 dark:hover:border-emerald-500 shadow-gray-200/50 dark:shadow-none'}`}>
+                        className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 border min-h-[44px] ${showGoalForm ? 'bg-gray-100 border-gray-300 text-gray-800 dark:bg-white/10 dark:border-white/20 dark:text-white' : 'bg-white border-gray-200 text-gray-800 hover:border-emerald-500 hover:text-emerald-600 dark:bg-bg-dark dark:border-white/10 dark:text-gray-200 dark:hover:border-emerald-500 shadow-gray-200/50 dark:shadow-none'}`}>
                         <span className="material-symbols-outlined text-[20px]">{showGoalForm ? 'close' : 'add_task'}</span>
                         {showGoalForm ? 'Cancel Goal' : 'Create New Goal'}
                     </button>
@@ -183,9 +192,9 @@ export default function WealthGoalsPage() {
                                 Log Net Worth Update
                             </h2>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_1fr_auto]">
-                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Total Asset Value" className="rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-primary dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
-                                <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional note (e.g., 'Stock market rally', 'Bought car')" className="rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-primary dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
-                                <button disabled={!amount} className="rounded-2xl bg-primary px-8 py-4 text-sm font-bold text-white shadow-lg shadow-primary/30 disabled:opacity-50 hover:bg-blue-600 active:scale-95 transition-all">Record Entry</button>
+                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Total Asset Value" className="rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-primary dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
+                                <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional note (e.g., 'Stock market rally')" className="rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-primary dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
+                                <button disabled={!amount} className="rounded-2xl bg-primary px-8 py-4 text-sm font-bold text-white shadow-lg shadow-primary/30 disabled:opacity-50 hover:bg-blue-600 active:scale-95 transition-all min-h-[44px]">Record Entry</button>
                             </div>
                         </form>
                     )}
@@ -198,23 +207,23 @@ export default function WealthGoalsPage() {
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Goal Title</label>
-                                    <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. New House Downpayment" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
+                                    <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Emergency Fund" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Linked Account (Optional)</label>
-                                    <input value={linkedAccount} onChange={e => setLinkedAccount(e.target.value)} placeholder="e.g. Chase Savings" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
+                                    <input value={linkedAccount} onChange={e => setLinkedAccount(e.target.value)} placeholder="e.g. City Bank Savings" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Target Amount</label>
-                                    <input type="number" value={target} onChange={e => setTarget(e.target.value)} placeholder="0.00" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
+                                    <input type="number" value={target} onChange={e => setTarget(e.target.value)} placeholder="0.00" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Target Date (Optional)</label>
-                                    <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors" />
+                                    <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
                                 </div>
                             </div>
                             <div className="mt-6 flex justify-end">
-                                <button disabled={!name || !target} className="rounded-2xl bg-emerald-500 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 disabled:opacity-50 hover:bg-emerald-600 active:scale-95 transition-all">Launch Goal</button>
+                                <button disabled={!name || !target} className="rounded-2xl bg-emerald-500 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 disabled:opacity-50 hover:bg-emerald-600 active:scale-95 transition-all min-h-[44px]">Launch Goal</button>
                             </div>
                         </form>
                     )}
@@ -243,7 +252,7 @@ export default function WealthGoalsPage() {
                             </div>
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No active goals found</h3>
                             <p className="text-sm text-gray-500 max-w-sm mb-6">Create your first savings goal to get AI-powered recommendations on monthly contributions.</p>
-                            <button onClick={() => setShowGoalForm(true)} className="rounded-xl bg-gray-900 dark:bg-white text-white dark:text-black px-6 py-3 font-bold text-sm shadow-lg active:scale-95 transition-transform">Create Goal</button>
+                            <button onClick={() => setShowGoalForm(true)} className="rounded-xl bg-gray-900 dark:bg-white text-white dark:text-black px-6 py-3 font-bold text-sm shadow-lg active:scale-95 transition-transform min-h-[44px]">Create Goal</button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -255,11 +264,6 @@ export default function WealthGoalsPage() {
                                 
                                 return (
                                     <div key={goal.id} className={`glass-panel relative overflow-hidden rounded-3xl p-6 transition-all hover:-translate-y-1 hover:shadow-xl ${complete ? 'border-2 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] bg-gradient-to-b from-emerald-50/50 to-white dark:from-emerald-900/10 dark:to-bg-dark' : 'border border-gray-100 dark:border-white/5 hover:border-primary/30'}`}>
-                                        {/* Background Progress watermark */}
-                                        <div className="absolute right-0 bottom-0 pointer-events-none opacity-[0.03] dark:opacity-[0.02]">
-                                            <span className="material-symbols-outlined text-[150px] -mr-10 -mb-10">{complete ? 'verified' : 'savings'}</span>
-                                        </div>
-
                                         <div className="relative mb-6 flex items-start justify-between gap-3">
                                             <div className="flex items-center gap-4">
                                                 <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${complete ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-primary/10 text-primary border border-primary/20'}`}>
@@ -277,9 +281,34 @@ export default function WealthGoalsPage() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <button onClick={() => void removeGoal(goal.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-500 dark:bg-white/5 dark:hover:bg-rose-500/20 transition-colors">
+                                            <button onClick={() => void removeGoal(goal.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-500 dark:bg-white/5 dark:hover:bg-rose-500/20 transition-colors min-h-[44px] min-w-[44px]" aria-label="Delete goal">
                                                 <span className="material-symbols-outlined text-[16px]">delete</span>
                                             </button>
+                                        </div>
+
+                                        {/* Milestone Progress Bar (25%, 50%, 75%, 100%) */}
+                                        <div className="mb-4">
+                                            <div className="flex justify-between items-center text-xs font-bold text-gray-400 mb-1.5">
+                                                <span>Milestones</span>
+                                                <span>{pct}%</span>
+                                            </div>
+                                            <div className="relative h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-visible flex items-center">
+                                                <div className="h-full rounded-full bg-accent-emerald transition-all" style={{ width: `${pct}%` }} />
+                                                {[25, 50, 75, 100].map(m => (
+                                                    <div
+                                                        key={m}
+                                                        className={`absolute -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white dark:border-surface-dark-2 flex items-center justify-center text-[8px] font-bold ${
+                                                            pct >= m
+                                                                ? 'bg-accent-emerald text-white'
+                                                                : 'bg-gray-300 dark:bg-gray-600 text-gray-500'
+                                                        }`}
+                                                        style={{ left: `${m}%` }}
+                                                        title={`${m}% milestone ${pct >= m ? 'achieved' : 'upcoming'}`}
+                                                    >
+                                                        {pct >= m ? '✓' : ''}
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         <div className="relative mb-5 flex items-end justify-between">
@@ -313,12 +342,12 @@ export default function WealthGoalsPage() {
                                         {!complete && (
                                             contribId === goal.id ? (
                                                 <div className="mt-5 flex gap-2 animate-fade-in relative z-10 bg-gray-50 dark:bg-white/5 p-2 rounded-2xl border border-gray-200 dark:border-white/10">
-                                                    <input type="number" value={contribAmt} onChange={e => setContribAmt(e.target.value)} placeholder="Add funds" className="min-w-0 flex-1 rounded-xl bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-bg-dark dark:text-white transition-all shadow-inner" />
-                                                    <button onClick={() => void contribute(goal.id)} className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-black text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all">Add</button>
-                                                    <button onClick={() => { setContribId(null); setContribAmt(''); }} className="grid w-11 place-items-center rounded-xl bg-white text-gray-400 hover:text-gray-900 dark:bg-bg-dark dark:hover:text-white shadow-inner"><span className="material-symbols-outlined text-[20px]">close</span></button>
+                                                    <input type="number" value={contribAmt} onChange={e => setContribAmt(e.target.value)} placeholder="Add funds" className="min-w-0 flex-1 rounded-xl bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-bg-dark dark:text-white transition-all shadow-inner min-h-[44px]" style={{ fontSize: '16px' }} />
+                                                    <button onClick={() => void contribute(goal.id)} className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-black text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all min-h-[44px]">Add</button>
+                                                    <button onClick={() => { setContribId(null); setContribAmt(''); }} className="grid w-11 place-items-center rounded-xl bg-white text-gray-400 hover:text-gray-900 dark:bg-bg-dark dark:hover:text-white shadow-inner min-h-[44px]"><span className="material-symbols-outlined text-[20px]">close</span></button>
                                                 </div>
                                             ) : (
-                                                <button onClick={() => setContribId(goal.id)} className="relative z-10 mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3.5 text-sm font-bold text-gray-600 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-primary dark:hover:bg-primary/10 transition-all active:scale-[0.98]">
+                                                <button onClick={() => setContribId(goal.id)} className="relative z-10 mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3.5 text-sm font-bold text-gray-600 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-primary dark:hover:bg-primary/10 transition-all active:scale-[0.98] min-h-[44px]">
                                                     <span className="material-symbols-outlined text-[18px]">add_circle</span>
                                                     Log Contribution
                                                 </button>

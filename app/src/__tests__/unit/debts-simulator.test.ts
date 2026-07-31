@@ -53,7 +53,7 @@ function simulatePayoff(
     });
 
     // 3. Apply Surplus
-    let activeDebtsAfterMin = list.filter(d => d.balance > 0);
+    const activeDebtsAfterMin = list.filter(d => d.balance > 0);
     if (activeDebtsAfterMin.length > 0 && availablePool > 0) {
       if (strategy === 'avalanche') {
         activeDebtsAfterMin.sort((a, b) => b.interestRateApr - a.interestRateApr);

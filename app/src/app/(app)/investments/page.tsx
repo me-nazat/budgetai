@@ -50,7 +50,7 @@ const ASSET_TYPES = [
   { value: 'stock', label: 'Stock', icon: 'trending_up', color: '#3b82f6' },
   { value: 'etf', label: 'ETF', icon: 'auto_graph', color: '#22c55e' },
   { value: 'crypto', label: 'Crypto', icon: 'currency_bitcoin', color: '#f59e0b' },
-  { value: 'bond', label: 'Bond', icon: 'account_balance', color: '#8b5cf6' },
+  { value: 'bond', label: 'Bond', icon: 'account_balance', color: '#06b6d4' },
   { value: 'mutual_fund', label: 'Mutual Fund', icon: 'pie_chart', color: '#06b6d4' },
   { value: 'other', label: 'Other', icon: 'category', color: '#6b7280' },
 ] as const;

@@ -240,7 +240,7 @@ export const STANDARD_CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const CATEGORY_HEX_COLORS: Record<string, string> = {
-  Food: '#f97316', Transport: '#8b5cf6', Housing: '#3b82f6', Utilities: '#eab308',
+  Food: '#f97316', Transport: '#6366f1', Housing: '#3b82f6', Utilities: '#eab308',
   Entertainment: '#ec4899', Shopping: '#6366f1', Health: '#10b981', Education: '#06b6d4',
   Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
   Rental: '#3b82f6', Dividend: '#10b981', Commission: '#f59e0b',
@@ -253,7 +253,7 @@ export const CATEGORY_HEX_COLORS: Record<string, string> = {
 export const COLOR_NAME_TO_HEX: Record<string, string> = {
   rose: '#f43f5e', orange: '#f97316', amber: '#f59e0b', emerald: '#10b981',
   teal: '#14b8a6', cyan: '#06b6d4', sky: '#0ea5e9', blue: '#3b82f6',
-  indigo: '#6366f1', violet: '#8b5cf6', fuchsia: '#d946ef', pink: '#ec4899',
+  indigo: '#6366f1', violet: '#6366f1', fuchsia: '#d946ef', pink: '#ec4899',
   gray: '#6b7280',
 };
 

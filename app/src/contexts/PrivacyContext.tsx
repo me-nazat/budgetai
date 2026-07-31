@@ -68,19 +68,16 @@ export function usePrivacy() {
 }
 
 export function PrivacyProvider({ children }: { children: ReactNode }) {
-  const [isPrivacyMode, setIsPrivacyMode] = useState(false);
-  const [maskScope, setMaskScopeState] = useState<PrivacyMaskScope>('all');
+  const [isPrivacyMode, setIsPrivacyMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('privacyMode') === 'true';
+  });
 
-  // Persist across page navigations within session
-  useEffect(() => {
-    const stored = sessionStorage.getItem('privacyMode');
-    if (stored === 'true') setIsPrivacyMode(true);
-
+  const [maskScope, setMaskScopeState] = useState<PrivacyMaskScope>(() => {
+    if (typeof window === 'undefined') return 'all';
     const storedScope = sessionStorage.getItem('privacyMaskScope') as PrivacyMaskScope | null;
-    if (storedScope && ['all', 'balances_only', 'transactions_only'].includes(storedScope)) {
-      setMaskScopeState(storedScope);
-    }
-  }, []);
+    return (storedScope && ['all', 'balances_only', 'transactions_only'].includes(storedScope)) ? storedScope : 'all';
+  });
 
   const togglePrivacy = useCallback(() => {
     setIsPrivacyMode(prev => {

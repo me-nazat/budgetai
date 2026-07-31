@@ -118,7 +118,7 @@ export default function CashFlowForecastPage() {
     // 1. Subscriptions
     subscriptions.forEach(sub => {
       if (!sub.is_active && sub.is_active !== undefined) return;
-      let nextDate = new Date(sub.next_renewal_date);
+      const nextDate = new Date(sub.next_renewal_date);
       nextDate.setHours(0, 0, 0, 0);
 
       // Loop forward to find all renewals in window
@@ -147,7 +147,7 @@ export default function CashFlowForecastPage() {
     // 2. Recurring Transactions
     recurring.forEach(item => {
       if (item.active === 0) return;
-      let nextDate = new Date(item.next_date);
+      const nextDate = new Date(item.next_date);
       nextDate.setHours(0, 0, 0, 0);
 
       while (nextDate <= end) {

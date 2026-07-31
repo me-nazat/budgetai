@@ -249,7 +249,7 @@ export default function DebtsPage() {
       });
 
       // 3. Apply Surplus (Snowball or Avalanche sorting)
-      let activeDebtsAfterMin = list.filter(d => d.balance > 0);
+      const activeDebtsAfterMin = list.filter(d => d.balance > 0);
       if (activeDebtsAfterMin.length > 0 && availablePool > 0) {
         if (simStrategy === 'avalanche') {
           activeDebtsAfterMin.sort((a, b) => b.interestRateApr - a.interestRateApr);

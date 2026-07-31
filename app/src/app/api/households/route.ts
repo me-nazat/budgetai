@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { db } from '@/db/client';
-import { households, householdMembers, householdExpenses, users } from '@/db/schema';
+import { households, householdMembers, householdExpenses, householdCategoryCaps, householdSettlements, users } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -63,6 +63,17 @@ export const GET = apiHandler(
           .orderBy(desc(householdExpenses.createdAt))
           .limit(20);
 
+        const categoryCaps = await db
+          .select()
+          .from(householdCategoryCaps)
+          .where(eq(householdCategoryCaps.householdId, m.householdId));
+
+        const settlements = await db
+          .select()
+          .from(householdSettlements)
+          .where(eq(householdSettlements.householdId, m.householdId))
+          .orderBy(desc(householdSettlements.createdAt));
+
         return {
           id: m.householdId,
           name: m.householdName,
@@ -71,6 +82,8 @@ export const GET = apiHandler(
           createdAt: m.createdAt,
           members,
           recentExpenses,
+          categoryCaps,
+          settlements,
         };
       })
     );

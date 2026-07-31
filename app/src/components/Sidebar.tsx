@@ -25,6 +25,7 @@ const navGroups = [
             { href: '/reports', icon: 'bar_chart', label: 'Reports' },
             { href: '/overview', icon: 'analytics', label: 'Overview' },
             { href: '/benchmarks', icon: 'leaderboard', label: 'Benchmarks' },
+            { href: '/insights', icon: 'lightbulb', label: 'Insights' },
         ],
     },
     {
