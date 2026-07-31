@@ -65,6 +65,11 @@ export default function SettingsPage() {
     const [swipedSessionId, setSwipedSessionId] = useState<number | null>(null);
     const touchStartX = useRef<number>(0);
 
+    // Google Calendar states
+    const [calendarConnected, setCalendarConnected] = useState(false);
+    const [calendarLoading, setCalendarLoading] = useState(false);
+    const [calendarConnecting, setCalendarConnecting] = useState(false);
+
     const fetchPasskeys = useCallback(async () => {
         try {
             const res = await fetch('/api/auth/passkeys');
@@ -87,13 +92,53 @@ export default function SettingsPage() {
 
     const fetchLoginActivity = useCallback(async () => {
         try {
-            const res = await fetch('/api/auth/login-activity');
+            const res = await fetch('/api/auth/audit-log?limit=15');
             const data = await res.json();
-            if (data.activity) setLoginActivity(data.activity);
+            if (data.logs) setLoginActivity(data.logs);
         } catch (err) {
             console.error('Failed to fetch login activity', err);
         }
     }, []);
+
+    const fetchCalendarStatus = useCallback(async () => {
+        setCalendarLoading(true);
+        try {
+            const res = await fetch('/api/calendar/auth');
+            const data = await res.json();
+            setCalendarConnected(data.isConnected || false);
+        } catch (err) {
+            console.error('Failed to fetch calendar status', err);
+        } finally {
+            setCalendarLoading(false);
+        }
+    }, []);
+
+    const handleConnectCalendar = async () => {
+        setCalendarConnecting(true);
+        try {
+            const res = await fetch('/api/calendar/auth', { method: 'POST' });
+            const data = await res.json();
+            if (data.authUrl) {
+                window.location.href = data.authUrl;
+            } else {
+                toast.error(data.error || 'Failed to start calendar connection');
+            }
+        } catch {
+            toast.error('Failed to connect Google Calendar');
+        } finally {
+            setCalendarConnecting(false);
+        }
+    };
+
+    const handleDisconnectCalendar = async () => {
+        try {
+            await fetch('/api/calendar/auth', { method: 'DELETE' });
+            setCalendarConnected(false);
+            toast.success('Google Calendar disconnected');
+        } catch {
+            toast.error('Failed to disconnect calendar');
+        }
+    };
 
     /** Downloads backup/recovery codes as a .txt file */
     const downloadRecoveryCodes = (codes: string[]) => {
@@ -152,9 +197,25 @@ export default function SettingsPage() {
         fetchPasskeys();
         fetchSessions();
         fetchLoginActivity();
+        fetchCalendarStatus();
+
+        // Handle OAuth redirect query params
+        const params = new URLSearchParams(window.location.search);
+        const calendarStatus = params.get('calendar');
+        if (calendarStatus === 'connected') {
+            toast.success('Google Calendar connected successfully!');
+            setCalendarConnected(true);
+            window.history.replaceState({}, '', '/settings');
+        } else if (calendarStatus === 'denied') {
+            toast.error('Google Calendar access was denied');
+            window.history.replaceState({}, '', '/settings');
+        } else if (calendarStatus === 'error') {
+            toast.error('Failed to connect Google Calendar');
+            window.history.replaceState({}, '', '/settings');
+        }
 
         return () => observer.disconnect();
-    }, [fetchPasskeys, fetchSessions, fetchLoginActivity]);
+    }, [fetchPasskeys, fetchSessions, fetchLoginActivity, fetchCalendarStatus]);
 
     const save = async () => {
         setSaving(true);
@@ -1009,6 +1070,47 @@ export default function SettingsPage() {
                                     );
                                 })}
                             </div>
+                        </motion.div>
+
+                        {/* Google Calendar Integration */}
+                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
+                            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary">calendar_month</span>Google Calendar
+                            </h2>
+                            <p className="text-xs text-gray-500 dark:text-text-muted mb-4 font-medium">
+                                Sync your bills, debt payoffs, and reminders to Google Calendar.
+                            </p>
+                            {calendarLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-400">
+                                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    Checking connection...
+                                </div>
+                            ) : calendarConnected ? (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-sm font-bold text-accent-emerald">
+                                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                        Connected
+                                    </div>
+                                    <button
+                                        onClick={handleDisconnectCalendar}
+                                        className="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors"
+                                    >
+                                        Disconnect
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleConnectCalendar}
+                                    disabled={calendarConnecting}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50"
+                                >
+                                    {calendarConnecting ? (
+                                        <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Connecting...</>
+                                    ) : (
+                                        <><span className="material-symbols-outlined text-[18px]">link</span> Connect Google Calendar</>
+                                    )}
+                                </button>
+                            )}
                         </motion.div>
 
                         {/* System Info */}

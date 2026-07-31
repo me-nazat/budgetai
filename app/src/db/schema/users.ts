@@ -89,13 +89,23 @@ export const users = sqliteTable('users', {
   /** JSON-stringified array representing the mobile dashboard layout widget order and visibility. */
   mobileWidgetOrder: text('mobile_widget_order'),
 
-  /** Peer benchmark data opt-in preference. 1 = opted in, 0 = opted out. */
+  /**
+   * @deprecated Use `userDemographics` table instead. This column is kept for
+   * backward compatibility during the transition period and will be removed in
+   * a future release. All new code should read/write `userDemographics`.
+   */
   benchmarkOptIn: integer('benchmark_opt_in').default(0),
 
-  /** Demographic age tier for peer benchmarking (e.g. '18-24', '25-34', '35-44', '45-54', '55+'). */
+  /**
+   * @deprecated Use `userDemographics.ageBracket` instead. Legacy column kept
+   * for read-only backward compatibility.
+   */
   demographicAgeTier: text('demographic_age_tier'),
 
-  /** Demographic region code for peer benchmarking (e.g. 'US-NY', 'US-CA', 'BD-DH', 'GLOBAL'). */
+  /**
+   * @deprecated Use `userDemographics.regionBracket` instead. Legacy column kept
+   * for read-only backward compatibility.
+   */
   demographicRegion: text('demographic_region'),
 
   /** Account creation timestamp (UTC ISO-8601). */

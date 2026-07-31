@@ -253,4 +253,88 @@ export class HouseholdRepository {
       .returning();
     return created;
   }
+
+  /**
+   * Check whether an expense exceeds category cap for a household.
+   * Returns current spent, cap amount, and whether cap is exceeded.
+   */
+  static async checkCategoryCap(householdId: number, category: string, newExpenseAmount: number) {
+    const [cap] = await db
+      .select()
+      .from(householdCategoryCaps)
+      .where(and(eq(householdCategoryCaps.householdId, householdId), eq(householdCategoryCaps.category, category)));
+
+    if (!cap) return { capExceeded: false, currentSpent: 0, capAmount: 0 };
+
+    const expenses = await db
+      .select({ amount: householdExpenses.amount })
+      .from(householdExpenses)
+      .where(and(eq(householdExpenses.householdId, householdId), eq(householdExpenses.category, category)));
+
+    const currentSpent = expenses.reduce((acc, e) => acc + e.amount, 0);
+    const projectedSpent = currentSpent + newExpenseAmount;
+
+    return {
+      capExceeded: projectedSpent > cap.capAmount,
+      currentSpent,
+      projectedSpent,
+      capAmount: cap.capAmount,
+    };
+  }
+
+  /**
+   * Get all recurring split rules for a household.
+   */
+  static async findSplitRules(householdId: number) {
+    const { householdSplitRules } = await import('@/db/schema');
+    return db
+      .select()
+      .from(householdSplitRules)
+      .where(eq(householdSplitRules.householdId, householdId));
+  }
+
+  /**
+   * Create a recurring split rule.
+   */
+  static async createSplitRule(data: {
+    householdId: number;
+    name: string;
+    amount: number;
+    category?: string;
+    splitType?: 'equal' | 'percentage' | 'fixed';
+    splitShares?: string;
+    frequency?: 'monthly' | 'biweekly' | 'weekly';
+    dayOfMonth?: number;
+    nextRunDate?: string;
+    createdByUserId: number;
+  }) {
+    const { householdSplitRules } = await import('@/db/schema');
+    const [rule] = await db
+      .insert(householdSplitRules)
+      .values({
+        householdId: data.householdId,
+        name: data.name,
+        amount: data.amount,
+        category: data.category || 'Bills & Utilities',
+        splitType: data.splitType || 'equal',
+        splitShares: data.splitShares || null,
+        frequency: data.frequency || 'monthly',
+        dayOfMonth: data.dayOfMonth || 1,
+        nextRunDate: data.nextRunDate || new Date().toISOString().split('T')[0],
+        createdByUserId: data.createdByUserId,
+      })
+      .returning();
+    return rule;
+  }
+
+  /**
+   * Delete a split rule.
+   */
+  static async deleteSplitRule(ruleId: number, householdId: number) {
+    const { householdSplitRules } = await import('@/db/schema');
+    await db
+      .delete(householdSplitRules)
+      .where(and(eq(householdSplitRules.id, ruleId), eq(householdSplitRules.householdId, householdId)));
+    return true;
+  }
 }

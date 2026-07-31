@@ -35,11 +35,16 @@
   "language": "Language",
   "english": "English",
   "bengali": "বাংলা",
+  "privacyMode": "Privacy Mode",
+  "googleCalendar": "Google Calendar",
+  "connect": "Connect",
+  "disconnect": "Disconnect",
   "householdPage": {
     "title": "Household Budgeting & Settlement",
     "balancesTab": "Balances & Settlement",
     "expensesTab": "Shared Expenses",
     "capsTab": "Category Caps",
+    "rulesTab": "Recurring Auto-Splits",
     "suggestedSettlements": "Suggested Settlements",
     "noExpenses": "No household expenses logged yet.",
     "markAsPaid": "Mark as Paid",
@@ -69,11 +74,13 @@
     "title": "AI Document Vault & Semantic Search",
     "searchPlaceholder": "Search document content or meaning (e.g. 'flight ticket to Singapore')...",
     "suggestedLink": "Suggested Transaction Match",
-    "linkTransaction": "Link Transaction"
+    "linkTransaction": "Link Transaction",
+    "exportVault": "Export Vault Manifest"
   },
   "bankImportPage": {
     "title": "Smart Bank Statement Reconciliation",
     "reviewQueue": "Possible Duplicates Queue",
+    "autoResolve": "Auto-Resolve High Confidence Matches",
     "keepBoth": "Keep Both",
     "merge": "Merge",
     "discard": "Discard Duplicate"

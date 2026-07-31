@@ -104,6 +104,32 @@ export const POST = apiHandler(
       );
     }
 
+    // Check category cap if force parameter is not true
+    const force = body.force === true;
+    if (!force) {
+      const { HouseholdRepository } = await import('@/repositories/household.repository');
+      const capCheck = await HouseholdRepository.checkCategoryCap(
+        validated.householdId,
+        validated.category,
+        validated.amount
+      );
+
+      if (capCheck.capExceeded) {
+        return NextResponse.json(
+          {
+            warning: 'Category budget cap exceeded',
+            overCap: true,
+            category: validated.category,
+            currentSpent: capCheck.currentSpent,
+            projectedSpent: capCheck.projectedSpent ?? 0,
+            capAmount: capCheck.capAmount ?? 0,
+            message: `Adding this $${validated.amount.toFixed(2)} expense will bring ${validated.category} total to $${(capCheck.projectedSpent ?? 0).toFixed(2)}, exceeding the $${(capCheck.capAmount ?? 0).toFixed(2)} cap.`,
+          },
+          { status: 202 }
+        );
+      }
+    }
+
     const [expense] = await db
       .insert(householdExpenses)
       .values({

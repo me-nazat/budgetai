@@ -1,5 +1,5 @@
 import { db } from '@/db/client';
-import { benchmarkDemographics, users, transactions } from '@/db/schema';
+import { benchmarkDemographics, users, transactions, userDemographics } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
 export interface PeerBenchmarkCategoryResult {
@@ -10,9 +10,35 @@ export interface PeerBenchmarkCategoryResult {
   percentileScore: number;
 }
 
+export interface UserBenchmarkProfile {
+  optedIn: boolean;
+  ageTier: string;
+  region: string;
+  householdSize?: string;
+}
+
 export class BenchmarkRepository {
-  /** Get user benchmark settings */
-  static async getUserBenchmarkProfile(userId: number) {
+  /**
+   * Get user benchmark profile from the canonical source (userDemographics),
+   * with read-only fallback to legacy users columns for backward compat.
+   */
+  static async getUserBenchmarkProfile(userId: number): Promise<UserBenchmarkProfile> {
+    // Primary source: userDemographics table
+    const [demo] = await db
+      .select()
+      .from(userDemographics)
+      .where(eq(userDemographics.userId, userId));
+
+    if (demo) {
+      return {
+        optedIn: true,
+        ageTier: demo.ageBracket,
+        region: demo.regionBracket,
+        householdSize: demo.householdSizeBracket,
+      };
+    }
+
+    // Legacy fallback (read-only, deprecated): users table columns
     const [user] = await db
       .select({
         benchmarkOptIn: users.benchmarkOptIn,
@@ -21,20 +47,81 @@ export class BenchmarkRepository {
       })
       .from(users)
       .where(eq(users.id, userId));
-    return user || { benchmarkOptIn: 0, demographicAgeTier: '25-34', demographicRegion: 'GLOBAL' };
+
+    return {
+      optedIn: Boolean(user?.benchmarkOptIn),
+      ageTier: user?.demographicAgeTier || '25-34',
+      region: user?.demographicRegion || 'GLOBAL',
+    };
   }
 
-  /** Update user benchmark settings */
+  /**
+   * Alias for saveUserBenchmarkProfile / updateUserBenchmarkProfile for backward compatibility.
+   */
   static async updateUserBenchmarkProfile(
     userId: number,
-    data: { benchmarkOptIn?: number; demographicAgeTier?: string; demographicRegion?: string }
+    data: { benchmarkOptIn?: number; demographicAgeTier?: string; demographicRegion?: string; ageBracket?: string; householdSizeBracket?: string; regionBracket?: string }
   ) {
-    const [updated] = await db
+    const ageBracket = data.ageBracket || data.demographicAgeTier || '25-34';
+    const regionBracket = data.regionBracket || data.demographicRegion || 'GLOBAL';
+    const householdSizeBracket = data.householdSizeBracket || '1-2';
+
+    if (data.benchmarkOptIn === 0) {
+      return this.removeOptIn(userId);
+    }
+
+    return this.saveUserBenchmarkProfile(userId, {
+      ageBracket,
+      householdSizeBracket,
+      regionBracket,
+    });
+  }
+  static async saveUserBenchmarkProfile(
+    userId: number,
+    data: { ageBracket: string; householdSizeBracket: string; regionBracket: string }
+  ) {
+    const existing = await db
+      .select()
+      .from(userDemographics)
+      .where(eq(userDemographics.userId, userId));
+
+    if (existing.length > 0) {
+      await db
+        .update(userDemographics)
+        .set({
+          ageBracket: data.ageBracket,
+          householdSizeBracket: data.householdSizeBracket,
+          regionBracket: data.regionBracket,
+          optedInAt: new Date().toISOString(),
+        })
+        .where(eq(userDemographics.userId, userId));
+    } else {
+      await db.insert(userDemographics).values({
+        userId,
+        ageBracket: data.ageBracket,
+        householdSizeBracket: data.householdSizeBracket,
+        regionBracket: data.regionBracket,
+      });
+    }
+
+    // Keep legacy columns in sync during deprecation period
+    await db
       .update(users)
-      .set(data)
-      .where(eq(users.id, userId))
-      .returning();
-    return updated;
+      .set({
+        benchmarkOptIn: 1,
+        demographicAgeTier: data.ageBracket,
+        demographicRegion: data.regionBracket,
+      })
+      .where(eq(users.id, userId));
+  }
+
+  /** Remove opt-in (both tables) */
+  static async removeOptIn(userId: number) {
+    await db.delete(userDemographics).where(eq(userDemographics.userId, userId));
+    await db
+      .update(users)
+      .set({ benchmarkOptIn: 0 })
+      .where(eq(users.id, userId));
   }
 
   /** Calculate anonymous peer benchmark comparison for user spending */
@@ -43,8 +130,8 @@ export class BenchmarkRepository {
     filters?: { ageTier?: string; regionCode?: string; incomeBracket?: string }
   ) {
     const userProfile = await this.getUserBenchmarkProfile(userId);
-    const ageTier = filters?.ageTier || userProfile.demographicAgeTier || '25-34';
-    const regionCode = filters?.regionCode || userProfile.demographicRegion || 'GLOBAL';
+    const ageTier = filters?.ageTier || userProfile.ageTier || '25-34';
+    const regionCode = filters?.regionCode || userProfile.region || 'GLOBAL';
     const incomeBracket = filters?.incomeBracket || 'MEDIAN';
 
     // 1. Calculate user's category spending for current month
@@ -118,11 +205,68 @@ export class BenchmarkRepository {
       results.reduce((acc, curr) => acc + curr.percentileScore, 0) / (results.length || 1)
     );
 
+    // Save monthly snapshot if user is opted in
+    if (userProfile.optedIn) {
+      const yearMonth = new Date().toISOString().substring(0, 7);
+      await this.saveCategoryPercentileSnapshots(userId, yearMonth, results);
+    }
+
     return {
       cohort: { ageTier, regionCode, incomeBracket },
       overallFinancialStandingScore: overallScore,
-      optInStatus: Boolean(userProfile.benchmarkOptIn),
+      optInStatus: userProfile.optedIn,
       categoryBenchmarks: results,
     };
+  }
+
+  /**
+   * Save category percentile snapshots for a given month.
+   */
+  static async saveCategoryPercentileSnapshots(
+    userId: number,
+    yearMonth: string,
+    results: PeerBenchmarkCategoryResult[]
+  ) {
+    const { categoryPercentileSnapshots } = await import('@/db/schema');
+
+    // Delete existing snapshot for this month to maintain idempotency
+    await db
+      .delete(categoryPercentileSnapshots)
+      .where(
+        and(
+          eq(categoryPercentileSnapshots.userId, userId),
+          eq(categoryPercentileSnapshots.yearMonth, yearMonth)
+        )
+      );
+
+    for (const r of results) {
+      await db.insert(categoryPercentileSnapshots).values({
+        userId,
+        yearMonth,
+        category: r.category,
+        userSpent: r.userAmount,
+        p50Spent: r.p50Amount,
+        p90Spent: r.p90Amount,
+        percentileRank: r.percentileScore,
+      });
+    }
+  }
+
+  /**
+   * Get category percentile snapshots history for a user.
+   */
+  static async getCategoryPercentileSnapshots(userId: number, yearMonth?: string) {
+    const { categoryPercentileSnapshots } = await import('@/db/schema');
+    const ym = yearMonth || new Date().toISOString().substring(0, 7);
+
+    return db
+      .select()
+      .from(categoryPercentileSnapshots)
+      .where(
+        and(
+          eq(categoryPercentileSnapshots.userId, userId),
+          eq(categoryPercentileSnapshots.yearMonth, ym)
+        )
+      );
   }
 }

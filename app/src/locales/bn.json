@@ -35,11 +35,16 @@
   "language": "ভাষা",
   "english": "English",
   "bengali": "বাংলা",
+  "privacyMode": "প্রাইভেসি মোড",
+  "googleCalendar": "গুগল ক্যালেন্ডার",
+  "connect": "সংযুক্ত করুন",
+  "disconnect": "বিচ্ছিন্ন করুন",
   "householdPage": {
     "title": "হাউসহোল্ড বাজেট ও নিষ্পত্তি",
     "balancesTab": "ব্যালেন্স ও হিসাব",
     "expensesTab": "যৌথ খরচ",
     "capsTab": "ক্যাটাগরি ক্যাপ",
+    "rulesTab": "পুনরাবৃত্তিমূলক স্বয়ংক্রিয় ভাগ",
     "suggestedSettlements": "প্রস্তাবিত মেটানো",
     "noExpenses": "এখনও কোনো যৌথ খরচ রেকর্ড করা হয়নি।",
     "markAsPaid": "পরিশোধিত চিহ্নিত করুন",
@@ -69,11 +74,13 @@
     "title": "এআই ডকুমেন্ট ভল্ট ও সার্চ",
     "searchPlaceholder": "ডকুমেন্টের বিষয়বস্তু বা অর্থ লিখে খুঁজুন...",
     "suggestedLink": "প্রস্তাবিত মেলানো লেনদেন",
-    "linkTransaction": "লেনদেন লিঙ্ক করুন"
+    "linkTransaction": "লেনদেন লিঙ্ক করুন",
+    "exportVault": "ভল্ট তালিকা এক্সপোর্ট করুন"
   },
   "bankImportPage": {
     "title": "স্মার্ট ব্যাংক স্টেটমেন্ট রিকনসিলিয়েশন",
     "reviewQueue": "সম্ভাব্য ডুপ্লিকেট তালিকা",
+    "autoResolve": "স্বয়ংক্রিয়ভাবে ডুপ্লিকেট সমাধান করুন",
     "keepBoth": "উভয়টি রাখুন",
     "merge": "একত্রিত করুন",
     "discard": "ডুপ্লিকেট বাতিল করুন"

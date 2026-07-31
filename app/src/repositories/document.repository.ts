@@ -107,6 +107,20 @@ export class DocumentRepository {
       })
       .returning();
 
+    // If transaction matched, auto-link to tax deduction item if one exists
+    if (suggestedTransactionId) {
+      const { taxDeductionItems } = await import('@/db/schema');
+      await db
+        .update(taxDeductionItems)
+        .set({ receiptDocumentId: doc.id })
+        .where(
+          and(
+            eq(taxDeductionItems.userId, data.userId),
+            eq(taxDeductionItems.transactionId, suggestedTransactionId)
+          )
+        );
+    }
+
     // Store embedding in chunk table
     await this.addEmbedding({
       documentId: doc.id,

@@ -793,6 +793,52 @@ export const householdCategoryCaps = sqliteTable(
 export type HouseholdCategoryCap = typeof householdCategoryCaps.$inferSelect;
 export type NewHouseholdCategoryCap = typeof householdCategoryCaps.$inferInsert;
 
+/** Recurring auto-split rules for household bills (Module 10 Feature 2) */
+export const householdSplitRules = sqliteTable(
+  'household_split_rules',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    householdId: integer('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    /** Name of the recurring expense (e.g. "Rent", "Netflix", "Electricity") */
+    name: text('name').notNull(),
+    /** Amount of the recurring expense */
+    amount: real('amount').notNull(),
+    /** Expense category for the auto-generated transaction */
+    category: text('category').notNull().default('Bills & Utilities'),
+    /** How to split: 'equal' | 'percentage' | 'fixed' */
+    splitType: text('split_type', { enum: ['equal', 'percentage', 'fixed'] }).notNull().default('equal'),
+    /**
+     * JSON object mapping userId -> share.
+     * For 'equal': not used (all members split equally).
+     * For 'percentage': { "1": 60, "2": 40 } (must sum to 100).
+     * For 'fixed': { "1": 300, "2": 200 } (must sum to amount).
+     */
+    splitShares: text('split_shares'),
+    /** Cron frequency: 'monthly' | 'biweekly' | 'weekly' */
+    frequency: text('frequency', { enum: ['monthly', 'biweekly', 'weekly'] }).notNull().default('monthly'),
+    /** Day of month for 'monthly' frequency (1-28) */
+    dayOfMonth: integer('day_of_month').default(1),
+    /** Next scheduled run date (ISO string) */
+    nextRunDate: text('next_run_date'),
+    /** Whether this rule is active */
+    active: integer('active').notNull().default(1),
+    /** User who created the rule */
+    createdByUserId: integer('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_hh_split_rules_household').on(table.householdId),
+    index('idx_hh_split_rules_next_run').on(table.nextRunDate),
+  ]
+);
+
+export type HouseholdSplitRule = typeof householdSplitRules.$inferSelect;
+export type NewHouseholdSplitRule = typeof householdSplitRules.$inferInsert;
+
 /* ═══════════════════════════════════════════════════════════════
    MODULE 11: ANONYMOUS PEER BENCHMARKS
    ═══════════════════════════════════════════════════════════════ */
@@ -815,6 +861,30 @@ export const benchmarkDemographics = sqliteTable(
 
 export type BenchmarkDemographic = typeof benchmarkDemographics.$inferSelect;
 export type NewBenchmarkDemographic = typeof benchmarkDemographics.$inferInsert;
+
+/** Monthly category percentile snapshot for peer benchmarking (Module 11 Feature 1) */
+export const categoryPercentileSnapshots = sqliteTable(
+  'category_percentile_snapshots',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    yearMonth: text('year_month').notNull(), // e.g. "2026-07"
+    category: text('category').notNull(),
+    userSpent: real('user_spent').notNull(),
+    p50Spent: real('p50_spent').notNull(),
+    p90Spent: real('p90_spent').notNull(),
+    percentileRank: real('percentile_rank').notNull(), // 0 to 100
+    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_cat_pct_snapshots_user_month').on(table.userId, table.yearMonth),
+  ]
+);
+
+export type CategoryPercentileSnapshot = typeof categoryPercentileSnapshots.$inferSelect;
+export type NewCategoryPercentileSnapshot = typeof categoryPercentileSnapshots.$inferInsert;
 
 /* ═══════════════════════════════════════════════════════════════
    MODULE 12: TAX DEDUCTION ITEMS
