@@ -8,7 +8,6 @@ import useSWR from 'swr';
 
 const menuItems = [
     { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
-    { href: '/accounts', icon: 'account_balance', label: 'Accounts' },
     { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
     { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
     { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
@@ -16,6 +15,7 @@ const menuItems = [
     { href: '/reports', icon: 'bar_chart', label: 'Reports' },
     { href: '/overview', icon: 'analytics', label: 'Overview' },
     { href: '/benchmarks', icon: 'leaderboard', label: 'Benchmarks' },
+    { href: '/accounts', icon: 'account_balance', label: 'Accounts' },
     { href: '/household', icon: 'family_restroom', label: 'Household' },
     { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
     { href: '/tours', icon: 'flight_takeoff', label: 'Tour Manager' },

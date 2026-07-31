@@ -36,10 +36,11 @@ interface AsyncDayDetailPopupProps {
 }
 
 export default function AsyncDayDetailPopup({ date, anchorEl, onClose }: AsyncDayDetailPopupProps) {
-    const { data: txData } = useSWR<{ transactions: Transaction[] }>(`/api/transactions?start=${date}&end=${date}&limit=1000`);
+    const { data: txData, error: txError } = useSWR<{ transactions: Transaction[] }>(`/api/transactions?start=${date}&end=${date}&limit=1000`);
     const { data: recurringData } = useSWR<{ items: RecurringItem[] }>(`/api/recurring`);
     const { categories: customCategories } = useCustomCategories('all');
     const invalidateData = useInvalidateFinancialData();
+    const isLoading = !txData && !txError;
     
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -90,6 +91,7 @@ export default function AsyncDayDetailPopup({ date, anchorEl, onClose }: AsyncDa
                     onTransactionClick={handleTransactionClick}
                     onAddClick={handleAddClick}
                     compact={true}
+                    loading={isLoading}
                 />
             )}
 

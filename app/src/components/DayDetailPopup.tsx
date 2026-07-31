@@ -36,6 +36,7 @@ interface DayDetailPopupProps {
     onTransactionClick: (tx: Transaction) => void;
     onAddClick: (date: string) => void;
     compact?: boolean;
+    loading?: boolean;
 }
 
 export default function DayDetailPopup({
@@ -48,6 +49,7 @@ export default function DayDetailPopup({
     onTransactionClick,
     onAddClick,
     compact = false,
+    loading = false,
 }: DayDetailPopupProps) {
     const popupRef = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -224,13 +226,18 @@ export default function DayDetailPopup({
                             </div>
                         ))}
 
-                        {/* Empty State */}
-                        {transactions.length === 0 && recurringItems.length === 0 && (
+                        {/* Empty State / Loading State */}
+                        {loading ? (
+                            <div className="rounded-xl border border-dashed border-gray-200 dark:border-white/10 p-8 text-center mb-2 flex flex-col items-center justify-center gap-3">
+                                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500">Loading daily activity...</p>
+                            </div>
+                        ) : transactions.length === 0 && recurringItems.length === 0 ? (
                             <div className="rounded-xl border border-dashed border-gray-200 dark:border-white/10 p-8 text-center mb-2">
                                 <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-600 mb-2 block">event_busy</span>
                                 <p className="text-sm text-gray-400 dark:text-gray-500">No activity on this day</p>
                             </div>
-                        )}
+                        ) : null}
                         
                         {/* Add Transaction Button */}
                         <div className="pt-2">

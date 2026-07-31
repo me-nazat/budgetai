@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor } from '@/lib/categoryUtils';
 import { CURRENCIES } from '@/lib/currency';
+import { generateMonthOptions } from '@/lib/dateUtils';
 import { MAX_ATTACHMENT_FILES } from '@/lib/transaction-attachments';
 import TransactionAttachmentsSection from '@/components/TransactionAttachmentsSection';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
@@ -549,15 +550,8 @@ export default function TransactionsPage() {
         }
     };
 
-    // Generate last 12 months for the dropdown
-    const monthOptions = Array.from({ length: 12 }).map((_, i) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        return {
-            value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-            label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-        };
-    });
+    // Generate last 12 months for the dropdown without 31st overflow bugs
+    const monthOptions = useMemo(() => generateMonthOptions(12), []);
 
     const weekOptions = [
         { value: 'all', label: 'Full Month' },

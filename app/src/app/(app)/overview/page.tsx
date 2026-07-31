@@ -16,6 +16,7 @@ import {
 } from 'chart.js';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
+import { generateMonthOptions } from '@/lib/dateUtils';
 import { useDashboard } from '@/hooks/useApi';
 import { getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
@@ -30,14 +31,7 @@ export default function OverviewPage() {
     const { categories: customCategories } = useCustomCategories('all');
     const { data, isLoading, isValidating } = useDashboard(selectedMonth, 'all');
 
-    const monthOptions = useMemo(() => Array.from({ length: 12 }).map((_, index) => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - index);
-        return {
-            value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
-            label: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-        };
-    }), []);
+    const monthOptions = useMemo(() => generateMonthOptions(12), []);
 
     if (!data && isLoading) {
         return (

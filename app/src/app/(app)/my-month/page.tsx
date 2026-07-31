@@ -5,6 +5,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useDashboard, useTransactions } from '@/hooks/useApi';
 import { getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
+import { generateMonthOptions } from '@/lib/dateUtils';
 import DayDetailPopup from '@/components/DayDetailPopup';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
 import QuickAddModal from '@/components/QuickAddModal';
@@ -71,14 +72,7 @@ export default function MyMonthPage() {
         return () => { cancelled = true; };
     }, []);
 
-    const monthOptions = useMemo(() => Array.from({ length: 12 }).map((_, index) => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - index);
-        return {
-            value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
-            label: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-        };
-    }), []);
+    const monthOptions = useMemo(() => generateMonthOptions(12), []);
 
     const days = useMemo(() => {
         const first = new Date(range.year, range.month - 1, 1);
@@ -104,8 +98,8 @@ export default function MyMonthPage() {
     const selectedRecurring = recurringThisMonth.filter(item => item.next_date === activeSelectedDay);
     const selectedExpense = selectedTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
     const selectedIncome = selectedTransactions.filter(tx => tx.type === 'earning').reduce((sum, tx) => sum + tx.amount, 0);
-    const monthExpense = data?.expenses.current || 0;
-    const monthIncome = data?.earnings.current || 0;
+    const monthExpense = useMemo(() => transactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0), [transactions]);
+    const monthIncome = useMemo(() => transactions.filter(tx => tx.type === 'earning').reduce((sum, tx) => sum + tx.amount, 0), [transactions]);
     const riskAlerts = data?.budgetAlerts.filter(alert => alert.percentage >= 80) || [];
 
     const upcoming = [
