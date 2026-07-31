@@ -107,7 +107,17 @@ export function withAuth<T extends NextRouteContext = NextRouteContext>(
       // Sandboxed workspace isolation check for guests
       const pathname = request.nextUrl.pathname;
       if (pathname.startsWith('/api/')) {
-        const allowedPrefixes = ['/api/auth', '/api/bill-splits', '/api/categories', '/api/settings'];
+        const allowedPrefixes = [
+          '/api/auth',
+          '/api/bill-splits',
+          '/api/categories',
+          '/api/settings',
+          '/api/households',
+          '/api/benchmarking',
+          '/api/tax',
+          '/api/documents',
+          '/api/privacy',
+        ];
         const isAllowed = allowedPrefixes.some(prefix => pathname.startsWith(prefix));
         if (!isAllowed) {
           const { queryOne } = await import('@/lib/db');

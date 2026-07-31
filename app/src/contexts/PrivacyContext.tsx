@@ -30,6 +30,8 @@ export type PrivacyMaskScope = 'all' | 'balances_only' | 'transactions_only';
 interface PrivacyContextValue {
   /** Whether privacy mode is currently active */
   isPrivacyMode: boolean;
+  /** Alias for isPrivacyMode */
+  isPrivate: boolean;
   /** Current masking scope */
   maskScope: PrivacyMaskScope;
   /** Toggle privacy mode on/off */
@@ -38,27 +40,27 @@ interface PrivacyContextValue {
   setMaskScope: (scope: PrivacyMaskScope) => void;
   /**
    * Mask a string value if privacy mode is active.
-   * @param value - The value to potentially mask
-   * @param fieldScope - Optional: which field category ('balance' | 'transaction').
-   *   If omitted, masks whenever privacy mode is on (backward compatible).
    */
   mask: (value: string, fieldScope?: PrivacyFieldScope) => string;
   /**
    * Mask a numeric value if privacy mode is active.
-   * @param value - The value to potentially mask
-   * @param fieldScope - Optional: which field category ('balance' | 'transaction').
-   *   If omitted, masks whenever privacy mode is on (backward compatible).
    */
   maskNumber: (value: number | string, fieldScope?: PrivacyFieldScope) => string;
+  /**
+   * Format or mask amount string.
+   */
+  formatAmount: (amount: number, formattedStr: string) => string;
 }
 
 const PrivacyContext = createContext<PrivacyContextValue>({
   isPrivacyMode: false,
+  isPrivate: false,
   maskScope: 'all',
   togglePrivacy: () => {},
   setMaskScope: () => {},
   mask: (v) => v,
   maskNumber: () => '••••',
+  formatAmount: (amount, formattedStr) => formattedStr,
 });
 
 export function usePrivacy() {
@@ -126,8 +128,24 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     return '••••';
   }, [shouldMask]);
 
+  const formatAmount = useCallback((amount: number, formattedStr: string) => {
+    if (isPrivacyMode) return '••••••••••';
+    return formattedStr;
+  }, [isPrivacyMode]);
+
   return (
-    <PrivacyContext.Provider value={{ isPrivacyMode, maskScope, togglePrivacy, setMaskScope, mask, maskNumber }}>
+    <PrivacyContext.Provider
+      value={{
+        isPrivacyMode,
+        isPrivate: isPrivacyMode,
+        maskScope,
+        togglePrivacy,
+        setMaskScope,
+        mask,
+        maskNumber,
+        formatAmount,
+      }}
+    >
       {children}
     </PrivacyContext.Provider>
   );

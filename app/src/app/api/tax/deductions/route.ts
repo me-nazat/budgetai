@@ -1,49 +1,64 @@
-export const dynamic = 'force-dynamic';
-
-import { NextRequest, NextResponse } from 'next/server';
-import { apiHandler } from '@/lib/middleware/api-handler';
+import { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/middleware/with-auth';
-import { TaxRepository } from '@/repositories/tax.repository';
+import { apiSuccess, apiError } from '@/lib/types/api';
+import { ValidationError, ErrorCode } from '@/lib/types/errors';
+import { db } from '@/db/client';
+import { taxDeductions } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { v4 as uuidv4 } from 'uuid';
 
-export const GET = apiHandler(
-  withAuth(async (request: NextRequest, { userId }) => {
-    const { searchParams } = new URL(request.url);
-    const year = parseInt(searchParams.get('year') || `${new Date().getFullYear()}`, 10);
+export const GET = withAuth(async (request: NextRequest, { userId }) => {
+  const deductions = await db
+    .select()
+    .from(taxDeductions)
+    .where(eq(taxDeductions.userId, userId));
 
-    const summary = await TaxRepository.getTaxSummary(userId, year);
-    return NextResponse.json(summary);
-  })
-);
+  const totalDeductions = deductions.reduce((acc, item) => acc + item.deductibleAmount, 0);
+  const estimatedTaxSavings = totalDeductions * 0.28; // Assumes 28% marginal tax bracket
 
-export const POST = apiHandler(
-  withAuth(async (request: NextRequest, { userId }) => {
-    const body = await request.json();
-    const { transactionId, taxYear, deductionCategory, deductibleAmount, receiptDocumentId } = body;
+  return apiSuccess({
+    totalDeductions,
+    estimatedTaxSavings,
+    deductions: deductions.map((d) => ({
+      id: d.id,
+      transactionId: d.transactionId,
+      taxCategoryId: d.taxCategoryId,
+      eligibleAmount: d.eligibleAmount,
+      deductibleAmount: d.deductibleAmount,
+      status: d.status,
+      notes: d.notes,
+    })),
+  });
+});
 
-    if (!deductionCategory || deductibleAmount === undefined) {
-      return NextResponse.json({ error: 'Category and amount are required' }, { status: 400 });
-    }
+export const POST = withAuth(async (request: NextRequest, { userId }) => {
+  const body = await request.json().catch(() => ({}));
+  const { transactionId, taxCategoryId, eligibleAmount, notes } = body;
 
-    const item = await TaxRepository.flagDeduction({
-      userId,
-      transactionId: transactionId ? parseInt(transactionId, 10) : undefined,
-      taxYear: taxYear ? parseInt(taxYear, 10) : new Date().getFullYear(),
-      deductionCategory,
-      deductibleAmount: parseFloat(deductibleAmount),
-      receiptDocumentId: receiptDocumentId ? parseInt(receiptDocumentId, 10) : undefined,
-    });
+  if (!taxCategoryId || typeof eligibleAmount !== 'number' || eligibleAmount <= 0) {
+    return apiError(
+      new ValidationError('Invalid tax deduction inputs', ErrorCode.INVALID_INPUT)
+    );
+  }
 
-    return NextResponse.json(item, { status: 201 });
-  })
-);
+  const deductionId = uuidv4();
+  const deductibleAmount = eligibleAmount;
 
-export const DELETE = apiHandler(
-  withAuth(async (request: NextRequest, { userId }) => {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'Deduction ID required' }, { status: 400 });
+  await db.insert(taxDeductions).values({
+    id: deductionId,
+    userId,
+    transactionId: transactionId ? Number(transactionId) : null,
+    taxCategoryId,
+    eligibleAmount,
+    deductibleAmount,
+    status: 'VERIFIED',
+    notes,
+  });
 
-    await TaxRepository.removeDeduction(parseInt(id, 10), userId);
-    return NextResponse.json({ success: true });
-  })
-);
+  return apiSuccess({
+    deductionId,
+    transactionId,
+    deductibleAmount,
+    estimatedTaxSavings: deductibleAmount * 0.28,
+  });
+});

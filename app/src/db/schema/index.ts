@@ -1186,4 +1186,24 @@ export const bankImportReviewQueue = sqliteTable(
 export type BankImportReviewQueueItem = typeof bankImportReviewQueue.$inferSelect;
 export type NewBankImportReviewQueueItem = typeof bankImportReviewQueue.$inferInsert;
 
+/* ═══════════════════════════════════════════════════════════════
+   MODULES 10-14 EXTENDED SCHEMAS
+   ═══════════════════════════════════════════════════════════════ */
+
+export * from './household-splits';
+export * from './benchmarks';
+export * from './tax-vault';
+export * from './document-vault';
+export * from './privacy-settings';
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULES 15-19 EXTENDED SCHEMAS
+   ═══════════════════════════════════════════════════════════════ */
+
+export * from './round-ups';
+export * from './statement-imports';
+export * from './calendar-sync';
+export * from './agentic-ai';
+
+
 
