@@ -90,8 +90,9 @@ function LoginForm() {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-                const errMsg = data?.error?.message 
-                    || (typeof data?.error === 'string' ? data.error : data?.message)
+                const errMsg = 
+                    (typeof data?.error === 'string' ? data.error : data?.error?.message) 
+                    || (typeof data?.message === 'string' ? data.message : null)
                     || (res.status === 401 ? 'Invalid email or password' : 'An unexpected error occurred. Please try again later.');
                 throw new Error(errMsg);
             }

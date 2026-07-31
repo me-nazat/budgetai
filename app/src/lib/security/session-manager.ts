@@ -281,6 +281,14 @@ export async function setSessionCookies(
     maxAge: refreshMaxAge,
     path: '/',
   });
+
+  cookieStore.set('wealth-ai-auth-state', 'authenticated', {
+    httpOnly: false,
+    secure: isSecure,
+    sameSite: 'strict',
+    maxAge: refreshMaxAge,
+    path: '/',
+  });
 }
 
 /**

@@ -98,13 +98,5 @@ export const POST = apiHandler(async (request) => {
     ip,
   });
 
-  // Set auth state cookie for client caching
-  const maxAge = rememberMe ? 2592000 : 7200;
-  const responseObj = NextResponse.json({ user: result.user });
-  responseObj.headers.set(
-    'Set-Cookie',
-    `wealth-ai-auth-state=authenticated; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`
-  );
-
-  return responseObj;
+  return NextResponse.json({ user: result.user });
 });
