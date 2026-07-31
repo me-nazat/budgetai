@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import { useCurrency } from '@/hooks/useCurrency';
 import AsyncDayDetailPopup from './AsyncDayDetailPopup';
@@ -55,12 +55,57 @@ const RED_INTENSITY = [
     'bg-rose-600 dark:bg-rose-400',
 ];
 
+interface HeatmapSquareProps {
+    day: { date: string; amount: number; count: number; intensity: number; isToday: boolean };
+    colorClass: string;
+    mode: 'earnings' | 'expenses';
+    fmt: (val: number) => string;
+    onClick: (element: HTMLElement, date: string) => void;
+}
+
+const HeatmapSquare = React.memo(function HeatmapSquare({ day, colorClass, mode, fmt, onClick }: HeatmapSquareProps) {
+    if (day.intensity === -1) {
+        return <div className="w-[14px] h-[14px] invisible" />;
+    }
+
+    return (
+        <div
+            className={`w-[14px] h-[14px] rounded-sm transition-all duration-300 shadow-sm
+                ${colorClass}
+                ${day.isToday ? 'ring-1 ring-primary/80' : ''}
+                hover:ring-2 hover:ring-primary/60 hover:scale-[1.3] relative cursor-pointer group z-10 hover:z-50`}
+            onClick={(e) => {
+                if (day.date) {
+                    onClick(e.currentTarget, day.date);
+                }
+            }}
+        >
+            {day.date && (
+                <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-max px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none z-[9999]">
+                    <p className="font-bold mb-1 text-center text-gray-300">
+                        {new Date(day.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    <div className="px-2 py-1 rounded-md bg-white/10 font-medium flex flex-col items-center">
+                        <span className="text-white/70 text-[10px] uppercase tracking-wider">{mode === 'earnings' ? 'Total Income' : 'Total Expense'}</span>
+                        <span className={`text-sm font-black ${mode === 'earnings' ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(day.amount)}</span>
+                    </div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900 dark:border-t-[#21262d]"></div>
+                </div>
+            )}
+        </div>
+    );
+});
+
 export default function YearlyHeatmap() {
     const currentYear = new Date().getFullYear();
     const [year, setYear] = useState(currentYear);
     const { fmt } = useCurrency();
     const [mode, setMode] = useState<'earnings' | 'expenses'>('expenses');
     const [popupTarget, setPopupTarget] = useState<{ element: HTMLElement; date: string } | null>(null);
+
+    const handleSquareClick = useCallback((element: HTMLElement, date: string) => {
+        setPopupTarget({ element, date });
+    }, []);
 
     const { data, isLoading } = useSWR<HeatmapData>(`/api/heatmap?year=${year}`);
 
@@ -193,32 +238,14 @@ export default function YearlyHeatmap() {
                             {grid.map((week, wi) => (
                                 <div key={wi} className="flex flex-col gap-1 relative z-10 hover:z-50">
                                     {week.map((day, di) => (
-                                        <div
+                                        <HeatmapSquare
                                             key={di}
-                                            className={`w-[14px] h-[14px] rounded-sm transition-all duration-300 shadow-sm
-                                                ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
-                                                ${day.isToday ? 'ring-1 ring-primary/80' : ''}
-                                                hover:ring-2 hover:ring-primary/60 hover:scale-[1.3] relative cursor-pointer group z-10 hover:z-50`}
-                                            onClick={(e) => {
-                                                if (day.date) {
-                                                    setPopupTarget({ element: e.currentTarget, date: day.date });
-                                                }
-                                            }}
-                                        >
-                                            {/* Zero-Lag CSS Tooltip */}
-                                            {day.date && (
-                                                <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-max px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none z-[9999]">
-                                                    <p className="font-bold mb-1 text-center text-gray-300">
-                                                        {new Date(day.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                                                    </p>
-                                                    <div className="px-2 py-1 rounded-md bg-white/10 font-medium flex flex-col items-center">
-                                                        <span className="text-white/70 text-[10px] uppercase tracking-wider">{mode === 'earnings' ? 'Total Income' : 'Total Expense'}</span>
-                                                        <span className={`text-sm font-black ${mode === 'earnings' ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(day.amount)}</span>
-                                                    </div>
-                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900 dark:border-t-[#21262d]"></div>
-                                                </div>
-                                            )}
-                                        </div>
+                                            day={day}
+                                            colorClass={day.intensity === -1 ? 'invisible' : colors[day.intensity]}
+                                            mode={mode}
+                                            fmt={fmt}
+                                            onClick={handleSquareClick}
+                                        />
                                     ))}
                                 </div>
                             ))}

@@ -98,10 +98,10 @@ export class TransactionRepository {
     const conditions = [eq(transactions.userId, userId)];
 
     if (filters.start) {
-      conditions.push(gte(transactions.date, filters.start));
+      conditions.push(gte(sql`DATE(${transactions.date})`, filters.start));
     }
     if (filters.end) {
-      conditions.push(lte(transactions.date, filters.end));
+      conditions.push(lte(sql`DATE(${transactions.date})`, filters.end));
     }
     if (filters.type) {
       conditions.push(eq(transactions.type, filters.type));
@@ -138,10 +138,10 @@ export class TransactionRepository {
     const conditions = [eq(transactions.userId, userId)];
 
     if (filters.start) {
-      conditions.push(gte(transactions.date, filters.start));
+      conditions.push(gte(sql`DATE(${transactions.date})`, filters.start));
     }
     if (filters.end) {
-      conditions.push(lte(transactions.date, filters.end));
+      conditions.push(lte(sql`DATE(${transactions.date})`, filters.end));
     }
     if (filters.type) {
       conditions.push(eq(transactions.type, filters.type));
@@ -295,8 +295,8 @@ export class TransactionRepository {
         and(
           eq(transactions.userId, userId),
           eq(transactions.type, 'expense'),
-          gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          gte(sql`DATE(${transactions.date})`, startDate),
+          lte(sql`DATE(${transactions.date})`, endDate)
         )
       )
       .groupBy(transactions.category)
@@ -325,7 +325,7 @@ export class TransactionRepository {
   ): Promise<Array<{ date: string; expenses: number; earnings: number }>> {
     const results = await db
       .select({
-        date: transactions.date,
+        date: sql<string>`DATE(${transactions.date})`,
         expenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
         earnings: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'earning' THEN ${transactions.amount} ELSE 0 END), 0)`,
       })
@@ -333,12 +333,12 @@ export class TransactionRepository {
       .where(
         and(
           eq(transactions.userId, userId),
-          gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          gte(sql`DATE(${transactions.date})`, startDate),
+          lte(sql`DATE(${transactions.date})`, endDate)
         )
       )
-      .groupBy(transactions.date)
-      .orderBy(transactions.date);
+      .groupBy(sql`DATE(${transactions.date})`)
+      .orderBy(sql`DATE(${transactions.date})`);
 
     return results.map((r) => ({
       date: r.date,
@@ -369,8 +369,8 @@ export class TransactionRepository {
       .where(
         and(
           eq(transactions.userId, userId),
-          gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          gte(sql`DATE(${transactions.date})`, startDate),
+          lte(sql`DATE(${transactions.date})`, endDate)
         )
       );
 

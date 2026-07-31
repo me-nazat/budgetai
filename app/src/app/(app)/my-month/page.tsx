@@ -88,8 +88,10 @@ export default function MyMonthPage() {
     }, [range.endDay, range.month, range.year]);
 
     const transactionsByDate = useMemo(() => transactions.reduce<Record<string, typeof transactions>>((map, tx) => {
-        if (!map[tx.date]) map[tx.date] = [];
-        map[tx.date].push(tx);
+        const dateKey = tx.date ? tx.date.split('T')[0].split(' ')[0] : '';
+        if (!dateKey) return map;
+        if (!map[dateKey]) map[dateKey] = [];
+        map[dateKey].push(tx);
         return map;
     }, {}), [transactions]);
 
