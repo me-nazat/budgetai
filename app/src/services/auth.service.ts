@@ -203,10 +203,10 @@ export class AuthService {
 
     // Account lockout check
     if (ctx.ip) {
-      const lockout = isLockedOut(ctx.ip);
+      const lockout = isLockedOut(ctx.ip, validated.email);
       if (lockout.locked) {
         throw new AuthenticationError(
-          'Too many failed attempts. Please try again later.',
+          'Too many failed attempts for this account. Please try again later.',
           ErrorCode.RATE_LIMIT_EXCEEDED
         );
       }
@@ -216,7 +216,7 @@ export class AuthService {
     const user = await UserRepository.findByEmail(validated.email);
     if (!user) {
       AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'user_not_found');
-      if (ctx.ip) recordFailedAttempt(ctx.ip);
+      if (ctx.ip) recordFailedAttempt(ctx.ip, validated.email);
       throw new AuthenticationError(
         'Invalid email or password',
         ErrorCode.INVALID_CREDENTIALS
@@ -226,7 +226,7 @@ export class AuthService {
     // Verify password
     if (!user.passwordHash) {
       AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'missing_password_hash', user.id);
-      if (ctx.ip) recordFailedAttempt(ctx.ip);
+      if (ctx.ip) recordFailedAttempt(ctx.ip, validated.email);
       throw new AuthenticationError(
         'Invalid email or password',
         ErrorCode.INVALID_CREDENTIALS
@@ -242,7 +242,7 @@ export class AuthService {
       });
     if (!passwordValid) {
       AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_password', user.id);
-      if (ctx.ip) recordFailedAttempt(ctx.ip);
+      if (ctx.ip) recordFailedAttempt(ctx.ip, validated.email);
       throw new AuthenticationError(
         'Invalid email or password',
         ErrorCode.INVALID_CREDENTIALS
@@ -280,7 +280,7 @@ export class AuthService {
     }
 
     // Full login — create session
-    if (ctx.ip) clearFailedAttempts(ctx.ip);
+    if (ctx.ip) clearFailedAttempts(ctx.ip, validated.email);
     return AuthService.completeLogin(user, ctx, validated.rememberMe);
   }
 

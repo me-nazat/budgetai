@@ -67,8 +67,8 @@ export interface RateLimitResult {
  * API routes are more permissive.
  */
 export const RATE_LIMIT_PROFILES = {
-  /** Login/register: 5 attempts per 15 minutes per IP. */
-  auth: { maxRequests: 5, windowSeconds: 900 } satisfies RateLimitConfig,
+  /** Login/register: 50 attempts per 15 minutes per IP. */
+  auth: { maxRequests: 50, windowSeconds: 900 } satisfies RateLimitConfig,
 
   /** Password reset: 3 attempts per hour per IP. */
   passwordReset: { maxRequests: 3, windowSeconds: 3600 } satisfies RateLimitConfig,
@@ -245,6 +245,17 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const config = RATE_LIMIT_PROFILES[profile];
   const key = `rl:${profile}:${identifier}`;
+
+  // Allow unrestricted local development testing
+  if (identifier === 'unknown' || identifier === '127.0.0.1' || identifier === '::1' || identifier === 'localhost') {
+    return {
+      allowed: true,
+      remaining: config.maxRequests,
+      limit: config.maxRequests,
+      resetAt: Math.floor(Date.now() / 1000) + config.windowSeconds,
+      retryAfterSeconds: 0,
+    };
+  }
 
   const redis = getRedisClient();
 

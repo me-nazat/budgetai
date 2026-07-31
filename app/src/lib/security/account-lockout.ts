@@ -51,16 +51,23 @@ if (typeof globalThis !== 'undefined') {
 }
 
 /**
- * Checks whether the given IP is currently locked out.
+ * Checks whether the given IP and optional email is currently locked out.
  *
  * @param ip - The client IP address.
+ * @param email - Optional user email.
  * @returns An object with `locked` status and optional `retryAfterMs`.
  */
-export function isLockedOut(ip: string): {
+export function isLockedOut(ip: string, email?: string): {
   locked: boolean;
   retryAfterMs: number;
 } {
-  const entry = store.get(ip);
+  // Never apply global account lockout to local or unknown development IPs
+  if (!email && (ip === 'unknown' || ip === '127.0.0.1' || ip === '::1' || ip === 'localhost')) {
+    return { locked: false, retryAfterMs: 0 };
+  }
+
+  const key = email ? `${ip}:${email.toLowerCase().trim()}` : ip;
+  const entry = store.get(key);
   if (!entry) return { locked: false, retryAfterMs: 0 };
 
   const now = Date.now();
@@ -74,25 +81,27 @@ export function isLockedOut(ip: string): {
 
   // Lockout expired — reset if window also expired
   if (now > entry.windowStart + ATTEMPT_WINDOW_MS) {
-    store.delete(ip);
+    store.delete(key);
   }
 
   return { locked: false, retryAfterMs: 0 };
 }
 
 /**
- * Records a failed login attempt for the given IP.
+ * Records a failed login attempt for the given IP and optional email.
  * Triggers lockout if the threshold is reached.
  *
  * @param ip - The client IP address.
+ * @param email - Optional user email.
  */
-export function recordFailedAttempt(ip: string): void {
+export function recordFailedAttempt(ip: string, email?: string): void {
+  const key = email ? `${ip}:${email.toLowerCase().trim()}` : ip;
   const now = Date.now();
-  const entry = store.get(ip);
+  const entry = store.get(key);
 
   if (!entry || now > entry.windowStart + ATTEMPT_WINDOW_MS) {
     // Start a new window
-    store.set(ip, {
+    store.set(key, {
       failCount: 1,
       windowStart: now,
       lockedUntil: 0,
@@ -108,10 +117,20 @@ export function recordFailedAttempt(ip: string): void {
 }
 
 /**
- * Clears the failure record for the given IP (called on successful login).
+ * Clears the failure record for the given IP and optional email (called on successful login).
  *
  * @param ip - The client IP address.
+ * @param email - Optional user email.
  */
-export function clearFailedAttempts(ip: string): void {
+export function clearFailedAttempts(ip: string, email?: string): void {
+  const key = email ? `${ip}:${email.toLowerCase().trim()}` : ip;
+  store.delete(key);
   store.delete(ip);
+}
+
+/**
+ * Clears all lockouts in memory.
+ */
+export function clearAllLockouts(): void {
+  store.clear();
 }
