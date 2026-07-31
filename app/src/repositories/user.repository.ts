@@ -14,7 +14,7 @@
 
 import { db } from '@/db/client';
 import { users, userSessions, userPasskeys, oauthAccounts } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 
 /**
  * Input data for creating a new user account.
@@ -60,10 +60,11 @@ export class UserRepository {
   static async findByEmail(
     email: string
   ): Promise<typeof users.$inferSelect | undefined> {
+    const cleanEmail = email.toLowerCase().trim();
     const results = await db
       .select()
       .from(users)
-      .where(eq(users.email, email.toLowerCase().trim()))
+      .where(sql`LOWER(TRIM(${users.email})) = ${cleanEmail}`)
       .limit(1);
 
     return results[0];

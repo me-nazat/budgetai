@@ -233,7 +233,13 @@ export class AuthService {
       );
     }
 
-    const passwordValid = await bcrypt.compare(validated.password, user.passwordHash).catch(() => false);
+    const hash = user.passwordHash.trim();
+    const passwordValid = await bcrypt
+      .compare(validated.password, hash)
+      .catch((err) => {
+        console.error('Bcrypt comparison error for user:', user.id, err);
+        return false;
+      });
     if (!passwordValid) {
       AuditService.logLoginFailed(validated.email, ctx.ip, ctx.userAgent, 'invalid_password', user.id);
       if (ctx.ip) recordFailedAttempt(ctx.ip);
