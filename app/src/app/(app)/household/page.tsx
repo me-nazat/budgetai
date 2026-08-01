@@ -105,7 +105,7 @@ export default function HouseholdPage() {
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'ledger' | 'analytics' | 'settlements' | 'caps'>('ledger');
 
-  const households = data?.households || [];
+  const households = useMemo(() => data?.households || [], [data?.households]);
   const hh = useMemo(() => {
     if (!households.length) return null;
     if (selectedHouseholdId) {

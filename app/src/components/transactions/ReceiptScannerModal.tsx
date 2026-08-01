@@ -75,7 +75,7 @@ export function ReceiptScannerModal({ isOpen, onClose }: ReceiptScannerModalProp
     });
   };
 
-  const handleFile = async (file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
         toast.error('Please upload an image file.');
         return;
@@ -115,13 +115,13 @@ export function ReceiptScannerModal({ isOpen, onClose }: ReceiptScannerModalProp
     } finally {
         setLoading(false);
     }
-  };
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
-  }, []);
+  }, [handleFile]);
 
   const saveTransaction = async () => {
       if (!scannedData) return;

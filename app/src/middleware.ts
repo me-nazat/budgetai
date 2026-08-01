@@ -25,6 +25,9 @@ const API_PREFIX = '/api';
 
 function getJwtSecretForEdge(): Uint8Array {
   const raw = process.env.JWT_SECRET;
+  if (!raw && process.env.NODE_ENV === 'production') {
+    throw new Error('CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing in production runtime.');
+  }
   return new TextEncoder().encode(
     raw || 'wealth-ai-default-secret-dev-only-not-for-production'
   );

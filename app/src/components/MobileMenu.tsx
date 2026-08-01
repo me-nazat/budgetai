@@ -5,34 +5,15 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import useSWR from 'swr';
+import { NAVIGATION_REGISTRY } from '@/lib/navigation/registry';
 
-const menuItems = [
-    { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
-    { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
-    { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
-    { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
-    { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
-    { href: '/reports', icon: 'bar_chart', label: 'Reports' },
-    { href: '/overview', icon: 'analytics', label: 'Overview' },
-    { href: '/benchmarks', icon: 'leaderboard', label: 'Benchmarks' },
-    { href: '/insights', icon: 'lightbulb', label: 'Insights' },
-    { href: '/accounts', icon: 'account_balance', label: 'Accounts' },
-    { href: '/household', icon: 'family_restroom', label: 'Household' },
-    { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
-    { href: '/tours', icon: 'flight_takeoff', label: 'Tour Manager' },
-    { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
-    { href: '/debts', icon: 'credit_card', label: 'Debt Planner' },
-    { href: '/forecast', icon: 'timeline', label: 'Cash Flow Forecast' },
-    { href: '/investments', icon: 'trending_up', label: 'Investments' },
-    { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
-    { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
-    { href: '/tax-center', icon: 'receipt', label: 'Tax Center' },
-    { href: '/documents', icon: 'folder_open', label: 'Documents' },
-    { href: '/bank-import', icon: 'upload_file', label: 'Bank Import' },
-    { href: '/recurring-subscriptions', icon: 'repeat', label: 'Recurring & Subs' },
-    { href: '/automation-rules', icon: 'auto_awesome', label: 'Automation Rules' },
-    { href: '/notifications', icon: 'notifications', label: 'Alerts' },
-];
+const menuItems = NAVIGATION_REGISTRY.map(item => ({
+    href: item.href,
+    icon: item.icon,
+    label: item.label,
+    filled: item.filledIcon,
+    guestAllowed: item.guestAllowed,
+}));
 
 export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const pathname = usePathname();

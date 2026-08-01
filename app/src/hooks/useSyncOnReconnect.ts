@@ -76,5 +76,5 @@ export function useSyncOnReconnect() {
         return () => {
             window.removeEventListener('online', syncPending);
         };
-    }, []);
+    }, [invalidateFinancialData]);
 }

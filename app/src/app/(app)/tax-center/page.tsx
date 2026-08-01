@@ -69,7 +69,7 @@ export default function TaxCenterPage() {
     `/api/transactions?start=${fiscalStart}&end=${fiscalEnd}&limit=2000`
   );
 
-  const transactions = data?.transactions || [];
+  const transactions = useMemo(() => data?.transactions || [], [data?.transactions]);
 
   const filtered = useMemo(() => {
     let list = transactions;

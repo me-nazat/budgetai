@@ -7,12 +7,15 @@ import { motion } from 'framer-motion';
 import QuickAddModal from './QuickAddModal';
 import MobileMenu from './MobileMenu';
 import useSWR from 'swr';
+import { NAVIGATION_REGISTRY } from '@/lib/navigation/registry';
+
+const registryMobileTabs = NAVIGATION_REGISTRY.filter(item => item.mobileTab);
 
 const mobileNavItems = [
-    { href: '/dashboard', icon: 'home', label: 'Home' },
-    { href: '/overview', icon: 'analytics', label: 'Overview' },
+    { href: registryMobileTabs[0]?.href || '/dashboard', icon: 'home', label: 'Home' },
+    { href: registryMobileTabs[1]?.href || '/overview', icon: 'analytics', label: 'Overview' },
     { href: '__quick_add__', icon: 'add', label: 'Add' },
-    { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
+    { href: registryMobileTabs[2]?.href || '/chat', icon: 'smart_toy', label: 'AI Chat' },
     { href: '__menu__', icon: 'menu', label: 'Menu' },
 ];
 

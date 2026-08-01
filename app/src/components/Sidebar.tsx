@@ -7,59 +7,17 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
 import PrivacyToggle from '@/components/PrivacyToggle';
+import { NAVIGATION_REGISTRY, NAV_GROUPS } from '@/lib/navigation/registry';
 
-const navGroups = [
-    {
-        label: null, // Core — no label needed, it's obvious
-        items: [
-            { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
-            { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
-            { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
-            { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
-        ],
-    },
-    {
-        label: 'Analytics',
-        items: [
-            { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
-            { href: '/reports', icon: 'bar_chart', label: 'Reports' },
-            { href: '/overview', icon: 'analytics', label: 'Overview' },
-            { href: '/benchmarks', icon: 'leaderboard', label: 'Benchmarks' },
-            { href: '/insights', icon: 'lightbulb', label: 'Insights' },
-        ],
-    },
-    {
-        label: 'Financial Tools',
-        items: [
-            { href: '/accounts', icon: 'account_balance', label: 'Accounts' },
-            { href: '/household', icon: 'family_restroom', label: 'Household' },
-            { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
-            { href: '/tours', icon: 'flight_takeoff', label: 'Tour Manager' },
-            { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
-            { href: '/debts', icon: 'credit_card', label: 'Debt Planner' },
-            { href: '/forecast', icon: 'timeline', label: 'Cash Flow Forecast' },
-            { href: '/investments', icon: 'trending_up', label: 'Investments' },
-            { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
-            { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
-        ],
-    },
-    {
-        label: 'Smart Tools',
-        items: [
-            { href: '/tax-center', icon: 'receipt', label: 'Tax Center' },
-            { href: '/documents', icon: 'folder_open', label: 'Documents' },
-            { href: '/bank-import', icon: 'upload_file', label: 'Bank Import' },
-        ],
-    },
-    {
-        label: 'System',
-        items: [
-            { href: '/recurring-subscriptions', icon: 'repeat', label: 'Recurring & Subs' },
-            { href: '/automation-rules', icon: 'auto_awesome', label: 'Automation Rules' },
-            { href: '/notifications', icon: 'notifications', label: 'Alerts' },
-        ],
-    },
-];
+const navGroups = NAV_GROUPS.map(group => ({
+    label: group.label,
+    items: NAVIGATION_REGISTRY.filter(item => item.category === group.category).map(item => ({
+        href: item.href,
+        icon: item.icon,
+        label: item.label,
+        filled: item.filledIcon,
+    })),
+}));
 
 
 export default function Sidebar() {
