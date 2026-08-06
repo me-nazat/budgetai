@@ -10,8 +10,9 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { motion, type Variants } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { EASE_LIQUID } from '@/lib/motion';
 
 /**
  * Props for the PageTransition component.
@@ -36,7 +37,7 @@ const pageVariants: Variants = {
     filter: 'blur(0px)',
     transition: {
       duration: 0.3,
-      ease: [0.25, 0.46, 0.45, 0.94],
+      ease: EASE_LIQUID,
     },
   },
   exit: {
@@ -45,13 +46,21 @@ const pageVariants: Variants = {
     filter: 'blur(4px)',
     transition: {
       duration: 0.2,
-      ease: [0.25, 0.46, 0.45, 0.94],
+      ease: EASE_LIQUID,
     },
   },
 };
 
 /**
  * PageTransition — smooth route change animation wrapper.
+ *
+ * Wraps its own AnimatePresence so every route in the app gets a real
+ * enter *and* exit crossfade from a single shared-layout edit, instead of
+ * requiring every page to opt in individually. `mode="wait"` keeps the
+ * swap sequential (no stacked layout during the ~200ms exit) rather than
+ * overlapping two full-height pages, which is the safer default for a
+ * dense data app; the top route-progress bar already covers perceived
+ * loading during that gap.
  *
  * @example
  * ```tsx
@@ -65,14 +74,17 @@ export default function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
 
   return (
-    <motion.div
-      key={pathname}
-      variants={pageVariants}
-      initial="initial"
-      animate="enter"
-      style={{ minHeight: '100%' }}
-    >
-      {children}
-    </motion.div>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={pathname}
+        variants={pageVariants}
+        initial="initial"
+        animate="enter"
+        exit="exit"
+        style={{ minHeight: '100%' }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   );
 }

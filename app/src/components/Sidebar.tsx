@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
 import PrivacyToggle from '@/components/PrivacyToggle';
 import { NAVIGATION_REGISTRY, NAV_GROUPS } from '@/lib/navigation/registry';
+import { springSnap } from '@/lib/motion';
 
 const navGroups = NAV_GROUPS.map(group => ({
     label: group.label,
@@ -125,11 +126,16 @@ export default function Sidebar() {
                                                     layoutId="sidebar-active"
                                                     className="absolute inset-0 bg-primary/10 dark:bg-primary/15 rounded-xl border border-primary/20"
                                                     initial={false}
-                                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                                    transition={springSnap}
                                                 />
                                             )}
                                             {isActive && (
-                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_var(--color-primary)] z-10" />
+                                                <motion.div
+                                                    layoutId="sidebar-active-bar"
+                                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_var(--color-primary)] z-10"
+                                                    initial={false}
+                                                    transition={springSnap}
+                                                />
                                             )}
                                             
                                             <div className="flex items-center gap-3">
@@ -168,12 +174,22 @@ export default function Sidebar() {
                         <PrivacyToggle />
                         <button
                             onClick={toggleTheme}
-                            className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
+                            className="relative w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-surface-hover transition-colors duration-300 group"
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
-                            <span className="material-symbols-outlined text-lg text-gray-500 dark:text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-all duration-300 group-hover:rotate-45" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                {isDark ? 'light_mode' : 'dark_mode'}
-                            </span>
+                            <AnimatePresence mode="wait" initial={false}>
+                                <motion.span
+                                    key={isDark ? 'light_mode' : 'dark_mode'}
+                                    initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+                                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                                    exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+                                    transition={springSnap}
+                                    className="material-symbols-outlined text-lg text-gray-500 dark:text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors duration-300"
+                                    style={{ fontVariationSettings: "'FILL' 1" }}
+                                >
+                                    {isDark ? 'light_mode' : 'dark_mode'}
+                                </motion.span>
+                            </AnimatePresence>
                         </button>
                     </div>
 
@@ -210,6 +226,8 @@ export default function Sidebar() {
                                         initial={{ opacity: 0, x: 10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10 }}
+                                        transition={springSnap}
+                                        whileTap={{ scale: 0.92 }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleLogout();
