@@ -20,8 +20,9 @@ than hand-rolling `{ type: 'spring', stiffness, damping }`.
 
 ## Phase 1 — Landing & auth (first impression, no live user data at risk)
 - [x] `app/LandingPage.tsx` — hero, parallax/tilt, `text-wrap: balance` headlines
-- [x] `components/landing/FeatureCard3D.tsx`, `AnimatedCounter.tsx`, `FinancialLineGraph.tsx`, `ScrollProgress.tsx`
-- [x] `app/login`, `app/register` — passkey/auth modal step transitions
+- [x] `components/landing/FeatureCard3D.tsx`, `ScrollProgress.tsx` mounted
+- [ ] `components/landing/AnimatedCounter.tsx`, `FinancialLineGraph.tsx`
+- [ ] `app/login`, `app/register` — passkey/auth modal step transitions
 
 ## Phase 2 — Money overview (highest-traffic screens)
 - [x] `dashboard` — stat cards, sparklines, staggered widget entrance, skeleton parity

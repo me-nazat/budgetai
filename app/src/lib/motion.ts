@@ -29,6 +29,8 @@ export const springGentle: Transition = { type: 'spring', stiffness: 220, dampin
 /** Celebratory or attention-getting: achievement unlocks, goal-met states. */
 export const springBouncy: Transition = { type: 'spring', stiffness: 380, damping: 18 };
 
+/** Scroll/stagger reveals: fade-up entrances on landing sections. Slightly livelier than springSmooth. */
+export const springReveal: Transition = { type: 'spring', stiffness: 300, damping: 24 };
 
 /** Continuous pointer tracking: tilt cards, magnetic buttons, glare/glow follow. */
 export const springTrack = { stiffness: 300, damping: 20 };

@@ -4,6 +4,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, useScroll, useTransform, Variants, useMotionValue, useSpring, useMotionTemplate } from 'framer-motion';
+import { springSmooth, springTrack, EASE_LIQUID } from '@/lib/motion';
 import FinancialLineGraph from '@/components/landing/FinancialLineGraph';
 
 /* ──────────────────────────────────────────────
@@ -61,7 +62,7 @@ function Header({ onToggleTheme, onNavigate, isLoggedIn }: { onToggleTheme: () =
         <motion.header 
             initial={{ y: -100 }}
             animate={{ y: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            transition={springSmooth}
             className="sticky top-0 z-50 w-full border-b border-gray-200/60 dark:border-white/5 bg-white/80 dark:bg-[#0A0E1B]/80 backdrop-blur-xl"
         >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -136,7 +137,7 @@ const staggerContainer: Variants = {
 
 const fadeInUp: Variants = {
     hidden: { opacity: 0, y: 30 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+    show: { opacity: 1, y: 0, transition: springSmooth }
 };
 
 function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
@@ -161,7 +162,7 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         </motion.div>
 
                         {/* Headline */}
-                        <motion.h1 variants={fadeInUp} className="text-5xl font-medium tracking-tight text-gray-900 dark:text-white sm:text-6xl md:text-7xl lg:text-6xl xl:text-7xl leading-[1.1]" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                        <motion.h1 variants={fadeInUp} className="text-5xl font-medium tracking-tight text-gray-900 dark:text-white sm:text-6xl md:text-7xl lg:text-6xl xl:text-7xl leading-[1.1]" style={{ fontFamily: 'var(--font-playfair), serif', textWrap: 'balance' }}>
                             Master your<br />wealth with<br />
                             <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-indigo-400 dark:from-lp-cyan dark:via-cyan-200 dark:to-white lp-glow-text">
                                 precision.
@@ -236,8 +237,8 @@ function DashboardMockup() {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
-    const mouseXSpring = useSpring(x, { stiffness: 300, damping: 20 });
-    const mouseYSpring = useSpring(y, { stiffness: 300, damping: 20 });
+    const mouseXSpring = useSpring(x, springTrack);
+    const mouseYSpring = useSpring(y, springTrack);
 
     const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["10deg", "-10deg"]);
     const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-10deg", "10deg"]);
@@ -440,7 +441,7 @@ function ProcessFlowSection() {
                     <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                         <div>
                             <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-primary dark:text-lp-cyan">How Wealth AI works</p>
-                            <h2 className="max-w-xl text-3xl font-medium leading-tight text-gray-900 dark:text-white sm:text-4xl" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                            <h2 className="max-w-xl text-3xl font-medium leading-tight text-gray-900 dark:text-white sm:text-4xl" style={{ fontFamily: 'var(--font-playfair), serif', textWrap: 'balance' }}>
                                 From one sentence to a living financial picture.
                             </h2>
                             <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -600,7 +601,7 @@ function FeaturesSection() {
             >
                 <motion.div variants={fadeInUp} className="mb-20 md:text-center max-w-3xl mx-auto">
                     <h2 className="text-sm font-bold text-primary dark:text-lp-cyan uppercase tracking-[0.2em] mb-4">Core Capabilities</h2>
-                    <p className="text-3xl font-medium text-gray-900 dark:text-white sm:text-5xl leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                    <p className="text-3xl font-medium text-gray-900 dark:text-white sm:text-5xl leading-tight" style={{ fontFamily: 'var(--font-playfair), serif', textWrap: 'balance' }}>
                         Intelligent Financial Clarity
                     </p>
                     <p className="mt-6 text-lg text-gray-500 dark:text-slate-400 font-light max-w-2xl mx-auto">
@@ -807,7 +808,7 @@ function DataVizSection() {
 
                     <div>
                         <motion.p variants={fadeInUp} className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500 mb-2">Data Visualization</motion.p>
-                        <motion.h3 variants={fadeInUp} className="text-3xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-tight mb-4" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                        <motion.h3 variants={fadeInUp} className="text-3xl sm:text-4xl font-medium text-gray-900 dark:text-white leading-tight mb-4" style={{ fontFamily: 'var(--font-playfair), serif', textWrap: 'balance' }}>
                             See your money<br />in a new light
                         </motion.h3>
                         <motion.p variants={fadeInUp} className="text-gray-500 dark:text-slate-400 mb-6 font-light leading-relaxed">
@@ -886,7 +887,7 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
                     <div className="absolute bottom-0 right-1/4 h-48 w-48 rounded-full bg-blue-400/10 dark:bg-blue-600/10 blur-[80px]" />
 
                     <div className="relative z-10">
-                        <h2 className="text-4xl sm:text-5xl font-medium text-white mb-6 leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                        <h2 className="text-4xl sm:text-5xl font-medium text-white mb-6 leading-tight" style={{ fontFamily: 'var(--font-playfair), serif', textWrap: 'balance' }}>
                             Ready to master your wealth?
                         </h2>
                         <p className="text-white/70 dark:text-slate-400 text-lg max-w-2xl mx-auto mb-10 font-light">

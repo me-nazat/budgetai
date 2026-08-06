@@ -17,6 +17,7 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
+import { springTrack, EASE_LIQUID } from '@/lib/motion';
 
 /**
  * Props for the FeatureCard3D component.
@@ -62,19 +63,13 @@ export default function FeatureCard3D({
   const mouseY = useMotionValue(0);
 
   // Spring-smoothed rotation
-  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [maxTilt, -maxTilt]), {
-    stiffness: 300,
-    damping: 30,
-  });
-  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-maxTilt, maxTilt]), {
-    stiffness: 300,
-    damping: 30,
-  });
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [maxTilt, -maxTilt]), springTrack);
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-maxTilt, maxTilt]), springTrack);
 
   // Glare position
   const glareX = useTransform(mouseX, [-0.5, 0.5], ['0%', '100%']);
   const glareY = useTransform(mouseY, [-0.5, 0.5], ['0%', '100%']);
-  const glareOpacity = useSpring(0, { stiffness: 300, damping: 30 });
+  const glareOpacity = useSpring(0, springTrack);
 
   const glareBackground = useTransform(
     [glareX, glareY],
@@ -123,7 +118,7 @@ export default function FeatureCard3D({
       transition={{
         duration: 0.6,
         delay,
-        ease: [0.25, 0.46, 0.45, 0.94],
+        ease: EASE_LIQUID,
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
