@@ -337,3 +337,23 @@ export const CUSTOM_COLOR_STYLES: Record<string, { bg: string; text: string; sel
 };
 
 export const getColorStyle = (color?: string) => CUSTOM_COLOR_STYLES[color || ''] || CUSTOM_COLOR_STYLES.gray;
+
+export function getCategoryBadgeStyle(categoryName: string): string {
+  const cat = categoryName.toLowerCase();
+  if (cat.includes('salary') || cat.includes('income') || cat.includes('freelance')) {
+    return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium';
+  }
+  if (cat.includes('invest') || cat.includes('stock') || cat.includes('crypto')) {
+    return 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-medium';
+  }
+  if (cat.includes('utilit') || cat.includes('bill') || cat.includes('tax') || cat.includes('rent')) {
+    return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium';
+  }
+  if (cat.includes('food') || cat.includes('restaurant') || cat.includes('dining') || cat.includes('eat')) {
+    return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-medium';
+  }
+  if (cat.includes('house') || cat.includes('housing') || cat.includes('home')) {
+    return 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 font-medium';
+  }
+  return 'bg-gray-500/15 text-gray-700 dark:text-gray-300 border border-gray-500/20 font-medium';
+}

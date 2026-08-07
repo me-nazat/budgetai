@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  darkMode: 'class',
+  darkMode: ['class', '[data-theme="dark"]'],
   content: ['./src/pages/**/*.{js,ts,jsx,tsx,mdx}', './src/components/**/*.{js,ts,jsx,tsx,mdx}', './src/app/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
@@ -22,10 +22,18 @@ const config: Config = {
       colors: {
         background: 'var(--bg-base)',
         foreground: 'var(--text-primary)',
-        primary: { DEFAULT: '#136DEC', hover: '#0F58C4' },
-        'surface-dark': '#0F172A',
-        'surface-hover': '#1E293B',
-        'surface-border': 'rgba(255,255,255,0.1)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-tertiary': 'var(--text-tertiary)',
+        'text-muted': 'var(--text-muted)',
+        primary: { DEFAULT: '#6366F1', hover: '#4F46E5', 50: '#EEF2FF', 100: '#E0E7FF', 500: '#6366F1', 600: '#4F46E5' },
+        'surface-dark': 'var(--bg-surface)',
+        'surface-hover': 'var(--bg-surface)',
+        'surface-border': 'var(--border-subtle)',
+        'bg-base': 'var(--bg-base)',
+        'bg-elevated': 'var(--bg-elevated)',
+        'bg-surface': 'var(--bg-surface)',
+        'bg-inset': 'var(--bg-inset)',
         card: 'var(--bg-elevated)',
         'card-hover': 'var(--bg-surface)',
         border: 'var(--border-default)',

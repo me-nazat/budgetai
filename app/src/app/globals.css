@@ -1,21 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
 :root {
   --bg-base: #0B0F17;
   --bg-elevated: #0F172A;
-  --bg-surface: #0F172A;
-  --bg-inset: #0A0E18;
-  --border-subtle: rgba(255,255,255,0.06);
-  --border-default: rgba(255,255,255,0.09);
-  --border-strong: rgba(255,255,255,0.14);
-  --text-primary: #F0F4F8;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
-  --text-muted: #475569;
+  --bg-surface: #1E293B;
+  --bg-inset: #090D16;
+  --border-subtle: rgba(255,255,255,0.08);
+  --border-default: rgba(255,255,255,0.12);
+  --border-strong: rgba(255,255,255,0.20);
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #94A3B8;
+  --text-muted: #64748B;
   --accent-emerald: #10B981;
   --accent-indigo: #6366F1;
   --accent-amber: #F59E0B;
@@ -37,11 +53,11 @@
   --bg-elevated: #FFFFFF;
   --bg-surface: #F1F5F9;
   --bg-inset: #E2E8F0;
-  --border-subtle: rgba(15,23,42,0.06);
-  --border-default: rgba(15,23,42,0.10);
-  --border-strong: rgba(15,23,42,0.16);
+  --border-subtle: rgba(15,23,42,0.08);
+  --border-default: rgba(15,23,42,0.12);
+  --border-strong: rgba(15,23,42,0.20);
   --text-primary: #0F172A;
-  --text-secondary: #475569;
+  --text-secondary: #334155;
   --text-tertiary: #64748B;
   --text-muted: #94A3B8;
   --accent-emerald: #059669;

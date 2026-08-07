@@ -46,13 +46,13 @@ export function DataVisualizationPreview() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }} className="relative">
-            <div className="glass rounded-2xl border border-border-default p-6 shadow-card">
+            <div className="glass rounded-2xl border border-white/10 bg-[#0F172A]/80 p-6 shadow-2xl backdrop-blur-xl">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <p className="text-xs text-text-tertiary">Annual Growth</p>
-                  <p className="text-2xl font-bold font-mono text-text-primary">$13,800</p>
+                  <p className="text-xs text-slate-400 font-medium">Annual Growth</p>
+                  <p className="text-2xl font-bold font-mono text-white">$13,800</p>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium">
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
                   +245%
                 </div>
@@ -62,14 +62,14 @@ export function DataVisualizationPreview() {
                   <AreaChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                     <defs>
                       <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10B981" stopOpacity={0.3} />
+                        <stop offset="0%" stopColor="#10B981" stopOpacity={0.4} />
                         <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 11 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 11 }} tickFormatter={(v) => `$${v / 1000}k`} dx={-10} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
-                    <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2.5} fill="url(#areaGradient)" animationDuration={2000} animationBegin={isInView ? 0 : 999999} />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} tickFormatter={(v) => `$${v / 1000}k`} dx={-10} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1 }} />
+                    <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2.5} fill="url(#areaGradient)" isAnimationActive={true} animationDuration={1200} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

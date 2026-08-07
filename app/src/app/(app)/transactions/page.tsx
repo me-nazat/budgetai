@@ -995,52 +995,52 @@ export default function TransactionsPage() {
             )}
 
             {/* Filters */}
-            <div className="glass-panel flex flex-wrap gap-3 mb-5 p-3 rounded-xl">
-                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
+            <div className="glass-panel flex flex-wrap gap-3 mb-5 p-3 rounded-xl bg-white/80 dark:bg-[#0F172A] border border-gray-200/60 dark:border-white/10 shadow-md">
+                <div className="bg-gray-100/90 dark:bg-[#1E293B] p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
                     <div className="flex items-center gap-1.5 px-3 py-1.5">
-                        <span className="material-symbols-outlined text-[16px] text-gray-500">calendar_month</span>
+                        <span className="material-symbols-outlined text-[16px] text-gray-500 dark:text-slate-400">calendar_month</span>
                         <select
                             value={selectedMonth}
                             onChange={e => setSelectedMonth(e.target.value)}
-                            className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-semibold cursor-pointer"
+                            className="bg-transparent border-none outline-none text-gray-800 dark:text-slate-100 font-semibold cursor-pointer"
                         >
                             {monthOptions.map(m => (
-                                <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label}</option>
+                                <option key={m.value} value={m.value} className="bg-white text-gray-900 dark:bg-[#0F172A] dark:text-slate-100">{m.label}</option>
                             ))}
                         </select>
                     </div>
                 </div>
-                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
+                <div className="bg-gray-100/90 dark:bg-[#1E293B] p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
                     <div className="flex items-center gap-1.5 px-3 py-1.5">
-                        <span className="material-symbols-outlined text-[16px] text-gray-500">view_week</span>
+                        <span className="material-symbols-outlined text-[16px] text-gray-500 dark:text-slate-400">view_week</span>
                         <select
                             value={selectedWeek}
                             onChange={e => setSelectedWeek(e.target.value)}
-                            className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-semibold cursor-pointer"
+                            className="bg-transparent border-none outline-none text-gray-800 dark:text-slate-100 font-semibold cursor-pointer"
                         >
                             {weekOptions.map(w => (
-                                <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label}</option>
+                                <option key={w.value} value={w.value} className="bg-white text-gray-900 dark:bg-[#0F172A] dark:text-slate-100">{w.label}</option>
                             ))}
                         </select>
                     </div>
                 </div>
-                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
+                <div className="bg-gray-100/90 dark:bg-[#1E293B] p-1 rounded-xl flex text-xs border border-gray-200 dark:border-white/10 gap-0.5">
                     {['all', 'expense', 'earning'].map(t => (
                         <button key={t} onClick={() => setTypeFilter(t)}
-                            className={`px-3 py-1.5 rounded-lg font-semibold transition-all capitalize ${typeFilter === t ? 'bg-primary text-white shadow-sm' : 'text-gray-500 dark:text-text-muted hover:text-gray-900 dark:hover:text-white'}`}>
+                            className={`px-3 py-1.5 rounded-lg font-semibold transition-all capitalize ${typeFilter === t ? 'bg-primary text-white shadow-sm font-bold' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/10'}`}>
                             {t === 'all' ? 'All' : t + 's'}
                         </button>
                     ))}
                 </div>
                 <div className="ml-auto w-full lg:w-auto">
                     <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400">search</span>
                         <input 
                             type="text" 
                             placeholder="Search description or category..." 
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full lg:w-64 pl-10 pr-4 py-2 text-sm bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-gray-900 dark:text-white"
+                            className="w-full lg:w-64 pl-10 pr-4 py-2 text-sm bg-white dark:bg-[#1E293B] border border-gray-200 dark:border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400"
                         />
                     </div>
                 </div>
@@ -1118,11 +1118,11 @@ export default function TransactionsPage() {
             </div>
 
             {/* Table */}
-            <div className="glass-panel hidden rounded-2xl md:block" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+            <div className="glass-panel hidden rounded-2xl md:block bg-white dark:bg-[#0F172A] border border-gray-200/60 dark:border-white/10 shadow-xl" style={{ animation: 'slideUp 0.5s ease-out 0.1s both' }}>
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-gray-50/80 dark:bg-[#0B0F17] text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-white/10">
+                            <tr className="bg-gray-100/80 dark:bg-[#1E293B] text-xs text-gray-700 dark:text-slate-200 font-bold uppercase tracking-wider border-b border-gray-200 dark:border-white/10">
                                 {[['Transaction', ''], ['Category', 'category'], ['Date', 'date'], ['Amount', 'amount']].map(([label, field]) => (
                                     <th key={label} className={`px-6 py-3.5 font-semibold ${field ? 'cursor-pointer group hover:text-primary transition-colors' : ''} ${label === 'Amount' ? 'text-right' : ''}`}
                                         onClick={() => field && toggleSort(field)}>
@@ -1134,7 +1134,7 @@ export default function TransactionsPage() {
                                 <th className="px-6 py-3.5 font-semibold text-right w-12">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
+                        <tbody className="divide-y divide-gray-100 dark:divide-white/5 text-sm">
                             {showFullLoading ? (
                                 Array.from({ length: 7 }).map((_, index) => (
                                     <tr key={`tx-skeleton-${index}`}>

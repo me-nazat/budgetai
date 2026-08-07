@@ -16,7 +16,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, 
 import dynamic from 'next/dynamic';
 import React from 'react';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
-import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
+import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex, getCategoryBadgeStyle } from '@/lib/categoryUtils';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
 import AnimatedCounter from '@/components/AnimatedCounter';
 
@@ -308,10 +308,10 @@ export default function DashboardPage() {
     if (!data) return <div className="p-8 text-gray-500">Failed to load dashboard</div>;
 
     const stats = [
-        { label: 'Total Balance', value: fmt(data.balance), change: data.earnings.change, icon: 'account_balance', color: 'text-primary', gradient: 'stat-gradient-blue' },
-        { label: 'Monthly Earnings', value: fmt(data.earnings.current), change: data.earnings.change, icon: 'payments', color: 'text-emerald-500', gradient: 'stat-gradient-emerald' },
-        { label: 'Monthly Expenses', value: fmt(data.expenses.current), change: data.expenses.change, icon: 'shopping_cart', color: 'text-orange-500', gradient: 'stat-gradient-orange', negative: true },
-        { label: 'Net Savings', value: fmt(data.netSavings), change: data.netSavings > 0 ? 8.1 : -5, icon: 'savings', color: 'text-blue-500', gradient: 'stat-gradient-blue' },
+        { label: 'Total Balance', value: fmt(data.balance), change: data.earnings.change, icon: 'account_balance', color: 'text-blue-400', accentBg: 'bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/20' },
+        { label: 'Monthly Earnings', value: fmt(data.earnings.current), change: data.earnings.change, icon: 'payments', color: 'text-rose-400', accentBg: 'bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-transparent border border-rose-500/20' },
+        { label: 'Monthly Expenses', value: fmt(data.expenses.current), change: data.expenses.change, icon: 'shopping_cart', color: 'text-red-400', accentBg: 'bg-gradient-to-br from-red-500/10 via-rose-500/5 to-transparent border border-red-500/20', negative: true },
+        { label: 'Net Savings', value: fmt(data.netSavings), change: data.netSavings > 0 ? 8.1 : -5, icon: 'savings', color: 'text-emerald-400', accentBg: 'bg-gradient-to-br from-emerald-500/10 via-teal-950/10 to-transparent border border-emerald-500/20' },
     ];
 
     const greeting = () => {
@@ -879,7 +879,7 @@ export default function DashboardPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8 stagger-children">
                     {stats.map((s, i) => (
-                        <TiltCard key={i} className={`glass-panel ${s.gradient} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe`}
+                        <TiltCard key={i} className={`glass-panel ${s.accentBg} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe shadow-xl`}
                             style={{ animationDelay: `${i * 0.08}s`, animation: `slideUp 0.5s ease-out ${i * 0.08}s both` }}>
                             {i === 0 && (
                                 <div className="absolute inset-0 z-0 opacity-20 pointer-events-none flex items-center justify-center -rotate-12 scale-150">
@@ -993,11 +993,7 @@ export default function DashboardPage() {
                                             </td>
                                             <td className="px-4 lg:px-6 py-4 hidden md:table-cell">
                                                 <span 
-                                                    className="text-xs font-bold px-2.5 py-1 rounded-md"
-                                                    style={{ 
-                                                        backgroundColor: `${getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}26`, 
-                                                        color: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) 
-                                                    }}
+                                                    className={`text-xs font-semibold px-3 py-1 rounded-full ${getCategoryBadgeStyle(t.category)}`}
                                                 >
                                                     {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
                                                 </span>
