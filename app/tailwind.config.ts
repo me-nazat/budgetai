@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  darkMode: ['class', '[data-theme="dark"]'],
+  darkMode: 'class',
   content: ['./src/pages/**/*.{js,ts,jsx,tsx,mdx}', './src/components/**/*.{js,ts,jsx,tsx,mdx}', './src/app/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
@@ -13,22 +13,26 @@ const config: Config = {
         'xl': '1280px',
         '2xl': '1536px',
       },
+      textColor: {
+        primary: 'var(--text-primary)',
+        secondary: 'var(--text-secondary)',
+        tertiary: 'var(--text-tertiary)',
+        muted: 'var(--text-muted)',
+      },
       colors: {
         background: 'var(--bg-base)',
         foreground: 'var(--text-primary)',
-        primary: { DEFAULT: '#136DEC' },
+        primary: { DEFAULT: '#136DEC', hover: '#0F58C4' },
         'surface-dark': '#0F172A',
         'surface-hover': '#1E293B',
+        'surface-border': 'rgba(255,255,255,0.1)',
         card: 'var(--bg-elevated)',
         'card-hover': 'var(--bg-surface)',
         border: 'var(--border-default)',
         'border-subtle': 'var(--border-subtle)',
         'border-strong': 'var(--border-strong)',
         muted: 'var(--text-muted)',
-        'text-primary': 'var(--text-primary)',
-        'text-secondary': 'var(--text-secondary)',
-        'text-tertiary': 'var(--text-tertiary)',
-        'text-muted': 'var(--text-muted)',
+        'lp-cyan': '#00E5FF',
         accent: { emerald: 'var(--accent-emerald)', indigo: 'var(--accent-indigo)', amber: 'var(--accent-amber)', rose: 'var(--accent-rose)', cyan: 'var(--accent-cyan)' },
       },
       fontFamily: { serif: ['"Playfair Display"', 'serif'], sans: ['"Inter"', 'system-ui', 'sans-serif'], mono: ['"JetBrains Mono"', 'monospace'] },

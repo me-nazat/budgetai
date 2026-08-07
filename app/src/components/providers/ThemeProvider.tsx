@@ -28,7 +28,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('wealthai-theme') as Theme | null;
     const initial = saved || 'dark';
     setThemeState(initial);
-    setResolvedTheme(resolveTheme(initial));
+    const res = resolveTheme(initial);
+    setResolvedTheme(res);
+    document.documentElement.setAttribute('data-theme', res);
+    document.documentElement.classList.toggle('dark', res === 'dark');
   }, [resolveTheme]);
 
   const setTheme = useCallback((newTheme: Theme) => {
@@ -39,6 +42,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const resolved = resolveTheme(newTheme);
       setResolvedTheme(resolved);
       document.documentElement.setAttribute('data-theme', resolved);
+      document.documentElement.classList.toggle('dark', resolved === 'dark');
       setTimeout(() => setIsTransitioning(false), 600);
     }, 50);
   }, [resolveTheme]);
@@ -47,7 +51,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   }, [resolvedTheme, setTheme]);
 
-  useEffect(() => { document.documentElement.setAttribute('data-theme', resolvedTheme); }, [resolvedTheme]);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+  }, [resolvedTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>

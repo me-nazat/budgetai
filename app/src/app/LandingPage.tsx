@@ -702,7 +702,7 @@ function InteractiveVisualizer() {
                                             <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
                                             <span className="text-gray-700 dark:text-slate-300">{item.name}</span>
                                         </div>
-                                        <div className="text-gray-955 dark:text-white">
+                                        <div className="text-gray-900 dark:text-white">
                                             <span>{item.amount} </span>
                                             <span className="text-gray-400 dark:text-slate-500">({item.pct}%)</span>
                                         </div>
