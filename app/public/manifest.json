@@ -1,28 +1,40 @@
 {
   "name": "Wealth AI",
-  "short_name": "Wealth AI",
-  "description": "AI-powered personal finance management — budgets, savings, investments, and more.",
-  "start_url": "/dashboard",
+  "short_name": "WealthAI",
+  "description": "AI-powered personal finance tracking, budgeting, and planning",
+  "start_url": "/overview",
   "display": "standalone",
-  "background_color": "#0A0E1A",
-  "theme_color": "#136dec",
-  "orientation": "any",
-  "categories": ["finance", "productivity"],
+  "background_color": "#090D16",
+  "theme_color": "#090D16",
+  "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
-      "src": "/wealth-ai-logo-v2.png",
-      "sizes": "any",
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable any"
     },
     {
-      "src": "/wealth-ai-logo-v2.png",
-      "sizes": "any",
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "maskable any"
     }
   ],
-  "screenshots": [],
-  "related_applications": [],
-  "prefer_related_applications": false
+  "categories": ["finance", "productivity"],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
 }

@@ -1,103 +1,45 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Outfit, Playfair_Display, Fraunces, Noto_Sans_Bengali } from "next/font/google";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next';
+import { Inter, Playfair_Display, JetBrains_Mono } from 'next/font/google';
+import './globals.css';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { SmoothScroll } from '@/components/layout/SmoothScroll';
+import { NoiseOverlay } from '@/components/effects/NoiseOverlay';
+import { MeshGradient } from '@/components/effects/MeshGradient';
+import { PWAProvider } from '@/components/providers/PWAProvider';
 
-import "material-symbols/outlined.css";
-import { SmoothScroll } from "@/components/ui/SmoothScroll";
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap', preload: true, weight: ['300', '400', '500', '600', '700', '800'] });
+const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap', preload: true, weight: ['400', '500', '600', '700'] });
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap', preload: true, weight: ['400', '500', '600'] });
 
-const geist = Geist({
-  subsets: ["latin"],
-  variable: "--font-geist",
-  display: "swap",
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-  style: ["normal", "italic"],
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  style: ["normal", "italic"],
-});
-
-const notoBengali = Noto_Sans_Bengali({
-  subsets: ["bengali"],
-  variable: "--font-bengali",
-  display: "swap",
-});
-
-
-export const viewport: Viewport = {
-  themeColor: "#136dec",
-  width: "device-width",
-  initialScale: 1,
-};
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#090D16' };
 
 export const metadata: Metadata = {
-  title: "Wealth AI — Smart Finance",
-  description: "AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights.",
-  keywords: "wealth AI, budget, savings, AI, finance, expense tracker, personal finance, net worth",
+  title: 'Wealth AI — Intelligent Personal Finance',
+  description: 'Master your wealth with precision. AI-powered personal finance tracking, budgeting, and planning.',
+  keywords: ['personal finance', 'budget', 'AI', 'wealth management', 'net worth'],
+  openGraph: { title: 'Wealth AI — Intelligent Personal Finance', description: 'Master your wealth with precision.', type: 'website', locale: 'en_US' },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${playfair.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
-        <title>Wealth AI — Smart Finance</title>
-        <meta name="description" content="AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights." />
-        <meta property="og:title" content="Wealth AI — Smart Finance" />
-        <meta property="og:description" content="AI-powered personal finance management. Track expenses, earnings, budgets, net worth, and savings with intelligent insights." />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Wealth AI" />
-        <link rel="apple-touch-icon" href="/wealth-ai-logo-v2.png" />
-        <ThemeScript />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
       </head>
-      <body className={`${geist.variable} ${outfit.variable} ${playfair.variable} ${fraunces.variable} ${notoBengali.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
-        <SmoothScroll>{children}</SmoothScroll>
+      <body className="font-sans antialiased">
+        <PWAProvider>
+          <ThemeProvider>
+            <SmoothScroll>
+              <MeshGradient />
+              {children}
+            </SmoothScroll>
+          </ThemeProvider>
+          <NoiseOverlay />
+        </PWAProvider>
       </body>
     </html>
   );
-}
-
-function ThemeScript() {
-  const script = `
-    (function() {
-      try {
-        var theme = localStorage.getItem('budget-ai-theme');
-        var path = window.location.pathname;
-        var isPublic = path === '/' || path.startsWith('/login') || path.startsWith('/register');
-        
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else if (theme === 'light') {
-          document.documentElement.classList.remove('dark');
-        } else {
-          // Default logic
-          if (isPublic) {
-            document.documentElement.classList.remove('dark');
-          } else {
-            document.documentElement.classList.add('dark');
-          }
-        }
-      } catch(e) {}
-    })();
-  `;
-  return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }

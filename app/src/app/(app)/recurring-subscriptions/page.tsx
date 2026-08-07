@@ -1,57 +1,85 @@
 'use client';
 
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Repeat, CreditCard } from 'lucide-react';
 import { RecurringContent } from '@/components/RecurringContent';
 import { SubscriptionsContent } from '@/components/SubscriptionsContent';
 
+const tabs = [
+  { id: 'recurring', label: 'Recurring Transactions', icon: Repeat },
+  { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
+];
+
+const slideVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 30 : -30, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction < 0 ? 30 : -30, opacity: 0 }),
+};
+
 export default function RecurringSubscriptionsPage() {
-    const [activeTab, setActiveTab] = useState<'recurring' | 'subscriptions'>('recurring');
+  const [activeTab, setActiveTab] = useState<'recurring' | 'subscriptions'>('recurring');
+  const [direction, setDirection] = useState(0);
 
-    return (
-        <div className="p-4 lg:p-8 max-w-[1200px] mx-auto page-enter">
-            {/* Header */}
-            <div className="mb-8">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 text-xs font-bold uppercase tracking-wider mb-3">
-                    <span className="material-symbols-outlined text-[16px]">repeat</span>
-                    Automated Finances
-                </div>
-                <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-gray-900 dark:text-white">
-                    Recurring & Subscriptions
-                </h1>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-                    Manage your regular income, bills, and subscription services all in one place.
-                </p>
-            </div>
+  const handleTabChange = (tabId: 'recurring' | 'subscriptions') => {
+    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+    const newIndex = tabs.findIndex((t) => t.id === tabId);
+    setDirection(newIndex > currentIndex ? 1 : -1);
+    setActiveTab(tabId);
+  };
 
-            {/* Tabs */}
-            <div className="flex bg-gray-100 dark:bg-[#161b22] p-1 rounded-xl mb-8 w-fit border border-gray-200 dark:border-[#30363d]">
-                <button
-                    onClick={() => setActiveTab('recurring')}
-                    className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                        activeTab === 'recurring'
-                            ? 'bg-white dark:bg-[#21262d] text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-[#30363d]'
-                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                >
-                    Recurring Transactions
-                </button>
-                <button
-                    onClick={() => setActiveTab('subscriptions')}
-                    className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                        activeTab === 'subscriptions'
-                            ? 'bg-white dark:bg-[#21262d] text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-[#30363d]'
-                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                >
-                    Subscriptions
-                </button>
-            </div>
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-serif text-3xl font-bold text-text-primary">Recurring & Subscriptions</h1>
+        <p className="text-sm text-text-secondary mt-1">Manage your regular income, bills, and subscription services all in one place.</p>
+      </div>
 
-            {/* Tab Content */}
-            <div className="animate-fade-in" key={activeTab}>
-                {activeTab === 'recurring' && <RecurringContent />}
-                {activeTab === 'subscriptions' && <SubscriptionsContent />}
-            </div>
-        </div>
-    );
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-border-subtle overflow-x-auto w-fit">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id as 'recurring' | 'subscriptions')}
+              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                isActive ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
+              }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="subscriptions-tab"
+                  className="absolute inset-0 rounded-lg bg-white/[0.06] border border-border-subtle"
+                  transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                />
+              )}
+              <Icon size={16} className="relative z-10" />
+              <span className="relative z-10">{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      <div className="relative min-h-[500px]">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={activeTab}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="absolute inset-0"
+          >
+            {activeTab === 'recurring' && <RecurringContent />}
+            {activeTab === 'subscriptions' && <SubscriptionsContent />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
 }

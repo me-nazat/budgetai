@@ -25,6 +25,9 @@ const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), { ssr:
 const Doughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), { ssr: false });
 const PredictiveCashflow = dynamic(() => import('@/components/charts/PredictiveCashflow'), { ssr: false });
 import { TiltCard } from '@/components/ui/TiltCard';
+import FinancialMandala from '@/components/generative/FinancialMandala';
+import { ShimmerBorder } from '@/components/effects/ShimmerBorder';
+import { ProgressiveBlur } from '@/components/effects/ProgressiveBlur';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -616,51 +619,66 @@ export default function DashboardPage() {
 
                         if (widgetId === 'net_worth') {
                             return (
-                                <div key={widgetId} className="relative rounded-[2rem] p-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe hover:scale-[1.02] transition-transform duration-500">
-                                    {/* Animated background layers */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" style={{ animationDuration: '4s' }} />
-                                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3 animate-pulse" style={{ animationDuration: '5s', animationDirection: 'reverse' }} />
+                                <ShimmerBorder key={widgetId} className="rounded-[2rem] hover:scale-[1.02] transition-transform duration-500 shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe" borderWidth={1}>
+                                    <div className="relative rounded-[2rem] p-6 lg:p-8 overflow-hidden h-full">
+                                        {/* Background Layers */}
+                                        <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
+                                        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 animate-pulse" style={{ animationDuration: '6s' }} />
+                                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 animate-pulse" style={{ animationDuration: '8s', animationDirection: 'reverse' }} />
 
-                                    {/* Glass Overlay */}
-                                    <div className="absolute inset-0 bg-white/5 dark:bg-black/10 backdrop-blur-[2px]" />
+                                        <div className="absolute inset-0 z-0 opacity-20 pointer-events-none flex items-center justify-center -rotate-6 scale-110 translate-y-10">
+                                            <FinancialMandala data={data.categorySpending} width={500} height={500} />
+                                        </div>
+                                        <ProgressiveBlur direction="bottom" height={80} className="rounded-b-[2rem]" />
 
-                                    {/* Content */}
-                                    <div className="relative z-10">
-                                        <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Total Balance</p>
-                                        <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear flex items-baseline gap-1">
-                                            <span className="text-2xl text-white/70">{sym}</span>
-                                            <AnimatedCounter value={data.balance} delay={0.1} />
-                                        </h3>
-
-                                        <div className="flex gap-3">
-                                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
-                                                <div className="flex items-center gap-1.5 mb-1">
-                                                    <div className="w-5 h-5 rounded-full bg-emerald-400/20 flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-emerald-300 text-[12px] font-bold">arrow_downward</span>
-                                                    </div>
-                                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Income</span>
-                                                </div>
-                                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
-                                                    <span className="text-xs text-white/70">{sym}</span>
-                                                    <AnimatedCounter value={data.earnings.current} delay={0.2} />
+                                        {/* Content */}
+                                        <div className="relative z-10 flex flex-col h-full justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-white/80 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[16px]">account_balance</span>
+                                                    Total Net Worth
                                                 </p>
+                                                <h3 className="text-5xl lg:text-6xl font-bold text-white tracking-tight mb-2 number-appear flex items-baseline gap-1">
+                                                    <span className="text-3xl text-white/70">{sym}</span>
+                                                    <AnimatedCounter value={data.balance} delay={0.1} />
+                                                </h3>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${data.netSavings > 0 ? 'bg-emerald-500/20 text-emerald-100' : 'bg-rose-500/20 text-rose-100'}`}>
+                                                        {data.netSavings > 0 ? '+' : ''}{((data.netSavings / (data.earnings.current || 1)) * 100).toFixed(1)}%
+                                                    </span>
+                                                    <span className="text-white/60 text-xs">vs last month</span>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
-                                                <div className="flex items-center gap-1.5 mb-1">
-                                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-white text-[12px] font-bold">arrow_upward</span>
+
+                                            <div className="grid grid-cols-2 gap-4 mt-8">
+                                                <div className="bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl p-4 lg:p-5 shadow-inner">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="w-8 h-8 rounded-full bg-emerald-400/20 flex items-center justify-center">
+                                                            <span className="material-symbols-outlined text-emerald-300 text-[16px] font-bold">arrow_downward</span>
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Total Income</span>
                                                     </div>
-                                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Expense</span>
+                                                    <p className="text-2xl font-bold text-white flex items-baseline gap-1">
+                                                        <span className="text-sm text-white/70">{sym}</span>
+                                                        <AnimatedCounter value={data.earnings.current} delay={0.2} />
+                                                    </p>
                                                 </div>
-                                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
-                                                    <span className="text-xs text-white/70">{sym}</span>
-                                                    <AnimatedCounter value={data.expenses.current} delay={0.3} />
-                                                </p>
+                                                <div className="bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl p-4 lg:p-5 shadow-inner">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                                                            <span className="material-symbols-outlined text-white text-[16px] font-bold">arrow_upward</span>
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Total Expenses</span>
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-white flex items-baseline gap-1">
+                                                        <span className="text-sm text-white/70">{sym}</span>
+                                                        <AnimatedCounter value={data.expenses.current} delay={0.3} />
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </ShimmerBorder>
                             );
                         }
 
@@ -698,7 +716,8 @@ export default function DashboardPage() {
                                             <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                                         </Link>
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="space-y-3 relative overflow-hidden rounded-2xl">
+                                        <ProgressiveBlur direction="bottom" height={60} className="rounded-b-2xl z-20" />
                                         {data.recentTransactions.length === 0 ? (
                                             <div className="bg-gray-50 dark:bg-[#161b22] border border-gray-100 dark:border-[#30363d] rounded-2xl p-8 text-center shadow-inner">
                                                 <div className="w-12 h-12 bg-gray-100 dark:bg-[#21262d] rounded-full flex items-center justify-center mx-auto mb-3">
@@ -706,25 +725,27 @@ export default function DashboardPage() {
                                                 </div>
                                                 <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
                                             </div>
-                                        ) : data.recentTransactions.slice(0, 7).map(t => (
-                                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible glass-panel rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group category-accent" style={{ borderLeftColor: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) }}>
-                                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
-                                                    <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                        {getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}
-                                                    </span>
+                                        ) : data.recentTransactions.slice(0, 10).map(t => (
+                                            <ShimmerBorder key={t.id} className="rounded-2xl relative z-10" borderWidth={0}>
+                                                <div onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible glass-panel rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group category-accent" style={{ borderLeftColor: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) }}>
+                                                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
+                                                        <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                            {getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
+                                                        <p className="text-xs font-medium text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                                                    </div>
+                                                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                                                        <p className={`text-base font-bold ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
+                                                            {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
+                                                        </p>
+                                                        {renderActionMenu(t)}
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
-                                                    <p className="text-xs font-medium text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                                                </div>
-                                                <div className="ml-auto flex shrink-0 items-center gap-1">
-                                                    <p className={`text-base font-bold ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
-                                                        {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
-                                                    </p>
-                                                    {renderActionMenu(t)}
-                                                </div>
-                                            </div>
+                                            </ShimmerBorder>
                                         ))}
                                     </div>
                                 </div>
@@ -848,6 +869,10 @@ export default function DashboardPage() {
                             <span className="material-symbols-outlined text-[18px]">dashboard_customize</span>
                             <span>Customize</span>
                         </button>
+                        <Link href="/generative-art" className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors font-semibold">
+                            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                            <span>Generative Studio</span>
+                        </Link>
                     </div>
                 </header>
 
@@ -856,6 +881,11 @@ export default function DashboardPage() {
                     {stats.map((s, i) => (
                         <TiltCard key={i} className={`glass-panel ${s.gradient} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe`}
                             style={{ animationDelay: `${i * 0.08}s`, animation: `slideUp 0.5s ease-out ${i * 0.08}s both` }}>
+                            {i === 0 && (
+                                <div className="absolute inset-0 z-0 opacity-20 pointer-events-none flex items-center justify-center -rotate-12 scale-150">
+                                    <FinancialMandala data={data.categorySpending} width={300} height={300} />
+                                </div>
+                            )}
                             <div className="flex flex-col gap-1 relative z-10">
                                 <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">{s.label}</p>
                                 <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{s.value}</h3>

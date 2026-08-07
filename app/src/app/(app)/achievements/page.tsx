@@ -1,199 +1,190 @@
 'use client';
 
-import useSWR from 'swr';
 import { useState } from 'react';
-import AchievementDetailModal from '@/components/AchievementDetailModal';
+import { motion } from 'framer-motion';
+import {
+  Trophy, Flame, Target, Brain, TrendingUp, Star, Lock,
+  Sparkles, Zap, Shield, Globe, PiggyBank,
+} from 'lucide-react';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 interface Achievement {
-    id: string;
-    icon: string;
-    title: string;
-    description: string;
-    progress: number;
-    target: number;
-    unlocked: boolean;
-    category: 'tracking' | 'saving' | 'budget' | 'streak';
-    tier: 'bronze' | 'silver' | 'gold' | 'diamond';
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  unlocked: boolean;
+  progress: number;
+  maxProgress: number;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  category: string;
 }
 
-interface AchievementsData {
-    achievements: Achievement[];
-    stats: {
-        unlocked: number;
-        total: number;
-        points: number;
-        savingsStreak: number;
-        budgetStreak: number;
-    };
-}
+const achievements: Achievement[] = [
+  { id: '1', title: 'First Steps', description: 'Log your first transaction', icon: Zap, unlocked: true, progress: 1, maxProgress: 1, tier: 'bronze', category: 'Getting Started' },
+  { id: '2', title: 'Budget Master', description: 'Stay under budget for 3 months', icon: Target, unlocked: true, progress: 3, maxProgress: 3, tier: 'silver', category: 'Budgeting' },
+  { id: '3', title: 'Net Worth 1L', description: 'Reach 100,000 BDT net worth', icon: TrendingUp, unlocked: true, progress: 100000, maxProgress: 100000, tier: 'gold', category: 'Milestones' },
+  { id: '4', title: 'Net Worth 10L', description: 'Reach 1,000,000 BDT net worth', icon: Trophy, unlocked: false, progress: 650000, maxProgress: 1000000, tier: 'platinum', category: 'Milestones' },
+  { id: '5', title: 'AI Whisperer', description: 'Chat with AI Coach 50 times', icon: Brain, unlocked: false, progress: 32, maxProgress: 50, tier: 'silver', category: 'AI Coach' },
+  { id: '6', title: 'Streak King', description: 'Log transactions for 30 days straight', icon: Flame, unlocked: true, progress: 30, maxProgress: 30, tier: 'gold', category: 'Streaks' },
+  { id: '7', title: 'Globetrotter', description: 'Create 5 tours', icon: Globe, unlocked: false, progress: 3, maxProgress: 5, tier: 'bronze', category: 'Tours' },
+  { id: '8', title: 'Savings Guru', description: 'Save 50% of income for 6 months', icon: PiggyBank, unlocked: false, progress: 4, maxProgress: 6, tier: 'platinum', category: 'Savings' },
+  { id: '9', title: 'Security First', description: 'Enable 2FA and passkey', icon: Shield, unlocked: true, progress: 2, maxProgress: 2, tier: 'silver', category: 'Security' },
+  { id: '10', title: 'Star Collector', description: 'Unlock 10 achievements', icon: Star, unlocked: false, progress: 5, maxProgress: 10, tier: 'gold', category: 'Special' },
+];
 
-const TIER_COLORS = {
-    bronze: { bg: 'bg-amber-700/10 dark:bg-amber-700/20', border: 'border-amber-600/30', text: 'text-amber-600 dark:text-amber-400', glow: 'shadow-amber-500/20', icon: 'text-amber-600 dark:text-amber-400' },
-    silver: { bg: 'bg-gray-300/10 dark:bg-gray-400/10', border: 'border-gray-400/30', text: 'text-gray-500 dark:text-gray-300', glow: 'shadow-gray-400/20', icon: 'text-gray-500 dark:text-gray-300' },
-    gold: { bg: 'bg-yellow-400/10 dark:bg-yellow-500/15', border: 'border-yellow-500/30', text: 'text-yellow-600 dark:text-yellow-400', glow: 'shadow-yellow-500/20', icon: 'text-yellow-600 dark:text-yellow-400' },
-    diamond: { bg: 'bg-cyan-400/10 dark:bg-cyan-500/15', border: 'border-cyan-400/30', text: 'text-cyan-600 dark:text-cyan-400', glow: 'shadow-cyan-400/30', icon: 'text-cyan-600 dark:text-cyan-400' },
+const tierConfig = {
+  bronze: { gradient: 'from-amber-700 to-amber-600', glow: 'shadow-amber-500/20', text: 'text-amber-400' },
+  silver: { gradient: 'from-slate-400 to-slate-300', glow: 'shadow-slate-400/20', text: 'text-slate-300' },
+  gold: { gradient: 'from-amber-400 to-yellow-300', glow: 'shadow-amber-400/30', text: 'text-amber-300' },
+  platinum: { gradient: 'from-emerald-400 to-cyan-300', glow: 'shadow-emerald-400/30', text: 'text-emerald-300' },
 };
-
-const CATEGORY_LABELS = {
-    tracking: { label: 'Tracking', icon: 'edit_note', color: 'text-blue-500' },
-    saving: { label: 'Saving', icon: 'savings', color: 'text-emerald-500' },
-    budget: { label: 'Budget', icon: 'account_balance', color: 'text-amber-500' },
-    streak: { label: 'Streaks', icon: 'local_fire_department', color: 'text-rose-500' },
-};
-
-function AchievementsSkeleton() {
-    return (
-        <div className="p-4 lg:p-8 max-w-[1200px] mx-auto page-enter">
-            <div className="h-7 w-64 rounded-lg shimmer-skeleton mb-2" />
-            <div className="h-4 w-96 rounded-lg shimmer-skeleton mb-8" />
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-                {[0, 1, 2, 3].map(i => (<div key={i} className="skeleton-panel h-24 rounded-2xl" />))}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[0, 1, 2, 3, 4, 5].map(i => (<div key={i} className="skeleton-panel h-40 rounded-2xl" />))}
-            </div>
-        </div>
-    );
-}
-
-function AchievementCard({ achievement, onClick }: { achievement: Achievement, onClick: () => void }) {
-    const tier = TIER_COLORS[achievement.tier];
-    const progress = achievement.target > 0 ? (achievement.progress / achievement.target) * 100 : 0;
-
-    return (
-        <div onClick={onClick} className={`glass-panel rounded-2xl p-5 relative overflow-hidden transition-all duration-300 group cursor-pointer
-            ${achievement.unlocked ? `border ${tier.border} ${tier.bg}` : 'opacity-70 grayscale-[30%]'}
-            hover:scale-[1.02] hover:shadow-lg`}
-        >
-            {/* Unlocked glow effect */}
-            {achievement.unlocked && (
-                <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-30 ${tier.bg}`} />
-            )}
-
-            <div className="relative z-10">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${achievement.unlocked ? `${tier.bg} border ${tier.border}` : 'bg-gray-100 dark:bg-[#21262d] border border-gray-200 dark:border-[#30363d]'} transition-all group-hover:scale-110`}>
-                        <span className={`material-symbols-outlined text-xl ${achievement.unlocked ? tier.icon : 'text-gray-400 dark:text-gray-500'}`}
-                            style={{ fontVariationSettings: achievement.unlocked ? "'FILL' 1" : "'FILL' 0" }}>
-                            {achievement.icon}
-                        </span>
-                    </div>
-
-                    {achievement.unlocked ? (
-                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg ${tier.bg} ${tier.text} border ${tier.border}`}>
-                            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                            Unlocked
-                        </span>
-                    ) : (
-                        <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 py-1 bg-gray-100 dark:bg-[#21262d] rounded-lg">
-                            {Math.round(progress)}%
-                        </span>
-                    )}
-                </div>
-
-                {/* Content */}
-                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">{achievement.title}</h3>
-                <p className="text-xs text-gray-500 dark:text-text-muted mb-4 line-clamp-2">{achievement.description}</p>
-
-                {/* Progress bar */}
-                <div className="space-y-1.5 mt-auto">
-                    <div className="w-full h-2 bg-gray-200 dark:bg-[#21262d] rounded-full overflow-hidden">
-                        <div
-                            className={`h-full rounded-full transition-all duration-1000 ease-out ${achievement.unlocked ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gray-400 dark:bg-gray-600'}`}
-                            style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-text-muted font-medium tabular-nums">
-                        {achievement.progress} / {achievement.target}
-                    </p>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 export default function AchievementsPage() {
-    const { data, isLoading } = useSWR<AchievementsData>('/api/achievements');
-    const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+  const totalCount = achievements.length;
 
-    if (isLoading || !data) return <AchievementsSkeleton />;
-
-    const { achievements, stats } = data;
-    const categories = ['tracking', 'saving', 'budget', 'streak'] as const;
-
-    return (
-        <div className="p-4 lg:p-8 max-w-[1200px] mx-auto page-enter pb-24">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
-                    <span className="material-symbols-outlined text-yellow-500 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
-                    Achievements
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-text-muted mt-1">Track your financial milestones and earn badges</p>
-            </div>
-
-            {/* Stats Overview */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-                {[
-                    { label: 'Badges Earned', value: `${stats.unlocked}/${stats.total}`, icon: 'workspace_premium', color: 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10' },
-                    { label: 'Total Points', value: String(stats.points), icon: 'stars', color: 'text-cyan-500 bg-cyan-50 dark:bg-cyan-500/10' },
-                    { label: 'Savings Streak', value: `${stats.savingsStreak} mo`, icon: 'local_fire_department', color: 'text-rose-500 bg-rose-50 dark:bg-rose-500/10' },
-                    { label: 'Budget Streak', value: `${stats.budgetStreak} mo`, icon: 'shield', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
-                ].map((s, i) => (
-                    <div key={i} className="glass-panel rounded-2xl p-4 lg:p-5" style={{ animation: `slideUp 0.4s ease-out ${i * 0.08}s both` }}>
-                        <div className={`w-9 h-9 rounded-xl ${s.color} flex items-center justify-center mb-3`}>
-                            <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
-                        </div>
-                        <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">{s.label}</p>
-                        <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{s.value}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Overall progress */}
-            <div className="glass-panel rounded-2xl p-6 mb-8" style={{ animation: 'slideUp 0.4s ease-out 0.35s both' }}>
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white">Overall Progress</h3>
-                    <span className="text-sm font-bold text-primary">{Math.round((stats.unlocked / stats.total) * 100)}%</span>
-                </div>
-                <div className="w-full h-3 bg-gray-100 dark:bg-[#161b22] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-primary via-emerald-500 to-cyan-500 transition-all duration-1000"
-                        style={{ width: `${(stats.unlocked / stats.total) * 100}%` }} />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-text-muted mt-2">{stats.unlocked} of {stats.total} badges unlocked</p>
-            </div>
-
-            {/* Achievements by category */}
-            {categories.map(cat => {
-                const catInfo = CATEGORY_LABELS[cat];
-                const catAchievements = achievements.filter(a => a.category === cat);
-                if (catAchievements.length === 0) return null;
-
-                return (
-                    <div key={cat} className="mb-8">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                            <span className={`material-symbols-outlined ${catInfo.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{catInfo.icon}</span>
-                            {catInfo.label}
-                        </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {catAchievements.map(a => (
-                                <AchievementCard 
-                                    key={a.id} 
-                                    achievement={a} 
-                                    onClick={() => setSelectedAchievement(a)} 
-                                />
-                            ))}
-                        </div>
-                    </div>
-                );
-            })}
-
-            <AchievementDetailModal 
-                achievement={selectedAchievement}
-                isOpen={!!selectedAchievement}
-                onClose={() => setSelectedAchievement(null)}
-            />
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-text-primary">Achievements</h1>
+          <p className="text-sm text-text-secondary mt-1">{unlockedCount} of {totalCount} unlocked</p>
         </div>
-    );
+        {/* Level Badge */}
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl glass border border-border-default">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-300 flex items-center justify-center shadow-glow-amber">
+            <Trophy size={18} className="text-amber-900" />
+          </div>
+          <div>
+            <p className="text-xs text-text-tertiary">Current Level</p>
+            <p className="text-sm font-semibold text-amber-300">Gold</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-text-secondary">Progress to Platinum</span>
+          <span className="text-text-primary font-mono">{Math.round((unlockedCount / totalCount) * 100)}%</span>
+        </div>
+        <div className="h-2.5 rounded-full bg-white/[0.05] overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${(unlockedCount / totalCount) * 100}%` }}
+            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-emerald-400"
+          />
+        </div>
+      </div>
+
+      {/* Achievement Grid */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {achievements.map((achievement, index) => {
+          const tier = tierConfig[achievement.tier];
+          const Icon = achievement.icon;
+          const progressPercent = (achievement.progress / achievement.maxProgress) * 100;
+          const isHovered = hoveredId === achievement.id;
+
+          return (
+            <motion.div
+              key={achievement.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.05 }}
+              onMouseEnter={() => setHoveredId(achievement.id)}
+              onMouseLeave={() => setHoveredId(null)}
+            >
+              <GlassCard
+                hover={achievement.unlocked}
+                className={`relative overflow-hidden ${!achievement.unlocked ? 'opacity-60' : ''}`}
+              >
+                {/* Shimmer effect for unlocked */}
+                {achievement.unlocked && isHovered && (
+                  <motion.div
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '200%' }}
+                    transition={{ duration: 1, repeat: Infinity, repeatDelay: 2 }}
+                    className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent skew-x-12 pointer-events-none"
+                  />
+                )}
+
+                <div className="relative z-10 space-y-4">
+                  {/* Badge Icon */}
+                  <div className="flex items-start justify-between">
+                    <motion.div
+                      whileHover={achievement.unlocked ? { rotateY: 360 } : undefined}
+                      transition={{ duration: 0.6 }}
+                      className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tier.gradient} flex items-center justify-center shadow-lg ${tier.glow}`}
+                      style={{ transformStyle: 'preserve-3d' }}
+                    >
+                      {achievement.unlocked ? (
+                        <Icon size={24} className="text-white" />
+                      ) : (
+                        <Lock size={20} className="text-white/50" />
+                      )}
+                    </motion.div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-white/[0.05] ${tier.text}`}>
+                      {achievement.tier}
+                    </span>
+                  </div>
+
+                  {/* Info */}
+                  <div>
+                    <h3 className={`text-sm font-semibold ${achievement.unlocked ? 'text-text-primary' : 'text-text-tertiary'}`}>
+                      {achievement.title}
+                    </h3>
+                    <p className="text-xs text-text-secondary mt-1">{achievement.description}</p>
+                  </div>
+
+                  {/* Progress Ring */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-10 h-10">
+                      <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="rgba(255,255,255,0.05)"
+                          strokeWidth="3"
+                        />
+                        <motion.path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke={achievement.unlocked ? '#10B981' : '#64748B'}
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          initial={{ strokeDasharray: '0 100' }}
+                          animate={{ strokeDasharray: `${progressPercent} 100` }}
+                          transition={{ duration: 1, delay: 0.3 + index * 0.05 }}
+                        />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-mono text-text-tertiary">
+                        {Math.round(progressPercent)}%
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progressPercent}%` }}
+                          transition={{ duration: 1, delay: 0.3 + index * 0.05 }}
+                          className={`h-full rounded-full ${achievement.unlocked ? 'bg-emerald-500' : 'bg-text-muted'}`}
+                        />
+                      </div>
+                      <p className="text-[10px] text-text-muted mt-1">
+                        {achievement.progress.toLocaleString()} / {achievement.maxProgress.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

@@ -25,7 +25,7 @@ const securityHeaders = [
     },
     {
         key: 'Referrer-Policy',
-        value: 'strict-origin-when-cross-origin',
+        value: 'origin-when-cross-origin',
     },
     {
         key: 'Permissions-Policy',
@@ -37,27 +37,103 @@ const securityHeaders = [
     },
     {
         key: 'X-DNS-Prefetch-Control',
-        value: 'off',
+        value: 'on',
+    },
+    {
+        key: 'Cache-Control',
+        value: 'public, max-age=0, must-revalidate',
     },
 ];
 
-const isVercel = process.env.VERCEL === '1';
-
 const nextConfig: NextConfig = {
+    reactStrictMode: true,
+    
+    // Image optimization
+    images: {
+        formats: ['image/avif', 'image/webp'],
+        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+        imageSizes: [16, 32, 48, 64, 96, 128, 256],
+        minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+        dangerouslyAllowSVG: true,
+        contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    },
+
+    // Compression
+    compress: true,
+
+    // Experimental features for speed
+    experimental: {
+        optimizePackageImports: [
+            'lucide-react',
+            'recharts',
+            'framer-motion',
+            'date-fns',
+            'material-symbols'
+        ],
+        serverActions: {
+            bodySizeLimit: '2mb',
+        },
+    },
+
     outputFileTracingRoot: process.cwd(),
     poweredByHeader: false,
     productionBrowserSourceMaps: false,
     typescript: {
         ignoreBuildErrors: true,
     },
+    
+    // Headers for caching and security
     async headers() {
         return [
             {
                 source: '/(.*)',
                 headers: securityHeaders,
             },
+            {
+                source: '/images/(.*)',
+                headers: [
+                    {
+                        key: 'Cache-Control',
+                        value: 'public, max-age=31536000, immutable',
+                    },
+                ],
+            },
         ];
     },
+
+    // Webpack optimization
+    webpack(config, { dev, isServer }) {
+        // Split chunks aggressively
+        if (!dev && !isServer) {
+            config.optimization.splitChunks = {
+                chunks: 'all',
+                cacheGroups: {
+                    vendor: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name: 'vendors',
+                        chunks: 'all',
+                        priority: 10,
+                    },
+                    recharts: {
+                        test: /[\\/]node_modules[\\/]recharts[\\/]/,
+                        name: 'recharts',
+                        chunks: 'all',
+                        priority: 20,
+                    },
+                    framer: {
+                        test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+                        name: 'framer',
+                        chunks: 'all',
+                        priority: 20,
+                    },
+                },
+            };
+        }
+        return config;
+    },
+    
+    // Explicitly configure Turbopack
+    turbopack: {},
 };
 
 export default nextConfig;

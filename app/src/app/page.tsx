@@ -1,44 +1,53 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import LandingPage from './LandingPage';
+import { useState } from 'react';
+import { HeroSection } from '@/components/landing/HeroSection';
+import { FeatureGrid } from '@/components/landing/FeatureGrid';
+import { HowItWorks } from '@/components/landing/HowItWorks';
+import { Testimonials } from '@/components/landing/Testimonials';
+import { DataVisualizationPreview } from '@/components/landing/DataVisualizationPreview';
+import { CTASection } from '@/components/landing/CTASection';
+import { Footer } from '@/components/landing/Footer';
+import { LandingHeader } from '@/components/landing/LandingHeader';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { FloatingParticles } from '@/components/effects/FloatingParticles';
+import { WaveDivider } from '@/components/effects/WaveDivider';
 
-export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
+export default function LandingPage() {
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(d => {
-        // Handle both legacy and apiSuccess envelope formats
-        const user = d.user || d.data?.user;
-        if (user) setIsLoggedIn(true);
-      })
-      .catch(() => { })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-6">
-        <div className="w-full max-w-4xl rounded-3xl border border-gray-200/70 bg-white/70 p-5 shadow-2xl shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl shimmer-skeleton" />
-            <div className="flex-1 space-y-3">
-              <div className="h-3 w-40 rounded-full shimmer-skeleton" />
-              <div className="h-2.5 w-64 max-w-full rounded-full shimmer-skeleton" />
-            </div>
-          </div>
-          <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="h-28 rounded-2xl shimmer-skeleton" />
-            <div className="h-28 rounded-2xl shimmer-skeleton" />
-            <div className="h-28 rounded-2xl shimmer-skeleton" />
-          </div>
-        </div>
+  return (
+    <div className="relative min-h-screen bg-background overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-gradient-radial from-emerald-500/[0.04] to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-gradient-radial from-indigo-500/[0.03] to-transparent rounded-full blur-3xl" />
       </div>
-    );
-  }
-
-  return <LandingPage isLoggedIn={isLoggedIn} />;
+      
+      <LandingHeader onOpenAuth={() => setIsAuthOpen(true)} />
+      
+      <div className="relative">
+        <FloatingParticles count={40} className="z-0" />
+        <HeroSection onOpenAuth={() => setIsAuthOpen(true)} />
+      </div>
+      
+      <WaveDivider fill="var(--bg-elevated)" />
+      <FeatureGrid />
+      
+      <WaveDivider fill="var(--bg-surface)" />
+      <HowItWorks />
+      
+      <WaveDivider fill="var(--bg-elevated)" flip />
+      <DataVisualizationPreview />
+      
+      <WaveDivider fill="var(--bg-surface)" />
+      <Testimonials />
+      
+      <WaveDivider fill="var(--bg-inset)" flip />
+      <CTASection onOpenAuth={() => setIsAuthOpen(true)} />
+      
+      <Footer />
+      
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+    </div>
+  );
 }

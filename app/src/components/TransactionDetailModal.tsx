@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { getCategoryHex } from '@/lib/categoryUtils';
 import { useCurrency } from '@/hooks/useCurrency';
 import TransactionAttachmentsSection from './TransactionAttachmentsSection';
+import { ShimmerBorder } from '@/components/effects/ShimmerBorder';
+import { ProgressiveBlur } from '@/components/effects/ProgressiveBlur';
 
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
 
@@ -93,11 +95,13 @@ export default function TransactionDetailModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                     transition={spring}
-                    className="relative w-full max-w-4xl bg-background/95 backdrop-blur-xl z-50 shadow-2xl rounded-[2rem] overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 max-h-[90vh] ring-1 ring-white/10"
+                    className="relative w-full max-w-4xl z-50 max-h-[90vh] flex"
                 >
-                    {/* Left Column: Details */}
-                    <div className="flex-1 p-6 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 overflow-y-auto scrollbar-thin">
-                        <div className="flex justify-between items-start mb-6">
+                    <ShimmerBorder className="w-full flex-1 flex flex-col md:flex-row bg-background/95 backdrop-blur-xl shadow-2xl rounded-[2rem] overflow-hidden border border-white/20 dark:border-white/10 ring-1 ring-white/10" borderWidth={1}>
+                        {/* Left Column: Details */}
+                        <div className="flex-1 p-6 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 overflow-y-auto scrollbar-thin relative">
+                            <ProgressiveBlur direction="bottom" height={40} className="z-10" />
+                            <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-3">
                                 <span
                                     className="h-4 w-4 rounded-full shadow-sm"
@@ -182,16 +186,18 @@ export default function TransactionDetailModal({
 
                     {/* Right Column: Attachments */}
                     <div className="flex-1 p-6 md:p-8 bg-black/5 dark:bg-black/40 relative overflow-y-auto scrollbar-thin border-l border-white/10 dark:border-white/5">
-                        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors hidden md:block">
+                        <ProgressiveBlur direction="bottom" height={60} className="z-10" />
+                        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors hidden md:block z-20">
                             <span className="material-symbols-outlined text-gray-500 text-[20px]">close</span>
                         </button>
-                        <div className="h-full md:mt-8">
+                        <div className="h-full md:mt-8 relative z-0">
                             <TransactionAttachmentsSection 
                                 transactionId={transaction.id} 
                                 transactionDescription={transaction.description || transaction.category} 
                             />
                         </div>
                     </div>
+                    </ShimmerBorder>
                 </motion.div>
             </div>
         </AnimatePresence>,
