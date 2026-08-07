@@ -1,8 +1,8 @@
 export const tokens = {
   colors: {
     dark: {
-      bg: { base: '#090D16', elevated: '#0F1420', surface: '#141B2A', inset: '#0A0E18' },
-      border: { subtle: 'rgba(255,255,255,0.06)', default: 'rgba(255,255,255,0.09)', strong: 'rgba(255,255,255,0.14)', glow: 'rgba(16,185,129,0.15)' },
+      bg: { base: '#0A0E1B', elevated: '#0f172a', surface: '#111827', inset: '#0A0E1B' },
+      border: { subtle: 'rgba(240,246,252,0.04)', default: 'rgba(240,246,252,0.08)', strong: 'rgba(240,246,252,0.12)', glow: 'rgba(16,185,129,0.15)' },
       text: { primary: '#F0F4F8', secondary: '#94A3B8', tertiary: '#64748B', muted: '#475569', inverse: '#0F172A' },
       accent: { emerald: '#10B981', emeraldGlow: 'rgba(16,185,129,0.20)', indigo: '#6366F1', indigoGlow: 'rgba(99,102,241,0.20)', amber: '#F59E0B', rose: '#F43F5E', cyan: '#06B6D4' },
     },
