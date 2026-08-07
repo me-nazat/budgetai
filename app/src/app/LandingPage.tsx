@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { motion, useScroll, useTransform, Variants, useMotionValue, useSpring, useMotionTemplate } from 'framer-motion';
 import { springSmooth, springTrack, EASE_LIQUID } from '@/lib/motion';
 import FinancialLineGraph from '@/components/landing/FinancialLineGraph';
+import { DataVisualizationPreview } from '@/components/landing/DataVisualizationPreview';
 
 /* ──────────────────────────────────────────────
    Theme Toggle Helper
@@ -44,7 +45,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 <ProcessFlowSection />
                 <PartnerLogos />
                 <FeaturesSection />
-                <DataVizSection />
+                <DataVisualizationPreview />
                 <TestimonialSection />
                 <CTASection onNavigate={(path) => router.push(path)} />
             </main>
@@ -441,7 +442,7 @@ function ProcessFlowSection() {
                     <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                         <div>
                             <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-primary dark:text-lp-cyan">How Wealth AI works</p>
-                            <h2 className="max-w-xl text-3xl font-medium leading-tight text-gray-900 dark:text-white sm:text-4xl" style={{ fontFamily: 'var(--font-playfair), serif', textWrap: 'balance' }}>
+                            <h2 className="max-w-xl text-3xl font-medium leading-tight text-text-primary sm:text-4xl" style={{ fontFamily: 'var(--font-playfair), serif', textWrap: 'balance' }}>
                                 From one sentence to a living financial picture.
                             </h2>
                             <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -458,7 +459,7 @@ function ProcessFlowSection() {
                                             </div>
                                             <h3 className="text-sm font-bold text-gray-900 dark:text-white">{step.title}</h3>
                                         </div>
-                                        <p className="text-sm leading-relaxed text-gray-500 dark:text-slate-400">{step.copy}</p>
+                                        <p className="text-sm leading-relaxed text-text-secondary">{step.copy}</p>
                                     </motion.div>
                                 ))}
                             </div>

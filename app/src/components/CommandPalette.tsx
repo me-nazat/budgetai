@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { ReceiptScannerModal } from '@/components/transactions/ReceiptScannerModal';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 type CommandType = 'navigation' | 'action' | 'ai';
 
@@ -32,6 +33,7 @@ export default function CommandPalette() {
     
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
+    const { setTheme } = useTheme();
 
     useEffect(() => {
         setMounted(true);
@@ -74,14 +76,8 @@ export default function CommandPalette() {
     };
 
     const toggleTheme = (theme: 'dark' | 'light') => {
-        localStorage.setItem('budget-ai-theme', theme);
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            toast.success('Switched to Dark Mode');
-        } else {
-            document.documentElement.classList.remove('dark');
-            toast.success('Switched to Light Mode');
-        }
+        setTheme(theme);
+        toast.success(`Switched to ${theme === 'dark' ? 'Dark' : 'Light'} Mode`);
     };
 
     const executeNaturalCommand = async (input: string) => {

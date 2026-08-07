@@ -9,6 +9,7 @@ import useSWR, { mutate } from 'swr';
 import PrivacyToggle from '@/components/PrivacyToggle';
 import { NAVIGATION_REGISTRY, NAV_GROUPS } from '@/lib/navigation/registry';
 import { springSnap } from '@/lib/motion';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 const navGroups = NAV_GROUPS.map(group => ({
     label: group.label,
@@ -27,15 +28,8 @@ export default function Sidebar() {
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
     const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
-    const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true);
-
-    useEffect(() => {
-        const observer = new MutationObserver(() => {
-            setIsDark(document.documentElement.classList.contains('dark'));
-        });
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        return () => observer.disconnect();
-    }, []);
+    const { resolvedTheme, toggleTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
     const [profileHovered, setProfileHovered] = useState(false);
 
     useEffect(() => {
@@ -43,15 +37,6 @@ export default function Sidebar() {
             if (d.user) setUser(d.user);
         }).catch(() => { });
     }, []);
-
-    const toggleTheme = () => {
-        const next = !isDark;
-        setIsDark(next);
-        localStorage.setItem('budget-ai-theme', next ? 'dark' : 'light');
-        document.documentElement.classList.add('theme-transitioning');
-        document.documentElement.classList.toggle('dark', next);
-        setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 400);
-    };
 
     const handleLogout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
@@ -196,7 +181,7 @@ export default function Sidebar() {
                     {/* Highly Polished Profile Card */}
                     {user && (
                         <div 
-                            className="relative rounded-2xl bg-gray-50 dark:bg-[#161b22] border border-gray-200/60 dark:border-white/5 p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden group"
+                            className="relative rounded-2xl bg-gray-50 dark:bg-surface-dark border border-gray-200/60 dark:border-white/5 p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden group"
                             onMouseEnter={() => setProfileHovered(true)}
                             onMouseLeave={() => setProfileHovered(false)}
                             onClick={() => router.push('/settings')}
@@ -206,7 +191,7 @@ export default function Sidebar() {
                             
                             {/* Avatar */}
                             <div className="relative w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-cyan-600 p-[2px] shrink-0 transform group-hover:scale-105 transition-transform duration-300">
-                                <div className="w-full h-full rounded-full bg-white dark:bg-[#0A0E1A] flex items-center justify-center overflow-hidden">
+                                <div className="w-full h-full rounded-full bg-white dark:bg-[#0B0F17] flex items-center justify-center overflow-hidden">
                                     <span className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-tr from-primary to-cyan-600">
                                         {user.name.charAt(0).toUpperCase()}
                                     </span>

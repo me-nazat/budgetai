@@ -11,7 +11,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { queueTransaction } from '@/lib/offlineDb';
 import { useRouter } from 'next/navigation';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
-import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor } from '@/lib/categoryUtils';
+import { CUSTOM_CATEGORY_ICONS, CUSTOM_COLORS, getCategoryIcon, getColorStyle, getIconCandidates, resolveIcon, resolveColor, getCategoryHex } from '@/lib/categoryUtils';
 import { CURRENCIES } from '@/lib/currency';
 import { generateMonthOptions } from '@/lib/dateUtils';
 import { MAX_ATTACHMENT_FILES } from '@/lib/transaction-attachments';
@@ -675,7 +675,7 @@ export default function TransactionsPage() {
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Expenses</p>
                     <p className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-1">{fmt(totalExpenses)}</p>
                 </div>
-                <div className="glass-panel p-4 rounded-xl stat-gradient-blue col-span-2 lg:col-span-1 border-r border-transparent lg:border-gray-200 lg:dark:border-[#30363d]">
+                <div className="glass-panel p-4 rounded-xl stat-gradient-blue col-span-2 lg:col-span-1 border-r border-transparent lg:border-gray-200 lg:dark:border-white/10">
                     <p className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider">Net</p>
                     <p className={`text-lg font-bold mt-1 ${totalEarnings - totalExpenses >= 0 ? 'text-primary' : 'text-rose-500'}`}>
                         {totalEarnings - totalExpenses >= 0 ? '+' : ''}{fmt(totalEarnings - totalExpenses)}
@@ -740,7 +740,7 @@ export default function TransactionsPage() {
                                     placeholder="0.00"
                                     value={qaAmount}
                                     onChange={e => setQaAmount(e.target.value)}
-                                    className="w-full rounded-2xl border border-gray-200 bg-white/85 py-4 pl-12 pr-4 text-4xl font-black tracking-tight text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
+                                    className="w-full rounded-2xl border border-gray-200 bg-white/85 py-4 pl-12 pr-4 text-4xl font-black tracking-tight text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#0B0F17]/80 dark:text-white"
                                 />
                             </div>
 
@@ -751,7 +751,7 @@ export default function TransactionsPage() {
                                         type="date"
                                         value={qaDate}
                                         onChange={e => setQaDate(e.target.value)}
-                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
+                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#0B0F17]/80 dark:text-white"
                                     />
                                 </div>
                                 <div>
@@ -761,7 +761,7 @@ export default function TransactionsPage() {
                                         placeholder="Optional"
                                         value={qaDesc}
                                         onChange={e => setQaDesc(e.target.value)}
-                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
+                                        className="w-full rounded-xl border border-gray-200 bg-white/85 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#0B0F17]/80 dark:text-white"
                                     />
                                 </div>
                             </div>
@@ -774,7 +774,7 @@ export default function TransactionsPage() {
                                     onChange={e => setQaNotes(e.target.value)}
                                     placeholder="Receipt info, context..."
                                     rows={2}
-                                    className="w-full resize-none rounded-xl border border-gray-200 bg-white/85 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A]/80 dark:text-white"
+                                    className="w-full resize-none rounded-xl border border-gray-200 bg-white/85 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#0B0F17]/80 dark:text-white"
                                 />
                             </div>
 
@@ -786,7 +786,7 @@ export default function TransactionsPage() {
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {qaAttachments.map((file, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs dark:border-[#30363d] dark:bg-[#0A0E1A]">
+                                        <div key={idx} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs dark:border-white/10 dark:bg-[#0B0F17]">
                                             <span className="material-symbols-outlined text-gray-500 text-[14px]">
                                                 {file.type.startsWith('image/') ? 'image' : 'description'}
                                             </span>
@@ -866,7 +866,7 @@ export default function TransactionsPage() {
                                                     key={category}
                                                     type="button"
                                                     onClick={() => { setQaCategory(category); setQaAddingCustomCategory(false); }}
-                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? 'border-primary bg-primary text-white shadow-sm' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-gray-400 dark:hover:text-white'}`}
+                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? 'border-primary bg-primary text-white shadow-sm' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-[#0B0F17] dark:text-gray-400 dark:hover:text-white'}`}
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">{getCategoryIcon(category, customCategories)}</span>
                                                     {category}
@@ -880,7 +880,7 @@ export default function TransactionsPage() {
                                                     key={category.id}
                                                     type="button"
                                                     onClick={() => setQaCategory(category.name)}
-                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? getColorStyle(category.color).selected : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-gray-400 dark:hover:text-white'}`}
+                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${selected ? getColorStyle(category.color).selected : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-[#0B0F17] dark:text-gray-400 dark:hover:text-white'}`}
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">{category.icon}</span>
                                                     {category.name}
@@ -910,7 +910,7 @@ export default function TransactionsPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-[#30363d] dark:bg-[#0A0E1A]/70">
+                                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-[#0B0F17]/70">
                                         <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-text-muted">Custom category name</label>
                                         <div className="flex items-center gap-3">
                                             <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${qaCustomCategoryName.trim() ? getColorStyle(qaCustomColor).bg : 'bg-gray-300 dark:bg-gray-700'}`}>
@@ -942,7 +942,7 @@ export default function TransactionsPage() {
                                                 Generate icon
                                             </button>
                                         </div>
-                                        <div className="grid max-h-40 grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white/50 p-2 dark:border-[#30363d] dark:bg-[#0A0E1A]/50">
+                                        <div className="grid max-h-40 grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white/50 p-2 dark:border-white/10 dark:bg-[#0B0F17]/50">
                                             {qaIconOptions.map(icon => (
                                                 <button
                                                     key={icon}
@@ -996,7 +996,7 @@ export default function TransactionsPage() {
 
             {/* Filters */}
             <div className="glass-panel flex flex-wrap gap-3 mb-5 p-3 rounded-xl">
-                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-[#30363d]">
+                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
                     <div className="flex items-center gap-1.5 px-3 py-1.5">
                         <span className="material-symbols-outlined text-[16px] text-gray-500">calendar_month</span>
                         <select
@@ -1010,7 +1010,7 @@ export default function TransactionsPage() {
                         </select>
                     </div>
                 </div>
-                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-[#30363d]">
+                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
                     <div className="flex items-center gap-1.5 px-3 py-1.5">
                         <span className="material-symbols-outlined text-[16px] text-gray-500">view_week</span>
                         <select
@@ -1024,7 +1024,7 @@ export default function TransactionsPage() {
                         </select>
                     </div>
                 </div>
-                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-[#30363d]">
+                <div className="bg-gray-100 dark:bg-surface-dark p-0.5 rounded-xl flex text-xs border border-gray-200 dark:border-white/10">
                     {['all', 'expense', 'earning'].map(t => (
                         <button key={t} onClick={() => setTypeFilter(t)}
                             className={`px-3 py-1.5 rounded-lg font-semibold transition-all capitalize ${typeFilter === t ? 'bg-primary text-white shadow-sm' : 'text-gray-500 dark:text-text-muted hover:text-gray-900 dark:hover:text-white'}`}>
@@ -1040,7 +1040,7 @@ export default function TransactionsPage() {
                             placeholder="Search description or category..." 
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full lg:w-64 pl-10 pr-4 py-2 text-sm bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-gray-900 dark:text-white"
+                            className="w-full lg:w-64 pl-10 pr-4 py-2 text-sm bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-gray-900 dark:text-white"
                         />
                     </div>
                 </div>
@@ -1072,7 +1072,7 @@ export default function TransactionsPage() {
                     <div
                         key={t.id}
                         onClick={() => setSelectedDetailTx(t)}
-                        className={`relative overflow-visible rounded-3xl border border-gray-200/70 bg-white/88 p-4 shadow-sm backdrop-blur-xl transition-all active:scale-[0.985] dark:border-white/10 dark:bg-[#161b22]/82 cursor-pointer hover:border-primary/30`}
+                        className={`relative overflow-visible rounded-3xl border border-gray-200/70 bg-white/88 p-4 shadow-sm backdrop-blur-xl transition-all active:scale-[0.985] dark:border-white/10 dark:bg-surface-dark/82 cursor-pointer hover:border-primary/30`}
                         style={{ animation: `slideUp 0.3s ease-out ${Math.min(i * 0.03, 0.3)}s both` }}
                     >
                         <div className="flex items-center gap-3">
@@ -1093,7 +1093,15 @@ export default function TransactionsPage() {
                                     )}
                                 </div>
                                 <div className="mt-1 flex items-center gap-2 text-[11px] font-medium text-gray-400 dark:text-text-muted">
-                                    <span className="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-surface-hover">{t.category}</span>
+                                    <span 
+                                        className="rounded-full px-2 py-0.5 font-bold"
+                                        style={{ 
+                                            backgroundColor: `${getCategoryHex(t.category, customCategories)}26`, 
+                                            color: getCategoryHex(t.category, customCategories) 
+                                        }}
+                                    >
+                                        {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
+                                    </span>
                                     <span>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                                 </div>
                             </div>
@@ -1114,7 +1122,7 @@ export default function TransactionsPage() {
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-[#30363d]">
+                            <tr className="bg-gray-50/80 dark:bg-[#0B0F17] text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-white/10">
                                 {[['Transaction', ''], ['Category', 'category'], ['Date', 'date'], ['Amount', 'amount']].map(([label, field]) => (
                                     <th key={label} className={`px-6 py-3.5 font-semibold ${field ? 'cursor-pointer group hover:text-primary transition-colors' : ''} ${label === 'Amount' ? 'text-right' : ''}`}
                                         onClick={() => field && toggleSort(field)}>
@@ -1174,8 +1182,14 @@ export default function TransactionsPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-3.5">
-                                        <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-surface-hover text-gray-600 dark:text-text-muted">
-                                            {t.category}
+                                        <span 
+                                            className="text-xs font-bold px-2.5 py-1 rounded-md"
+                                            style={{ 
+                                                backgroundColor: `${getCategoryHex(t.category, customCategories)}26`, 
+                                                color: getCategoryHex(t.category, customCategories) 
+                                            }}
+                                        >
+                                            {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
                                         </span>
                                     </td>
                                     <td className="px-6 py-3.5 text-gray-500 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
@@ -1190,7 +1204,7 @@ export default function TransactionsPage() {
                         </tbody>
                     </table>
                 </div>
-                <div className="px-6 py-3 border-t border-gray-200 dark:border-[#30363d] text-xs text-gray-400 dark:text-text-muted flex items-center justify-between">
+                <div className="px-6 py-3 border-t border-gray-200 dark:border-white/10 text-xs text-gray-400 dark:text-text-muted flex items-center justify-between">
                     <span>Showing {sorted.length} transaction{sorted.length !== 1 ? 's' : ''}</span>
                     <span className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-sm">filter_list</span>
@@ -1209,10 +1223,10 @@ export default function TransactionsPage() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.96, y: 12 }}
                             transition={{ duration: 0.2 }}
-                            className="w-full max-w-[420px] bg-white dark:bg-[#161b22] rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[#30363d]"
+                            className="w-full max-w-[420px] bg-white dark:bg-surface-dark rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-white/10"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="px-5 py-4 border-b border-gray-100 dark:border-[#30363d] flex justify-between items-center">
+                            <div className="px-5 py-4 border-b border-gray-100 dark:border-white/10 flex justify-between items-center">
                                 <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <span className="material-symbols-outlined text-primary text-xl">edit</span>
                                     Edit Transaction
@@ -1226,7 +1240,7 @@ export default function TransactionsPage() {
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Type</label>
                                         <select value={editingTx.type} onChange={e => setEditingTx({...editingTx, type: e.target.value as "expense" | "earning"})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#0B0F17] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
                                             <option value="expense">Expense</option>
                                             <option value="earning">Earning</option>
                                         </select>
@@ -1234,14 +1248,14 @@ export default function TransactionsPage() {
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Amount</label>
                                         <input type="number" step="0.01" value={editingTx.amount} onChange={e => setEditingTx({...editingTx, amount: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#0B0F17] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Category</label>
                                         <select value={editingTx.category} onChange={e => setEditingTx({...editingTx, category: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#0B0F17] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
                                             <option value="">Select</option>
                                             {QUICK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                             {customCategories.filter(c => c.type === editingTx.type).length > 0 && (
@@ -1256,14 +1270,14 @@ export default function TransactionsPage() {
                                     <div>
                                         <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Date</label>
                                         <input type="date" value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''} onChange={e => setEditingTx({...editingTx, date: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#0B0F17] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-[11px] font-semibold text-gray-500 dark:text-text-muted mb-1 uppercase tracking-wider">Description</label>
                                     <input type="text" value={editingTx.description || ''} onChange={e => setEditingTx({...editingTx, description: e.target.value})}
                                         placeholder="Optional description"
-                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#30363d] rounded-lg bg-white dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#0B0F17] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm" />
                                 </div>
                                 <TransactionAttachmentsSection transactionId={Number(editingTx.id)} transactionDescription={editingTx.description || editingTx.category} />
                                 <div className="pt-1 flex gap-3">
@@ -1294,7 +1308,7 @@ export default function TransactionsPage() {
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[#30363d]"
+                                className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-white/10"
                             >
                                 <div className="p-5 flex flex-col items-center justify-center text-center">
                                     <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center mb-4">

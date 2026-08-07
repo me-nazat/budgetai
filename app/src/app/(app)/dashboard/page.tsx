@@ -967,7 +967,7 @@ export default function DashboardPage() {
                         <div className="overflow-visible">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider">
+                                    <tr className="bg-gray-50/80 dark:bg-[#0B0F17] text-xs text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-100 dark:border-white/10">
                                         <th className="px-4 lg:px-6 py-3.5 font-semibold">Transaction</th>
                                         <th className="px-4 lg:px-6 py-3.5 font-semibold hidden md:table-cell">Category</th>
                                         <th className="px-4 lg:px-6 py-3.5 font-semibold hidden sm:table-cell">Date</th>
@@ -975,7 +975,7 @@ export default function DashboardPage() {
                                         <th className="px-4 lg:px-6 py-3.5 font-semibold text-right w-12">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
+                                <tbody className="divide-y divide-gray-100 dark:divide-white/10 text-sm">
                                     {data.recentTransactions.length === 0 ? (
                                         <tr><td colSpan={5} className="px-6 py-12 text-center">
                                             <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
@@ -992,7 +992,13 @@ export default function DashboardPage() {
                                                 </div>
                                             </td>
                                             <td className="px-4 lg:px-6 py-4 hidden md:table-cell">
-                                                <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-surface-hover text-gray-600 dark:text-text-muted">
+                                                <span 
+                                                    className="text-xs font-bold px-2.5 py-1 rounded-md"
+                                                    style={{ 
+                                                        backgroundColor: `${getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}26`, 
+                                                        color: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) 
+                                                    }}
+                                                >
                                                     {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
                                                 </span>
                                             </td>
