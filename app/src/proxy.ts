@@ -1,5 +1,5 @@
 /**
- * @fileoverview Next.js Edge Middleware — Session auto-refresh.
+ * @fileoverview Next.js Edge Proxy — Session auto-refresh.
  *
  * Intercepts all authenticated route requests. If the access token cookie
  * is missing/expired but a refresh token cookie exists, it calls the
@@ -49,7 +49,7 @@ async function isAccessTokenValid(token: string): Promise<boolean> {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip public pages and API routes

@@ -12,8 +12,8 @@ import { MobileDrawer } from './MobileDrawer';
 const mobileNavItems = [
   { label: 'Home', href: '/overview', icon: LayoutDashboard },
   { label: 'Transactions', href: '/transactions', icon: Wallet },
-  { label: 'Budgets', href: '/budgets', icon: Target },
-  { label: 'Net Worth', href: '/networth', icon: TrendingUp },
+  { label: 'Budgets', href: '/budget', icon: Target },
+  { label: 'Net Worth', href: '/wealth-goals', icon: TrendingUp },
   { label: 'More', href: '#menu', icon: Menu },
 ];
 

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Mic, User, Bot, Loader2 } from 'lucide-react';
+import { Send, Sparkles, Mic, User, Bot } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { FluidButton } from '@/components/ui/FluidButton';
 
@@ -27,22 +27,27 @@ export default function CoachPage() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const nextMessageId = useRef(1);
+  const responseTimerRef = useRef<number | undefined>(undefined);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(scrollToBottom, [messages]);
+  useEffect(() => () => {
+    if (responseTimerRef.current) window.clearTimeout(responseTimerRef.current);
+  }, []);
 
   const handleSend = async (text: string) => {
     if (!text.trim()) return;
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() };
+    const userMsg: Message = { id: String(++nextMessageId.current), role: 'user', content: text, timestamp: new Date() };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
     // Simulate streaming response
-    setTimeout(() => {
+    responseTimerRef.current = window.setTimeout(() => {
       setIsTyping(false);
       const response: Message = {
-        id: (Date.now() + 1).toString(),
+        id: String(++nextMessageId.current),
         role: 'assistant',
         content: "Based on your current financial data, you're doing well! Your savings rate is 42% this month, which is above your average. Your net worth has grown by 2.4% this week. Would you like me to dive deeper into any specific area?",
         timestamp: new Date(),

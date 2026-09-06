@@ -71,10 +71,19 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
+const fallbackCurrencyValue: CurrencyContextType = {
+    currency: 'BDT',
+    rates: FALLBACK_RATES,
+    setCurrency: () => {},
+    fmt: (amountInBase: number) => formatCurrency(amountInBase, 'BDT'),
+    fmtRaw: (amountInLocal: number) => formatCurrency(amountInLocal, 'BDT'),
+    convert: (amount: number) => amount,
+};
+
 export function useCurrency() {
     const context = useContext(CurrencyContext);
     if (!context) {
-        throw new Error('useCurrency must be used within a CurrencyProvider');
+        return fallbackCurrencyValue;
     }
     return context;
 }

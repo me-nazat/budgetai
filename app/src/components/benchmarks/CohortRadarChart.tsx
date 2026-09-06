@@ -24,7 +24,7 @@ export function CohortRadarChart({ data }: { data: RadarDataPoint[] }) {
       <h3 className="text-sm font-semibold text-slate-300 mb-2">
         5-Pillar Financial Health vs Peers
       </h3>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
           <PolarGrid stroke="#334155" />
           <PolarAngleAxis dataKey="pillar" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} />

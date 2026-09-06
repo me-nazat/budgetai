@@ -47,7 +47,7 @@ export default function TourTransactionDetailModal({
         return () => cancelAnimationFrame(frame);
     }, []);
 
-    if (!transaction || !mounted) return null;
+    if (!transaction || !mounted || typeof document === 'undefined') return null;
 
     const isExpense = true; // Tours are expenses currently
     const amountColor = isExpense ? 'text-rose-600' : 'text-emerald-600';

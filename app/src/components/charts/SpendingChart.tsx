@@ -84,7 +84,7 @@ export default function SpendingChart({ data, variant = 'area' }: SpendingChartP
 
     if (variant === 'bar') {
         return (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart {...commonProps}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" vertical={false} />
                     <XAxis {...xAxisProps} />
@@ -122,7 +122,7 @@ export default function SpendingChart({ data, variant = 'area' }: SpendingChartP
     }
 
     return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <AreaChart {...commonProps}>
                 <defs>
                     <linearGradient id="expenseArea" x1="0" y1="0" x2="0" y2="1">

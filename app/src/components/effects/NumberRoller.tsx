@@ -20,22 +20,20 @@ function DigitRoller({ target, duration = 1.5 }: { target: string; duration?: nu
 
   useEffect(() => {
     if (!isInView) return;
-    if (target === ',' || target === '.' || target === ' ' || target === '$') {
-      setDisplay(target);
-      return;
-    }
-
     const targetNum = parseInt(target);
     const startTime = performance.now();
+    let animationFrameId = 0;
     const animate = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / (duration * 1000), 1);
       const eased = 1 - Math.pow(1 - progress, 3);
       const current = Math.round(eased * targetNum);
       setDisplay(current.toString());
-      if (progress < 1) requestAnimationFrame(animate);
+      if (progress < 1) animationFrameId = requestAnimationFrame(animate);
     };
-    requestAnimationFrame(animate);
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrameId);
   }, [isInView, target, duration]);
 
   return (
@@ -68,7 +66,11 @@ export function NumberRoller({
   return (
     <span className={`font-mono tabular-nums ${className}`}>
       {chars.map((char, i) => (
-        <DigitRoller key={i} target={char} duration={duration + i * 0.05} />
+        /\d/.test(char) ? (
+          <DigitRoller key={i} target={char} duration={duration + i * 0.05} />
+        ) : (
+          <span key={i} className="inline-block">{char}</span>
+        )
       ))}
     </span>
   );

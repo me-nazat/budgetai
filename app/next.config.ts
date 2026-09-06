@@ -5,10 +5,11 @@ const securityHeaders = [
         key: 'Content-Security-Policy',
         value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob: https://maps.gstatic.com https://maps.googleapis.com https://*.googleusercontent.com https://*.ggpht.com",
-            "connect-src 'self' https://*.turso.io https://generativelanguage.googleapis.com https://openrouter.ai https://open.er-api.com https://www.googleapis.com https://maps.googleapis.com https://maps.gstatic.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://va.vercel-scripts.com",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' data: https://fonts.gstatic.com",
+            "img-src 'self' data: blob: https: https://maps.gstatic.com https://maps.googleapis.com https://*.googleusercontent.com https://*.ggpht.com",
+            "connect-src 'self' https://*.turso.io https://generativelanguage.googleapis.com https://openrouter.ai https://open.er-api.com https://www.googleapis.com https://maps.googleapis.com https://maps.gstatic.com https://va.vercel-scripts.com https://vitals.vercel-insights.com",
             "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",
@@ -38,10 +39,6 @@ const securityHeaders = [
     {
         key: 'X-DNS-Prefetch-Control',
         value: 'on',
-    },
-    {
-        key: 'Cache-Control',
-        value: 'public, max-age=0, must-revalidate',
     },
 ];
 
@@ -78,17 +75,9 @@ const nextConfig: NextConfig = {
     outputFileTracingRoot: process.cwd(),
     poweredByHeader: false,
     productionBrowserSourceMaps: false,
-    typescript: {
-        ignoreBuildErrors: true,
-    },
-    
     // Headers for caching and security
     async headers() {
         return [
-            {
-                source: '/(.*)',
-                headers: securityHeaders,
-            },
             {
                 source: '/images/(.*)',
                 headers: [
@@ -98,34 +87,31 @@ const nextConfig: NextConfig = {
                     },
                 ],
             },
+            {
+                source: '/(.*)',
+                headers: securityHeaders,
+            },
         ];
     },
 
     // Webpack optimization
     webpack(config, { dev, isServer }) {
-        // Split chunks aggressively
         if (!dev && !isServer) {
-            config.optimization.splitChunks = {
-                chunks: 'all',
-                cacheGroups: {
-                    vendor: {
-                        test: /[\\/]node_modules[\\/]/,
-                        name: 'vendors',
-                        chunks: 'all',
-                        priority: 10,
-                    },
-                    recharts: {
-                        test: /[\\/]node_modules[\\/]recharts[\\/]/,
-                        name: 'recharts',
-                        chunks: 'all',
-                        priority: 20,
-                    },
-                    framer: {
-                        test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
-                        name: 'framer',
-                        chunks: 'all',
-                        priority: 20,
-                    },
+            config.optimization = config.optimization || {};
+            config.optimization.splitChunks = config.optimization.splitChunks || {};
+            config.optimization.splitChunks.cacheGroups = {
+                ...(config.optimization.splitChunks.cacheGroups || {}),
+                recharts: {
+                    test: /[\\/]node_modules[\\/]recharts[\\/]/,
+                    name: 'recharts',
+                    chunks: 'all',
+                    priority: 20,
+                },
+                framer: {
+                    test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+                    name: 'framer',
+                    chunks: 'all',
+                    priority: 20,
                 },
             };
         }

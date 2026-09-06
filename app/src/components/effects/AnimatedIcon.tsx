@@ -24,7 +24,7 @@ export function AnimatedIcon({
   const [isHovered, setIsHovered] = useState(false);
   
   // Find Lucide component or fallback to case-insensitive match
-  let IconComponent = (Icons[name] || Icons[Object.keys(Icons).find(k => k.toLowerCase() === String(name).toLowerCase()) as IconName]) as React.ComponentType<any>;
+  const IconComponent = (Icons[name] || Icons[Object.keys(Icons).find(k => k.toLowerCase() === String(name).toLowerCase()) as IconName]) as React.ComponentType<any>;
 
   if (!IconComponent) {
     const formatted = String(name).toLowerCase().replace(/[\s-]+/g, '_');

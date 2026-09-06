@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import animate from 'tailwindcss-animate';
 
 const config: Config = {
   darkMode: ['class', '[data-theme="dark"]'],
@@ -43,7 +44,7 @@ const config: Config = {
         'lp-cyan': '#00E5FF',
         accent: { emerald: 'var(--accent-emerald)', indigo: 'var(--accent-indigo)', amber: 'var(--accent-amber)', rose: 'var(--accent-rose)', cyan: 'var(--accent-cyan)' },
       },
-      fontFamily: { serif: ['"Playfair Display"', 'serif'], sans: ['"Inter"', 'system-ui', 'sans-serif'], mono: ['"JetBrains Mono"', 'monospace'] },
+      fontFamily: { serif: ['var(--font-playfair)', 'Georgia', 'serif'], sans: ['var(--font-inter)', 'system-ui', 'sans-serif'], mono: ['var(--font-jetbrains)', 'monospace'] },
       borderRadius: { sm: 'var(--radius-sm)', md: 'var(--radius-md)', lg: 'var(--radius-lg)', xl: 'var(--radius-xl)', '2xl': '24px' },
       boxShadow: {
         'glow-emerald': 'var(--shadow-glow-emerald)', 'glow-indigo': 'var(--shadow-glow-indigo)', 'glow-amber': '0 0 20px rgba(245,158,11,0.15)',
@@ -58,7 +59,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [animate],
 };
 
 export default config;

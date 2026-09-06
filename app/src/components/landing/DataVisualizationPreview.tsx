@@ -1,8 +1,12 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 const data = [
   { month: 'Jan', value: 4000 }, { month: 'Feb', value: 5200 }, { month: 'Mar', value: 4800 },
@@ -26,6 +30,7 @@ function CustomTooltip({ active, payload }: any) {
 export function DataVisualizationPreview() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const mounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   return (
     <section ref={ref} className="relative py-32 px-6">
@@ -58,20 +63,24 @@ export function DataVisualizationPreview() {
                 </div>
               </div>
               <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10B981" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} tickFormatter={(v) => `$${v / 1000}k`} dx={-10} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1 }} />
-                    <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2.5} fill="url(#areaGradient)" isAnimationActive={true} animationDuration={1200} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {mounted ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <AreaChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10B981" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} tickFormatter={(v) => `$${v / 1000}k`} dx={-10} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1 }} />
+                      <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2.5} fill="url(#areaGradient)" isAnimationActive={true} animationDuration={1200} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="w-full h-full bg-white/[0.02] rounded-xl animate-pulse" />
+                )}
               </div>
             </div>
           </motion.div>

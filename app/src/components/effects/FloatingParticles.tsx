@@ -18,6 +18,11 @@ interface FloatingParticlesProps {
   className?: string;
 }
 
+function pseudoRandom(index: number, salt: number) {
+  const value = Math.sin((index + 1) * (salt + 1) * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
 export function FloatingParticles({
   count = 30,
   color = 'rgba(255,255,255,0.3)',
@@ -26,11 +31,11 @@ export function FloatingParticles({
   const particles = useMemo(() => {
     return Array.from({ length: count }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      duration: Math.random() * 20 + 15,
-      delay: Math.random() * 20,
-      opacity: Math.random() * 0.3 + 0.1,
+      x: pseudoRandom(i, 1) * 100,
+      size: pseudoRandom(i, 2) * 3 + 1,
+      duration: pseudoRandom(i, 3) * 20 + 15,
+      delay: pseudoRandom(i, 4) * 20,
+      opacity: pseudoRandom(i, 5) * 0.3 + 0.1,
     }));
   }, [count]);
 

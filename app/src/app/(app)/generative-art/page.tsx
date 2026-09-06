@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import FinancialMandala from '@/components/generative/FinancialMandala';
 import DataRiverChart from '@/components/generative/DataRiverChart';
 import GenerativeExporter from '@/components/generative/GenerativeExporter';
@@ -10,13 +9,8 @@ import { useDashboard } from '@/hooks/useApi';
 
 export default function GenerativeArtPage() {
     const { data, isLoading: loading, error } = useDashboard('this-month', 'all');
-    const [mounted, setMounted] = useState(false);
-    
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
-    if (!mounted || loading) {
+    if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
                 <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -33,8 +27,6 @@ export default function GenerativeArtPage() {
     }
 
     const { categorySpending, dailySpending, earnings, expenses } = data;
-    const isDark = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
-
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white pb-20">
             {/* Header */}

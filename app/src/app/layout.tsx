@@ -20,16 +20,29 @@ export const metadata: Metadata = {
   openGraph: { title: 'Wealth AI — Intelligent Personal Finance', description: 'Master your wealth with precision.', type: 'website', locale: 'en_US' },
 };
 
+const themeBootstrapScript = `(() => {
+  try {
+    const savedTheme = localStorage.getItem('wealthai-theme');
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const theme = savedTheme === 'light' || savedTheme === 'dark'
+      ? savedTheme
+      : savedTheme === 'system'
+        ? systemTheme
+        : 'dark';
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    root.classList.toggle('dark', theme === 'dark');
+  } catch {
+    // Keep the server-rendered dark theme if storage is unavailable.
+  }
+})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`dark ${inter.variable} ${playfair.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" />
       </head>
       <body className="font-sans antialiased">
         <PWAProvider>

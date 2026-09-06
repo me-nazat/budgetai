@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -22,65 +22,82 @@ interface CommandItem {
 }
 
 const RECENT_STORAGE_KEY = 'wealth_ai_recent_command_ids';
+const subscribeToHydration = () => () => undefined;
+const getHydratedSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
 
 export default function CommandPalette() {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
     const [recentIds, setRecentIds] = useState<string[]>([]);
     
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const { setTheme } = useTheme();
+    const isHydrated = useSyncExternalStore(subscribeToHydration, getHydratedSnapshot, getServerHydrationSnapshot);
 
     useEffect(() => {
-        setMounted(true);
         try {
             const saved = localStorage.getItem(RECENT_STORAGE_KEY);
             if (saved) {
-                setRecentIds(JSON.parse(saved));
+                const parsedRecentIds = JSON.parse(saved) as string[];
+                window.setTimeout(() => setRecentIds(parsedRecentIds), 0);
             }
         } catch {
             // fallback
         }
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                setIsOpen(open => !open);
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
     useEffect(() => {
-        if (isOpen) {
-            setQuery('');
-            setSelectedIndex(0);
-            setTimeout(() => inputRef.current?.focus(), 10);
-        }
+        if (!isOpen) return;
+        const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 10);
+        return () => window.clearTimeout(focusTimer);
     }, [isOpen]);
 
-    const recordRecentCommand = (id: string) => {
-        try {
-            const updated = [id, ...recentIds.filter(i => i !== id)].slice(0, 5);
-            setRecentIds(updated);
-            localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(updated));
-        } catch {
-            // fallback
-        }
-    };
+    const closePalette = useCallback(() => {
+        setIsOpen(false);
+        setQuery('');
+        setSelectedIndex(0);
+    }, []);
 
-    const toggleTheme = (theme: 'dark' | 'light') => {
+    const openPalette = useCallback(() => {
+        setQuery('');
+        setSelectedIndex(0);
+        setIsOpen(true);
+    }, []);
+
+    useEffect(() => {
+        const handleShortcut = (event: KeyboardEvent) => {
+            if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
+            event.preventDefault();
+            if (isOpen) closePalette();
+            else openPalette();
+        };
+
+        window.addEventListener('keydown', handleShortcut);
+        return () => window.removeEventListener('keydown', handleShortcut);
+    }, [isOpen, closePalette, openPalette]);
+
+    const recordRecentCommand = useCallback((id: string) => {
+        setRecentIds((previousIds) => {
+            const updated = [id, ...previousIds.filter((previousId) => previousId !== id)].slice(0, 5);
+            try {
+                localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(updated));
+            } catch {
+                // Recent commands remain available for this session when storage is unavailable.
+            }
+            return updated;
+        });
+    }, []);
+
+    const toggleTheme = useCallback((theme: 'dark' | 'light') => {
         setTheme(theme);
         toast.success(`Switched to ${theme === 'dark' ? 'Dark' : 'Light'} Mode`);
-    };
+    }, [setTheme]);
 
-    const executeNaturalCommand = async (input: string) => {
+    const executeNaturalCommand = useCallback(async (input: string) => {
         const addRegex = /add\s+(expense|income)\s+(\d+(?:\.\d+)?)\s*(.*)/i;
         const match = input.match(addRegex);
         if (match) {
@@ -114,7 +131,7 @@ export default function CommandPalette() {
             return true;
         }
         return false;
-    };
+    }, []);
 
     const ALL_COMMANDS: CommandItem[] = useMemo(() => [
         { id: 'nav-dash', title: 'Go to Dashboard', type: 'navigation', icon: 'dashboard', keywords: ['home', 'main', 'dashboard'], path: '/dashboard' },
@@ -157,7 +174,7 @@ export default function CommandPalette() {
                 }
             }
         },
-    ], [query, router]);
+    ], [query, router, toggleTheme, executeNaturalCommand]);
 
     // Zero-latency memoized index matching
     const filteredCommands = useMemo(() => {
@@ -178,14 +195,9 @@ export default function CommandPalette() {
         });
     }, [query, recentIds, ALL_COMMANDS]);
 
-    useEffect(() => {
-        setSelectedIndex(0);
-    }, [query]);
-
     const executeCommand = useCallback((cmd: CommandItem) => {
         recordRecentCommand(cmd.id);
-        setIsOpen(false);
-        setQuery('');
+        closePalette();
         if (cmd.action === 'SCAN_RECEIPT') {
             setIsScannerOpen(true);
         } else if (cmd.onExecute) {
@@ -193,7 +205,7 @@ export default function CommandPalette() {
         } else if (cmd.path) {
             router.push(cmd.path);
         }
-    }, [router, recentIds]);
+    }, [router, recordRecentCommand, closePalette]);
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
@@ -209,18 +221,18 @@ export default function CommandPalette() {
                     executeCommand(filteredCommands[selectedIndex]);
                 } else if (query.toLowerCase().startsWith('add ')) {
                     executeNaturalCommand(query).then((success) => {
-                        if (success) setIsOpen(false);
+                        if (success) closePalette();
                     });
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                setIsOpen(false);
+                closePalette();
             }
         },
-        [filteredCommands, selectedIndex, query, executeCommand]
+        [filteredCommands, selectedIndex, query, executeCommand, executeNaturalCommand, closePalette]
     );
 
-    if (!mounted) return null;
+    if (!isHydrated || typeof document === 'undefined') return null;
 
     return createPortal(
         <>
@@ -234,7 +246,7 @@ export default function CommandPalette() {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.15 }}
                         className="fixed inset-0 bg-slate-950/60 backdrop-blur-2xl"
-                        onClick={() => setIsOpen(false)}
+                        onClick={closePalette}
                     />
 
                     {/* Floating Modal */}
@@ -261,7 +273,10 @@ export default function CommandPalette() {
                                 className="w-full bg-transparent text-base sm:text-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/40 outline-none font-medium"
                                 placeholder="Type a command... (e.g. 'Add expense 500 Food', 'Dark mode')"
                                 value={query}
-                                onChange={(e) => setQuery(e.target.value)}
+                                onChange={(event) => {
+                                    setQuery(event.target.value);
+                                    setSelectedIndex(0);
+                                }}
                                 onKeyDown={handleKeyDown}
                                 role="combobox"
                                 aria-expanded="true"

@@ -1,10 +1,42 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Flame, Target, TrendingUp, Calculator } from 'lucide-react';
+import { useState } from 'react';
+import { Flame, Target, TrendingUp } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+
+interface SliderProps {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+  prefix?: string;
+  suffix?: string;
+}
+
+function Slider({ label, value, min, max, step, onChange, prefix = '', suffix = '' }: SliderProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm text-text-secondary">{label}</label>
+        <span className="text-sm font-mono font-semibold text-text-primary">
+          {prefix}{value.toLocaleString()}{suffix}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full h-2 rounded-full appearance-none bg-white/[0.05] accent-emerald-500 cursor-pointer"
+      />
+    </div>
+  );
+}
 
 export default function FIREPage() {
   const [netWorth, setNetWorth] = useState(500000);
@@ -32,26 +64,6 @@ export default function FIREPage() {
   }
 
   const fireAge = currentAge + monthsToFire / 12;
-
-  const Slider = ({ label, value, min, max, step, onChange, prefix = '', suffix = '' }: any) => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-sm text-text-secondary">{label}</label>
-        <span className="text-sm font-mono font-semibold text-text-primary">
-          {prefix}{value.toLocaleString()}{suffix}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-2 rounded-full appearance-none bg-white/[0.05] accent-emerald-500 cursor-pointer"
-      />
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -111,7 +123,7 @@ export default function FIREPage() {
         <div className="lg:col-span-2">
           <GlassCard className="h-full">
             <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="fireGradient" x1="0" y1="0" x2="0" y2="1">

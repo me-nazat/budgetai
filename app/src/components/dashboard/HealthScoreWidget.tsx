@@ -152,7 +152,7 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
         {/* Sparkline History - hide on compact */}
         {!compact && (
           <div className="w-full h-12 mt-6 px-4">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={data.history}>
                 <defs>
                   <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">

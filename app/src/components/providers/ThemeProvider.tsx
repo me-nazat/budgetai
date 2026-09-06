@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type Theme = 'dark' | 'light' | 'system';
@@ -14,48 +14,81 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+const THEME_STORAGE_KEY = 'wealthai-theme';
+const THEME_CHANGE_EVENT = 'wealthai-theme-change';
+
+function getThemePreference(): Theme {
+  if (typeof window === 'undefined') return 'dark';
+
+  try {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    return savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'system'
+      ? savedTheme
+      : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
+
+function resolveTheme(theme: Theme): 'dark' | 'light' {
+  if (theme !== 'system') return theme;
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
+function subscribeToTheme(onStoreChange: () => void) {
+  if (typeof window === 'undefined') return () => undefined;
+
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === THEME_STORAGE_KEY) onStoreChange();
+  };
+  const handleSystemThemeChange = () => {
+    if (getThemePreference() === 'system') onStoreChange();
+  };
+
+  window.addEventListener(THEME_CHANGE_EVENT, onStoreChange);
+  window.addEventListener('storage', handleStorage);
+  mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+  return () => {
+    window.removeEventListener(THEME_CHANGE_EVENT, onStoreChange);
+    window.removeEventListener('storage', handleStorage);
+    mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  };
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
-  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark');
+  const theme = useSyncExternalStore<Theme>(subscribeToTheme, getThemePreference, () => 'dark');
+  const resolvedTheme = resolveTheme(theme);
   const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const resolveTheme = useCallback((t: Theme): 'dark' | 'light' => {
-    if (t === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    return t;
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('wealthai-theme') as Theme | null;
-    const initial = saved || 'dark';
-    setThemeState(initial);
-    const res = resolveTheme(initial);
-    setResolvedTheme(res);
-    document.documentElement.setAttribute('data-theme', res);
-    document.documentElement.classList.toggle('dark', res === 'dark');
-  }, [resolveTheme]);
-
-  const setTheme = useCallback((newTheme: Theme) => {
-    setIsTransitioning(true);
-    localStorage.setItem('wealthai-theme', newTheme);
-    setTimeout(() => {
-      setThemeState(newTheme);
-      const resolved = resolveTheme(newTheme);
-      setResolvedTheme(resolved);
-      document.documentElement.setAttribute('data-theme', resolved);
-      document.documentElement.classList.toggle('dark', resolved === 'dark');
-      setTimeout(() => setIsTransitioning(false), 600);
-    }, 50);
-  }, [resolveTheme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  }, [resolvedTheme, setTheme]);
+  const transitionTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolvedTheme);
     document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
   }, [resolvedTheme]);
 
+  useEffect(() => () => {
+    if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
+  }, []);
+
+  const setTheme = useCallback((newTheme: Theme) => {
+    setIsTransitioning(true);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    } catch {
+      // The current session can still use the default theme if storage is unavailable.
+    }
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+    if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = window.setTimeout(() => setIsTransitioning(false), 600);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  }, [resolvedTheme, setTheme]);
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
       {children}
