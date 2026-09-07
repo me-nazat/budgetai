@@ -71,12 +71,13 @@
 
 | Metric | Value |
 |:---|:---|
-| 📁 Total Project Files | `210` |
-| 🔷 TypeScript Modules | `105 files` |
-| ⚛️ React Components & Pages | `70 files` |
-| 📝 Total Lines of Code | `33,200+` |
-| 💎 Pure Logic & Code | `25,500+ lines` |
-| 🖊️ Documentation Comments | `4,300 lines` |
+| 📁 Total Project Files | `450+` |
+| 🔷 TypeScript & TSX Modules | `408 files` |
+| 🧪 Automated Test Coverage | `18 suites · 170 tests passing (100%)` |
+| 🌐 Localization & Keys | `Bilingual (EN ⇄ বাংলা) · 647 keys` |
+| 📝 Total Lines of Code | `76,600+` |
+| 💎 Pure Logic & Code | `62,000+ lines` |
+| 🖊️ Documentation & Comments | `14,600 lines` |
 
 </div>
 
@@ -292,6 +293,106 @@ Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.
   3. Creates a session-scoped sub-directory
   4. Uploads and indexes the file — making it instantly queryable by the AI
 - Background sync pipeline runs silently without interrupting the UI
+
+<br/>
+
+### 〔 16 〕 &nbsp; Multi-Member Household Budgeting & Automated Settlements (Module 10)
+
+> Shared family and roommate finances with mathematical debt minimization.
+
+- **Unified household ledger**: multi-member expense logging with category caps, proportional income allocation, and recurring shared bill splits
+- **Automated settlement engine**: calculates the absolute minimum number of inter-member payments needed to clear group balances using greedy settlement algorithms
+- **Audit & approval workflows**: real-time member approval, audit logging, and deep-linked settlement receipts
+
+<br/>
+
+### 〔 17 〕 &nbsp; Anonymous Peer Financial Benchmarks (Module 11)
+
+> Privacy-preserving percentile comparisons against similar income and age cohorts.
+
+- **Differential privacy & k-anonymity (k ≥ 5)**: data is perturbed and aggregated with zero personally identifiable data leakage
+- **Cohort percentile curves**: benchmarks savings rate, emergency runway, discretionary spend ratio, and net worth trajectory
+- **Shareable Benchmark Cards**: branded visual share cards with custom privacy masking for social comparisons
+
+<br/>
+
+### 〔 18 〕 &nbsp; Bangladesh Tax Optimization & Exemption Shield (Module 12)
+
+> Country-specific progressive tax brackets with NBR-compliant deduction strategies.
+
+- **Automated tax slab calculations**: male, female/senior, disabled, and gazetted freedom fighter threshold support under current Finance Act rules
+- **Investment rebate shield**: tracks eligible investment allowances (DPS, life insurance, approved stocks/provident funds) to maximize allowable tax credit
+- **Tax Pack export & accountant token**: one-click encrypted PDF/CSV export and secure time-limited token generation for external tax consultants
+
+<br/>
+
+### 〔 19 〕 &nbsp; AI Document Vault with Semantic Vector Search (Module 13)
+
+> Natural language question-answering over your financial records and receipts.
+
+- **Vector embeddings**: generates 1536-dim semantic embeddings for uploaded bills, bank notices, receipts, and statements
+- **Cosine similarity search**: ask natural language queries ("What was my dining expenditure in Sylhet last quarter?") with citation snippets and confidence scores
+- **OCR pipeline integration**: dual-engine OCR (Gemini Vision + Tesseract fallback) for zero-effort metadata extraction
+
+<br/>
+
+### 〔 20 〕 &nbsp; Privacy Center & Account Masking (Module 14)
+
+> Military-grade financial shielding in public and shared environments.
+
+- **One-tap Privacy Shield**: dynamically masks sensitive account numbers and balances across the entire dashboard (`•••• 4821` / `৳ ••••••`)
+- **Sensors & auto-lock**: shake-to-hide mobile gesture, configurable inactivity auto-lock, and blurred tab switching
+- **Server-side redaction**: unmasked figures are never sent over the wire when privacy mode is engaged
+
+<br/>
+
+### 〔 21 〕 &nbsp; Micro-Savings & Automated Round-Up Vaults (Module 15)
+
+> Turn spare change from daily transactions into automated wealth accrual.
+
+- **Transaction round-up engine**: rounds daily debit transactions to the nearest ৳10, ৳50, or ৳100 with multiplier multipliers (1×, 2×, 5×)
+- **Virtual goal vaults**: automatic routing of round-up capital into dedicated savings milestones with emergency caps
+- **Weekly automated sweeps**: cron-driven consolidation minimizing transaction fees while maintaining goal momentum
+
+<br/>
+
+### 〔 22 〕 &nbsp; Multi-Page PDF & OCR Bank Reconciliation (Module 16)
+
+> Instant parsing and reconciliation for major Bangladeshi and international banks.
+
+- **Multi-page parser**: parses statements from City Bank, BRAC Bank, Dutch-Bangla Bank, EBL, bKash, and Nagad
+- **Fuzzy reconciliation & duplicate detector**: cross-matches bank statement rows against logged transactions using Levenshtein distance and timestamp windows
+- **One-click batch commit**: review matched vs unmatched line items and commit approved transactions in a single atomic transaction
+
+<br/>
+
+### 〔 23 〕 &nbsp; Native Bilingual Localization (EN ⇄ বাংলা) (Module 17)
+
+> True bilingual parity across every label, chart, date, and currency representation.
+
+- **100% dictionary coverage**: 647 synchronized keys between English and Bengali verified via automated CI coverage assertions
+- **Locale-aware formatting**: Bengali numerals (০-৯), full Bengali month calendar names, ৳ comma-grouping (৳১,২৩,৪৫৬), and compact suffixes
+- **Tactile language toggle**: 44×44px switch in sidebar, mobile drawer, and modal picker sheet in settings
+
+<br/>
+
+### 〔 24 〕 &nbsp; Google Calendar Sync & Smart Push Alerts (Module 18)
+
+> Never miss a recurring bill or debt payoff milestone.
+
+- **Two-way Google Calendar integration**: auto-creates calendar events for upcoming recurring obligations with server-side OAuth AES-256-GCM encryption
+- **Morning-of (8 AM) smart push alerts**: schedules Web-Push notifications on the morning of due dates with prefilled deep-links
+- **Automatic reconciliation**: updates calendar events to "✅ Paid" when transactions are logged and reschedules when dates change
+
+<br/>
+
+### 〔 25 〕 &nbsp; Agentic AI Coach Action Expansion & Unified Insights Hub (Module 19)
+
+> Chat-driven financial execution with one-tap action cards and proactive anomaly detection.
+
+- **Interactive chat action cards**: AI proposes transaction logging, budget envelope adjustments, or goal contributions directly in the chat with 1-tap "Apply", "Reject", or "Edit"
+- **5-second undo toast**: reversible execution via inverse operational payloads if clicked within the undo window
+- **Unified Proactive Insights Hub**: nightly machine-learning scans surface spending spikes, subscription leaks, and savings opportunities, filtered by user feedback ratings
 
 <br/>
 
