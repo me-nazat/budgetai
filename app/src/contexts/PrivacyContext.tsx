@@ -95,7 +95,17 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
   // Keyboard shortcut: Ctrl/Cmd + Shift + P
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return; // Don't hijack keyboard shortcuts when typing in inputs
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
         e.preventDefault();
         togglePrivacy();
       }

@@ -45,6 +45,7 @@ export default function PrivacySettingsPage() {
 
   const [autoLockTimeout, setAutoLockTimeout] = useState<number>(0);
   const [lockOnBackground, setLockOnBackground] = useState<boolean>(false);
+  const [useBiometrics, setUseBiometrics] = useState<boolean>(true);
   const [shakeToHide, setShakeToHide] = useState<boolean>(true);
   const [maskAccountNumbersState, setMaskAccountNumbersState] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
@@ -56,12 +57,16 @@ export default function PrivacySettingsPage() {
       setLockOnBackground(data.data.lockOnBackground);
       setShakeToHide(data.data.shakeToHideEnabled);
       setMaskAccountNumbersState(data.data.maskAccountNumbers);
+      if ((data.data as any).useBiometrics !== undefined) {
+        setUseBiometrics((data.data as any).useBiometrics);
+      }
     }
   }, [data]);
 
   const handleSave = async (updates?: {
     timeout?: number;
     bg?: boolean;
+    bio?: boolean;
     shake?: boolean;
     maskAcc?: boolean;
   }) => {
@@ -71,6 +76,7 @@ export default function PrivacySettingsPage() {
     const payload = {
       autoLockTimeoutMinutes: updates?.timeout ?? autoLockTimeout,
       lockOnBackground: updates?.bg ?? lockOnBackground,
+      useBiometrics: updates?.bio ?? useBiometrics,
       shakeToHideEnabled: updates?.shake ?? shakeToHide,
       maskAccountNumbers: updates?.maskAcc ?? maskAccountNumbersState,
     };
@@ -202,23 +208,103 @@ export default function PrivacySettingsPage() {
         </div>
       </motion.div>
 
-      {/* Auto-Lock Inactivity Configuration */}
+      {/* Masking Scope Selector (3 Radio Cards) */}
       <motion.div variants={staggerItem} className="glass-panel p-6 rounded-2xl border border-white/10 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <span className="material-symbols-outlined text-xl">timer</span>
+            <span className="material-symbols-outlined text-xl">tune</span>
           </div>
           <div>
             <h3 className="text-base font-bold text-gray-900 dark:text-white">
-              {t('privacyPage.autoLockHeader', 'Inactivity Auto-Lock')}
+              Masking Scope & Granularity
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {t(
-                'privacyPage.autoLockSub',
-                'Automatically shield the screen and require authentication after period of inactivity.'
-              )}
+              Select which financial data fields are shielded when Privacy Mode is active.
             </p>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          {[
+            {
+              id: 'all',
+              title: 'All Financials',
+              desc: 'Masks account balances, net worth, and all transaction line items.',
+              preview: '•••• ••••',
+            },
+            {
+              id: 'balances_only',
+              title: 'Balances Only',
+              desc: 'Shields net worth and account totals; leaves transaction history visible.',
+              preview: 'Bal: •••• | Tx: $45.00',
+            },
+            {
+              id: 'transactions_only',
+              title: 'Transactions Only',
+              desc: 'Shields individual transactions; leaves macro balances visible.',
+              preview: 'Bal: $8,400 | Tx: ••••',
+            },
+          ].map((scope) => {
+            const isSelected = (usePrivacy().maskScope || 'all') === scope.id;
+            return (
+              <button
+                key={scope.id}
+                type="button"
+                onClick={() => usePrivacy().setMaskScope(scope.id as any)}
+                className={`p-4 rounded-xl border text-left flex flex-col justify-between transition-all min-h-[110px] ${
+                  isSelected
+                    ? 'border-primary bg-primary/10 ring-1 ring-primary'
+                    : 'border-gray-200 dark:border-white/10 hover:border-white/20 bg-gray-50 dark:bg-surface-dark'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">{scope.title}</span>
+                    <span className="material-symbols-outlined text-primary text-base">
+                      {isSelected ? 'radio_button_checked' : 'radio_button_unchecked'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{scope.desc}</p>
+                </div>
+                <span className="text-[11px] font-mono text-primary mt-3 block">{scope.preview}</span>
+              </button>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      {/* Auto-Lock Inactivity Configuration */}
+      <motion.div variants={staggerItem} className="glass-panel p-6 rounded-2xl border border-white/10 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined text-xl">timer</span>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                {t('privacyPage.autoLockHeader', 'Inactivity Auto-Lock')}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t(
+                  'privacyPage.autoLockSub',
+                  'Automatically shield the screen and require authentication after period of inactivity.'
+                )}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('wealthai-lock-now'));
+              }
+            }}
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-sm">lock</span>
+            Test Lock Now
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
@@ -285,6 +371,38 @@ export default function PrivacySettingsPage() {
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
                 lockOnBackground ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Use Biometric / Passkey */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <label htmlFor="toggle-biometric" className="text-sm font-semibold text-gray-900 dark:text-white">
+              Use Biometric / Passkey to Unlock
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Permit unlocking via Touch ID, Face ID, or WebAuthn platform passkeys when screen is locked.
+            </p>
+          </div>
+          <button
+            id="toggle-biometric"
+            type="button"
+            role="switch"
+            aria-checked={useBiometrics}
+            onClick={() => {
+              const next = !useBiometrics;
+              setUseBiometrics(next);
+              handleSave({ bio: next });
+            }}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary ${
+              useBiometrics ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                useBiometrics ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>

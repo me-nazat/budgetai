@@ -236,3 +236,76 @@ CREATE TABLE IF NOT EXISTS module_22_missing_receipts_log (
   flagged_at INTEGER DEFAULT (unixepoch()),
   reason TEXT NOT NULL
 );
+
+-- Module 23: Document Chunks & Search Query Log
+CREATE TABLE IF NOT EXISTS module_23_document_chunks (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL REFERENCES document_metadata(id) ON DELETE CASCADE,
+  chunk_index INTEGER NOT NULL,
+  chunk_text TEXT NOT NULL,
+  token_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_m23_chunks_doc ON module_23_document_chunks(document_id);
+
+CREATE TABLE IF NOT EXISTS module_23_search_query_log (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  query_text TEXT NOT NULL,
+  query_embedding TEXT,
+  top_chunk_ids TEXT,
+  result_count INTEGER NOT NULL DEFAULT 0,
+  cache_hit INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_m23_query_user ON module_23_search_query_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_m23_query_text ON module_23_search_query_log(query_text);
+
+-- Module 25: Escrow Sweeps & Stretch Goals
+CREATE TABLE IF NOT EXISTS module_25_round_up_sweeps (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rule_id TEXT,
+  total_amount REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  swept_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_m25_sweeps_user ON module_25_round_up_sweeps(user_id, status);
+
+CREATE TABLE IF NOT EXISTS module_25_stretch_goal_suggestions (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_goal_id INTEGER NOT NULL REFERENCES savings_goals(id) ON DELETE CASCADE,
+  suggested_target REAL NOT NULL,
+  suggested_deadline TEXT NOT NULL,
+  accepted_at INTEGER,
+  dismissed_at INTEGER,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_m25_stretch_goal_user ON module_25_stretch_goal_suggestions(user_id);
+
+-- Module 26: Statement Pages & Commit Log
+CREATE TABLE IF NOT EXISTS module_26_statement_pages (
+  id TEXT PRIMARY KEY,
+  statement_id TEXT NOT NULL REFERENCES imported_statements(id) ON DELETE CASCADE,
+  page_number INTEGER NOT NULL,
+  raw_text TEXT,
+  parsed_json TEXT,
+  parse_status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_m26_statement_pages_stmt ON module_26_statement_pages(statement_id, page_number);
+
+CREATE TABLE IF NOT EXISTS module_26_commit_log (
+  id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  statement_id TEXT NOT NULL REFERENCES imported_statements(id) ON DELETE CASCADE,
+  rows_committed INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER DEFAULT (unixepoch()),
+  finished_at INTEGER,
+  status TEXT NOT NULL DEFAULT 'in_progress'
+);
+CREATE INDEX IF NOT EXISTS idx_m26_commit_log_batch ON module_26_commit_log(batch_id);
+CREATE INDEX IF NOT EXISTS idx_m26_commit_log_user ON module_26_commit_log(user_id);
+

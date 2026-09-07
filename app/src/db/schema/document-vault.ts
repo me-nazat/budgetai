@@ -19,6 +19,8 @@ export const documentMetadata = sqliteTable(
     taxAmount: real('tax_amount'),
     ocrRawText: text('ocr_raw_text'),
     extractionStatus: text('extraction_status').notNull().default('PROCESSING'), // 'PENDING', 'COMPLETED', 'FAILED'
+    embeddingStatus: text('embedding_status', { enum: ['PENDING', 'EMBEDDING', 'READY', 'FAILED'] }).notNull().default('PENDING'),
+    embeddingCompletedAt: integer('embedding_completed_at'),
     createdAt: integer('created_at').default(sql`(unixepoch())`),
   },
   (table) => [

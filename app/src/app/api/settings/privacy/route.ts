@@ -20,6 +20,7 @@ import { queryOne, run } from '@/lib/db';
 const updatePrivacySettingsSchema = z.object({
   autoLockTimeoutMinutes: z.number().int().min(0).max(120).optional(),
   lockOnBackground: z.boolean().optional(),
+  useBiometrics: z.boolean().optional(),
   shakeToHideEnabled: z.boolean().optional(),
   maskAccountNumbers: z.boolean().optional(),
 });
@@ -56,6 +57,7 @@ export const GET = apiHandler(
     return apiSuccess({
       autoLockTimeoutMinutes: settings.auto_lock_timeout_minutes,
       lockOnBackground: settings.auto_lock_timeout_minutes > 0,
+      useBiometrics: true,
       shakeToHideEnabled: Boolean(settings.shake_to_hide_enabled),
       maskAccountNumbers: Boolean(settings.mask_account_numbers),
     });
@@ -107,6 +109,7 @@ export const PUT = apiHandler(
     return apiSuccess({
       autoLockTimeoutMinutes: autoLock,
       lockOnBackground: autoLock > 0 || (validated.lockOnBackground ?? false),
+      useBiometrics: validated.useBiometrics ?? true,
       shakeToHideEnabled: Boolean(shake),
       maskAccountNumbers: Boolean(maskAcc),
     });

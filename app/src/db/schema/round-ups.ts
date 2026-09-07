@@ -33,6 +33,7 @@ export const roundUpTransfers = sqliteTable(
     rawDelta: real('raw_delta').notNull(),
     multipliedAmount: real('multiplied_amount').notNull(),
     status: text('status').notNull().default('PENDING'), // 'PENDING', 'SWEPT', 'CANCELLED'
+    sweepWindowId: text('sweep_window_id'),
     sweptAt: integer('swept_at'),
     createdAt: integer('created_at').default(sql`(unixepoch())`),
   },

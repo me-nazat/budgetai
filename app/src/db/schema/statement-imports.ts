@@ -18,6 +18,9 @@ export const importedStatements = sqliteTable('imported_statements', {
   openingBalance: real('opening_balance'),
   closingBalance: real('closing_balance'),
   totalTransactionsCount: integer('total_transactions_count').notNull().default(0),
+  pageCount: integer('page_count').notNull().default(1),
+  multiPageStrategy: text('multi_page_strategy').notNull().default('single-page'),
+  commitBatchId: text('commit_batch_id'),
   reconciliationStatus: text('reconciliation_status').notNull().default('UNRECONCILED'), // 'UNRECONCILED', 'BALANCED', 'COMMITTED'
   createdAt: integer('created_at').default(sql`(unixepoch())`),
 });
@@ -33,9 +36,13 @@ export const reconciliationQueue = sqliteTable(
     description: text('description').notNull(),
     amount: real('amount').notNull(),
     categorySuggestion: text('category_suggestion'),
+    matchConfidence: real('match_confidence').notNull().default(0.5),
     isDuplicate: integer('is_duplicate').notNull().default(0),
     matchedExistingTransactionId: integer('matched_existing_transaction_id')
       .references(() => transactions.id, { onDelete: 'set null' }),
+    resolution: text('resolution', { enum: ['pending', 'kept_both', 'merged', 'discarded'] })
+      .notNull()
+      .default('pending'),
     reviewStatus: text('review_status').notNull().default('PENDING'), // 'PENDING', 'APPROVED', 'REJECTED'
     createdAt: integer('created_at').default(sql`(unixepoch())`),
   },

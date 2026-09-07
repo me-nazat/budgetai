@@ -21,6 +21,7 @@ interface PrivacySettings {
   lockOnBackground: boolean;
   shakeToHideEnabled: boolean;
   maskAccountNumbers: boolean;
+  useBiometrics?: boolean;
 }
 
 export default function LockScreenBridge() {
@@ -39,6 +40,7 @@ export default function LockScreenBridge() {
     <LockScreen
       timeoutMinutes={settings?.autoLockTimeoutMinutes ?? 0}
       lockOnBackground={settings?.lockOnBackground ?? false}
+      biometricEnabled={settings?.useBiometrics ?? true}
     />
   );
 }

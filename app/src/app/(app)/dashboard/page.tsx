@@ -28,6 +28,7 @@ import { TiltCard } from '@/components/ui/TiltCard';
 import { DashboardStatCards } from '@/components/dashboard/DashboardStatCards';
 import { DashboardLayoutModal } from '@/components/dashboard/DashboardLayoutModal';
 import { DashboardIntelHub } from '@/components/dashboard/DashboardIntelHub';
+import { PendingRoundUpsStrip } from '@/components/dashboard/PendingRoundUpsStrip';
 import FinancialMandala from '@/components/generative/FinancialMandala';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
@@ -883,6 +884,8 @@ export default function DashboardPage() {
                     </div>
                 </header>
 
+                {/* Pending Micro-Savings Round-Ups Strip (Module 15) */}
+                <PendingRoundUpsStrip currencySymbol={sym} />
 
                 <DashboardStatCards data={data} fmt={fmt} />
 

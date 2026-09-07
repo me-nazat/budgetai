@@ -27,6 +27,7 @@ export const accounts = sqliteTable(
     currentBalance: real('current_balance').notNull().default(0),
     colorTag: text('color_tag').notNull().default('#136dec'),
     isArchived: integer('is_archived').notNull().default(0),
+    displayMasked: integer('display_masked').notNull().default(1),
     createdAt: text('created_at').default(sql`(datetime('now'))`),
   },
   (table) => [

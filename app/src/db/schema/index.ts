@@ -284,6 +284,9 @@ export const savingsGoals = sqliteTable(
     /** Last milestone hit percentage (0, 25, 50, 75, 100) for Module 15. */
     lastMilestoneHit: integer('last_milestone_hit').default(0),
 
+    /** Consecutive months contributed after 100% completion. */
+    streakAfterCompletion: integer('streak_after_completion').notNull().default(0),
+
     createdAt: text('created_at').default(sql`(datetime('now'))`),
   },
   (table) => [
@@ -1221,12 +1224,15 @@ export * from './calendar-sync';
 export * from './agentic-ai';
 
 /* ═══════════════════════════════════════════════════════════════
-   MODULES 20-22 EXTENDED SCHEMAS (Modules 10, 11, 12 Extensions)
+   MODULES 20-26 EXTENDED SCHEMAS (Section 3 Modules 10-16)
    ═══════════════════════════════════════════════════════════════ */
 
 export * from './household-modules20';
 export * from './benchmarks-modules21';
 export * from './tax-modules22';
+export * from './documents-modules23';
+export * from './roundups-modules25';
+export * from './statement-modules26';
 
 
 
