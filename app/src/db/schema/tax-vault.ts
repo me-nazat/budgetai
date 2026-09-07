@@ -27,6 +27,8 @@ export const taxDeductions = sqliteTable(
       .references(() => taxCategories.id),
     eligibleAmount: real('eligible_amount').notNull(),
     deductibleAmount: real('deductible_amount').notNull(),
+    jurisdiction: text('jurisdiction').notNull().default('US_IRS'),
+    receiptDocumentId: integer('receipt_document_id'),
     status: text('status').notNull().default('VERIFIED'), // 'POTENTIAL', 'VERIFIED', 'REJECTED'
     notes: text('notes'),
     createdAt: integer('created_at').default(sql`(unixepoch())`),

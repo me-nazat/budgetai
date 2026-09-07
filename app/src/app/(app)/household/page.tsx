@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import useSWR, { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
@@ -179,6 +180,17 @@ export default function HouseholdPage() {
 
               {/* ── Members Strip ── */}
               <MembersStrip household={hh} />
+
+              {/* ── Link to Advanced Workspace ── */}
+              <div className="flex justify-end mt-4 mb-2">
+                <Link
+                  href={`/household/${hh.id}`}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all min-h-[44px]"
+                >
+                  <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                  Open Advanced Budget & Settlements Workspace
+                </Link>
+              </div>
 
               {/* ── Tabs Segmented Control ── */}
               <div className="flex gap-1 mt-6 mb-6 bg-gray-100 dark:bg-surface-dark rounded-xl p-1 border border-gray-200/50 dark:border-white/5">

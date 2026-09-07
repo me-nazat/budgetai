@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/client';
-import { householdSplitRules, householdExpenses } from '@/db/schema';
+import { householdSplitRules, householdExpenses, householdMembers, module20UpcomingSettlements } from '@/db/schema';
+import { PushService } from '@/services/push.service';
 import { eq, and, lte, sql } from 'drizzle-orm';
 
 /**
@@ -88,6 +89,58 @@ export async function GET(request: NextRequest) {
           .update(householdSplitRules)
           .set({ nextRunDate: nextDate })
           .where(eq(householdSplitRules.id, rule.id));
+
+        // Create upcoming_settlement rows for members
+        try {
+          const members = await db
+            .select({ userId: householdMembers.userId })
+            .from(householdMembers)
+            .where(eq(householdMembers.householdId, rule.householdId));
+
+          let parsedShares: Record<string, number> = {};
+          if (rule.splitShares) {
+            try {
+              parsedShares = JSON.parse(rule.splitShares);
+            } catch {
+              parsedShares = {};
+            }
+          }
+
+          const otherMembers = members.filter((m) => m.userId !== rule.createdByUserId);
+          for (const m of otherMembers) {
+            let shareAmount = 0;
+            if (rule.splitType === 'equal') {
+              shareAmount = members.length > 0 ? Math.round((rule.amount / members.length) * 100) / 100 : 0;
+            } else if (rule.splitType === 'percentage') {
+              const pct = parsedShares[String(m.userId)] || 0;
+              shareAmount = Math.round(((rule.amount * pct) / 100) * 100) / 100;
+            } else if (rule.splitType === 'fixed') {
+              shareAmount = parsedShares[String(m.userId)] || 0;
+            }
+
+            if (shareAmount > 0) {
+              const settlementId = `settle_cron_${rule.id}_${m.userId}_${Date.now()}`;
+              await db.insert(module20UpcomingSettlements).values({
+                id: settlementId,
+                householdId: rule.householdId,
+                fromUserId: m.userId,
+                toUserId: rule.createdByUserId,
+                amount: shareAmount,
+                dueDate: nextDate,
+                status: 'pending',
+              });
+
+              // Send push notification
+              await PushService.sendToUser(m.userId, {
+                title: `Auto-Split Bill: ${rule.name}`,
+                body: `Your share of ${rule.name} is $${shareAmount.toFixed(2)}.`,
+                url: `/household/${rule.householdId}`,
+              }).catch(() => {});
+            }
+          }
+        } catch (subError) {
+          console.warn(`[cron/household-splits] Could not generate upcoming settlements for rule ${rule.id}:`, subError);
+        }
 
         results.processed++;
       } catch (ruleError) {

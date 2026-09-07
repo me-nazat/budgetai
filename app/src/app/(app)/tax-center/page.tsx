@@ -5,6 +5,8 @@ import useSWR, { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { useCurrency } from '@/hooks/useCurrency';
+import { AnnualReportGeneratorModal } from '@/components/tax/AnnualReportGeneratorModal';
+import { InlineTaxTagPill } from '@/components/tax/InlineTaxTagPill';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
@@ -113,6 +115,25 @@ export default function TaxCenterPage() {
     setTaggingId(null);
   };
 
+  const handleBulkTag = async () => {
+    try {
+      const res = await fetch('/api/tax/bulk-tag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apply: true }),
+      });
+      const resData = await res.json();
+      if (resData.appliedCount > 0) {
+        toast.success(`Tagged ${resData.appliedCount} qualifying write-offs based on learned patterns (AWS, Software, Travel)`);
+        await mutate((key: string) => typeof key === 'string' && key.startsWith('/api/transactions'), undefined, { revalidate: true });
+      } else {
+        toast.info('All eligible transactions are already tagged');
+      }
+    } catch {
+      toast.error('Bulk tagging failed');
+    }
+  };
+
   if (isLoading) return <TaxSkeleton />;
 
   return (
@@ -130,13 +151,22 @@ export default function TaxCenterPage() {
             Tag deductible expenses and export for filing · {now.getFullYear()} Fiscal Year
           </p>
         </div>
-        <button
-          onClick={() => setShowExportModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary-hover transition-all flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined text-[18px]">download</span>
-          Export
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleBulkTag}
+            className="px-4 py-2.5 rounded-xl bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-sm font-bold hover:bg-accent-amber/20 transition-all flex items-center gap-2 min-h-[44px]"
+          >
+            <span className="material-symbols-outlined text-[18px]">auto_fix_high</span>
+            Bulk-Tag Patterns
+          </button>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary-hover transition-all flex items-center gap-2 min-h-[44px]"
+          >
+            <span className="material-symbols-outlined text-[18px]">file_download</span>
+            Generate Annual Report & Share
+          </button>
+        </div>
       </div>
 
       {/* ── Summary Cards ── */}
@@ -263,11 +293,18 @@ export default function TaxCenterPage() {
                 </p>
               </div>
 
-              {/* Amount */}
-              <div className="text-right shrink-0">
+              {/* Amount & Inline Tag Pill */}
+              <div className="flex items-center gap-3 shrink-0">
                 <p className={`text-sm font-black ${tx.type === 'earning' ? 'text-accent-emerald' : 'text-gray-900 dark:text-white'}`}>
                   {tx.type === 'earning' ? '+' : '-'}{fmtRaw(tx.amount)}
                 </p>
+                <InlineTaxTagPill
+                  transactionId={tx.id}
+                  amount={tx.amount}
+                  category={tx.category}
+                  isTagged={tx.taxRelevant === 1}
+                  onTagged={() => mutate((key: string) => typeof key === 'string' && key.startsWith('/api/transactions'), undefined, { revalidate: true })}
+                />
               </div>
 
               {/* Inline tax category picker */}
@@ -308,8 +345,12 @@ export default function TaxCenterPage() {
         </div>
       </div>
 
-      {/* ── Export Modal ── */}
-      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} summary={summary} year={now.getFullYear()} />
+      {/* ── Annual Report & Share Modal ── */}
+      <AnnualReportGeneratorModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        defaultYear={now.getFullYear()}
+      />
     </div>
   );
 }

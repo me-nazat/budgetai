@@ -666,6 +666,11 @@ export const households = sqliteTable('households', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
 
+  /** Default split mode for new recurring bills or ad-hoc splits. */
+  defaultSplitMode: text('default_split_mode', { enum: ['equal', 'pro_rata', 'custom'] })
+    .notNull()
+    .default('equal'),
+
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -758,6 +763,7 @@ export const householdSettlements = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     amount: real('amount').notNull(),
+    sourceRuleId: integer('source_rule_id').references(() => householdSplitRules.id, { onDelete: 'set null' }),
     status: text('status', { enum: ['pending', 'settled'] }).notNull().default('pending'),
     settledAt: text('settled_at'),
     createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
@@ -780,6 +786,9 @@ export const householdCategoryCaps = sqliteTable(
       .references(() => households.id, { onDelete: 'cascade' }),
     category: text('category').notNull(),
     capAmount: real('cap_amount').notNull(),
+    rolloverPolicy: text('rollover_policy', { enum: ['none', 'next_month', 'pool'] })
+      .notNull()
+      .default('none'),
     allocatedByUserId: integer('allocated_by_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
@@ -876,6 +885,7 @@ export const categoryPercentileSnapshots = sqliteTable(
     p50Spent: real('p50_spent').notNull(),
     p90Spent: real('p90_spent').notNull(),
     percentileRank: real('percentile_rank').notNull(), // 0 to 100
+    cohortSize: integer('cohort_size').default(0),
     createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
   },
   (table) => [
@@ -1131,9 +1141,14 @@ export const userDemographics = sqliteTable('user_demographics', {
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
   ageBracket: text('age_bracket').notNull(),
-  householdSizeBracket: text('household_size_bracket').notNull(),
-  regionBracket: text('region_bracket').notNull(),
+  householdSizeBracket: text('household_size_bracket'),
+  regionBracket: text('region_bracket'),
+  regionCode: text('region_code').notNull().default('GLOBAL'),
+  incomeBracket: text('income_bracket').notNull().default('60k-100k'),
+  employmentSector: text('employment_sector'),
+  isOptedIn: integer('is_opted_in').notNull().default(1),
   optedInAt: text('opted_in_at').notNull().default(sql`(datetime('now'))`),
+  updatedAt: integer('updated_at').default(sql`(unixepoch())`),
 });
 
 export type UserDemographic = typeof userDemographics.$inferSelect;
@@ -1204,6 +1219,14 @@ export * from './round-ups';
 export * from './statement-imports';
 export * from './calendar-sync';
 export * from './agentic-ai';
+
+/* ═══════════════════════════════════════════════════════════════
+   MODULES 20-22 EXTENDED SCHEMAS (Modules 10, 11, 12 Extensions)
+   ═══════════════════════════════════════════════════════════════ */
+
+export * from './household-modules20';
+export * from './benchmarks-modules21';
+export * from './tax-modules22';
 
 
 

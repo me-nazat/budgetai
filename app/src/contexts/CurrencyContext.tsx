@@ -5,6 +5,7 @@ import { CurrencyCode, CURRENCIES, formatCurrency, convertAmount, FALLBACK_RATES
 
 interface CurrencyContextType {
     currency: CurrencyCode;
+    symbol: string;
     rates: Record<string, number>;
     setCurrency: (currency: CurrencyCode) => void;
     fmt: (amountInBase: number) => string;
@@ -64,8 +65,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         return convertAmount(amount, from, to, rates);
     };
 
+    const symbol = CURRENCIES[currency]?.symbol || '$';
+
     return (
-        <CurrencyContext.Provider value={{ currency, rates, setCurrency, fmt, fmtRaw, convert }}>
+        <CurrencyContext.Provider value={{ currency, symbol, rates, setCurrency, fmt, fmtRaw, convert }}>
             {children}
         </CurrencyContext.Provider>
     );

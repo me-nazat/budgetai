@@ -33,8 +33,8 @@ export class BenchmarkRepository {
       return {
         optedIn: true,
         ageTier: demo.ageBracket,
-        region: demo.regionBracket,
-        householdSize: demo.householdSizeBracket,
+        region: demo.regionBracket || demo.regionCode || 'GLOBAL',
+        householdSize: demo.householdSizeBracket || undefined,
       };
     }
 

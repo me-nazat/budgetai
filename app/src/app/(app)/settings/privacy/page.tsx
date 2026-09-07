@@ -382,6 +382,50 @@ export default function PrivacySettingsPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Anonymous Peer Benchmarking Consent Management (Feature 11.1) */}
+      <motion.div variants={staggerItem} className="glass-panel p-6 rounded-2xl border border-white/10 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-white/10">
+          <div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-lg">leaderboard</span>
+              Anonymous Peer Benchmarking Consent
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Strict k-anonymity (N ≥ 30) data sharing for demographic cohorts
+            </p>
+          </div>
+          <Link
+            href="/benchmarks"
+            className="px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-colors"
+          >
+            Re-take Wizard
+          </Link>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-white/5">
+          <div>
+            <span className="text-xs font-semibold text-gray-900 dark:text-white block">
+              Withdraw All Benchmark Data
+            </span>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Immediately revokes all metric consents and removes your profile from cohort calculations.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (confirm('Withdraw completely from anonymous peer benchmarks?')) {
+                await fetch('/api/benchmarking/consent', { method: 'DELETE' });
+                alert('Successfully withdrawn from peer benchmarking');
+              }
+            }}
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all"
+          >
+            Withdraw from Benchmarks
+          </button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

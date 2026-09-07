@@ -3,16 +3,17 @@ import { sql } from 'drizzle-orm';
 import { users } from './users';
 
 export const userDemographics = sqliteTable('user_demographics', {
-  id: text('id').primaryKey(),
   userId: integer('user_id')
-    .notNull()
-    .unique()
+    .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
-  ageBracket: text('age_bracket').notNull(), // '18-24', '25-34', '35-44', '45-54', '55-64', '65+'
+  ageBracket: text('age_bracket').notNull(),
+  householdSizeBracket: text('household_size_bracket'),
+  regionBracket: text('region_bracket'),
   regionCode: text('region_code').notNull().default('GLOBAL'),
-  incomeBracket: text('income_bracket').notNull(), // '0-30k', '30k-60k', '60k-100k', '100k-150k', '150k+'
+  incomeBracket: text('income_bracket').notNull().default('60k-100k'),
   employmentSector: text('employment_sector'),
   isOptedIn: integer('is_opted_in').notNull().default(1),
+  optedInAt: text('opted_in_at').notNull().default(sql`(datetime('now'))`),
   updatedAt: integer('updated_at').default(sql`(unixepoch())`),
 });
 
