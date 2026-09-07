@@ -52,6 +52,12 @@ export const users = sqliteTable('users', {
    */
   currency: text('currency').default('BDT'),
 
+  /**
+   * User preferred UI locale language ('en' | 'bn').
+   * @default 'en'
+   */
+  preferredLocale: text('preferred_locale').default('en'),
+
   /** Whether budget-related notifications are enabled. 1 = enabled, 0 = disabled. */
   notifyBudget: integer('notify_budget').default(1),
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { CURRENCIES, CurrencyCode } from '@/lib/currency';
 import type { Variants } from 'framer-motion';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -813,8 +814,30 @@ export default function SettingsPage() {
                         {/* Security Card */}
                         <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-8 space-y-8">
                             <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">security</span>Security Settings
+                                <span className="material-symbols-outlined text-primary">security</span>Security & Privacy Settings
                             </h2>
+
+                            {/* Privacy & Data Protection Center (Module 14) */}
+                            <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-primary">shield</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Privacy & Data Protection Center</h3>
+                                        <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
+                                            Configure auto-lock timers, mobile shake-to-hide, account masking, and balance shielding.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link
+                                    href="/settings/privacy"
+                                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primary-hover transition-colors inline-flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
+                                >
+                                    <span>Manage Privacy</span>
+                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                </Link>
+                            </div>
 
                             {/* 2FA Section */}
                             <div className="p-6 rounded-2xl bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-100 dark:border-white/5 transition-colors">

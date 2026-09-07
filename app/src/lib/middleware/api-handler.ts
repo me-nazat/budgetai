@@ -35,6 +35,7 @@ import {
   getClientIP,
   type RateLimitProfile,
 } from '@/lib/security/rate-limiter';
+import { maskAccountNumber } from '@/lib/security/privacy';
 
 /**
  * Configuration options for the API handler wrapper.
@@ -127,7 +128,15 @@ export function apiHandler<TContext extends NextRouteContext = NextRouteContext>
       // ── Server-Side Privacy Mode Redaction (Module 14) ──
       const privacyHeader = request.headers.get('X-Privacy-Mode') || request.headers.get('x-privacy-mode');
       if (privacyHeader === '1' || privacyHeader === 'true') {
-        const sensitivePaths = ['/api/dashboard', '/api/networth', '/api/accounts', '/api/households/expenses'];
+        const sensitivePaths = [
+          '/api/dashboard',
+          '/api/networth',
+          '/api/accounts',
+          '/api/households/expenses',
+          '/api/budgets',
+          '/api/transactions',
+          '/api/forecast',
+        ];
         if (sensitivePaths.some((p) => path.startsWith(p))) {
           try {
             const clone = response.clone();
@@ -137,8 +146,10 @@ export function apiHandler<TContext extends NextRouteContext = NextRouteContext>
               if (Array.isArray(obj)) return obj.map(redact);
               const copy = { ...obj };
               for (const key of Object.keys(copy)) {
-                if (['amount', 'balance', 'currentBalance', 'totalNetWorth', 'netWorth', 'savedAmount'].includes(key) && typeof copy[key] === 'number') {
+                if (['amount', 'balance', 'currentBalance', 'totalNetWorth', 'netWorth', 'savedAmount', 'targetAmount', 'spent', 'limit'].includes(key) && typeof copy[key] === 'number') {
                   copy[key] = 0;
+                } else if (['accountNumber', 'account_number', 'cardNumber', 'card_number', 'iban'].includes(key) && typeof copy[key] === 'string') {
+                  copy[key] = maskAccountNumber(copy[key]);
                 } else if (typeof copy[key] === 'object') {
                   copy[key] = redact(copy[key]);
                 }
