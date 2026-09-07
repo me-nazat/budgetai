@@ -7,20 +7,22 @@ import { motion } from 'framer-motion';
 import QuickAddModal from './QuickAddModal';
 import MobileMenu from './MobileMenu';
 import useSWR from 'swr';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { NAVIGATION_REGISTRY } from '@/lib/navigation/registry';
 
 const registryMobileTabs = NAVIGATION_REGISTRY.filter(item => item.mobileTab);
 
 const mobileNavItems = [
-    { href: registryMobileTabs[0]?.href || '/dashboard', icon: 'home', label: 'Home' },
-    { href: registryMobileTabs[1]?.href || '/overview', icon: 'analytics', label: 'Overview' },
-    { href: '__quick_add__', icon: 'add', label: 'Add' },
-    { href: registryMobileTabs[2]?.href || '/chat', icon: 'smart_toy', label: 'AI Chat' },
-    { href: '__menu__', icon: 'menu', label: 'Menu' },
+    { href: registryMobileTabs[0]?.href || '/dashboard', icon: 'home', labelKey: 'dashboard', label: 'Home' },
+    { href: registryMobileTabs[1]?.href || '/overview', icon: 'analytics', labelKey: 'overview', label: 'Overview' },
+    { href: '__quick_add__', icon: 'add', labelKey: 'add', label: 'Add' },
+    { href: registryMobileTabs[2]?.href || '/chat', icon: 'smart_toy', labelKey: 'chat', label: 'AI Chat' },
+    { href: '__menu__', icon: 'menu', labelKey: 'menu', label: 'Menu' },
 ];
 
 export default function MobileTabBar() {
     const pathname = usePathname();
+    const { t } = useLanguage();
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const { data: notificationsData } = useSWR('/api/notifications');
@@ -30,8 +32,8 @@ export default function MobileTabBar() {
 
     const navItems = user?.isGuest
         ? [
-            { href: '/tours', icon: 'flight_takeoff', label: 'Tours' },
-            { href: '__menu__', icon: 'menu', label: 'Menu' },
+            { href: '/tours', icon: 'flight_takeoff', labelKey: 'tourManager', label: 'Tours' },
+            { href: '__menu__', icon: 'menu', labelKey: 'menu', label: 'Menu' },
           ]
         : mobileNavItems;
 
@@ -84,7 +86,7 @@ export default function MobileTabBar() {
                                         )}
                                     </div>
                                     <span className="text-[10px] font-semibold tracking-wide transition-all duration-300">
-                                        {item.label}
+                                        {t(item.labelKey || item.label.toLowerCase(), item.label)}
                                     </span>
                                 </button>
                             );
@@ -114,7 +116,7 @@ export default function MobileTabBar() {
                                     {item.icon}
                                 </span>
                                 <span className={`relative z-10 text-[10px] font-semibold tracking-wide transition-all duration-300 ${isActive ? 'text-primary dark:text-primary' : ''}`}>
-                                    {item.label}
+                                    {t(item.labelKey || item.label.toLowerCase(), item.label)}
                                 </span>
                             </Link>
                         );

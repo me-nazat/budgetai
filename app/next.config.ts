@@ -50,6 +50,11 @@ const nextConfig: NextConfig = {
     typescript: {
         ignoreBuildErrors: true,
     },
+    async redirects() {
+        return [
+            { source: '/coach', destination: '/chat', permanent: true },
+        ];
+    },
     async headers() {
         return [
             {

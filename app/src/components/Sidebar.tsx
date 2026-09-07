@@ -7,11 +7,14 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
 import PrivacyToggle from '@/components/PrivacyToggle';
-import { NAVIGATION_REGISTRY, NAV_GROUPS } from '@/lib/navigation/registry';
+import LanguageToggle from '@/components/LanguageToggle';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { NAVIGATION_REGISTRY, NAV_GROUPS, NAV_TRANSLATION_MAP } from '@/lib/navigation/registry';
 
 const navGroups = NAV_GROUPS.map(group => ({
     label: group.label,
     items: NAVIGATION_REGISTRY.filter(item => item.category === group.category).map(item => ({
+        id: item.id,
         href: item.href,
         icon: item.icon,
         label: item.label,
@@ -23,6 +26,7 @@ const navGroups = NAV_GROUPS.map(group => ({
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
+    const { t } = useLanguage();
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
     const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
@@ -137,7 +141,7 @@ export default function Sidebar() {
                                                     {item.icon}
                                                 </span>
                                                 <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
-                                                    {item.label}
+                                                    {t(NAV_TRANSLATION_MAP[item.id] || item.id, item.label)}
                                                 </span>
                                             </div>
 
@@ -156,19 +160,20 @@ export default function Sidebar() {
                 
                 {/* Bottom section (Settings & Profile) */}
                 <div className="p-4 shrink-0 mt-auto">
-                    {/* Settings + Theme Toggle */}
-                    <div className="flex items-center gap-2 mb-3">
+                    {/* Settings + Privacy + Language + Theme Toggle */}
+                    <div className="flex items-center gap-1.5 mb-3">
                         <Link
                             href="/settings"
-                            className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
+                            className="flex-1 min-w-0 flex items-center gap-2 px-2.5 py-2 rounded-xl text-gray-600 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
                         >
-                            <span className="material-symbols-outlined group-hover:rotate-45 transition-transform duration-300">settings</span>
-                            <span className="text-sm font-medium">Settings</span>
+                            <span className="material-symbols-outlined group-hover:rotate-45 transition-transform duration-300 text-[20px] shrink-0">settings</span>
+                            <span className="text-sm font-medium truncate">{t('settings', 'Settings')}</span>
                         </Link>
                         <PrivacyToggle />
+                        <LanguageToggle />
                         <button
                             onClick={toggleTheme}
-                            className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
+                            className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
                             <span className="material-symbols-outlined text-lg text-gray-500 dark:text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-all duration-300 group-hover:rotate-45" style={{ fontVariationSettings: "'FILL' 1" }}>

@@ -43,6 +43,7 @@ export const NAVIGATION_REGISTRY: NavItem[] = [
   { id: 'forecast', href: '/forecast', label: 'Cash Flow Forecast', icon: 'timeline', category: 'tools' },
   { id: 'investments', href: '/investments', label: 'Investments', icon: 'trending_up', category: 'tools' },
   { id: 'achievements', href: '/achievements', label: 'Achievements', icon: 'emoji_events', category: 'tools' },
+  { id: 'networth', href: '/networth', label: 'Net Worth', icon: 'account_balance', category: 'tools' },
   { id: 'fire', href: '/fire', label: 'FIRE Simulator', icon: 'rocket_launch', category: 'tools' },
 
   // Smart Tools Group
@@ -54,6 +55,7 @@ export const NAVIGATION_REGISTRY: NavItem[] = [
   { id: 'recurring-subscriptions', href: '/recurring-subscriptions', label: 'Recurring & Subs', icon: 'repeat', category: 'system' },
   { id: 'automation-rules', href: '/automation-rules', label: 'Automation Rules', icon: 'auto_awesome', category: 'system' },
   { id: 'notifications', href: '/notifications', label: 'Alerts', icon: 'notifications', category: 'system' },
+  { id: 'settings', href: '/settings', label: 'Settings', icon: 'settings', category: 'system' },
 ];
 
 export const NAV_GROUPS: { label: string | null; category: NavItem['category'] }[] = [
@@ -63,3 +65,34 @@ export const NAV_GROUPS: { label: string | null; category: NavItem['category'] }
   { label: 'Smart Tools', category: 'smart' },
   { label: 'System', category: 'system' },
 ];
+
+export const NAV_TRANSLATION_MAP: Record<string, string> = {
+  'dashboard': 'dashboard',
+  'chat': 'chat',
+  'transactions': 'transactions',
+  'budget': 'budgets',
+  'my-month': 'myMonth',
+  'reports': 'reports',
+  'overview': 'overview',
+  'generative-art': 'generativeArt',
+  'benchmarks': 'benchmarks',
+  'insights': 'insights',
+  'accounts': 'accounts',
+  'household': 'household',
+  'bill-split': 'billSplit',
+  'tours': 'tourManager',
+  'wealth-goals': 'wealthGoals',
+  'debts': 'debts',
+  'forecast': 'forecast',
+  'investments': 'investments',
+  'achievements': 'achievements',
+  'networth': 'networth',
+  'fire': 'fireSimulator',
+  'tax-center': 'taxCenter',
+  'documents': 'documents',
+  'bank-import': 'bankImport',
+  'recurring-subscriptions': 'recurring',
+  'automation-rules': 'automationRules',
+  'notifications': 'alerts',
+  'settings': 'settings',
+};

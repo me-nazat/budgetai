@@ -7,7 +7,7 @@ import CommandPalette from '@/components/CommandPalette';
 import PageTransition from '@/components/PageTransition';
 import GuestGuard from '@/components/GuestGuard';
 import InstallPrompt from '@/components/InstallPrompt';
-import LockScreen from '@/components/LockScreen';
+import LockScreenBridge from '@/components/LockScreenBridge';
 
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { PrivacyProvider } from '@/contexts/PrivacyContext';
@@ -33,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         </main>
                         <MobileTabBar />
                         <InstallPrompt />
-                        <LockScreen timeoutMinutes={0} lockOnBackground={false} />
+                        <LockScreenBridge />
                     </div>
                 </LanguageProvider>
             </PrivacyProvider>

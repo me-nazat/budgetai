@@ -1,13 +1,25 @@
 'use client';
 
+/**
+ * @fileoverview Mobile drawer navigation menu.
+ *
+ * Full-screen drawer sheet providing touch-friendly grid navigation,
+ * active route indicator, user profile summary, and bilingual LanguageToggle.
+ *
+ * @module components/MobileMenu
+ */
+
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import useSWR from 'swr';
-import { NAVIGATION_REGISTRY } from '@/lib/navigation/registry';
+import LanguageToggle from '@/components/LanguageToggle';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { NAVIGATION_REGISTRY, NAV_TRANSLATION_MAP } from '@/lib/navigation/registry';
 
 const menuItems = NAVIGATION_REGISTRY.map(item => ({
+    id: item.id,
     href: item.href,
     icon: item.icon,
     label: item.label,
@@ -17,6 +29,7 @@ const menuItems = NAVIGATION_REGISTRY.map(item => ({
 
 export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const pathname = usePathname();
+    const { t } = useLanguage();
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
     const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
@@ -44,10 +57,9 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                 transition-transform duration-[400ms] transform dark:border-white/10 dark:bg-[#0A0E1A]/94 dark:shadow-black/55
                 ${isOpen ? 'translate-y-0' : 'translate-y-full'}
                 flex flex-col max-h-[85vh]
-                flex flex-col max-h-[85vh]
             `} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
                 {/* Drag Handle */}
-                <div className="w-full flex justify-center py-3 shrink-0" onClick={onClose}>
+                <div className="w-full flex justify-center py-3 shrink-0 cursor-pointer" onClick={onClose}>
                     <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />
                 </div>
 
@@ -62,13 +74,16 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                                 <h2 className="truncate text-gray-900 dark:text-white text-lg font-bold leading-none">{user?.name || 'Wealth AI'}</h2>
                                 <p className="truncate text-gray-500 dark:text-text-secondary text-xs mt-1">{user?.email || 'Smart Finance'}</p>
                             </div>
-                            <button
-                                onClick={onClose}
-                                aria-label="Close menu"
-                                className="grid h-9 w-9 place-items-center rounded-full bg-gray-100 text-gray-500 active:scale-95 dark:bg-white/10 dark:text-gray-300"
-                            >
-                                <span className="material-symbols-outlined text-[19px]">close</span>
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <LanguageToggle />
+                                <button
+                                    onClick={onClose}
+                                    aria-label="Close menu"
+                                    className="grid h-10 w-10 place-items-center rounded-xl bg-gray-100 text-gray-500 active:scale-95 dark:bg-white/10 dark:text-gray-300 transition-colors hover:text-gray-700 dark:hover:text-white"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">close</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -95,7 +110,7 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                                     </span>
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                         <span className="min-w-0 truncate text-sm font-semibold">
-                                            {item.label}
+                                            {t(NAV_TRANSLATION_MAP[item.id] || item.id, item.label)}
                                         </span>
                                         {item.href === '/notifications' && unreadCount > 0 && (
                                             <div className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse-slow shrink-0">
@@ -119,7 +134,7 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
                     >
                         <span className="material-symbols-outlined text-[22px]">settings</span>
                         <div className="flex-1">
-                            <span className="text-sm font-medium">Settings & Preferences</span>
+                            <span className="text-sm font-medium">{t('settings', 'Settings & Preferences')}</span>
                         </div>
                         <span className="material-symbols-outlined text-[18px] text-gray-400">chevron_right</span>
                     </Link>

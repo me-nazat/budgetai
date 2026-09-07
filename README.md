@@ -17,7 +17,9 @@
 &nbsp;
 [![License](https://img.shields.io/badge/License-MIT-6366F1?style=for-the-badge&labelColor=0A0A0A)](LICENSE)
 &nbsp;
-[![Next.js](https://img.shields.io/badge/Next.js-14-ffffff?style=for-the-badge&logo=nextdotjs&logoColor=white&labelColor=0A0A0A)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-ffffff?style=for-the-badge&logo=nextdotjs&logoColor=white&labelColor=0A0A0A)](https://nextjs.org)
+&nbsp;
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black&labelColor=0A0A0A)](https://react.dev)
 &nbsp;
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=0A0A0A)](https://typescriptlang.org)
 
@@ -80,7 +82,7 @@
 
 <br/>
 
-Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.js 14 App Router**, featuring a repository pattern for clean data access, a service layer for business logic, and a multi-layered security framework. The entire UI is built around a near-black `#0A0A0A` design system with glassmorphism card components, smooth Framer Motion animations, and full responsiveness across all screen sizes.
+Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.js 16 App Router** (React 19), featuring **Drizzle ORM** for type-safe database schemas and queries, a service layer for business logic, and a multi-layered security framework. The entire UI is built around a near-black `#0A0A0A` design system with glassmorphism card components, smooth Framer Motion animations, and full responsiveness across all screen sizes.
 
 <br/>
 
@@ -302,11 +304,11 @@ Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.
 ```
 src/
 │
-├── app/                          # Next.js 14 App Router
+├── app/                          # Next.js 16 App Router (React 19)
 │   ├── (app)/                    # 🔒 Authenticated views (protected routes)
 │   │   ├── overview/             #    Dashboard, health score, charts
 │   │   ├── my-month/             #    Interactive monthly calendar
-│   │   ├── coach/                #    AI Financial Coach chat
+│   │   ├── chat/                 #    AI Financial Assistant chat
 │   │   ├── simulator/            #    What-If Simulator
 │   │   ├── fire/                 #    FIRE Calculator
 │   │   ├── subscriptions/        #    Subscription Tracker
@@ -402,19 +404,19 @@ src/
 
 | Layer | Technology | Purpose |
 |:---|:---|:---|
-| **Framework** | Next.js 14 (App Router) | Full-stack React with server components & API routes |
+| **Framework** | Next.js 16 (App Router) + React 19 | Full-stack React with server components & API routes |
 | **Language** | TypeScript (strict) | End-to-end type safety, zero `any` tolerance |
-| **Styling** | Tailwind CSS | Utility-first responsive design system |
-| **Animations** | Framer Motion | Page transitions, stagger reveals, micro-interactions |
+| **Styling** | Tailwind CSS v4 | Modern high-performance utility CSS engine |
+| **Animations** | Framer Motion + Centralized Variants | Page transitions, stagger reveals, reduced-motion accessibility |
 | **Charts** | Recharts + Chart.js | Area, donut, bar, sparkline, and arc gauge charts |
-| **Database** | Turso (libSQL) | Edge-deployed SQLite — fast global reads |
-| **Auth** | JWT + bcrypt | httpOnly cookies, refresh rotation, account lockout |
+| **Database & ORM** | Turso (libSQL) + Drizzle ORM | Edge-deployed SQLite with type-safe schema, migrations & queries |
+| **Auth** | JWT (jose) + Passkeys + 2FA | httpOnly cookies, refresh rotation, WebAuthn & TOTP |
 | **AI — Insights** | Google Gemini API | Receipt scanning, NL transaction parsing, anomaly alerts |
 | **AI — Coach** | OpenRouter API | Streaming conversational AI with full financial context |
 | **Storage** | Google Drive API | Receipt backup and AI-queryable document sync |
 | **Currency** | open.er-api.com | Hourly live exchange rates (server-side cached) |
-| **PWA** | next-pwa + Workbox | Offline shell caching, install prompt, service worker |
-| **Export** | jsPDF + html2canvas | PDF monthly reports, PNG snapshot cards |
+| **PWA** | Web App Manifest + Service Worker | Offline shell caching, install prompt, standalone mobile app |
+| **Export** | jsPDF + ExcelJS | PDF schedules, Excel workbooks, CSV ledger exports |
 | **Deployment** | Vercel | Edge functions, automatic HTTPS, zero-config CI/CD |
 
 </div>

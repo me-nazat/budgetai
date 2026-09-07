@@ -851,7 +851,7 @@ function TestimonialSection() {
             >
                 <motion.span variants={fadeInUp} className="material-symbols-outlined text-4xl text-primary/30 dark:text-lp-cyan/30 mb-4 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
                 <motion.blockquote variants={fadeInUp} className="text-xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-8 tracking-tight" style={{ fontFamily: 'var(--font-fraunces), serif', fontStyle: 'italic', letterSpacing: '-0.02em', fontWeight: 500 }}>
-                    &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
+                    &ldquo;Wealth AI turns complex financial data into living clarity and proactive guidance. It feels less like a tracker and more like an intelligent CFO for your future.&rdquo;
                 </motion.blockquote>
                 <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">
                     <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 flex items-center justify-center text-white dark:text-black font-bold text-lg">
