@@ -25,6 +25,9 @@ const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), { ssr:
 const Doughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), { ssr: false });
 const PredictiveCashflow = dynamic(() => import('@/components/charts/PredictiveCashflow'), { ssr: false });
 import { TiltCard } from '@/components/ui/TiltCard';
+import { DashboardStatCards } from '@/components/dashboard/DashboardStatCards';
+import { DashboardLayoutModal } from '@/components/dashboard/DashboardLayoutModal';
+import { DashboardIntelHub } from '@/components/dashboard/DashboardIntelHub';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -852,24 +855,7 @@ export default function DashboardPage() {
                 </header>
 
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8 stagger-children">
-                    {stats.map((s, i) => (
-                        <TiltCard key={i} className={`glass-panel ${s.gradient} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe`}
-                            style={{ animationDelay: `${i * 0.08}s`, animation: `slideUp 0.5s ease-out ${i * 0.08}s both` }}>
-                            <div className="flex flex-col gap-1 relative z-10">
-                                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">{s.label}</p>
-                                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{s.value}</h3>
-                                <div className="flex items-center gap-1.5 mt-2">
-                                    <span className={`${s.change >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'} text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1`}>
-                                        <span className="material-symbols-outlined text-sm">{s.change >= 0 ? 'trending_up' : 'trending_down'}</span>
-                                        {s.change >= 0 ? '+' : ''}{s.change.toFixed(1)}%
-                                    </span>
-                                    <span className="text-gray-400 dark:text-text-muted text-xs">vs prev period</span>
-                                </div>
-                            </div>
-                        </TiltCard>
-                    ))}
-                </div>
+                <DashboardStatCards data={data} fmt={fmt} />
 
                 {/* Charts & Alerts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
@@ -1019,114 +1005,20 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Financial Intelligence Hub */}
-                        <div className="glass-panel rounded-3xl flex flex-col overflow-hidden ambient-glow">
-                        <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-blue-500/10 to-transparent">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-blue-500">insights</span>
-                                Intelligence Hub
-                            </h3>
-                        </div>
-
-                        {/* Tabs */}
-                        <div className="flex bg-gray-50 dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] text-sm">
-                            <button onClick={() => setActiveTab('currency')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'currency' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Rates</button>
-                            <button onClick={() => setActiveTab('news')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'news' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>News</button>
-                            <button onClick={() => setActiveTab('calculator')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'calculator' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Growth</button>
-                        </div>
-
-                        {/* Tab Content */}
-                        <div className="p-5 flex-1 bg-white dark:bg-surface-dark overflow-y-auto max-h-[350px]">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={activeTab}
-                                    initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
-                                    animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-                                    exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
-                                    transition={{ duration: 0.22 }}
-                                    className={`space-y-4 ${activeTab === 'calculator' ? 'flex flex-col h-full' : ''}`}
-                                >
-                                    {activeTab === 'currency' ? (
-                                        <>
-                                            {!exchangeRates ? (
-                                                <HubSkeleton rows={5} />
-                                            ) : (
-                                                <>
-                                                    <p className="text-xs text-gray-500 mb-3 font-medium">1 {currency} equals:</p>
-                                                    <div className="space-y-3">
-                                                        {['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => {
-                                                            // If base is already one of these, skip or show USD instead
-                                                            if (c === currency) return null;
-                                                            const rate = exchangeRates.rates[c];
-                                                            if (!rate) return null;
-                                                            return (
-                                                                <div key={c} className="flex justify-between items-center group p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors border border-transparent hover:border-gray-100 dark:hover:border-[#30363d]">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#21262d] flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
-                                                                            {c.slice(0, 2)}
-                                                                        </div>
-                                                                        <span className="font-semibold text-gray-900 dark:text-white">{c}</span>
-                                                                    </div>
-                                                                    <span className="font-mono text-gray-700 dark:text-gray-300 group-hover:text-blue-500 transition-colors">{rate.toFixed(4)}</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </>
-                                            )}
-                                        </>
-                                    ) : activeTab === 'news' ? (
-                                        <>
-                                            {marketNews.length === 0 ? (
-                                                <HubSkeleton rows={4} />
-                                            ) : (
-                                                marketNews.map(news => (
-                                                    <a key={news.id} href="#" className="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-surface-hover border border-gray-100 dark:border-[#30363d] transition-all hover:scale-[1.02] hover:shadow-md">
-                                                        <div className="flex justify-between items-start mb-1.5">
-                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${news.sentiment === 'positive' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
-                                                                news.sentiment === 'negative' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
-                                                                    'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
-                                                                }`}>
-                                                                {news.sentiment}
-                                                            </span>
-                                                            <span className="text-xs text-gray-400">{news.time}</span>
-                                                        </div>
-                                                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-blue-500 transition-colors">{news.title}</h4>
-                                                        <p className="text-xs text-gray-500 font-medium">{news.source}</p>
-                                                    </a>
-                                                ))
-                                            )}
-                                        </>
-                                    ) : activeTab === 'calculator' ? (
-                                        <>
-                                            <p className="text-xs text-gray-500 mb-2">See how monthly savings grow over time with compound interest.</p>
-        
-                                            <div className="space-y-3 flex-1">
-                                                <div>
-                                                    <label htmlFor="calcAmount" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Monthly Save <span>{fmt(calcAmount)}</span></label>
-                                                    <input id="calcAmount" type="range" min="50" max="5000" step="50" value={calcAmount} onChange={e => setCalcAmount(Number(e.target.value))} className="w-full accent-blue-500" />
-                                                </div>
-                                                <div>
-                                                    <label htmlFor="calcYears" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Years <span>{calcYears} yrs</span></label>
-                                                    <input id="calcYears" type="range" min="1" max="40" step="1" value={calcYears} onChange={e => setCalcYears(Number(e.target.value))} className="w-full accent-blue-500" />
-                                                </div>
-                                                <div>
-                                                    <label htmlFor="calcRate" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Est. Return <span>{calcRate}%</span></label>
-                                                    <input id="calcRate" type="range" min="1" max="15" step="0.5" value={calcRate} onChange={e => setCalcRate(Number(e.target.value))} className="w-full accent-blue-500" />
-                                                </div>
-                                            </div>
-        
-                                            <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-center">
-                                                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Future Value</p>
-                                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                                    {fmt(calcAmount * 12 * ((Math.pow(1 + calcRate / 100, calcYears) - 1) / (calcRate / 100)))}
-                                                </p>
-                                            </div>
-                                        </>
-                                    ) : null}
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
-                    </div>
+                        <DashboardIntelHub
+                            currency={currency}
+                            exchangeRates={exchangeRates}
+                            marketNews={marketNews}
+                            fmt={fmt}
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            calcAmount={calcAmount}
+                            setCalcAmount={setCalcAmount}
+                            calcYears={calcYears}
+                            setCalcYears={setCalcYears}
+                            calcRate={calcRate}
+                            setCalcRate={setCalcRate}
+                        />
                     </div>
 
                 </div>
@@ -1298,6 +1190,27 @@ export default function DashboardPage() {
                     onNotesChange={(id, notes) => {
                         // Optional optimistic update logic if needed
                     }}
+                />
+            )}
+
+            {/* Layout Customization Modal */}
+            {mounted && (
+                <DashboardLayoutModal
+                    isOpen={isLayoutOpen}
+                    onClose={() => setIsLayoutOpen(false)}
+                    layoutTab={layoutTab}
+                    setLayoutTab={setLayoutTab}
+                    tempDesktopLayout={tempDesktopLayout}
+                    tempMobileLayout={tempMobileLayout}
+                    handleMoveDesktop={handleMoveDesktop}
+                    handleMoveMobile={handleMoveMobile}
+                    handleToggleDesktop={handleToggleDesktop}
+                    handleToggleMobile={handleToggleMobile}
+                    handleDragStart={handleDragStart}
+                    handleDragOver={handleDragOver}
+                    handleDrop={handleDrop}
+                    saveLayout={saveLayout}
+                    layoutSubmitting={layoutSubmitting}
                 />
             )}
         </div>

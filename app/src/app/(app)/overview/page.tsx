@@ -22,6 +22,8 @@ import { getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { HealthScoreWidget } from '@/components/dashboard/HealthScoreWidget';
 
+import AnimatedCounter from '@/components/AnimatedCounter';
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Filler, Legend);
 
 export default function OverviewPage() {
@@ -93,10 +95,36 @@ export default function OverviewPage() {
         }],
     };
 
+    const budgetHealthScore = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, totalExpense - totalIncome) / Math.max(1, totalIncome) * 100)));
+
     const kpis = [
-        { label: 'Total Saved', value: fmt(Math.max(0, netSavings)), detail: `${savingsRate.toFixed(1)}% savings rate`, icon: 'savings', tone: 'text-emerald-500', bgTone: 'bg-emerald-50 dark:bg-emerald-500/10' },
-        { label: 'Cash Flow', value: fmt(totalIncome - totalExpense), detail: `${totalIncome >= totalExpense ? 'Positive' : 'Negative'} monthly cashflow`, icon: 'account_balance_wallet', tone: 'text-primary', bgTone: 'bg-blue-50 dark:bg-blue-500/10' },
-        { label: 'Budget Health', value: `${Math.max(0, Math.min(100, Math.round(100 - Math.max(0, totalExpense - totalIncome) / Math.max(1, totalIncome) * 100)))}%`, detail: riskBudgets.length ? `${riskBudgets.length} critical budgets` : 'Budgets stable', icon: 'health_and_safety', tone: 'text-teal-500', bgTone: 'bg-teal-50 dark:bg-teal-500/10' },
+        { 
+            label: 'Total Saved', 
+            numericValue: Math.max(0, netSavings), 
+            detail: `${savingsRate.toFixed(1)}% savings rate`, 
+            icon: 'savings', 
+            tone: 'text-emerald-500', 
+            bgTone: 'bg-emerald-50 dark:bg-emerald-500/10',
+            formatter: (v: number) => fmt(v),
+        },
+        { 
+            label: 'Cash Flow', 
+            numericValue: totalIncome - totalExpense, 
+            detail: `${totalIncome >= totalExpense ? 'Positive' : 'Negative'} monthly cashflow`, 
+            icon: 'account_balance_wallet', 
+            tone: 'text-primary', 
+            bgTone: 'bg-blue-50 dark:bg-blue-500/10',
+            formatter: (v: number) => fmt(v),
+        },
+        { 
+            label: 'Budget Health', 
+            numericValue: budgetHealthScore, 
+            detail: riskBudgets.length ? `${riskBudgets.length} critical budgets` : 'Budgets stable', 
+            icon: 'health_and_safety', 
+            tone: 'text-teal-500', 
+            bgTone: 'bg-teal-50 dark:bg-teal-500/10',
+            formatter: (v: number) => `${v}%`,
+        },
     ];
 
     return (
@@ -139,7 +167,7 @@ export default function OverviewPage() {
                             </div>
                         </div>
                         <p className="text-xl lg:text-2xl font-black tracking-tighter text-gray-900 dark:text-white">
-                            {kpi.value}
+                            <AnimatedCounter value={kpi.numericValue} formatter={kpi.formatter} />
                         </p>
                     </div>
                 ))}
@@ -162,7 +190,23 @@ export default function OverviewPage() {
                         <Line data={lineData} options={{
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    backgroundColor: '#12182B',
+                                    titleColor: '#ffffff',
+                                    bodyColor: '#94a3b8',
+                                    borderColor: 'rgba(255, 255, 255, 0.12)',
+                                    borderWidth: 1,
+                                    padding: 12,
+                                    cornerRadius: 12,
+                                    callbacks: {
+                                        label: (ctx) => ` ${ctx.dataset.label || ''}: ${sym}${Number(ctx.raw).toLocaleString()}`
+                                    }
+                                }
+                            },
                             scales: {
                                 x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
                                 y: { grid: { color: 'rgba(148, 163, 184, 0.1)', tickLength: 0 }, border: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 }, callback: value => sym + Number(value).toLocaleString() } },
@@ -182,7 +226,19 @@ export default function OverviewPage() {
                             <Doughnut data={doughnutData} options={{
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${sym}${ctx.raw}` } } },
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: '#12182B',
+                                        titleColor: '#ffffff',
+                                        bodyColor: '#94a3b8',
+                                        borderColor: 'rgba(255, 255, 255, 0.12)',
+                                        borderWidth: 1,
+                                        padding: 10,
+                                        cornerRadius: 12,
+                                        callbacks: { label: (ctx) => ` ${ctx.label}: ${sym}${Number(ctx.raw).toLocaleString()}` }
+                                    }
+                                },
                                 cutout: '75%',
                             }} />
                         ) : (
