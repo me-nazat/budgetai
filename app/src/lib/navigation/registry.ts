@@ -29,6 +29,7 @@ export const NAVIGATION_REGISTRY: NavItem[] = [
   { id: 'my-month', href: '/my-month', label: 'My Month', icon: 'calendar_month', category: 'analytics' },
   { id: 'reports', href: '/reports', label: 'Reports', icon: 'bar_chart', category: 'analytics' },
   { id: 'overview', href: '/overview', label: 'Overview', icon: 'analytics', category: 'analytics', mobileTab: true },
+  { id: 'generative-art', href: '/generative-art', label: 'Generative Studio', icon: 'all_inclusive', category: 'analytics' },
   { id: 'benchmarks', href: '/benchmarks', label: 'Benchmarks', icon: 'leaderboard', category: 'analytics' },
   { id: 'insights', href: '/insights', label: 'Insights', icon: 'lightbulb', category: 'analytics' },
 

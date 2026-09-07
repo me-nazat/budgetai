@@ -28,6 +28,7 @@ import { TiltCard } from '@/components/ui/TiltCard';
 import { DashboardStatCards } from '@/components/dashboard/DashboardStatCards';
 import { DashboardLayoutModal } from '@/components/dashboard/DashboardLayoutModal';
 import { DashboardIntelHub } from '@/components/dashboard/DashboardIntelHub';
+import FinancialMandala from '@/components/generative/FinancialMandala';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -618,19 +619,47 @@ export default function DashboardPage() {
                         }
 
                         if (widgetId === 'net_worth') {
+                            const netWorthSavingsRate =
+                                data.earnings.current > 0
+                                    ? Math.max(0, Math.min(1, data.netSavings / data.earnings.current))
+                                    : 0.25;
+
                             return (
-                                <div key={widgetId} className="relative rounded-[2rem] p-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe hover:scale-[1.02] transition-transform duration-500">
+                                <div key={widgetId} className="relative rounded-[2rem] p-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe hover:scale-[1.02] transition-transform duration-500 group">
                                     {/* Animated background layers */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" style={{ animationDuration: '4s' }} />
                                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3 animate-pulse" style={{ animationDuration: '5s', animationDirection: 'reverse' }} />
+
+                                    {/* Ambient Generative Financial Mandala Signature */}
+                                    <div className="absolute -right-16 -bottom-16 w-80 h-80 opacity-25 dark:opacity-20 pointer-events-none mix-blend-screen overflow-hidden flex items-center justify-center">
+                                        <FinancialMandala
+                                            categorySpending={data.categorySpending}
+                                            balance={data.balance}
+                                            savingsRate={netWorthSavingsRate}
+                                            ambient={true}
+                                            palette="gold"
+                                            size={340}
+                                            rotationSpeed={90}
+                                        />
+                                    </div>
 
                                     {/* Glass Overlay */}
                                     <div className="absolute inset-0 bg-white/5 dark:bg-black/10 backdrop-blur-[2px]" />
 
                                     {/* Content */}
                                     <div className="relative z-10">
-                                        <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Total Balance</p>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <p className="text-xs font-semibold text-white/80 uppercase tracking-wider">Total Balance</p>
+                                            <Link
+                                                href="/generative-art"
+                                                title="Open Generative Studio"
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[10px] font-bold text-white/90 hover:text-white bg-white/15 hover:bg-white/25 px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <span className="material-symbols-outlined text-[12px]">all_inclusive</span>
+                                                <span>Studio</span>
+                                            </Link>
+                                        </div>
                                         <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear flex items-baseline gap-1">
                                             <span className="text-2xl text-white/70">{sym}</span>
                                             <AnimatedCounter value={data.balance} delay={0.1} />
