@@ -28,6 +28,7 @@ export const proactiveInsights = sqliteTable(
     message: text('message').notNull(),
     actionLink: text('action_link'),
     isDismissed: integer('is_dismissed').notNull().default(0),
+    generatedAt: integer('generated_at'),
     createdAt: integer('created_at').default(sql`(unixepoch())`),
   },
   (table) => [

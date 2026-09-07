@@ -1,47 +1,64 @@
 /**
- * @fileoverview Centralized Locale Formatting Engine (Module 17 — Bilingual Localization).
- *
- * Provides locale-aware number, currency, date, and percentage formatting
- * with native support for Bengali (বাংলা) and English (EN).
+ * @fileoverview Unified Locale-Aware Formatting Layer (Module 17).
+ * Supports English (en-US) and Bengali (bn-BD) with native digit conversions,
+ * South Asian compact numbering (হাজার, লাখ, কোটি), and date formatting.
  *
  * @module lib/formatters/locale
  */
 
-export const BENGALI_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+import { toBengaliNumerals } from './bengaliNumerals';
+import { useLanguage, type Locale } from '@/contexts/LanguageContext';
+
+export { toBengaliNumerals };
+
+export const BENGALI_MONTHS_FULL = [
+  'জানুয়ারি',
+  'ফেব্রুয়ারি',
+  'মার্চ',
+  'এপ্রিল',
+  'মে',
+  'জুন',
+  'জুলাই',
+  'আগস্ট',
+  'সেপ্টেম্বর',
+  'অক্টোবর',
+  'নভেম্বর',
+  'ডিসেম্বর',
+];
+
+export const BENGALI_MONTHS_SHORT = [
+  'জানু',
+  'ফেব্রু',
+  'মার্চ',
+  'এপ্রিল',
+  'মে',
+  'জুন',
+  'জুলাই',
+  'আগস্ট',
+  'সেপ্টে',
+  'অক্টো',
+  'নভে',
+  'ডিসে',
+];
 
 /**
- * Converts Western digits (0-9) to native Bengali numerals (০-৯).
- *
- * @param numberStr - Any string or number to be converted
- * @returns Digits converted to Bengali numeral equivalents
- */
-export function toBengaliNumerals(numberStr: string | number): string {
-  if (numberStr === null || numberStr === undefined) return '';
-  const str = numberStr.toString();
-  return str.replace(/[0-9]/g, (digit) => BENGALI_DIGITS[parseInt(digit, 10)]);
-}
-
-/**
- * Formats a currency amount according to the chosen locale and ISO currency code.
- * In Bengali locale, Western digits are translated to native Bengali numerals.
- *
- * @param amount - Monetary quantity
- * @param locale - 'en' or 'bn'
- * @param currencyCode - ISO currency code (default 'BDT')
- * @returns Formatted currency string (e.g. "৳১,২৩৪.৫০" or "$1,234.50")
+ * Formats a monetary amount into a localized currency string.
  */
 export function formatLocaleCurrency(
   amount: number,
-  locale: 'en' | 'bn',
+  locale: Locale = 'en',
   currencyCode: string = 'BDT'
 ): string {
+  const safeAmount = isNaN(amount) ? 0 : amount;
+
   if (locale === 'bn') {
     const formatted = new Intl.NumberFormat('bn-BD', {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount);
+    }).format(safeAmount);
+
     return toBengaliNumerals(formatted);
   }
 
@@ -50,86 +67,122 @@ export function formatLocaleCurrency(
     currency: currencyCode,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(safeAmount);
 }
 
 /**
- * Formats dates according to locale and format style.
- *
- * @param date - Date object, ISO timestamp, or milliseconds epoch
- * @param locale - 'en' or 'bn'
- * @param options - Standard Intl DateTimeFormat options
- * @returns Formatted localized date string
+ * Formats a date string, timestamp, or Date object into a localized date string.
  */
 export function formatLocaleDate(
-  date: Date | string | number,
-  locale: 'en' | 'bn',
-  options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }
+  dateInput: string | number | Date,
+  locale: Locale = 'en',
+  options?: Intl.DateTimeFormatOptions
 ): string {
-  const d = typeof date === 'object' && date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return '';
+  const dateObj = typeof dateInput === 'object' ? dateInput : new Date(dateInput);
+  if (isNaN(dateObj.getTime())) return '';
 
-  const tag = locale === 'bn' ? 'bn-BD' : 'en-US';
-  const formatted = new Intl.DateTimeFormat(tag, options).format(d);
-  return locale === 'bn' ? toBengaliNumerals(formatted) : formatted;
+  const defaultOpts: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  };
+
+  const opts = options || defaultOpts;
+
+  if (locale === 'bn') {
+    try {
+      const formatted = new Intl.DateTimeFormat('bn-BD', opts).format(dateObj);
+      return toBengaliNumerals(formatted);
+    } catch {
+      // Fallback manual formatting if bn-BD locale not available in engine
+      const day = toBengaliNumerals(dateObj.getDate());
+      const month = BENGALI_MONTHS_SHORT[dateObj.getMonth()];
+      const year = toBengaliNumerals(dateObj.getFullYear());
+      return `${day} ${month}, ${year}`;
+    }
+  }
+
+  return new Intl.DateTimeFormat('en-US', opts).format(dateObj);
 }
 
 /**
- * Formats percentages according to locale.
- * e.g. 15.5% or ১৫.৫%
+ * Formats a decimal or percentage number (e.g. 15.5 -> "15.5%" or "১৫.৫%").
  */
 export function formatLocalePercent(
   value: number,
-  locale: 'en' | 'bn',
+  locale: Locale = 'en',
   decimals: number = 1
 ): string {
-  const numStr = value.toFixed(decimals);
+  const safeVal = isNaN(value) ? 0 : value;
+  const rounded = safeVal.toFixed(decimals);
+
   if (locale === 'bn') {
-    return `${toBengaliNumerals(numStr)}%`;
+    return `${toBengaliNumerals(rounded)}%`;
   }
-  return `${numStr}%`;
+  return `${rounded}%`;
 }
 
 /**
- * Formats compact numbers for stat cards and chart badges.
- * e.g. 125000 -> $125K / ৳১.৩লা
+ * Formats compact numbers (e.g. $1.2K / ৳১.২ হাজার, ৳১৫ লাখ, ৳২.৫ কোটি).
  */
 export function formatLocaleCompact(
   amount: number,
-  locale: 'en' | 'bn',
-  currencyCode?: string
+  locale: Locale = 'en',
+  currencySymbol: string = '৳'
 ): string {
-  const tag = locale === 'bn' ? 'bn-BD' : 'en-US';
-  const formatted = new Intl.NumberFormat(tag, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(amount);
+  const safeAmount = isNaN(amount) ? 0 : amount;
+  const abs = Math.abs(safeAmount);
+  const sign = safeAmount < 0 ? '-' : '';
 
-  const prefix = currencyCode
-    ? currencyCode === 'BDT'
-      ? '৳'
-      : currencyCode === 'USD'
-      ? '$'
-      : `${currencyCode} `
-    : '';
+  if (locale === 'bn') {
+    if (abs >= 10000000) {
+      // Crore (কোটি)
+      const val = (abs / 10000000).toFixed(2);
+      return `${sign}${currencySymbol}${toBengaliNumerals(val)} কোটি`;
+    }
+    if (abs >= 100000) {
+      // Lakh (লাখ)
+      const val = (abs / 100000).toFixed(1);
+      return `${sign}${currencySymbol}${toBengaliNumerals(val)} লাখ`;
+    }
+    if (abs >= 1000) {
+      // Thousand (হাজার)
+      const val = (abs / 1000).toFixed(1);
+      return `${sign}${currencySymbol}${toBengaliNumerals(val)} হাজার`;
+    }
+    return `${sign}${currencySymbol}${toBengaliNumerals(abs.toFixed(0))}`;
+  }
 
-  const result = locale === 'bn' ? toBengaliNumerals(formatted) : formatted;
-  return `${prefix}${result}`;
+  // English standard compact (K, M, B)
+  if (abs >= 1000000000) {
+    return `${sign}${currencySymbol}${(abs / 1000000000).toFixed(1)}B`;
+  }
+  if (abs >= 1000000) {
+    return `${sign}${currencySymbol}${(abs / 1000000).toFixed(1)}M`;
+  }
+  if (abs >= 1000) {
+    return `${sign}${currencySymbol}${(abs / 1000).toFixed(1)}K`;
+  }
+  return `${sign}${currencySymbol}${abs.toFixed(0)}`;
 }
 
 /**
- * Formats plain numbers with localized thousands grouping.
+ * React hook that binds formatters to the active LanguageContext locale.
  */
-export function formatLocaleNumber(
-  num: number,
-  locale: 'en' | 'bn',
-  decimals?: number
-): string {
-  const tag = locale === 'bn' ? 'bn-BD' : 'en-US';
-  const formatted = new Intl.NumberFormat(tag, {
-    minimumFractionDigits: decimals !== undefined ? decimals : 0,
-    maximumFractionDigits: decimals !== undefined ? decimals : 2,
-  }).format(num);
+export function useLocaleFormatters() {
+  const { locale } = useLanguage();
 
-  return locale === 'bn' ? toBengaliNumerals(formatted) : formatted;
+  return {
+    locale,
+    formatCurrency: (amount: number, currencyCode?: string) =>
+      formatLocaleCurrency(amount, locale, currencyCode),
+    formatDate: (date: string | number | Date, options?: Intl.DateTimeFormatOptions) =>
+      formatLocaleDate(date, locale, options),
+    formatPercent: (value: number, decimals?: number) =>
+      formatLocalePercent(value, locale, decimals),
+    formatCompact: (amount: number, currencySymbol?: string) =>
+      formatLocaleCompact(amount, locale, currencySymbol),
+    toNumerals: (input: string | number) =>
+      locale === 'bn' ? toBengaliNumerals(input) : input.toString(),
+  };
 }

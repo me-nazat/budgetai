@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "typecheck": "NODE_OPTIONS='--max-old-space-size=4096' tsc --noEmit"
+    "typecheck": "NODE_OPTIONS='--max-old-space-size=4096' tsc --noEmit",
+    "i18n:check": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

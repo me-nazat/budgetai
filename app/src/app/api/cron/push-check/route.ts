@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/client';
-import { users, budgets, savingsGoals, recurringTransactions, debts } from '@/db/schema';
+import { users, budgets, savingsGoals, recurringTransactions, debts, module28PushScheduledJobs } from '@/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { PushService } from '@/services/push.service';
 import { PushRepository } from '@/repositories/push.repository';
@@ -207,6 +207,48 @@ export async function GET(request: NextRequest) {
 
       } catch (userError) {
         console.error(`[cron/push-check] Error processing user ${userId}:`, userError);
+        results.errors++;
+      }
+    }
+
+    // ─── Module 28: Scheduled Push Jobs Queue Drain ───
+    const currentEpoch = Math.floor(Date.now() / 1000);
+    const pendingJobs = await db
+      .select()
+      .from(module28PushScheduledJobs)
+      .where(
+        and(
+          eq(module28PushScheduledJobs.status, 'pending'),
+          lte(module28PushScheduledJobs.runAt, currentEpoch)
+        )
+      )
+      .limit(50);
+
+    for (const job of pendingJobs) {
+      try {
+        const payload = JSON.parse(job.payloadJson);
+        await PushService.sendToUser(job.userId, {
+          title: payload.title || 'WealthAI Scheduled Alert',
+          body: payload.body || 'You have an upcoming financial obligation.',
+          tag: payload.tag || 'calendar-reminder',
+          url: payload.url || '/recurring',
+        });
+
+        await db
+          .update(module28PushScheduledJobs)
+          .set({
+            status: 'sent',
+            sentAt: Math.floor(Date.now() / 1000),
+          })
+          .where(eq(module28PushScheduledJobs.id, job.id));
+
+        (results as any).scheduledJobsSent = ((results as any).scheduledJobsSent || 0) + 1;
+      } catch (jobErr) {
+        console.error(`[cron/push-check] Error executing scheduled push job ${job.id}:`, jobErr);
+        await db
+          .update(module28PushScheduledJobs)
+          .set({ status: 'failed' })
+          .where(eq(module28PushScheduledJobs.id, job.id));
         results.errors++;
       }
     }

@@ -6,6 +6,8 @@ import { CURRENCIES, CurrencyCode } from '@/lib/currency';
 import type { Variants } from 'framer-motion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguagePickerSheet from '@/components/settings/LanguagePickerSheet';
 
 function parseLocalDate(dateStr: string | null | undefined): Date | null {
     if (!dateStr) return null;
@@ -37,6 +39,8 @@ export default function SettingsPage() {
     const [saved, setSaved] = useState(false);
     const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false);
     const [avatarHovered, setAvatarHovered] = useState(false);
+    const { locale, t } = useLanguage();
+    const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
 
     // 2FA states
     const [totpEnabled, setTotpEnabled] = useState(false);
@@ -1095,13 +1099,50 @@ export default function SettingsPage() {
                             </div>
                         </motion.div>
 
-                        {/* Google Calendar Integration */}
+                        {/* Language & Locale */}
                         <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
-                            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">calendar_month</span>Google Calendar
+                            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary">translate</span>
+                                {t('settingsPage.languageSelect', 'Language & Locale')}
                             </h2>
                             <p className="text-xs text-gray-500 dark:text-text-muted mb-4 font-medium">
-                                Sync your bills, debt payoffs, and reminders to Google Calendar.
+                                {t('settingsPage.localeSection', 'Switch between English and Bengali with locale-aware formatting.')}
+                            </p>
+                            <button
+                                onClick={() => setIsLanguagePickerOpen(true)}
+                                className="w-full flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-[#161b22] border-2 border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-all text-left"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl select-none">{locale === 'bn' ? '🇧🇩' : '🇺🇸'}</span>
+                                    <div>
+                                        <div className="font-bold text-sm text-gray-900 dark:text-white">
+                                            {locale === 'bn' ? 'বাংলা (Bengali)' : 'English (US)'}
+                                        </div>
+                                        <div className="text-xs text-primary font-medium">
+                                            {locale === 'bn' ? 'বাংলা সংখ্যা ও পঞ্জিকা সক্রিয়' : 'Western digits & standard calendar'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <span className="material-symbols-outlined text-gray-400">tune</span>
+                            </button>
+                        </motion.div>
+
+                        {/* Google Calendar Integration */}
+                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">calendar_month</span>
+                                    {t('calendar.title', 'Google Calendar')}
+                                </h2>
+                                <Link
+                                    href="/settings/calendar"
+                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                >
+                                    Control Center <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                                </Link>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-text-muted mb-4 font-medium">
+                                {t('calendar.subtitle', 'Sync your bills, debt payoffs, and reminders to Google Calendar.')}
                             </p>
                             {calendarLoading ? (
                                 <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -1110,29 +1151,45 @@ export default function SettingsPage() {
                                 </div>
                             ) : calendarConnected ? (
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-sm font-bold text-accent-emerald">
-                                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                                        Connected
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-sm font-bold text-accent-emerald">
+                                            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                            {t('calendar.statusConnected', 'Connected')}
+                                        </div>
+                                        <Link
+                                            href="/settings/calendar"
+                                            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                                        >
+                                            Configure Toggles
+                                        </Link>
                                     </div>
                                     <button
                                         onClick={handleDisconnectCalendar}
                                         className="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors"
                                     >
-                                        Disconnect
+                                        {t('calendar.disconnectButton', 'Disconnect')}
                                     </button>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={handleConnectCalendar}
-                                    disabled={calendarConnecting}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50"
-                                >
-                                    {calendarConnecting ? (
-                                        <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Connecting...</>
-                                    ) : (
-                                        <><span className="material-symbols-outlined text-[18px]">link</span> Connect Google Calendar</>
-                                    )}
-                                </button>
+                                <div className="space-y-2.5">
+                                    <button
+                                        onClick={handleConnectCalendar}
+                                        disabled={calendarConnecting}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50"
+                                    >
+                                        {calendarConnecting ? (
+                                            <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Connecting...</>
+                                        ) : (
+                                            <><span className="material-symbols-outlined text-[18px]">link</span> {t('calendar.connectButton', 'Connect Google Calendar')}</>
+                                        )}
+                                    </button>
+                                    <Link
+                                        href="/settings/calendar"
+                                        className="block text-center text-xs text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                    >
+                                        Advanced calendar settings & push alert rules →
+                                    </Link>
+                                </div>
                             )}
                         </motion.div>
 
@@ -1283,6 +1340,11 @@ export default function SettingsPage() {
                     </div>
                 </>
             )}
+
+            <LanguagePickerSheet
+                isOpen={isLanguagePickerOpen}
+                onClose={() => setIsLanguagePickerOpen(false)}
+            />
         </motion.div>
     );
 }

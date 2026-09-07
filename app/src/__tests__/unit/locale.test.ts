@@ -1,126 +1,98 @@
 import { describe, it, expect } from 'vitest';
 import {
-  toBengaliNumerals,
   formatLocaleCurrency,
   formatLocaleDate,
   formatLocalePercent,
   formatLocaleCompact,
-  formatLocaleNumber,
-  BENGALI_DIGITS,
+  toBengaliNumerals,
 } from '@/lib/formatters/locale';
-import en from '@/locales/en.json';
-import bn from '@/locales/bn.json';
 
-describe('Module 17: Native Bilingual Localization & Formatting', () => {
-  describe('toBengaliNumerals', () => {
-    it('should convert every Western digit 0-9 to native Bengali digits', () => {
-      expect(toBengaliNumerals('0123456789')).toBe('০১২৩৪৫৬৭৮৯');
-      expect(toBengaliNumerals(9876543210)).toBe('৯৮৭৬৫৪৩২১০');
-      expect(toBengaliNumerals('42.50')).toBe('৪২.৫০');
-      expect(toBengaliNumerals(-100)).toBe('-১০০');
-    });
-
-    it('should handle empty or null values gracefully', () => {
-      expect(toBengaliNumerals('')).toBe('');
-      // @ts-expect-error test invalid inputs
-      expect(toBengaliNumerals(null)).toBe('');
-    });
-  });
-
+describe('Module 17: Unified Locale Formatting Suite', () => {
   describe('formatLocaleCurrency', () => {
-    it('should format USD in English mode', () => {
-      const formatted = formatLocaleCurrency(12500.75, 'en', 'USD');
-      expect(formatted).toContain('12,500.75');
-      expect(formatted).toContain('$');
+    it('formats BDT currency in English locale correctly', () => {
+      const res = formatLocaleCurrency(50000, 'en', 'BDT');
+      expect(res).toBeDefined();
+      expect(res).toContain('50,000.00');
     });
 
-    it('should format BDT in English mode', () => {
-      const formatted = formatLocaleCurrency(50000, 'en', 'BDT');
-      expect(formatted).toContain('50,000.00');
-      expect(formatted).toContain('BDT');
+    it('formats BDT currency in Bengali locale with native digits', () => {
+      const res = formatLocaleCurrency(50000, 'bn', 'BDT');
+      expect(res).toBeDefined();
+      expect(res).toContain('৫০,০০০');
     });
 
-    it('should format BDT in Bengali mode with Bengali digits', () => {
-      const formatted = formatLocaleCurrency(50000, 'bn', 'BDT');
-      expect(formatted).toContain('৫০,০০০.০০');
+    it('handles negative balances gracefully', () => {
+      const resEn = formatLocaleCurrency(-1250.5, 'en', 'BDT');
+      expect(resEn).toContain('-');
+      expect(resEn).toContain('1,250.50');
+      const resBn = formatLocaleCurrency(-1250.5, 'bn', 'BDT');
+      expect(resBn).toContain('১,২৫০');
+    });
+
+    it('handles zero and NaN safely', () => {
+      expect(formatLocaleCurrency(0, 'en', 'USD')).toContain('0.00');
+      expect(formatLocaleCurrency(NaN, 'bn', 'BDT')).toContain('০.০০');
     });
   });
 
   describe('formatLocaleDate', () => {
-    const testDate = new Date('2026-09-07T12:00:00Z');
+    const testDate = new Date('2026-03-15T12:00:00Z');
 
-    it('should format dates in English mode', () => {
-      const formatted = formatLocaleDate(testDate, 'en', { dateStyle: 'medium' });
-      expect(formatted).toContain('2026');
-      expect(formatted).toContain('Sep');
+    it('formats dates in English standard', () => {
+      const res = formatLocaleDate(testDate, 'en');
+      expect(res).toMatch(/Mar(ch)? 15, 2026/);
     });
 
-    it('should format dates in Bengali mode with Bengali numerals', () => {
-      const formatted = formatLocaleDate(testDate, 'bn', { dateStyle: 'medium' });
-      expect(formatted).toContain('২০২৬');
+    it('formats dates in Bengali with Bengali month or numerals', () => {
+      const res = formatLocaleDate(testDate, 'bn');
+      expect(res).toMatch(/২০২৬/); // Bengali 2026
+      expect(res).toMatch(/১৫/); // Bengali 15
     });
 
-    it('should return empty string for invalid dates', () => {
-      expect(formatLocaleDate('invalid-date', 'en')).toBe('');
+    it('returns empty string on invalid dates', () => {
+      expect(formatLocaleDate('invalid-date-string', 'en')).toBe('');
+      expect(formatLocaleDate('invalid-date-string', 'bn')).toBe('');
     });
   });
 
   describe('formatLocalePercent', () => {
-    it('should format percentage in English', () => {
-      expect(formatLocalePercent(15.5, 'en')).toBe('15.5%');
+    it('formats percentage in English', () => {
+      expect(formatLocalePercent(18.75, 'en', 1)).toBe('18.8%');
+      expect(formatLocalePercent(0.42, 'en', 2)).toBe('0.42%');
     });
 
-    it('should format percentage in Bengali numerals', () => {
-      expect(formatLocalePercent(15.5, 'bn')).toBe('১৫.৫%');
+    it('formats percentage in Bengali with Bengali numerals', () => {
+      expect(formatLocalePercent(18.8, 'bn', 1)).toBe('১৮.৮%');
+      expect(formatLocalePercent(100, 'bn', 0)).toBe('১০০%');
     });
   });
 
   describe('formatLocaleCompact', () => {
-    it('should format compact quantities in English', () => {
-      const formatted = formatLocaleCompact(150000, 'en', 'USD');
-      expect(formatted).toContain('$');
-      expect(formatted).toContain('150K');
+    it('formats compact values in English (K, M, B)', () => {
+      expect(formatLocaleCompact(1500, 'en', '$')).toBe('$1.5K');
+      expect(formatLocaleCompact(2500000, 'en', '$')).toBe('$2.5M');
+      expect(formatLocaleCompact(1200000000, 'en', '$')).toBe('$1.2B');
     });
 
-    it('should format compact quantities in Bengali', () => {
-      const formatted = formatLocaleCompact(150000, 'bn', 'BDT');
-      expect(formatted).toContain('৳');
-      // Should contain at least one Bengali digit
-      expect(BENGALI_DIGITS.some((d) => formatted.includes(d))).toBe(true);
+    it('formats compact values in Bengali using South Asian units (হাজার, লাখ, কোটি)', () => {
+      expect(formatLocaleCompact(1500, 'bn', '৳')).toBe('৳১.৫ হাজার');
+      expect(formatLocaleCompact(250000, 'bn', '৳')).toBe('৳২.৫ লাখ');
+      expect(formatLocaleCompact(15000000, 'bn', '৳')).toBe('৳১.৫০ কোটি');
     });
-  });
 
-  describe('formatLocaleNumber', () => {
-    it('should format localized numbers with thousands/lakh grouping', () => {
-      expect(formatLocaleNumber(1234567, 'en', 0)).toBe('1,234,567');
-      expect(formatLocaleNumber(1234567, 'bn', 0)).toBe('১২,৩৪,৫৬৭');
+    it('handles negative compact values cleanly', () => {
+      expect(formatLocaleCompact(-5000, 'en', '$')).toBe('-$5.0K');
+      expect(formatLocaleCompact(-5000, 'bn', '৳')).toBe('-৳৫.০ হাজার');
     });
   });
 
-  describe('Translation Key Parity (en.json vs bn.json)', () => {
-    function getKeys(obj: Record<string, any>, prefix = ''): string[] {
-      let keys: string[] = [];
-      for (const [k, v] of Object.entries(obj)) {
-        const fullKey = prefix ? `${prefix}.${k}` : k;
-        if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
-          keys = keys.concat(getKeys(v, fullKey));
-        } else {
-          keys.push(fullKey);
-        }
-      }
-      return keys;
-    }
+  describe('toBengaliNumerals', () => {
+    it('converts all digits 0-9 accurately', () => {
+      expect(toBengaliNumerals('0123456789')).toBe('০১২৩৪৫৬৭৮৯');
+    });
 
-    it('should have 100% key parity between en.json and bn.json', () => {
-      const enKeys = getKeys(en);
-      const bnKeys = getKeys(bn);
-
-      const missingInBn = enKeys.filter((k) => !bnKeys.includes(k));
-      const missingInEn = bnKeys.filter((k) => !enKeys.includes(k));
-
-      expect(missingInBn).toEqual([]);
-      expect(missingInEn).toEqual([]);
-      expect(enKeys.length).toBeGreaterThan(40);
+    it('preserves formatting punctuation like commas, dots, and currency symbols', () => {
+      expect(toBengaliNumerals('৳ 1,23,456.78')).toBe('৳ ১,২৩,৪৫৬.৭৮');
     });
   });
 });

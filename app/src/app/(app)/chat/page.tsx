@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
+import ChatActionCard from '@/components/chat/ChatActionCard';
 
 interface ActionResult {
     action: string;
@@ -41,6 +42,11 @@ interface Message {
     transactions?: Array<{ id?: number; type: string; amount: number; category: string; description: string; date: string }>;
     actionResults?: ActionResult[];
     pendingActions?: PendingActions | null;
+    toolCall?: {
+        name: string;
+        parameters: Record<string, any>;
+        executionId?: number;
+    };
     attachmentSummaries?: AttachmentSummary[];
     isReportRequest?: boolean;
     isTyping?: boolean;
@@ -857,6 +863,16 @@ export default function ChatPage() {
                                         </div>
                                     ))}
                                 </div>
+                            )}
+
+                            {msg.toolCall && (
+                                <ChatActionCard
+                                    executionId={msg.toolCall.executionId}
+                                    toolName={msg.toolCall.name}
+                                    parameters={msg.toolCall.parameters}
+                                    onActionComplete={() => invalidateFinancialData()}
+                                    onUndoComplete={() => invalidateFinancialData()}
+                                />
                             )}
 
                             {msg.pendingActions && ((msg.pendingActions.financialData?.length || 0) > 0 || (msg.pendingActions.actions?.length || 0) > 0) && (

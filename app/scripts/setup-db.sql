@@ -309,3 +309,90 @@ CREATE TABLE IF NOT EXISTS module_26_commit_log (
 CREATE INDEX IF NOT EXISTS idx_m26_commit_log_batch ON module_26_commit_log(batch_id);
 CREATE INDEX IF NOT EXISTS idx_m26_commit_log_user ON module_26_commit_log(user_id);
 
+-- Module 28: Calendar Sync & Push Scheduled Jobs
+CREATE TABLE IF NOT EXISTS calendar_sync_settings (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  google_refresh_token TEXT,
+  google_user_email TEXT,
+  calendar_id TEXT,
+  sync_bills INTEGER NOT NULL DEFAULT 1,
+  sync_subscriptions INTEGER NOT NULL DEFAULT 1,
+  sync_debts INTEGER NOT NULL DEFAULT 1,
+  reminder_days_before INTEGER NOT NULL DEFAULT 2,
+  last_synced_at INTEGER,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS calendar_event_logs (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_type TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  google_event_id TEXT NOT NULL,
+  last_known_hash TEXT NOT NULL,
+  next_push_at INTEGER,
+  updated_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_calendar_source ON calendar_event_logs(source_type, source_id);
+
+CREATE TABLE IF NOT EXISTS module_28_push_scheduled_jobs (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_type TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  run_at INTEGER NOT NULL,
+  payload_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  sent_at INTEGER,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_m28_push_jobs_status ON module_28_push_scheduled_jobs(status, run_at);
+CREATE INDEX IF NOT EXISTS idx_m28_push_jobs_user ON module_28_push_scheduled_jobs(user_id);
+
+-- Module 29: Agentic AI Action Permissions & Proactive Insight Feedback
+CREATE TABLE IF NOT EXISTS proactive_insights (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  insight_type TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'INFO',
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  action_link TEXT,
+  is_dismissed INTEGER NOT NULL DEFAULT 0,
+  generated_at INTEGER,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_insights_user_active ON proactive_insights(user_id, is_dismissed);
+
+CREATE TABLE IF NOT EXISTS chat_tool_executions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  chat_message_id INTEGER,
+  tool_name TEXT NOT NULL,
+  parameters_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  inverse_operation_payload_json TEXT,
+  executed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_chat_tools_user ON chat_tool_executions(user_id);
+
+CREATE TABLE IF NOT EXISTS module_29_action_permissions (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tool_name TEXT NOT NULL,
+  granted_at INTEGER DEFAULT (unixepoch()),
+  revoked_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_m29_action_perm_user ON module_29_action_permissions(user_id, tool_name);
+
+CREATE TABLE IF NOT EXISTS module_29_insight_feedback (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  insight_id TEXT NOT NULL,
+  feedback TEXT NOT NULL,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_m29_feedback_user ON module_29_insight_feedback(user_id, insight_id);
+
+

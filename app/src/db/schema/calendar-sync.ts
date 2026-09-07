@@ -9,6 +9,7 @@ export const calendarSyncSettings = sqliteTable('calendar_sync_settings', {
     .unique()
     .references(() => users.id, { onDelete: 'cascade' }),
   googleRefreshToken: text('google_refresh_token'),
+  googleUserEmail: text('google_user_email'),
   calendarId: text('calendar_id'),
   syncBills: integer('sync_bills').notNull().default(1),
   syncSubscriptions: integer('sync_subscriptions').notNull().default(1),
@@ -29,6 +30,7 @@ export const calendarEventLogs = sqliteTable(
     sourceId: text('source_id').notNull(),
     googleEventId: text('google_event_id').notNull(),
     lastKnownHash: text('last_known_hash').notNull(),
+    nextPushAt: integer('next_push_at'),
     updatedAt: integer('updated_at').default(sql`(unixepoch())`),
   },
   (table) => [

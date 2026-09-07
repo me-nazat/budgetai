@@ -1103,6 +1103,7 @@ export const chatToolExecutions = sqliteTable(
     status: text('status', { enum: ['pending', 'confirmed', 'cancelled', 'executed'] })
       .notNull()
       .default('pending'),
+    inverseOperationPayloadJson: text('inverse_operation_payload_json'),
     executedAt: text('executed_at'),
   },
   (table) => [
@@ -1233,6 +1234,8 @@ export * from './tax-modules22';
 export * from './documents-modules23';
 export * from './roundups-modules25';
 export * from './statement-modules26';
+export * from './calendar-modules28';
+export * from './ai-modules29';
 
 
 
