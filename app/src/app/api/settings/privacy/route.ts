@@ -71,7 +71,7 @@ export const PUT = apiHandler(
     const validated = updatePrivacySettingsSchema.parse(body);
 
     // Ensure settings record exists
-    let existing = await queryOne<{
+    const existing = await queryOne<{
       id: string;
       user_id: number;
       auto_lock_timeout_minutes: number;

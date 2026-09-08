@@ -98,7 +98,7 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
       }));
 
       const allocated = rawCaps.reduce((acc, c) => acc + c.floor, 0);
-      let diff = Math.round(targetTotal - allocated);
+      const diff = Math.round(targetTotal - allocated);
 
       // Sort descending by remainder
       rawCaps.sort((a, b) => b.remainder - a.remainder);

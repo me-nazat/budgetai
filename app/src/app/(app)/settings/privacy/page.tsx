@@ -31,7 +31,7 @@ const TIMEOUT_OPTIONS = [
 ];
 
 export default function PrivacySettingsPage() {
-  const { isPrivacyMode, togglePrivacy } = usePrivacy();
+  const { isPrivacyMode, togglePrivacy, maskScope, setMaskScope } = usePrivacy();
   const { t } = useLanguage();
 
   const { data, isLoading } = useSWR<{
@@ -245,12 +245,12 @@ export default function PrivacySettingsPage() {
               preview: 'Bal: $8,400 | Tx: ••••',
             },
           ].map((scope) => {
-            const isSelected = (usePrivacy().maskScope || 'all') === scope.id;
+            const isSelected = (maskScope || 'all') === scope.id;
             return (
               <button
                 key={scope.id}
                 type="button"
-                onClick={() => usePrivacy().setMaskScope(scope.id as any)}
+                onClick={() => setMaskScope(scope.id as any)}
                 className={`p-4 rounded-xl border text-left flex flex-col justify-between transition-all min-h-[110px] ${
                   isSelected
                     ? 'border-primary bg-primary/10 ring-1 ring-primary'

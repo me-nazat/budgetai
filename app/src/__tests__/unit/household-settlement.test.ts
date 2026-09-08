@@ -80,7 +80,7 @@ describe('Module 10: Household Settlement Engine & Cap Rollovers', () => {
     }));
 
     const allocatedSum = rawAllocations.reduce((sum, r) => sum + r.floor, 0);
-    let surplus = totalCap - allocatedSum;
+    const surplus = totalCap - allocatedSum;
 
     // Distribute remainder to highest fractional remainder
     const sorted = [...rawAllocations].sort((a, b) => b.remainder - a.remainder);

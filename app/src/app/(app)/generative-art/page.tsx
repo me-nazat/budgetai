@@ -28,7 +28,7 @@ export default function GenerativeArtPage() {
 
   const activeSvgRef = artMode === 'river' ? riverSvgRef : mandalaSvgRef;
 
-  const categorySpending = data?.categorySpending || [];
+  const categorySpending = useMemo(() => data?.categorySpending || [], [data?.categorySpending]);
   const dailySpending = data?.dailySpending || [];
   const balance = data?.balance || 0;
   const savingsRate =

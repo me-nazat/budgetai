@@ -53,6 +53,7 @@ export async function ensureDbInitialized(): Promise<void> {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       currency TEXT DEFAULT 'BDT',
+      preferred_locale TEXT DEFAULT 'en',
       notify_budget INTEGER DEFAULT 1,
       notify_overspend INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
@@ -343,6 +344,22 @@ export async function ensureDbInitialized(): Promise<void> {
 
   try {
     await getClient().execute('ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT \'BDT\' ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN preferred_locale TEXT DEFAULT \'en\' ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN benchmark_opt_in INTEGER DEFAULT 0 ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN demographic_age_tier TEXT ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN demographic_region TEXT ');
   } catch { /* Ignore */ }
 
   try {
