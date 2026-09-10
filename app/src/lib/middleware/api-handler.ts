@@ -125,38 +125,14 @@ export function apiHandler<TContext extends NextRouteContext = NextRouteContext>
       // ── Execute Handler ──
       const response = await handler(request, routeContext);
 
-      // ── Server-Side Privacy Mode Redaction (Module 14) ──
+      // ── Server-Side Privacy Mode: Account Number Redaction (Module 14) ──
       const privacyHeader = request.headers.get('X-Privacy-Mode') || request.headers.get('x-privacy-mode');
-      let isPrivacyActive = privacyHeader === '1' || privacyHeader === 'true';
-
-      const userId = (routeContext as any)?.userId;
-      if (!isPrivacyActive && userId && typeof userId === 'number' && privacyHeader !== '0') {
-        try {
-          const { userPrivacySettings } = await import('@/db/schema');
-          const { db } = await import('@/db/client');
-          const { eq } = await import('drizzle-orm');
-          const [settings] = await db
-            .select({ maskAccountNumbers: userPrivacySettings.maskAccountNumbers })
-            .from(userPrivacySettings)
-            .where(eq(userPrivacySettings.userId, userId))
-            .limit(1);
-          if (settings && settings.maskAccountNumbers === 1) {
-            isPrivacyActive = true;
-          }
-        } catch {
-          // Ignore DB preference lookup errors
-        }
-      }
+      const isPrivacyActive = privacyHeader === '1' || privacyHeader === 'true';
 
       if (isPrivacyActive) {
         const sensitivePaths = [
-          '/api/dashboard',
-          '/api/networth',
           '/api/accounts',
-          '/api/households/expenses',
-          '/api/budgets',
-          '/api/transactions',
-          '/api/forecast',
+          '/api/bank-import',
         ];
         if (sensitivePaths.some((p) => path.startsWith(p))) {
           try {
@@ -167,9 +143,7 @@ export function apiHandler<TContext extends NextRouteContext = NextRouteContext>
               if (Array.isArray(obj)) return obj.map(redact);
               const copy = { ...obj };
               for (const key of Object.keys(copy)) {
-                if (['amount', 'balance', 'currentBalance', 'totalNetWorth', 'netWorth', 'savedAmount', 'targetAmount', 'spent', 'limit'].includes(key) && typeof copy[key] === 'number') {
-                  copy[key] = 0;
-                } else if (['accountNumber', 'account_number', 'cardNumber', 'card_number', 'iban'].includes(key) && typeof copy[key] === 'string') {
+                if (['accountNumber', 'account_number', 'cardNumber', 'card_number', 'iban'].includes(key) && typeof copy[key] === 'string') {
                   copy[key] = maskAccountNumber(copy[key]);
                 } else if (typeof copy[key] === 'object') {
                   copy[key] = redact(copy[key]);

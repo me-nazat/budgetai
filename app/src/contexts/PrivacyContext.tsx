@@ -114,13 +114,6 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
         if (typeof data.shakeToHideEnabled === 'boolean') {
           setShakeToHideEnabled(data.shakeToHideEnabled);
         }
-        if (typeof data.maskAccountNumbers === 'boolean') {
-          const stored = sessionStorage.getItem('privacyMode');
-          if (stored === null) {
-            setIsPrivacyMode(data.maskAccountNumbers);
-            sessionStorage.setItem('privacyMode', String(data.maskAccountNumbers));
-          }
-        }
       })
       .catch(() => {});
 
