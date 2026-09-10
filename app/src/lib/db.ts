@@ -53,6 +53,7 @@ export async function ensureDbInitialized(): Promise<void> {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       currency TEXT DEFAULT 'BDT',
+      locale TEXT DEFAULT 'en',
       preferred_locale TEXT DEFAULT 'en',
       notify_budget INTEGER DEFAULT 1,
       notify_overspend INTEGER DEFAULT 1,
@@ -348,6 +349,10 @@ export async function ensureDbInitialized(): Promise<void> {
 
   try {
     await getClient().execute('ALTER TABLE users ADD COLUMN preferred_locale TEXT DEFAULT \'en\' ');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE users ADD COLUMN locale TEXT DEFAULT \'en\' ');
   } catch { /* Ignore */ }
 
   try {

@@ -93,7 +93,7 @@ Classify each transaction into the best fitting tax category ID.
 Respond strictly in JSON format as an array:
 [{"id": <number>, "taxCategoryId": "<id>", "deductiblePercentage": <number between 0 and 1>, "reason": "<brief justification>"}]`;
 
-    let aiSuggestions: Record<number, { taxCategoryId: string; deductiblePercentage: number; reason: string }> = {};
+    const aiSuggestions: Record<number, { taxCategoryId: string; deductiblePercentage: number; reason: string }> = {};
 
     try {
       const aiRaw = await generateGeminiResponse(prompt);

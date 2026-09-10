@@ -43,6 +43,13 @@
       "when": 1788853890656,
       "tag": "0005_late_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789024313611,
+      "tag": "0006_typical_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

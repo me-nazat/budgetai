@@ -73,9 +73,7 @@ export function AutoRoundUpPanel({ goal, isOpen, onClose, onSaved }: AutoRoundUp
           const accData = await accRes.json();
           if (isMounted && Array.isArray(accData.accounts)) {
             setAccounts(accData.accounts);
-            if (!sourceAccountId && accData.accounts.length > 0) {
-              setSourceAccountId(accData.accounts[0].id);
-            }
+            setSourceAccountId((prev) => prev || (accData.accounts.length > 0 ? accData.accounts[0].id : null));
           }
         }
       } catch (err) {
