@@ -7,12 +7,17 @@ import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES } from '@/lib/currency';
 import ChatActionCard from '@/components/chat/ChatActionCard';
+import { toast } from 'sonner';
 
 interface ActionResult {
     action: string;
     target: string;
     count: number;
     detail: string;
+    requiresApproval?: boolean;
+    status?: 'PENDING_APPROVAL' | 'EXECUTED' | 'REJECTED';
+    actionLogId?: string;
+    amount?: number;
 }
 
 interface PendingActions {
@@ -75,6 +80,49 @@ export default function ChatPage() {
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const { currency, fmtRaw } = useCurrency();
     const sym = CURRENCIES[currency].symbol;
+    const [actionProcessing, setActionProcessing] = useState<string | null>(null);
+
+    const handleApproveAction = async (msgIndex: number, actionIndex: number, actionLogId: string, approved: boolean) => {
+        setActionProcessing(actionLogId);
+        try {
+            const res = await fetch('/api/chat/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ actionLogId, approved }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setMessages(prev => {
+                    const next = [...prev];
+                    const msg = { ...next[msgIndex] };
+                    if (msg.actionResults) {
+                        const results = [...msg.actionResults];
+                        results[actionIndex] = {
+                            ...results[actionIndex],
+                            status: approved ? 'EXECUTED' : 'REJECTED',
+                            detail: data.detail || (approved ? 'Action executed' : 'Action cancelled'),
+                            count: data.count ?? (approved ? 1 : 0),
+                        };
+                        msg.actionResults = results;
+                        next[msgIndex] = msg;
+                    }
+                    return next;
+                });
+                if (approved) {
+                    invalidateFinancialData();
+                    toast.success('Action confirmed and executed!');
+                } else {
+                    toast.info('Action cancelled.');
+                }
+            } else {
+                toast.error(data.error || 'Failed to process action');
+            }
+        } catch {
+            toast.error('Network error processing action');
+        } finally {
+            setActionProcessing(null);
+        }
+    };
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -244,9 +292,10 @@ export default function ChatPage() {
                 transactions: data.transactions,
                 actionResults: data.actionResults,
                 pendingActions: data.pendingActions,
+                toolCall: data.toolCall,
                 attachmentSummaries: data.attachmentSummaries,
                 isReportRequest: data.isReportRequest,
-                isTyping: mode === 'chat' && !data.pendingActions,
+                isTyping: mode === 'chat' && !data.pendingActions && !data.toolCall,
             };
 
             const fullContent = data.message || '';
@@ -919,25 +968,85 @@ export default function ChatPage() {
                                 </div>
                             )}
 
-                            {/* Show action results (edit/delete/reset) */}
+                            {/* Show action results (edit/delete/reset/create) */}
                             {msg.actionResults && msg.actionResults.length > 0 && (
-                                <div className="mt-2 space-y-1.5 w-full">
+                                <div className="mt-2 space-y-2 w-full">
                                     {msg.actionResults.map((r, j) => {
+                                        const isPending = r.requiresApproval && r.status === 'PENDING_APPROVAL';
+                                        const isRejected = r.status === 'REJECTED';
+                                        const isExecuted = r.status === 'EXECUTED' || (!r.requiresApproval && r.count > 0);
+
+                                        if (isPending && r.actionLogId) {
+                                            const isBusy = actionProcessing === r.actionLogId;
+                                            return (
+                                                <div
+                                                    key={j}
+                                                    className="rounded-2xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/15 p-3.5 shadow-sm space-y-2.5"
+                                                    style={{ animation: `slideUp 0.3s ease-out ${0.05 * j}s both` }}
+                                                >
+                                                    <div className="flex items-start gap-2.5">
+                                                        <span className="material-symbols-outlined text-amber-500 text-lg shrink-0 mt-0.5">
+                                                            warning
+                                                        </span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full">
+                                                                    Confirmation Required
+                                                                </span>
+                                                                <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase">
+                                                                    {r.action} • {r.target}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs text-gray-800 dark:text-gray-200 mt-1.5 leading-relaxed font-medium">
+                                                                {r.detail}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20">
+                                                        <button
+                                                            type="button"
+                                                            disabled={isBusy}
+                                                            onClick={() => handleApproveAction(i, j, r.actionLogId!, true)}
+                                                            className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs shadow-sm hover:bg-amber-600 active:scale-95 transition-all disabled:opacity-50"
+                                                        >
+                                                            <span className={`material-symbols-outlined text-sm ${isBusy ? 'animate-spin' : ''}`}>
+                                                                {isBusy ? 'progress_activity' : 'check'}
+                                                            </span>
+                                                            {isBusy ? 'Processing...' : 'Confirm Action'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={isBusy}
+                                                            onClick={() => handleApproveAction(i, j, r.actionLogId!, false)}
+                                                            className="min-h-[44px] px-4 py-2 rounded-xl border border-gray-300 dark:border-white/20 text-gray-700 dark:text-gray-300 hover:text-rose-500 hover:border-rose-300 font-bold text-xs transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
                                         const isEdit = r.action === 'edit';
                                         const isDelete = r.action === 'delete';
-                                        const icon = isEdit ? 'edit' : isDelete ? 'delete' : 'restart_alt';
-                                        const color = isEdit
-                                            ? 'text-amber-500 bg-amber-50/80 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800/30'
-                                            : isDelete
-                                                ? 'text-rose-500 bg-rose-50/80 dark:bg-rose-500/10 border-rose-200 dark:border-rose-800/30'
-                                                : 'text-primary bg-blue-50/80 dark:bg-primary/10 border-blue-200 dark:border-primary/20';
+                                        const isReset = r.action === 'reset';
+                                        const icon = isRejected ? 'cancel' : isEdit ? 'edit' : isDelete ? 'delete' : isReset ? 'restart_alt' : 'add_circle';
+                                        const color = isRejected
+                                            ? 'text-gray-500 bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10'
+                                            : isEdit
+                                                ? 'text-amber-500 bg-amber-50/80 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800/30'
+                                                : isDelete
+                                                    ? 'text-rose-500 bg-rose-50/80 dark:bg-rose-500/10 border-rose-200 dark:border-rose-800/30'
+                                                    : 'text-primary bg-blue-50/80 dark:bg-primary/10 border-blue-200 dark:border-primary/20';
+
                                         return (
                                             <div key={j} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs ${color}`}
                                                 style={{ animation: `slideUp 0.3s ease-out ${0.05 * j}s both` }}
                                             >
                                                 <span className="material-symbols-outlined text-sm">{icon}</span>
                                                 <span className="font-bold">
-                                                    {r.count > 0 ? '✓' : '✗'} {r.detail}
+                                                    {isRejected ? '✕' : (r.count > 0 || isExecuted ? '✓' : '✗')} {r.detail}
                                                 </span>
                                             </div>
                                         );

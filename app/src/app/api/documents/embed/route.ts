@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * @fileoverview Background Embedding Pipeline Trigger for Document Vault (Module 13).
- * Splits document into chunks and generates 1536-dim vector embeddings.
+ * Generates vector embeddings using Gemini and encrypts them into documentMetadata.
  *
  * POST /api/documents/embed
  *
@@ -16,10 +16,10 @@ import { db } from '@/db/client';
 import {
   documentMetadata,
   module23DocumentChunks,
-  documentEmbeddings,
 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { chunkDocumentText, generateTextEmbedding } from '@/lib/ai/semanticVector';
+import { encryptField, decryptField, isEncrypted } from '@/lib/crypto/encryption';
 
 export const POST = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
@@ -48,9 +48,21 @@ export const POST = apiHandler(
       .where(eq(documentMetadata.id, documentId));
 
     try {
-      const rawText = doc.ocrRawText || `${doc.merchantName || ''} - ${doc.fileName}\nTotal: $${doc.totalAmount || 0}`;
-      const chunks = chunkDocumentText(rawText, 800);
+      let rawText = doc.ocrRawText || '';
+      if (isEncrypted(rawText)) {
+        try {
+          rawText = decryptField(rawText, 'document-vault');
+        } catch {}
+      }
+      if (!rawText) {
+        rawText = `${doc.merchantName || ''} - ${doc.fileName}\nTotal: $${doc.totalAmount || 0}`;
+      }
 
+      // Generate document-level vector embedding
+      const fullVector = await generateTextEmbedding(rawText);
+      const encryptedEmbedding = encryptField(JSON.stringify(fullVector), 'document-vault');
+
+      const chunks = chunkDocumentText(rawText, 800);
       const createdChunkIds: string[] = [];
 
       for (let i = 0; i < chunks.length; i++) {
@@ -67,23 +79,14 @@ export const POST = apiHandler(
           tokenCount,
         });
         createdChunkIds.push(chunkId);
-
-        // Generate vector embedding
-        const vector = await generateTextEmbedding(chunkText);
-
-        // Save embedding
-        await db.insert(documentEmbeddings).values({
-          documentId: Number(documentId) || Math.abs(hashString(documentId)),
-          chunkText,
-          embeddingVector: JSON.stringify(vector),
-        });
       }
 
-      // 2. Mark as READY
+      // 2. Mark as READY and save encrypted embedding directly to documentMetadata
       const now = Math.floor(Date.now() / 1000);
       await db
         .update(documentMetadata)
         .set({
+          embedding: encryptedEmbedding,
           embeddingStatus: 'READY',
           embeddingCompletedAt: now,
         })
@@ -98,24 +101,17 @@ export const POST = apiHandler(
       });
     } catch (err: any) {
       console.error('Embedding pipeline failure:', err);
+
       await db
         .update(documentMetadata)
         .set({ embeddingStatus: 'FAILED' })
         .where(eq(documentMetadata.id, documentId));
 
       return NextResponse.json(
-        { error: 'Embedding pipeline failed', details: err.message },
+        { error: 'Embedding pipeline failed', details: err?.message },
         { status: 500 }
       );
     }
-  })
+  }),
+  { rateLimit: 'upload' }
 );
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-}

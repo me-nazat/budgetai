@@ -138,7 +138,11 @@ export const POST = apiHandler(
             contextBundle.context,
             contextBundle.budgetContext,
             today,
-            contextBundle.profile ? { name: contextBundle.profile.name, currency: contextBundle.profile.currency } : undefined,
+            contextBundle.profile ? {
+                name: contextBundle.profile.name,
+                currency: contextBundle.profile.currency,
+                locale: contextBundle.profile.locale,
+            } : undefined,
             attachments,
         );
 
@@ -147,7 +151,7 @@ export const POST = apiHandler(
 
         if (!hasAttachments) {
             if (aiResponse.actions?.length) {
-                actionResults = await processDataActions(aiResponse.actions, userId);
+                actionResults = await processDataActions(aiResponse.actions, userId, chatSessionId);
             }
             if (aiResponse.financialData?.length) {
                 storedTransactions = await storeFinancialData(aiResponse.financialData, userId, today, contextBundle.currencySymbol);
@@ -180,6 +184,7 @@ export const POST = apiHandler(
                 : mode === 'chat' ? aiMessage : (storedTransactions.length > 0 || actionResults.length > 0 ? aiMessage : ''),
             transactions: storedTransactions,
             actionResults,
+            toolCall: (aiResponse as any).toolCall || null,
             pendingActions: hasAttachments ? {
                 financialData: aiResponse.financialData || [],
                 actions: aiResponse.actions || [],

@@ -4,78 +4,60 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { db } from '@/db/client';
-import { importedStatements, module26StatementPages, reconciliationQueue } from '@/db/schema';
+import { statementImportBatches, bankImportReviewQueue } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 /**
  * GET /api/bank-import/status/[id]
- * Module 16.1: Live Parsing Progress & Status Tracker
- * Returns multi-page PDF parse progress (percentage, pages parsed vs total, and readiness).
+ * Module 16: Statement Import Batch Status & Queue Summary
+ * Returns reconciliation status, total records, and count of pending items.
+ *
+ * Rate limit: 'api'
  */
 export const GET = apiHandler(
   withAuth<{ params: Promise<{ id: string }> }>(async (request: NextRequest, { userId }, routeContext) => {
     const resolvedParams = await routeContext.params;
-    const statementId = resolvedParams?.id;
+    const batchIdStr = resolvedParams?.id;
+    const batchId = parseInt(batchIdStr, 10);
 
-    if (!statementId) {
-      return NextResponse.json({ error: 'Statement ID is required' }, { status: 400 });
+    if (isNaN(batchId)) {
+      return NextResponse.json({ error: 'Valid batch ID is required' }, { status: 400 });
     }
 
-    const [statement] = await db
+    const [batch] = await db
       .select()
-      .from(importedStatements)
-      .where(and(eq(importedStatements.id, statementId), eq(importedStatements.userId, userId)));
+      .from(statementImportBatches)
+      .where(and(eq(statementImportBatches.id, batchId), eq(statementImportBatches.userId, userId)));
 
-    if (!statement) {
-      return NextResponse.json({ error: 'Statement not found' }, { status: 404 });
+    if (!batch) {
+      return NextResponse.json({ error: 'Statement import batch not found' }, { status: 404 });
     }
 
-    // Fetch parsed pages count
-    const pages = await db
+    const queueItems = await db
       .select({
-        id: module26StatementPages.id,
-        pageNumber: module26StatementPages.pageNumber,
-        parseStatus: module26StatementPages.parseStatus,
+        id: bankImportReviewQueue.id,
+        resolution: bankImportReviewQueue.resolution,
       })
-      .from(module26StatementPages)
-      .where(eq(module26StatementPages.statementId, statementId));
+      .from(bankImportReviewQueue)
+      .where(eq(bankImportReviewQueue.importBatchId, batchId));
 
-    const totalPages = Math.max(statement.pageCount || 1, pages.length || 1);
-    const parsedPagesCount = pages.filter((p) => p.parseStatus === 'parsed').length;
-
-    let percentage = 0;
-    const isReady = statement.reconciliationStatus === 'UNRECONCILED' || statement.reconciliationStatus === 'COMMITTED';
-    const isFailed = statement.reconciliationStatus === 'FAILED';
-
-    if (isReady) {
-      percentage = 100;
-    } else if (isFailed) {
-      percentage = 0;
-    } else {
-      percentage = Math.min(95, Math.round((parsedPagesCount / totalPages) * 100));
-    }
-
-    // If ready, also fetch queue summary
-    let pendingQueueCount = 0;
-    if (isReady) {
-      const queue = await db
-        .select({ id: reconciliationQueue.id })
-        .from(reconciliationQueue)
-        .where(eq(reconciliationQueue.statementId, statementId));
-      pendingQueueCount = queue.length;
-    }
+    const pendingCount = queueItems.filter((q) => q.resolution === 'pending').length;
+    const resolvedCount = queueItems.length - pendingCount;
+    const isBalanced = batch.reconciliationStatus === 'BALANCED' || (queueItems.length > 0 && pendingCount === 0);
 
     return NextResponse.json({
-      statementId,
-      fileName: statement.fileName,
-      status: statement.reconciliationStatus,
-      pageCount: totalPages,
-      pagesParsed: parsedPagesCount,
-      percentage,
-      totalTransactions: statement.totalTransactionsCount,
-      pendingQueueCount,
-      ready: isReady,
-      failed: isFailed,
+      batchId: batch.id,
+      fileName: batch.fileName,
+      bankName: batch.bankName,
+      status: batch.status,
+      reconciliationStatus: isBalanced ? 'BALANCED' : batch.reconciliationStatus,
+      totalRecords: batch.totalRecords,
+      totalQueueCount: queueItems.length,
+      pendingCount,
+      resolvedCount,
+      isBalanced,
+      createdAt: batch.createdAt,
     });
-  })
+  }),
+  { rateLimit: 'api' }
 );

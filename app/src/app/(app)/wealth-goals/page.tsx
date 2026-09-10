@@ -6,6 +6,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import confetti from 'canvas-confetti';
 import { Toaster, toast } from 'sonner';
 import { useCurrency } from '@/hooks/useCurrency';
+import { AutoRoundUpPanel } from '@/components/goals/AutoRoundUpPanel';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
@@ -32,15 +33,39 @@ export default function WealthGoalsPage() {
     const [linkedAccount, setLinkedAccount] = useState('');
     const [contribId, setContribId] = useState<number | null>(null);
     const [contribAmt, setContribAmt] = useState('');
+    const [roundUpGoal, setRoundUpGoal] = useState<Goal | null>(null);
+    const [showRoundUpPanel, setShowRoundUpPanel] = useState(false);
+    const [activeRuleTargetId, setActiveRuleTargetId] = useState<string | null>(null);
     const { fmt } = useCurrency();
+
+    const triggerCelebration = (message: string) => {
+        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!prefersReducedMotion) {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        }
+        toast.success(message);
+    };
 
     const load = async () => {
         setLoading(true);
         try {
-            const [worthRes, goalsRes] = await Promise.all([fetch('/api/networth'), fetch('/api/goals')]);
+            const [worthRes, goalsRes, roundUpRes] = await Promise.all([
+                fetch('/api/networth'),
+                fetch('/api/goals'),
+                fetch('/api/round-up').catch(() => null)
+            ]);
             const [worthData, goalsData] = await Promise.all([worthRes.json(), goalsRes.json()]);
             setEntries(worthData.entries || []);
             setGoals(goalsData.goals || []);
+
+            if (roundUpRes && roundUpRes.ok) {
+                const roundUpData = await roundUpRes.json();
+                if (roundUpData?.rule?.isActive && roundUpData?.rule?.targetGoalId) {
+                    setActiveRuleTargetId(String(roundUpData.rule.targetGoalId));
+                } else {
+                    setActiveRuleTargetId(null);
+                }
+            }
         } finally {
             setLoading(false);
         }
@@ -85,8 +110,7 @@ export default function WealthGoalsPage() {
         });
         const data = await res.json();
         
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        toast.success(`Added ${fmt(parseFloat(contribAmt))} to goal! 🎉`);
+        triggerCelebration(`Added ${fmt(parseFloat(contribAmt))} to goal! 🎉`);
 
         setContribId(null);
         setContribAmt('');
@@ -359,6 +383,30 @@ export default function WealthGoalsPage() {
                                                 Goal Accomplished!
                                             </div>
                                         )}
+
+                                        {/* Auto Round-Up action and status */}
+                                        <div className="relative z-10 mt-3 pt-3 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="material-symbols-outlined text-[16px] text-emerald-500">savings</span>
+                                                {activeRuleTargetId === String(goal.id) ? (
+                                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Round-Up Active</span>
+                                                ) : (
+                                                    <span className="text-gray-400">Micro-Savings</span>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setRoundUpGoal(goal); setShowRoundUpPanel(true); }}
+                                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
+                                                    activeRuleTargetId === String(goal.id)
+                                                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/25'
+                                                        : 'bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10'
+                                                }`}
+                                            >
+                                                <span className="material-symbols-outlined text-[14px]">tune</span>
+                                                {activeRuleTargetId === String(goal.id) ? 'Edit Rule' : '+ Auto Round-Up'}
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -437,6 +485,13 @@ export default function WealthGoalsPage() {
                     </div>
                 </div>
             </div>
+
+            <AutoRoundUpPanel
+                goal={roundUpGoal}
+                isOpen={showRoundUpPanel}
+                onClose={() => setShowRoundUpPanel(false)}
+                onSaved={() => void load()}
+            />
         </div>
     );
 }

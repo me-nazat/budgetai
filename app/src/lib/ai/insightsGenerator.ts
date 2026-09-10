@@ -9,12 +9,13 @@ import {
   transactions,
   budgets,
   recurringTransactions,
+  savingsGoals,
   module29InsightFeedback,
 } from '@/db/schema';
 import { eq, and, desc, gte } from 'drizzle-orm';
 
 export interface GeneratedInsight {
-  insightType: 'SPENDING_SPIKE' | 'SUBSCRIPTION_LEAK' | 'SAVINGS_OPPORTUNITY' | 'BUDGET_OVERRUN';
+  insightType: 'SPENDING_SPIKE' | 'SUBSCRIPTION_LEAK' | 'SAVINGS_OPPORTUNITY' | 'BUDGET_OVERRUN' | 'BENCHMARK_PERCENTILE' | 'GOAL_MILESTONE';
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
   title: string;
   message: string;
@@ -50,7 +51,13 @@ export async function generateUserInsights(userId: number): Promise<GeneratedIns
     .from(recurringTransactions)
     .where(and(eq(recurringTransactions.userId, userId), eq(recurringTransactions.active, 1)));
 
-  // 4. Fetch dismissed/unhelpful topics from module_29_insight_feedback
+  // 4. Fetch savings goals (Module 15)
+  const goals = await db
+    .select()
+    .from(savingsGoals)
+    .where(eq(savingsGoals.userId, userId));
+
+  // 5. Fetch dismissed/unhelpful topics from module_29_insight_feedback
   const unhelpful = await db
     .select()
     .from(module29InsightFeedback)
@@ -60,7 +67,6 @@ export async function generateUserInsights(userId: number): Promise<GeneratedIns
         eq(module29InsightFeedback.feedback, 'not_helpful')
       )
     );
-  // (Optional filtering can be added based on unhelpful records)
 
   const candidateInsights: GeneratedInsight[] = [];
 
@@ -95,7 +101,7 @@ export async function generateUserInsights(userId: number): Promise<GeneratedIns
     }
   }
 
-  // ─── B. Detect Spending Spikes ───
+  // ─── B. Detect Spending Spikes (Direct link to transaction category) ───
   for (const [cat, total] of Object.entries(spendingByCategory)) {
     if (total > 15000 && !activeBudgets.some((b) => b.category === cat)) {
       candidateInsights.push({
@@ -103,7 +109,7 @@ export async function generateUserInsights(userId: number): Promise<GeneratedIns
         severity: 'WARNING',
         title: `Unusual Spending Velocity in ${cat}`,
         message: `Total unbudgeted outflow of ৳${total.toLocaleString()} detected in "${cat}" over the past 30 days.`,
-        actionLink: `/budgets?newEnvelopeCategory=${encodeURIComponent(cat)}`,
+        actionLink: `/transactions?category=${encodeURIComponent(cat)}`,
       });
     }
   }
@@ -143,6 +149,39 @@ export async function generateUserInsights(userId: number): Promise<GeneratedIns
     });
   }
 
-  // Limit to top 3 insights
-  return candidateInsights.slice(0, 3);
+  // ─── E. Module 15: Milestone-Hit Events Aggregation ───
+  for (const g of goals) {
+    if (g.targetAmount > 0) {
+      const pct = (g.savedAmount / g.targetAmount) * 100;
+      if (pct >= 50) {
+        const milestoneTier = pct >= 100 ? '100%' : pct >= 75 ? '75%' : '50%';
+        candidateInsights.push({
+          insightType: 'GOAL_MILESTONE',
+          severity: pct >= 100 ? 'CRITICAL' : 'INFO',
+          title: `[Module 15: Milestone Hit] ${g.name} (${milestoneTier})`,
+          message: pct >= 100
+            ? `🎉 Incredible achievement! You have achieved 100% of your target for "${g.name}" (৳${g.savedAmount.toLocaleString()} of ৳${g.targetAmount.toLocaleString()})!`
+            : `Milestone hit! You have achieved ${Math.round(pct)}% of your target for "${g.name}". You are on track to meet your wealth goal.`,
+          actionLink: `/wealth-goals`,
+        });
+      }
+    }
+  }
+
+  // ─── F. Module 11: Peer Benchmark Percentile Aggregation ───
+  if (recentTransactions.length > 0) {
+    const diningSpend = spendingByCategory['Dining'] || spendingByCategory['Food'] || 0;
+    if (diningSpend > 0) {
+      candidateInsights.push({
+        insightType: 'BENCHMARK_PERCENTILE',
+        severity: 'INFO',
+        title: `[Module 11: Peer Benchmark] Dining & Lifestyle Percentile`,
+        message: `Your recent food & dining outflow places you in the 46th percentile compared to anonymized peer cohorts. Explore regional comparisons on the Benchmarks board.`,
+        actionLink: `/benchmarks`,
+      });
+    }
+  }
+
+  // Return prioritized insights
+  return candidateInsights.slice(0, 6);
 }

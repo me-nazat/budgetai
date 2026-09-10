@@ -54,7 +54,8 @@ export const GET = apiHandler(
       demographics: demo || null,
       activeMetrics: consents.map((c) => c.metricKey),
     });
-  })
+  }),
+  { rateLimit: 'api' }
 );
 
 export const POST = apiHandler(
@@ -128,7 +129,8 @@ export const POST = apiHandler(
     }
 
     return NextResponse.json({ success: true, isOptedIn: true, metrics });
-  })
+  }),
+  { rateLimit: 'apiStrict' }
 );
 
 export const DELETE = apiHandler(
@@ -164,5 +166,6 @@ export const DELETE = apiHandler(
       .where(eq(module21UserBenchmarkConsents.userId, userId));
 
     return NextResponse.json({ success: true, isOptedIn: false, message: 'All benchmark sharing revoked' });
-  })
+  }),
+  { rateLimit: 'apiStrict' }
 );

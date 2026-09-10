@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-function getGenAI() {
+export function getGenAI() {
     return new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 }
 
@@ -22,7 +22,7 @@ export interface AttachmentInput {
 
 export interface DataAction {
     type: 'edit' | 'delete' | 'reset' | 'create';
-    target: 'transactions' | 'budgets' | 'networth' | 'notifications' | 'chat_history' | 'savings_goals' | 'debts' | 'recurring' | 'investments' | 'household_expenses' | 'bill_splits' | 'all';
+    target: 'transactions' | 'budgets' | 'networth' | 'notifications' | 'chat_history' | 'savings_goals' | 'debts' | 'recurring' | 'recurring_transactions' | 'investments' | 'investment_holdings' | 'accounts' | 'household_expenses' | 'bill_splits' | 'all';
     filter?: {
         id?: number;
         ids?: number[];
@@ -32,6 +32,10 @@ export interface DataAction {
         dateFrom?: string;
         dateTo?: string;
         transactionType?: 'expense' | 'earning';
+        name?: string;
+        ticker?: string;
+        accountType?: string;
+        debtType?: string;
     };
     updates?: {
         amount?: number;
@@ -45,6 +49,22 @@ export interface DataAction {
         target_amount?: number;
         month?: number;
         year?: number;
+        balance?: number;
+        initial_balance?: number;
+        interest_rate_apr?: number;
+        minimum_payment?: number;
+        due_day_of_month?: number;
+        debt_type?: string;
+        frequency?: 'weekly' | 'monthly' | 'yearly';
+        next_date?: string;
+        ticker?: string;
+        asset_type?: string;
+        quantity?: number;
+        avg_cost_basis?: number;
+        account_type?: string;
+        opening_balance?: number;
+        current_balance?: number;
+        currency?: string;
     };
 }
 
@@ -73,9 +93,10 @@ PERSONALITY:
 
 DATA CONTROL — You can ADD, EDIT, DELETE, & RESET user data:
 • ADD: Extract expenses/earnings into financialData. Auto-categorize: Food, Transport, Housing, Utilities, Entertainment, Shopping, Health, Education, Business, Savings, Salary, Freelance, Investment, Other.
-• EDIT: actions with type "edit", match via filter (prefer id), specify updates.
-• DELETE: actions with type "delete", match via filter (prefer id).
-• RESET: actions with type "reset", targets: "transactions"|"budgets"|"networth"|"notifications"|"chat_history"|"all".
+• CREATE: actions with type "create", targets: "transactions"|"budgets"|"debts"|"recurring_transactions"|"investment_holdings"|"accounts"|"savings_goals".
+• EDIT: actions with type "edit", match via filter (prefer id/name/ticker), specify updates.
+• DELETE: actions with type "delete", match via filter (prefer id/name/ticker).
+• RESET: actions with type "reset", targets: "transactions"|"budgets"|"networth"|"notifications"|"chat_history"|"debts"|"recurring_transactions"|"investment_holdings"|"accounts"|"all".
 • Parse dates naturally ("today", "yesterday", "last Monday"). Use YYYY-MM-DD. Default to today.
 
 RESPONSE RULES:
@@ -93,7 +114,7 @@ DATA: {CONTEXT}
 BUDGETS: {BUDGETS}
 
 Respond ONLY with this JSON format:
-{"message":"your response","financialData":[{"type":"expense"|"earning","amount":number,"category":"string","description":"string","date":"YYYY-MM-DD"}],"actions":[{"type":"edit"|"delete"|"reset","target":"transactions"|"budgets"|"networth"|"notifications"|"chat_history"|"all","filter":{},"updates":{}}],"isReportRequest":false,"reportFormat":null,"reportType":null,"dateRange":null,"attachmentSummaries":[{"name":"string","summary":"string","confidence":"high|medium|low"}]}
+{"message":"your response","financialData":[{"type":"expense"|"earning","amount":number,"category":"string","description":"string","date":"YYYY-MM-DD"}],"actions":[{"type":"create"|"edit"|"delete"|"reset","target":"transactions"|"budgets"|"debts"|"recurring_transactions"|"investment_holdings"|"accounts"|"networth"|"notifications"|"chat_history"|"all","filter":{},"updates":{}}],"isReportRequest":false,"reportFormat":null,"reportType":null,"dateRange":null,"attachmentSummaries":[{"name":"string","summary":"string","confidence":"high|medium|low"}]}
 
 Empty arrays for financialData/actions if none. Today: {TODAY}`;
 
@@ -293,17 +314,21 @@ export async function processMessage(
     context: string,
     budgets: string,
     today: string,
-    userProfile?: { name?: string; currency?: string },
+    userProfile?: { name?: string; currency?: string; locale?: string },
     attachments: AttachmentInput[] = [],
 ): Promise<AIResponse> {
     const profileStr = userProfile?.name
         ? `Name: ${userProfile.name}, Currency: ${userProfile.currency || 'BDT'}`
         : 'No profile data';
-    const prompt = SYSTEM_PROMPT
+    let prompt = SYSTEM_PROMPT
         .replace('{CONTEXT}', context)
         .replace('{BUDGETS}', budgets)
         .replace('{PROFILE}', profileStr)
         .replace('{TODAY}', today);
+
+    if (userProfile?.locale === 'bn') {
+        prompt += '\n\nLANGUAGE INSTRUCTION: Respond in Bengali (বাংলা). All explanations, conversational remarks, and messages must be in fluent Bengali (বাংলা).';
+    }
 
     try {
         if (attachments.length > 0) {

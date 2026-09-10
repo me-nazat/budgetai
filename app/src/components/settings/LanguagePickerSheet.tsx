@@ -93,7 +93,7 @@ export default function LanguagePickerSheet({ isOpen, onClose }: LanguagePickerS
       const res = await fetch('/api/settings/locale', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferredLocale: newLocale }),
+        body: JSON.stringify({ locale: newLocale, preferredLocale: newLocale }),
       });
       if (res.ok) {
         toast.success(

@@ -29,6 +29,7 @@ import { DashboardStatCards } from '@/components/dashboard/DashboardStatCards';
 import { DashboardLayoutModal } from '@/components/dashboard/DashboardLayoutModal';
 import { DashboardIntelHub } from '@/components/dashboard/DashboardIntelHub';
 import { PendingRoundUpsStrip } from '@/components/dashboard/PendingRoundUpsStrip';
+import { PeerBenchmarkWidget } from '@/components/dashboard/PeerBenchmarkWidget';
 import FinancialMandala from '@/components/generative/FinancialMandala';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
@@ -147,11 +148,13 @@ export default function DashboardPage() {
         'recent_activity',
         'budget_alerts',
         'intel_hub',
+        'peer_benchmarks',
     ];
 
     const mobileLayout = layoutData?.mobileWidgetOrder || [
         'net_worth',
         'quick_stats',
+        'peer_benchmarks',
         'ai_insight',
         'recent_activity',
         'budget_alerts',
@@ -619,6 +622,10 @@ export default function DashboardPage() {
                             );
                         }
 
+                        if (widgetId === 'peer_benchmarks') {
+                            return <PeerBenchmarkWidget key={widgetId} compact />;
+                        }
+
                         if (widgetId === 'net_worth') {
                             const netWorthSavingsRate =
                                 data.earnings.current > 0
@@ -1035,6 +1042,11 @@ export default function DashboardPage() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Peer Benchmark Widget */}
+                        {desktopLayout.includes('peer_benchmarks') && (
+                            <PeerBenchmarkWidget />
+                        )}
 
                         {/* Financial Intelligence Hub */}
                         <DashboardIntelHub

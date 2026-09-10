@@ -11,11 +11,13 @@ const DESKTOP_WIDGET_CATALOG: Record<string, { label: string; icon: string; desc
     recent_activity: { label: 'Recent Transactions', icon: 'receipt_long', desc: 'Detailed table of recent transactions' },
     budget_alerts: { label: 'Budget Alerts', icon: 'warning', desc: 'Active category spending budget limits' },
     intel_hub: { label: 'Intelligence Hub', icon: 'insights', desc: 'Live exchange rates & financial news' },
+    peer_benchmarks: { label: 'Peer Benchmarks', icon: 'leaderboard', desc: 'Anonymous demographic percentile comparison' },
 };
 
 const MOBILE_WIDGET_CATALOG: Record<string, { label: string; icon: string; desc: string }> = {
     net_worth: { label: 'Hero Net Worth Card', icon: 'credit_card', desc: 'Vibrant balance card with income/expense pills' },
     quick_stats: { label: 'Quick Stats Pills', icon: 'view_carousel', desc: 'Horizontal scroll of savings rate & burn rate' },
+    peer_benchmarks: { label: 'Peer Benchmarks', icon: 'leaderboard', desc: 'Percentile bar vs demographic cohort' },
     ai_insight: { label: 'AI Smart Insight', icon: 'auto_awesome', desc: 'Contextual AI financial advice callout' },
     recent_activity: { label: 'Recent Transactions', icon: 'receipt_long', desc: 'Compact transaction cards' },
     budget_alerts: { label: 'Budget Alerts', icon: 'warning', desc: 'Active budget progress bars' },

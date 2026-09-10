@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import { motion, useScroll, useTransform, Variants, useMotionValue, useSpring, useMotionTemplate } from 'framer-motion';
 import FinancialLineGraph from '@/components/landing/FinancialLineGraph';
@@ -918,9 +919,32 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
 
 function FooterSection() {
     const columns = [
-        { title: 'Product', links: ['Features', 'Pricing', 'Security', 'Integrations'] },
-        { title: 'Company', links: ['About', 'Careers', 'Blog', 'Contact'] },
-        { title: 'Resources', links: ['Help Center', 'API Docs', 'Community'] },
+        {
+            title: 'Product',
+            links: [
+                { name: 'Features', href: '#features' },
+                { name: 'Pricing', href: '/register' },
+                { name: 'Security', href: '/settings/privacy' },
+                { name: 'Integrations', href: '/bank-import' },
+            ],
+        },
+        {
+            title: 'Company',
+            links: [
+                { name: 'About', href: '/' },
+                { name: 'Careers', href: '/register' },
+                { name: 'Blog', href: '/insights' },
+                { name: 'Contact', href: 'mailto:support@wealthai.app' },
+            ],
+        },
+        {
+            title: 'Resources',
+            links: [
+                { name: 'Help Center', href: '/chat' },
+                { name: 'Benchmarking', href: '/benchmarks' },
+                { name: 'Household', href: '/household' },
+            ],
+        },
     ];
 
     return (
@@ -944,7 +968,7 @@ function FooterSection() {
                             <ul className="space-y-3">
                                 {col.links.map((link, j) => (
                                     <li key={j}>
-                                        <a href="#" className="text-sm text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors">{link}</a>
+                                        <Link href={link.href} className="text-sm text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors">{link.name}</Link>
                                     </li>
                                 ))}
                             </ul>
@@ -954,8 +978,8 @@ function FooterSection() {
                 <div className="pt-8 border-t border-gray-200 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
                     <p className="text-sm text-gray-500 dark:text-slate-500">© 2026 Wealth AI. All rights reserved.</p>
                     <div className="flex gap-6">
-                        <a href="#" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Privacy</a>
-                        <a href="#" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Terms</a>
+                        <Link href="/settings/privacy" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Privacy</Link>
+                        <Link href="/login" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Terms</Link>
                     </div>
                 </div>
             </div>

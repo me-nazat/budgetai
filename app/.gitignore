@@ -45,6 +45,13 @@ next-env.d.ts
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# credentials & session tokens
+cookies.txt
+*.cookie
 
 # misc
 .DS_Store

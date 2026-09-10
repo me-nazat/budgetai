@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
  * @module api/calendar/sync
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { apiSuccess, apiError } from '@/lib/types/api';
 import { db } from '@/db/client';
@@ -25,6 +26,8 @@ import {
   computeEventHash,
   computePushScheduleTime,
 } from '@/lib/security/calendarToken';
+import { CalendarRepository } from '@/repositories/calendar.repository';
+import { google } from 'googleapis';
 
 interface SyncItem {
   sourceType: 'BILL' | 'SUBSCRIPTION' | 'DEBT';
@@ -35,30 +38,51 @@ interface SyncItem {
   url: string;
 }
 
-export const POST = withAuth(async (_request: NextRequest, { userId }) => {
-  try {
-    const nowEpoch = Math.floor(Date.now() / 1000);
+export const POST = apiHandler(
+  withAuth(async (_request: NextRequest, { userId }) => {
+    try {
+      const nowEpoch = Math.floor(Date.now() / 1000);
 
-    // 1. Fetch or initialize user's calendar settings
-    let [settings] = await db
-      .select()
-      .from(calendarSyncSettings)
-      .where(eq(calendarSyncSettings.userId, userId));
+      // 1. Fetch or initialize user's calendar settings
+      let [settings] = await db
+        .select()
+        .from(calendarSyncSettings)
+        .where(eq(calendarSyncSettings.userId, userId));
 
-    if (!settings) {
-      const defaultId = `cs_${randomUUID()}`;
-      [settings] = await db
-        .insert(calendarSyncSettings)
-        .values({
-          id: defaultId,
-          userId,
-          syncBills: 1,
-          syncSubscriptions: 1,
-          syncDebts: 1,
-          reminderDaysBefore: 2,
-        })
-        .returning();
-    }
+      if (!settings) {
+        const defaultId = `cs_${randomUUID()}`;
+        [settings] = await db
+          .insert(calendarSyncSettings)
+          .values({
+            id: defaultId,
+            userId,
+            syncBills: 1,
+            syncSubscriptions: 1,
+            syncDebts: 1,
+            reminderDaysBefore: 2,
+          })
+          .returning();
+      }
+
+      // Check Google Calendar API authorization from oauthAccounts
+      const token = await CalendarRepository.getToken(userId);
+      let gcal: any = null;
+      if (token?.accessToken || token?.refreshToken) {
+        try {
+          const clientId = process.env.GOOGLE_CLIENT_ID;
+          const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+          if (clientId && clientSecret) {
+            const authClient = new google.auth.OAuth2(clientId, clientSecret);
+            authClient.setCredentials({
+              access_token: token.accessToken,
+              refresh_token: token.refreshToken,
+            });
+            gcal = google.calendar({ version: 'v3', auth: authClient });
+          }
+        } catch (gcalErr) {
+          console.warn('[calendar/sync] Google Calendar client init warning:', gcalErr);
+        }
+      }
 
     const reminderDays = settings.reminderDaysBefore ?? 2;
     const syncItems: SyncItem[] = [];
@@ -163,7 +187,38 @@ export const POST = withAuth(async (_request: NextRequest, { userId }) => {
         );
 
       const nextPushAt = computePushScheduleTime(item.dueDate, reminderDays);
-      const googleEventId = existingLog?.googleEventId || `gcal_${item.sourceType.toLowerCase()}_${item.sourceId}`;
+      let googleEventId = existingLog?.googleEventId || `gcal_${item.sourceType.toLowerCase()}_${item.sourceId}`;
+
+      // If Google Calendar OAuth is active, push directly to user's Google Calendar
+      if (gcal) {
+        try {
+          const calendarId = token?.calendarId || settings.calendarId || 'primary';
+          const eventBody = {
+            summary: item.title,
+            description: `WealthAI sync: ${item.title} (৳${item.amount.toLocaleString()}). ${item.url}`,
+            start: { date: item.dueDate },
+            end: { date: item.dueDate },
+          };
+
+          if (existingLog?.googleEventId && !existingLog.googleEventId.startsWith('gcal_')) {
+            await gcal.events.patch({
+              calendarId,
+              eventId: existingLog.googleEventId,
+              requestBody: eventBody,
+            });
+          } else {
+            const res = await gcal.events.insert({
+              calendarId,
+              requestBody: eventBody,
+            });
+            if (res.data?.id) {
+              googleEventId = res.data.id;
+            }
+          }
+        } catch (gcalErr) {
+          console.warn('[calendar/sync] Google Calendar API event sync note:', gcalErr);
+        }
+      }
 
       const payload = {
         title: item.title,
@@ -298,4 +353,7 @@ export const POST = withAuth(async (_request: NextRequest, { userId }) => {
     console.error('Error in POST /api/calendar/sync:', error);
     return apiError(new Error(error.message || 'Failed to synchronize calendar events'));
   }
-});
+}),
+{ rateLimit: 'apiStrict' }
+);
+

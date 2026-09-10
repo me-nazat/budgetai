@@ -16,11 +16,10 @@ import { db } from '@/db/client';
 import {
   calendarSyncSettings,
   calendarEventLogs,
-  calendarSyncTokens,
 } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { revokeGoogleToken, decryptCalendarToken } from '@/lib/security/calendarToken';
+import { CalendarRepository } from '@/repositories/calendar.repository';
 
 export const GET = withAuth(async (_request: NextRequest, { userId }) => {
   try {
@@ -45,14 +44,10 @@ export const GET = withAuth(async (_request: NextRequest, { userId }) => {
         .returning();
     }
 
-    // 2. Check token connection
-    const [tokenRow] = await db
-      .select()
-      .from(calendarSyncTokens)
-      .where(eq(calendarSyncTokens.userId, userId));
-
-    const isConnected = Boolean(settings.googleRefreshToken || tokenRow?.refreshToken);
-    const googleEmail = settings.googleUserEmail || (isConnected ? 'Google Calendar Account' : null);
+    // 2. Check token connection from oauthAccounts
+    const token = await CalendarRepository.getToken(userId);
+    const isConnected = Boolean(token?.refreshToken || token?.accessToken);
+    const googleEmail = settings.googleUserEmail || token?.email || (isConnected ? 'Google Calendar Account' : null);
 
     // 3. Fetch last 5 sync event logs
     const recentLogs = await db
@@ -143,35 +138,16 @@ export const PUT = withAuth(async (request: NextRequest, { userId }) => {
 
 export const DELETE = withAuth(async (_request: NextRequest, { userId }) => {
   try {
-    const [settings] = await db
-      .select()
-      .from(calendarSyncSettings)
+    await CalendarRepository.removeToken(userId);
+
+    // Clear settings email & calendarId
+    await db
+      .update(calendarSyncSettings)
+      .set({
+        googleUserEmail: null,
+        calendarId: null,
+      })
       .where(eq(calendarSyncSettings.userId, userId));
-
-    const [tokenRow] = await db
-      .select()
-      .from(calendarSyncTokens)
-      .where(eq(calendarSyncTokens.userId, userId));
-
-    const tokenToRevoke = settings?.googleRefreshToken || tokenRow?.refreshToken;
-    if (tokenToRevoke) {
-      await revokeGoogleToken(tokenToRevoke);
-    }
-
-    // Clear settings token & email
-    if (settings) {
-      await db
-        .update(calendarSyncSettings)
-        .set({
-          googleRefreshToken: null,
-          googleUserEmail: null,
-          calendarId: null,
-        })
-        .where(eq(calendarSyncSettings.userId, userId));
-    }
-
-    // Delete token row
-    await db.delete(calendarSyncTokens).where(eq(calendarSyncTokens.userId, userId));
 
     return apiSuccess({
       success: true,

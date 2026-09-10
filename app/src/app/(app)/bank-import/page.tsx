@@ -19,8 +19,9 @@ import {
   ReconciliationItem,
 } from '@/components/bank-import/StatementReconciliationReviewSheet';
 import { MultiPageParseProgressModal } from '@/components/bank-import/MultiPageParseProgressModal';
+import { BankReconciliationCardQueue } from '@/components/bank-import/BankReconciliationCardQueue';
 
-type ResolutionAction = 'merged' | 'kept_both' | 'discarded';
+type ResolutionAction = 'merged' | 'kept_both' | 'discarded' | 'pending';
 
 export default function BankImportPage() {
   const { fmtRaw, currency } = useCurrency();
@@ -29,6 +30,7 @@ export default function BankImportPage() {
   /* ── Upload & Progress State ── */
   const [file, setFile] = useState<File | null>(null);
   const [bankName, setBankName] = useState('Primary Bank');
+  const [retainFile, setRetainFile] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [parseProgress, setParseProgress] = useState({
     isOpen: false,
@@ -42,6 +44,7 @@ export default function BankImportPage() {
   const [activeStatementId, setActiveStatementId] = useState<string | null>(null);
   const [queueItems, setQueueItems] = useState<ReconciliationItem[]>([]);
   const [selectedSheetItem, setSelectedSheetItem] = useState<ReconciliationItem | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [committing, setCommitting] = useState(false);
   const [isCommitted, setIsCommitted] = useState(false);
 
@@ -62,6 +65,9 @@ export default function BankImportPage() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('bankName', bankName);
+    if (retainFile) {
+      formData.append('retainFile', 'true');
+    }
 
     try {
       // Simulate/poll progress steps for multi-page responsive UX
@@ -113,7 +119,7 @@ export default function BankImportPage() {
         isDuplicate: Boolean(q.isDuplicate),
         matchedExistingTransactionId: q.matchedExistingTransactionId,
         matchedExistingTransaction: q.matchedExistingTransaction || null,
-        resolution: q.resolution || (q.matchConfidence >= 0.92 ? 'merged' : 'kept_both'),
+        resolution: q.resolution || 'pending',
       }));
 
       setQueueItems(normalized);
@@ -134,10 +140,20 @@ export default function BankImportPage() {
   };
 
   /* ── Resolution Updater ── */
-  const handleSetResolution = (itemId: string, resolution: ResolutionAction) => {
+  const handleSetResolution = async (itemId: number | string, resolution: ResolutionAction) => {
     setQueueItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, resolution } : item))
+      prev.map((item) => (String(item.id) === String(itemId) ? { ...item, resolution } : item))
     );
+
+    try {
+      await fetch('/api/bank-import/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewItemId: itemId, resolution }),
+      });
+    } catch (err) {
+      console.warn('Resolution auto-sync deferred to batch commit:', err);
+    }
   };
 
   /* ── Bulk Auto-Select High-Confidence Matches ── */
@@ -302,6 +318,19 @@ export default function BankImportPage() {
             />
           </div>
 
+          <div className="max-w-xs mx-auto mb-5 text-left flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="retain-file"
+              checked={retainFile}
+              onChange={(e) => setRetainFile(e.target.checked)}
+              className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+            />
+            <label htmlFor="retain-file" className="text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+              Opt-in: Retain document in Vault (ephemeral by default)
+            </label>
+          </div>
+
           <input
             type="file"
             id="statement-input"
@@ -310,12 +339,32 @@ export default function BankImportPage() {
             className="hidden"
           />
 
-          <label
-            htmlFor="statement-input"
-            className="px-6 py-3.5 rounded-xl bg-gray-100 dark:bg-surface-dark text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-200 dark:hover:bg-white/10 cursor-pointer inline-block mb-4 transition-all"
-          >
-            {file ? file.name : 'Choose PDF File'}
-          </label>
+          <input
+            type="file"
+            id="statement-camera"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="hidden"
+          />
+
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
+            <label
+              htmlFor="statement-input"
+              className="px-6 py-3.5 rounded-xl bg-gray-100 dark:bg-surface-dark text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-200 dark:hover:bg-white/10 cursor-pointer inline-flex items-center gap-2 transition-all min-h-[44px]"
+            >
+              <span className="material-symbols-outlined text-[18px]">upload_file</span>
+              {file ? file.name : 'Choose PDF / File'}
+            </label>
+
+            <label
+              htmlFor="statement-camera"
+              className="px-5 py-3.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 font-bold text-sm cursor-pointer inline-flex items-center gap-2 transition-all min-h-[44px]"
+            >
+              <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+              <span>Camera</span>
+            </label>
+          </div>
 
           {file && (
             <div>
@@ -389,19 +438,58 @@ export default function BankImportPage() {
               </h2>
             </div>
 
-            {highConfidenceCount > 0 && (
-              <button
-                onClick={handleBulkMergeHighConfidence}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all min-h-[44px]"
-              >
-                <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
-                Auto-select {highConfidenceCount} High-Confidence Duplicate{highConfidenceCount !== 1 ? 's' : ''} (≥92%)
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Dual View Toggle: Cards vs Table */}
+              <div className="inline-flex rounded-xl bg-gray-100 dark:bg-white/10 p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    viewMode === 'cards'
+                      ? 'bg-white dark:bg-surface-dark-2 text-primary shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">view_carousel</span>
+                  <span>Card Queue</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    viewMode === 'table'
+                      ? 'bg-white dark:bg-surface-dark-2 text-primary shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">table_rows</span>
+                  <span>List View</span>
+                </button>
+              </div>
+
+              {highConfidenceCount > 0 && (
+                <button
+                  onClick={handleBulkMergeHighConfidence}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all min-h-[44px]"
+                >
+                  <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
+                  Auto-select {highConfidenceCount} Duplicate{highConfidenceCount !== 1 ? 's' : ''} (≥92%)
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Queue Rows */}
-          <div className="space-y-3">
+          {viewMode === 'cards' ? (
+            <BankReconciliationCardQueue
+              items={queueItems as any}
+              batchId={activeStatementId}
+              onResolve={handleSetResolution}
+              onCommit={handleCommitBatch}
+              committing={committing}
+            />
+          ) : (
+            /* Queue Rows */
+            <div className="space-y-3">
             <AnimatePresence mode="popLayout">
               {queueItems.map((item) => {
                 const confidencePct = Math.round(item.matchConfidence * 100);
@@ -532,12 +620,13 @@ export default function BankImportPage() {
               })}
             </AnimatePresence>
           </div>
+          )}
         </div>
       )}
 
-      {/* ── Sticky Bottom Bar (Module 16.2 Feature) ── */}
-      {queueItems.length > 0 && !isCommitted && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-gray-200 dark:border-slate-800 shadow-2xl p-4 sm:px-8 transition-all">
+      {/* ── Sticky Bottom Bar (Only in table mode, since card mode has its own) ── */}
+      {queueItems.length > 0 && !isCommitted && viewMode === 'table' && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-gray-200 dark:border-slate-800 shadow-2xl p-4 sm:px-8 transition-all safe-bottom">
           <div className="max-w-[1280px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             {/* Running counts summary */}
             <div className="flex items-center gap-3 text-xs font-bold">

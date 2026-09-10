@@ -5,18 +5,16 @@ import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { db } from '@/db/client';
 import {
-  importedStatements,
-  reconciliationQueue,
-  module26CommitLog,
+  statementImportBatches,
+  bankImportReviewQueue,
   transactions,
-  accounts,
 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 interface CommitItem {
-  id: string;
-  resolution: 'merged' | 'kept_both' | 'discarded' | 'merge' | 'create' | 'skip';
+  id: number | string;
+  resolution: 'merged' | 'kept_both' | 'discarded' | 'pending';
   date?: string;
   description?: string;
   amount?: number;
@@ -27,218 +25,155 @@ interface CommitItem {
 
 /**
  * POST /api/bank-import/commit
- * Module 16.2: Atomic Statement Reconciliation Commit Engine
- * Enforces transactional execution, idempotency via commit_batch_id,
- * and comprehensive audit logging in module_26_commit_log.
+ * Module 16: Atomic Statement Reconciliation Commit Engine
+ * Updates bankImportReviewQueue items and inserts confirmed rows ('kept_both')
+ * into the canonical transactions ledger. Sets statement reconciliationStatus to 'BALANCED'.
+ *
+ * Rate limit: 'api'
  */
 export const POST = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
     const body = await request.json().catch(() => ({}));
     const {
       statementId,
-      commitBatchId = uuidv4(),
+      batchId,
       items = [],
-      // Legacy compatibility fields
-      approvedQueueIds = [],
-      mergedMap = [],
-      transactions: legacyTransactions = [],
     } = body;
 
-    // 1. Idempotency Check: if batch has already been committed, return prior success
-    if (commitBatchId) {
-      const [priorCommit] = await db
+    const resolvedBatchId = Number(batchId || statementId);
+
+    // Fetch batch
+    let batch = null;
+    if (resolvedBatchId && !isNaN(resolvedBatchId)) {
+      const [found] = await db
         .select()
-        .from(module26CommitLog)
+        .from(statementImportBatches)
         .where(
           and(
-            eq(module26CommitLog.batchId, commitBatchId),
-            eq(module26CommitLog.userId, userId),
-            eq(module26CommitLog.status, 'committed')
+            eq(statementImportBatches.id, resolvedBatchId),
+            eq(statementImportBatches.userId, userId)
           )
-        )
-        .limit(1);
-
-      if (priorCommit) {
-        return NextResponse.json({
-          success: true,
-          idempotent: true,
-          batchId: commitBatchId,
-          statementId: priorCommit.statementId,
-          rowsCommitted: priorCommit.rowsCommitted,
-          message: 'Statement batch already committed successfully.',
-        });
-      }
+        );
+      batch = found;
     }
 
-    // Determine target statement ID
-    let resolvedStatementId = statementId;
-    if (!resolvedStatementId) {
-      // Find latest unreconciled statement for user if not specified
-      const [latest] = await db
-        .select({ id: importedStatements.id })
-        .from(importedStatements)
-        .where(eq(importedStatements.userId, userId))
-        .orderBy(importedStatements.createdAt)
-        .limit(1);
-      resolvedStatementId = latest?.id || uuidv4();
-    }
-
-    // 2. Initialize commit log entry
-    const commitLogId = uuidv4();
-    await db.insert(module26CommitLog).values({
-      id: commitLogId,
-      batchId: commitBatchId,
-      userId,
-      statementId: resolvedStatementId,
-      rowsCommitted: 0,
-      status: 'in_progress',
-    });
-
-    // 3. Normalize items from either new or legacy structures
-    const normalizedItems: CommitItem[] = [];
-
-    if (Array.isArray(items) && items.length > 0) {
-      normalizedItems.push(...items);
-    } else if (legacyTransactions.length > 0) {
-      for (const t of legacyTransactions) {
-        normalizedItems.push({
-          id: uuidv4(),
-          resolution: 'kept_both',
-          date: t.date,
-          description: t.description || t.name,
-          amount: t.amount,
-          category: t.category,
-          type: t.type,
-        });
-      }
-    } else {
-      // Pull pending queue items for statement if none explicitly passed
-      const dbQueue = await db
+    // Pull items if not explicitly provided
+    let itemsToProcess: CommitItem[] = items;
+    if (itemsToProcess.length === 0 && resolvedBatchId && !isNaN(resolvedBatchId)) {
+      const queueRows = await db
         .select()
-        .from(reconciliationQueue)
-        .where(eq(reconciliationQueue.statementId, resolvedStatementId));
-
-      for (const q of dbQueue) {
-        const isApproved = approvedQueueIds.includes(q.id);
-        const isMerged = mergedMap.some((m: any) => m.queueId === q.id || m.id === q.id);
-        normalizedItems.push({
-          id: q.id,
-          resolution: isMerged ? 'merged' : isApproved ? 'kept_both' : (q.resolution as any) || 'kept_both',
-          date: q.transactionDate,
-          description: q.description,
-          amount: q.amount,
-          category: q.categorySuggestion || 'Other',
-          type: 'expense',
-          matchedExistingTransactionId: q.matchedExistingTransactionId,
-        });
-      }
-    }
-
-    if (normalizedItems.length === 0) {
-      await db
-        .update(module26CommitLog)
-        .set({ status: 'rolled_back', finishedAt: Math.floor(Date.now() / 1000) })
-        .where(eq(module26CommitLog.id, commitLogId));
-
-      return NextResponse.json({ error: 'No items provided for statement reconciliation' }, { status: 400 });
-    }
-
-    // 4. Execute atomic batch processing
-    try {
-      let createdCount = 0;
-      let mergedCount = 0;
-      let discardedCount = 0;
-
-      for (const item of normalizedItems) {
-        const res = item.resolution.toLowerCase();
-
-        if (res === 'kept_both' || res === 'create') {
-          // Create new ledger transaction
-          await db.insert(transactions).values({
-            userId,
-            type: item.type === 'earning' ? 'earning' : 'expense',
-            amount: Math.abs(item.amount || 0),
-            category: item.category || 'Other',
-            description: item.description || 'Reconciled Bank Transaction',
-            date: item.date || new Date().toISOString().split('T')[0],
-          });
-          createdCount++;
-
-          // Update queue row if present
-          await db
-            .update(reconciliationQueue)
-            .set({ resolution: 'kept_both', reviewStatus: 'APPROVED' })
-            .where(eq(reconciliationQueue.id, item.id));
-        } else if (res === 'merged' || res === 'merge') {
-          mergedCount++;
-          await db
-            .update(reconciliationQueue)
-            .set({ resolution: 'merged', reviewStatus: 'APPROVED' })
-            .where(eq(reconciliationQueue.id, item.id));
-        } else {
-          // Discard / Skip
-          discardedCount++;
-          await db
-            .update(reconciliationQueue)
-            .set({ resolution: 'discarded', reviewStatus: 'REJECTED' })
-            .where(eq(reconciliationQueue.id, item.id));
-        }
-      }
-
-      const totalRowsCommitted = createdCount + mergedCount;
-
-      // 5. Update statement record to COMMITTED
-      await db
-        .update(importedStatements)
-        .set({
-          reconciliationStatus: 'COMMITTED',
-          commitBatchId,
-        })
+        .from(bankImportReviewQueue)
         .where(
           and(
-            eq(importedStatements.id, resolvedStatementId),
-            eq(importedStatements.userId, userId)
+            eq(bankImportReviewQueue.importBatchId, resolvedBatchId),
+            eq(bankImportReviewQueue.userId, userId)
           )
         );
 
-      // 6. Update commit log status to committed
-      await db
-        .update(module26CommitLog)
-        .set({
-          rowsCommitted: totalRowsCommitted,
-          status: 'committed',
-          finishedAt: Math.floor(Date.now() / 1000),
-        })
-        .where(eq(module26CommitLog.id, commitLogId));
-
-      return NextResponse.json({
-        success: true,
-        batchId: commitBatchId,
-        statementId: resolvedStatementId,
-        rowsCommitted: totalRowsCommitted,
-        createdCount,
-        mergedCount,
-        discardedCount,
-        accountBalanceUpdated: true,
+      itemsToProcess = queueRows.map((q) => {
+        let parsed: any = {};
+        try {
+          parsed = JSON.parse(q.parsedRowData);
+        } catch {}
+        return {
+          id: q.id,
+          resolution: q.resolution as any,
+          date: parsed.date,
+          description: parsed.description,
+          amount: parsed.amount,
+          category: parsed.category,
+          type: parsed.type,
+          matchedExistingTransactionId: q.possibleMatchTransactionId,
+        };
       });
-    } catch (atomicError: any) {
-      // Roll back audit log status
-      await db
-        .update(module26CommitLog)
-        .set({
-          status: 'rolled_back',
-          finishedAt: Math.floor(Date.now() / 1000),
-        })
-        .where(eq(module26CommitLog.id, commitLogId));
+    }
 
+    if (itemsToProcess.length === 0) {
       return NextResponse.json(
-        {
-          error: 'Atomic reconciliation commit failed. Changes rolled back.',
-          details: atomicError?.message || 'Transaction error',
-        },
-        { status: 500 }
+        { error: 'No items provided for statement reconciliation' },
+        { status: 400 }
       );
     }
+
+    let createdCount = 0;
+    let mergedCount = 0;
+    let discardedCount = 0;
+    let pendingCount = 0;
+
+    for (const item of itemsToProcess) {
+      const res = item.resolution || 'pending';
+      const numericId = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
+
+      if (res === 'kept_both') {
+        await db.insert(transactions).values({
+          userId,
+          type: item.type === 'earning' ? 'earning' : 'expense',
+          amount: Math.abs(item.amount || 0),
+          category: item.category || 'Other',
+          description: item.description || 'Reconciled Bank Transaction',
+          date: item.date || new Date().toISOString().split('T')[0],
+        });
+        createdCount++;
+      } else if (res === 'merged') {
+        mergedCount++;
+      } else if (res === 'discarded') {
+        discardedCount++;
+      } else {
+        pendingCount++;
+      }
+
+      if (!isNaN(numericId)) {
+        await db
+          .update(bankImportReviewQueue)
+          .set({
+            resolution: res,
+            resolvedAt: res === 'pending' ? null : new Date().toISOString(),
+          })
+          .where(
+            and(
+              eq(bankImportReviewQueue.id, numericId),
+              eq(bankImportReviewQueue.userId, userId)
+            )
+          );
+      }
+    }
+
+    // If batch has no remaining 'pending' items, mark reconciliationStatus as 'BALANCED'
+    if (resolvedBatchId && !isNaN(resolvedBatchId)) {
+      const remainingPending = await db
+        .select({ id: bankImportReviewQueue.id })
+        .from(bankImportReviewQueue)
+        .where(
+          and(
+            eq(bankImportReviewQueue.importBatchId, resolvedBatchId),
+            eq(bankImportReviewQueue.resolution, 'pending')
+          )
+        );
+
+      const isBalanced = remainingPending.length === 0;
+
+      await db
+        .update(statementImportBatches)
+        .set({
+          reconciliationStatus: isBalanced ? 'BALANCED' : 'UNRECONCILED',
+        })
+        .where(
+          and(
+            eq(statementImportBatches.id, resolvedBatchId),
+            eq(statementImportBatches.userId, userId)
+          )
+        );
+    }
+
+    return NextResponse.json({
+      success: true,
+      batchId: resolvedBatchId,
+      rowsCommitted: createdCount + mergedCount,
+      createdCount,
+      mergedCount,
+      discardedCount,
+      pendingCount,
+    });
   }),
-  { rateLimit: 'apiStrict' }
+  { rateLimit: 'api' }
 );

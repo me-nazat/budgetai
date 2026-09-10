@@ -11,6 +11,7 @@ export interface FinancialContextBundle {
         currency: string;
         notify_budget: number;
         notify_overspend: number;
+        locale?: string;
     };
     currencySymbol: string;
 }
@@ -121,8 +122,8 @@ export async function getFinancialContextBundle(userId: number, sessionId?: stri
                 [userId, sessionId]
             )
             : Promise.resolve([]),
-        queryOne<{ name: string; currency: string; notify_budget: number; notify_overspend: number }>(
-            'SELECT name, currency, notify_budget, notify_overspend FROM users WHERE id = ?',
+        queryOne<{ name: string; currency: string; notify_budget: number; notify_overspend: number; locale?: string; preferred_locale?: string }>(
+            'SELECT name, currency, notify_budget, notify_overspend, locale, preferred_locale FROM users WHERE id = ?',
             [userId]
         ),
         queryAll<{ title: string; message: string; type: string; read: number }>(
@@ -212,7 +213,13 @@ export async function getFinancialContextBundle(userId: number, sessionId?: stri
         context,
         budgetContext: buildBudgetContext(budgetWithSpending, currencySymbol),
         historyContext,
-        profile: userProfile,
+        profile: userProfile ? {
+            name: userProfile.name,
+            currency: userProfile.currency,
+            notify_budget: userProfile.notify_budget,
+            notify_overspend: userProfile.notify_overspend,
+            locale: userProfile.locale || userProfile.preferred_locale || 'en',
+        } : undefined,
         currencySymbol,
     };
 }

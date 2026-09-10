@@ -95,4 +95,25 @@ describe('Module 17: Unified Locale Formatting Suite', () => {
       expect(toBengaliNumerals('৳ 1,23,456.78')).toBe('৳ ১,২৩,৪৫৬.৭৮');
     });
   });
+
+  describe('formatCurrency with Bengali locale branching', () => {
+    it('formats BDT currency with English digits when locale is en', async () => {
+      const { formatCurrency } = await import('@/lib/currency');
+      const res = formatCurrency(25000, 'BDT', 'en');
+      expect(res).toContain('25,000.00');
+    });
+
+    it('routes through bengaliNumerals when locale is bn', async () => {
+      const { formatCurrency } = await import('@/lib/currency');
+      const res = formatCurrency(25000, 'BDT', 'bn');
+      expect(res).toContain('২৫,০০০');
+    });
+
+    it('formats USD currency in Bengali digits when locale is bn', async () => {
+      const { formatCurrency } = await import('@/lib/currency');
+      const res = formatCurrency(120, 'USD', 'bn');
+      expect(res).toContain('১২০');
+    });
+  });
 });
+

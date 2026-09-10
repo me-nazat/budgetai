@@ -25,7 +25,7 @@ import { formatLocaleDate } from '@/lib/formatters/locale';
 
 interface ProactiveInsightItem {
   id: string;
-  insightType: 'SPENDING_SPIKE' | 'SUBSCRIPTION_LEAK' | 'SAVINGS_OPPORTUNITY' | 'BUDGET_OVERRUN';
+  insightType: 'SPENDING_SPIKE' | 'SUBSCRIPTION_LEAK' | 'SAVINGS_OPPORTUNITY' | 'BUDGET_OVERRUN' | 'BENCHMARK_PERCENTILE' | 'GOAL_MILESTONE' | string;
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
   title: string;
   message: string;

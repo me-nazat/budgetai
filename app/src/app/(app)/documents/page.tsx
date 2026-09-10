@@ -8,7 +8,7 @@
  * @module app/(app)/documents/page
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useSWR, { mutate } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
@@ -58,6 +58,7 @@ export default function DocumentsPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
   const [expandedLinesDocId, setExpandedLinesDocId] = useState<string | number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Ask AI Drawer State
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
@@ -71,7 +72,22 @@ export default function DocumentsPage() {
     `/api/documents`
   );
 
-  // Debounce semantic search (300ms)
+  // Keyboard dismiss on mobile scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+        searchInputRef.current.blur();
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('touchmove', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('touchmove', handleScroll);
+    };
+  }, []);
+
+  // Debounce semantic search (400ms per Module 13 spec)
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.trim().length < 3) {
       setSemanticResults(null);
@@ -95,7 +111,7 @@ export default function DocumentsPage() {
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -226,6 +242,7 @@ export default function DocumentsPage() {
         <div className="relative flex items-center">
           <span className="material-symbols-outlined absolute left-4 text-gray-400 text-xl">search</span>
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

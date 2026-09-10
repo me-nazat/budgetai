@@ -18,8 +18,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/client';
-import { users, budgets, savingsGoals, recurringTransactions, debts, module28PushScheduledJobs } from '@/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { users, budgets, savingsGoals, recurringTransactions, debts, module28PushScheduledJobs, transactions } from '@/db/schema';
+import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { PushService } from '@/services/push.service';
 import { PushRepository } from '@/repositories/push.repository';
 import { queryOne } from '@/lib/db';
@@ -105,11 +105,33 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // ─── Upcoming Subscription Renewals ───
-        const threeDaysFromNow = new Date(now);
-        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+        // ─── Module 18: Smart Payday Alignment & Upcoming Subscriptions ───
+        // Detect recurring salary/income pattern from transactions
+        const recentSalaries = await db
+          .select({ date: transactions.date })
+          .from(transactions)
+          .where(and(eq(transactions.userId, userId), eq(transactions.type, 'earning')))
+          .orderBy(desc(transactions.date))
+          .limit(10);
+
+        let typicalPayDay: number | null = null;
+        if (recentSalaries.length >= 2) {
+          const days = recentSalaries.map(s => new Date(s.date).getDate());
+          const counts: Record<number, number> = {};
+          days.forEach(d => { counts[d] = (counts[d] || 0) + 1; });
+          const topDay = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+          if (topDay && topDay[1] >= 2) {
+            typicalPayDay = parseInt(topDay[0], 10);
+          }
+        }
+
+        const isPaydayWindow = typicalPayDay !== null && Math.abs(now.getDate() - typicalPayDay) <= 2;
+        const daysAhead = isPaydayWindow ? 7 : 3;
+        const windowLimitDate = new Date(now);
+        windowLimitDate.setDate(windowLimitDate.getDate() + daysAhead);
+
         const todayStr = now.toISOString().split('T')[0];
-        const futureStr = threeDaysFromNow.toISOString().split('T')[0];
+        const futureStr = windowLimitDate.toISOString().split('T')[0];
 
         const upcomingRecurring = await db
           .select()
@@ -125,9 +147,16 @@ export async function GET(request: NextRequest) {
           );
 
         for (const sub of upcomingRecurring) {
+          const title = isPaydayWindow
+            ? `💰 Payday Aligned: ${sub.name} Due Soon`
+            : `📅 Upcoming: ${sub.name}`;
+          const body = isPaydayWindow
+            ? `Your typical payday is here! ${sub.name} (৳${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`
+            : `${sub.name} (৳${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`;
+
           await PushService.sendToUser(userId, {
-            title: `📅 Upcoming: ${sub.name}`,
-            body: `${sub.name} (${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`,
+            title,
+            body,
             tag: 'subscriptions',
             url: '/recurring-subscriptions',
           });
@@ -143,12 +172,24 @@ export async function GET(request: NextRequest) {
         const currentDay = now.getDate();
         for (const debt of debtsList) {
           if (debt.dueDayOfMonth && Math.abs(debt.dueDayOfMonth - currentDay) <= 3) {
-            await PushService.sendToUser(userId, {
-              title: `💳 Debt Payment Due: ${debt.name}`,
-              body: `Minimum payment for "${debt.name}" is due on day ${debt.dueDayOfMonth} of the month.`,
-              tag: 'debts',
-              url: '/debts',
-            });
+            // Near payoff check: balance within 1.25x minimum payment
+            const isNearPayoff = debt.balance <= Math.max(debt.minimumPayment * 1.25, 2000);
+
+            if (isNearPayoff) {
+              await PushService.sendToUser(userId, {
+                title: `🎉 Last Payment Approaching: ${debt.name}`,
+                body: `Last payment on this debt is due soon 🎉 Only ৳${debt.balance.toFixed(2)} remaining to become completely debt-free!`,
+                tag: `debt-final-${debt.id}`,
+                url: '/debts',
+              });
+            } else {
+              await PushService.sendToUser(userId, {
+                title: `💳 Debt Payment Due: ${debt.name}`,
+                body: `Minimum payment for "${debt.name}" is due on day ${debt.dueDayOfMonth} of the month.`,
+                tag: 'debts',
+                url: '/debts',
+              });
+            }
             results.subscriptionReminders++;
           }
         }

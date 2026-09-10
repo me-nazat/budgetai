@@ -30,8 +30,14 @@ export function convertAmount(amount: number, from: CurrencyCode, to: CurrencyCo
     return amountInUSD * (rates[to] || FALLBACK_RATES[to]);
 }
 
-export function formatCurrency(amount: number, currency: CurrencyCode = 'BDT'): string {
-    const info = CURRENCIES[currency];
+import { formatLocaleCurrency } from './formatters/bengaliNumerals';
+
+export function formatCurrency(amount: number, currency: CurrencyCode = 'BDT', locale?: 'en' | 'bn'): string {
+    const activeLocale = locale || (typeof window !== 'undefined' ? (localStorage.getItem('appLanguage') as 'en' | 'bn') : undefined) || 'en';
+    if (activeLocale === 'bn') {
+        return formatLocaleCurrency(amount, 'bn', currency);
+    }
+    const info = CURRENCIES[currency] || CURRENCIES.BDT;
     if (currency === 'BDT' || currency === 'INR') {
         // South Asian numbering system formatting
         return `${info.symbol}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -40,7 +46,8 @@ export function formatCurrency(amount: number, currency: CurrencyCode = 'BDT'): 
 }
 
 // Format with conversion from stored base (BDT) to display currency
-export function displayAmount(amountInBase: number, displayCurrency: CurrencyCode = 'BDT'): string {
+export function displayAmount(amountInBase: number, displayCurrency: CurrencyCode = 'BDT', locale?: 'en' | 'bn'): string {
     const converted = convertAmount(amountInBase, 'BDT', displayCurrency);
-    return formatCurrency(converted, displayCurrency);
+    return formatCurrency(converted, displayCurrency, locale);
 }
+

@@ -1,7 +1,6 @@
 import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
-import { importedStatements } from './statement-imports';
 
 /**
  * Module 26: Statement Pages for Multi-Page PDF Statements
@@ -10,9 +9,7 @@ export const module26StatementPages = sqliteTable(
   'module_26_statement_pages',
   {
     id: text('id').primaryKey(),
-    statementId: text('statement_id')
-      .notNull()
-      .references(() => importedStatements.id, { onDelete: 'cascade' }),
+    statementId: text('statement_id').notNull(),
     pageNumber: integer('page_number').notNull(),
     rawText: text('raw_text'),
     parsedJson: text('parsed_json'),
@@ -37,9 +34,7 @@ export const module26CommitLog = sqliteTable(
     userId: integer('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    statementId: text('statement_id')
-      .notNull()
-      .references(() => importedStatements.id, { onDelete: 'cascade' }),
+    statementId: text('statement_id').notNull(),
     rowsCommitted: integer('rows_committed').notNull().default(0),
     startedAt: integer('started_at').default(sql`(unixepoch())`),
     finishedAt: integer('finished_at'),

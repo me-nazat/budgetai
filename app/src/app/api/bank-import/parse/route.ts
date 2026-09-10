@@ -5,9 +5,8 @@ import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { db } from '@/db/client';
 import {
-  importedStatements,
-  reconciliationQueue,
-  module26StatementPages,
+  statementImportBatches,
+  bankImportReviewQueue,
   transactions,
   accounts,
 } from '@/db/schema';
@@ -17,14 +16,18 @@ import {
 } from '@/lib/ai/statementParser';
 import { AccountRepository } from '@/repositories/account.repository';
 import { eq } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 /**
  * POST /api/bank-import/parse
- * Module 16.1: Multi-Page PDF Bank/Card Statement Parser + Duplicate-Reconciliation Queue
- * Accepts PDF up to 25MB, runs multi-page chunked extraction, records each page in
- * module_26_statement_pages, and scores each entry against existing transactions.
- * Rate limited to 10 requests / min.
+ * Module 16: AI-Powered Multi-Page Statement Parser + Duplicate-Reconciliation Queue
+ * Accepts PDF up to 25MB, runs multi-page extraction via Gemini, populates
+ * canonical statementImportBatches and bankImportReviewQueue with match confidence scoring.
+ *
+ * Ephemeral by default: statement PDF buffer is discarded from memory after extraction
+ * unless opt-in retention is requested (retainFile: true).
+ *
+ * Rate limited to 'upload' (10/min).
  */
 export const POST = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
@@ -32,6 +35,7 @@ export const POST = apiHandler(
     const file = formData.get('file') as File | null;
     const bankName = (formData.get('bankName') as string) || 'Primary Bank';
     const accountIdParam = formData.get('accountId') as string | null;
+    const retainFile = formData.get('retainFile') === 'true';
 
     if (!file) {
       return NextResponse.json({ error: 'Statement PDF or document file is required' }, { status: 400 });
@@ -63,36 +67,36 @@ export const POST = apiHandler(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
-    const statementId = uuidv4();
 
-    // 1. Initialize statement status as PROCESSING
-    await db.insert(importedStatements).values({
-      id: statementId,
-      userId,
-      accountId: targetAccountId,
-      fileName: file.name,
-      pageCount: 1,
-      multiPageStrategy: 'split-then-merge',
-      reconciliationStatus: 'PROCESSING',
-    });
+    // Opt-in source file retention token
+    let sourceFileToken: string | null = null;
+    if (retainFile) {
+      sourceFileToken = `sft_${crypto.randomUUID()}`;
+    }
 
     try {
-      // 2. Multi-page chunked parser
+      // 1. Multi-page chunked parser via Gemini
       const parsedResult = await parseMultiPageStatementPDF(base64, file.name);
 
-      // 3. Record each extracted page into module_26_statement_pages
-      for (const page of parsedResult.pages) {
-        await db.insert(module26StatementPages).values({
-          id: uuidv4(),
-          statementId,
-          pageNumber: page.pageNumber,
-          rawText: page.rawTextSummary,
-          parsedJson: JSON.stringify(page.transactions),
-          parseStatus: 'parsed',
-        });
-      }
+      // 2. Create canonical statementImportBatches record
+      const [batch] = await db
+        .insert(statementImportBatches)
+        .values({
+          userId,
+          bankName,
+          fileName: file.name,
+          totalRecords: parsedResult.mergedTransactions.length,
+          status: 'completed',
+          reconciliationStatus: 'UNRECONCILED',
+          openingBalance: parsedResult.openingBalance,
+          closingBalance: parsedResult.closingBalance,
+          periodStart: parsedResult.statementPeriod.start,
+          periodEnd: parsedResult.statementPeriod.end,
+          sourceFileToken,
+        })
+        .returning();
 
-      // 4. Query user's existing ledger transactions to compute confidence score
+      // 3. Query user's existing ledger transactions to compute match confidence
       const userTxns = await db
         .select({
           id: transactions.id,
@@ -105,7 +109,7 @@ export const POST = apiHandler(
         .from(transactions)
         .where(eq(transactions.userId, userId));
 
-      // 5. Populate reconciliation_queue with scoring rubric
+      // 4. Populate bankImportReviewQueue with match scoring
       const queueItems: any[] = [];
       let highConfidenceDuplicatesCount = 0;
 
@@ -129,55 +133,43 @@ export const POST = apiHandler(
         const isMediumConfidence = bestScore >= 0.7 && bestScore < 0.92;
         if (isHighConfidence) highConfidenceDuplicatesCount++;
 
-        const queueId = uuidv4();
-        const initialResolution = isHighConfidence ? 'merged' : 'kept_both';
-
-        await db.insert(reconciliationQueue).values({
-          id: queueId,
-          statementId,
-          transactionDate: tx.date,
-          description: tx.description,
-          amount: tx.amount,
-          categorySuggestion: tx.suggestedCategory,
-          matchConfidence: bestScore,
-          isDuplicate: isHighConfidence ? 1 : 0,
-          matchedExistingTransactionId: (isHighConfidence || isMediumConfidence) && matchedTx ? matchedTx.id : null,
-          resolution: initialResolution,
-          reviewStatus: 'PENDING',
-        });
+        const [insertedItem] = await db
+          .insert(bankImportReviewQueue)
+          .values({
+            userId,
+            importBatchId: batch.id,
+            parsedRowData: JSON.stringify({
+              date: tx.date,
+              description: tx.description,
+              amount: tx.amount,
+              type: tx.type === 'earning' ? 'earning' : 'expense',
+              category: tx.suggestedCategory,
+            }),
+            possibleMatchTransactionId: (isHighConfidence || isMediumConfidence) && matchedTx ? matchedTx.id : null,
+            matchConfidence: Math.round(bestScore * 100) / 100,
+            resolution: 'pending',
+          })
+          .returning();
 
         queueItems.push({
-          id: queueId,
+          id: insertedItem.id,
           date: tx.date,
           description: tx.description,
           amount: tx.amount,
           category: tx.suggestedCategory,
           type: tx.type === 'earning' ? 'earning' : 'expense',
-          matchConfidence: bestScore,
+          matchConfidence: Math.round(bestScore * 100) / 100,
           isDuplicate: isHighConfidence,
           matchedExistingTransactionId: (isHighConfidence || isMediumConfidence) && matchedTx ? matchedTx.id : null,
           matchedExistingTransaction: (isHighConfidence || isMediumConfidence) && matchedTx ? matchedTx : null,
-          resolution: initialResolution,
+          resolution: 'pending',
         });
       }
 
-      // 6. Update statement metadata & status
-      await db
-        .update(importedStatements)
-        .set({
-          statementPeriodStart: parsedResult.statementPeriod.start,
-          statementPeriodEnd: parsedResult.statementPeriod.end,
-          openingBalance: parsedResult.openingBalance,
-          closingBalance: parsedResult.closingBalance,
-          pageCount: parsedResult.pageCount,
-          totalTransactionsCount: parsedResult.mergedTransactions.length,
-          reconciliationStatus: 'UNRECONCILED',
-        })
-        .where(eq(importedStatements.id, statementId));
-
       return NextResponse.json({
         success: true,
-        statementId,
+        statementId: String(batch.id),
+        batchId: batch.id,
         fileName: file.name,
         pageCount: parsedResult.pageCount,
         totalPagesParsed: parsedResult.pages.length,
@@ -186,16 +178,13 @@ export const POST = apiHandler(
         statementPeriod: parsedResult.statementPeriod,
         openingBalance: parsedResult.openingBalance,
         closingBalance: parsedResult.closingBalance,
+        sourceFileToken,
         queueItems,
       });
     } catch (parseError: any) {
-      await db
-        .update(importedStatements)
-        .set({ reconciliationStatus: 'FAILED' })
-        .where(eq(importedStatements.id, statementId));
-
+      console.error('[bank-import-parse] Parsing failed:', parseError);
       return NextResponse.json(
-        { error: 'Failed to parse multi-page statement', details: parseError?.message },
+        { error: 'Failed to parse bank statement', details: parseError?.message },
         { status: 500 }
       );
     }

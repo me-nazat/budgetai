@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CurrencyCode, CURRENCIES, formatCurrency, convertAmount, FALLBACK_RATES } from '@/lib/currency';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CurrencyContextType {
     currency: CurrencyCode;
@@ -16,6 +17,7 @@ interface CurrencyContextType {
 const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
+    const { locale } = useLanguage();
     const [currency, setCurrencyState] = useState<CurrencyCode>(() => {
         if (typeof window === 'undefined') return 'BDT';
         const stored = localStorage.getItem('budget-ai-currency') as CurrencyCode;
@@ -54,12 +56,13 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
     const fmt = (amountInBase: number) => {
         const converted = convertAmount(amountInBase, 'BDT', currency, rates);
-        return formatCurrency(converted, currency);
+        return formatCurrency(converted, currency, locale);
     };
 
     const fmtRaw = (amountInLocal: number) => {
-        return formatCurrency(amountInLocal, currency);
+        return formatCurrency(amountInLocal, currency, locale);
     };
+
 
     const convert = (amount: number, from: CurrencyCode, to: CurrencyCode) => {
         return convertAmount(amount, from, to, rates);

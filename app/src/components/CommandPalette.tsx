@@ -5,24 +5,28 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { ReceiptScannerModal } from '@/components/transactions/ReceiptScannerModal';
+import { NAVIGATION_REGISTRY } from '@/lib/navigation/registry';
 
-const COMMANDS = [
-    { id: 'dash', name: 'Go to Dashboard', icon: 'dashboard', path: '/dashboard' },
+interface CommandItem {
+    id: string;
+    name: string;
+    icon: string;
+    path?: string;
+    action?: string;
+}
+
+const ACTION_COMMANDS: CommandItem[] = [
     { id: 'scan', name: 'Smart Receipt Scanner', icon: 'document_scanner', action: 'SCAN_RECEIPT' },
-    { id: 'trans', name: 'View Transactions', icon: 'receipt_long', path: '/transactions' },
-    { id: 'bud', name: 'Budget Planner', icon: 'account_balance_wallet', path: '/budget' },
-    { id: 'wealth', name: 'Wealth & Goals', icon: 'savings', path: '/wealth-goals' },
-    { id: 'debt', name: 'Debt Payoff Planner', icon: 'credit_card', path: '/debts' },
-    { id: 'forecast', name: 'Cash Flow Forecast', icon: 'timeline', path: '/forecast' },
-    { id: 'fire', name: 'FIRE Simulator', icon: 'local_fire_department', path: '/fire' },
-    { id: 'month', name: 'My Month Calendar', icon: 'calendar_month', path: '/my-month' },
-    { id: 'over', name: 'Executive Overview', icon: 'insights', path: '/overview' },
-    { id: 'report', name: 'Analytics & Reports', icon: 'bar_chart', path: '/reports' },
-    { id: 'recur', name: 'Recurring & Subs', icon: 'repeat', path: '/recurring-subscriptions' },
-    { id: 'auto', name: 'Automation Rules', icon: 'auto_awesome', path: '/automation-rules' },
-    { id: 'noti', name: 'View Notifications', icon: 'notifications', path: '/notifications' },
-    { id: 'set', name: 'Preferences & Settings', icon: 'settings', path: '/settings' },
 ];
+
+const NAV_COMMANDS: CommandItem[] = NAVIGATION_REGISTRY.map(item => ({
+    id: item.id,
+    name: item.id === 'dashboard' ? 'Go to Dashboard' : item.label,
+    icon: item.icon,
+    path: item.href,
+}));
+
+const COMMANDS: CommandItem[] = [...ACTION_COMMANDS, ...NAV_COMMANDS];
 
 export default function CommandPalette() {
     const [open, setOpen] = useState(false);

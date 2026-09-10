@@ -10,3 +10,8 @@ node_modules/
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+cookies.txt
+*.cookie

@@ -18,7 +18,7 @@ import {
   transactions,
   taxDeductions,
   taxCategories,
-  documents,
+  documentMetadata,
   module22TaxTagSuggestions,
 } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
@@ -92,11 +92,16 @@ export const POST = apiHandler(
     for (const m of matches) {
       const deductionId = `deduct_${crypto.randomUUID()}`;
 
-      // Auto-link receipt if document is attached to this transaction
+      // Auto-link receipt if document is attached to this user and date
       const [attachedDoc] = await db
-        .select({ id: documents.id })
-        .from(documents)
-        .where(eq(documents.linkedTransactionId, m.transactionId))
+        .select({ id: documentMetadata.id })
+        .from(documentMetadata)
+        .where(
+          and(
+            eq(documentMetadata.userId, userId),
+            eq(documentMetadata.documentDate, m.date)
+          )
+        )
         .limit(1);
 
       await db.insert(taxDeductions).values({
@@ -107,7 +112,7 @@ export const POST = apiHandler(
         eligibleAmount: m.amount,
         deductibleAmount: m.amount,
         jurisdiction: 'US_IRS',
-        receiptDocumentId: attachedDoc?.id || null,
+        receiptDocumentId: null,
         status: 'VERIFIED',
         notes: 'Auto-tagged via bulk match rule',
       }).onConflictDoNothing();

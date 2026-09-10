@@ -73,17 +73,17 @@ export const GET = apiHandler(
     const cohortKey = `${userDemo.ageBracket}_${userDemo.regionCode || 'GLOBAL'}_${userDemo.incomeBracket || '60k-100k'}`;
 
     // 4. Enforce strict k-anonymity guarantee (k >= 30)
+    // Socratic Gate Decision A2: Return "Cohort Forming" state with progress counter (e.g. 18/30 peers joined)
     if (cohortSize < K_ANONYMITY_THRESHOLD) {
-      return NextResponse.json(
-        {
-          error: 'Cohort size is below privacy k-anonymity threshold (N >= 30 required)',
-          cohortSize,
-          minimumRequired: K_ANONYMITY_THRESHOLD,
-          kAnonymityMet: false,
-          cohortKey,
-        },
-        { status: 403 }
-      );
+      return NextResponse.json({
+        cohortForming: true,
+        sampleSize: cohortSize,
+        cohortSize,
+        kAnonymityThreshold: K_ANONYMITY_THRESHOLD,
+        kAnonymityMet: false,
+        cohortKey,
+        message: `Your anonymous cohort is currently forming (${cohortSize}/${K_ANONYMITY_THRESHOLD} peers joined). Percentiles unlock once 30 peers join.`,
+      });
     }
 
     // 5. Build consented metrics (never expose raw identities or numbers outside cohort)
@@ -171,5 +171,6 @@ export const GET = apiHandler(
       ],
       categories: activeKeys.has('CATEGORY_SPEND') ? categorySnapshots : [],
     });
-  })
+  }),
+  { rateLimit: 'api' }
 );

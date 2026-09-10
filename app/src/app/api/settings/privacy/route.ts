@@ -62,7 +62,7 @@ export const GET = apiHandler(
       maskAccountNumbers: Boolean(settings.mask_account_numbers),
     });
   }),
-  { rateLimit: 'api' }
+  { rateLimit: 'apiStrict' }
 );
 
 export const PUT = apiHandler(
@@ -114,5 +114,5 @@ export const PUT = apiHandler(
       maskAccountNumbers: Boolean(maskAcc),
     });
   }),
-  { rateLimit: 'api' }
+  { rateLimit: 'apiStrict' }
 );

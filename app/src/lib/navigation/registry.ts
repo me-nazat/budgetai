@@ -26,6 +26,7 @@ export const NAVIGATION_REGISTRY: NavItem[] = [
   { id: 'budget', href: '/budget', label: 'Budgets', icon: 'account_balance_wallet', category: 'core' },
 
   // Analytics Group
+  { id: 'analytics', href: '/analytics', label: 'Analytics Hub', icon: 'donut_large', category: 'analytics' },
   { id: 'my-month', href: '/my-month', label: 'My Month', icon: 'calendar_month', category: 'analytics' },
   { id: 'reports', href: '/reports', label: 'Reports', icon: 'bar_chart', category: 'analytics' },
   { id: 'overview', href: '/overview', label: 'Overview', icon: 'analytics', category: 'analytics', mobileTab: true },
@@ -74,6 +75,7 @@ export const NAV_TRANSLATION_MAP: Record<string, string> = {
   'my-month': 'myMonth',
   'reports': 'reports',
   'overview': 'overview',
+  'analytics': 'analytics',
   'generative-art': 'generativeArt',
   'benchmarks': 'benchmarks',
   'insights': 'insights',

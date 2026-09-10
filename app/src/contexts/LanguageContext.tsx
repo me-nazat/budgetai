@@ -45,18 +45,40 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return (stored === 'en' || stored === 'bn') ? stored : 'en';
   });
 
-  const setLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale);
-    localStorage.setItem('appLanguage', newLocale);
+  useEffect(() => {
+    // Fetch user saved locale from database
+    fetch('/api/settings/locale')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.locale && (data.locale === 'en' || data.locale === 'bn')) {
+          setLocaleState(data.locale);
+          localStorage.setItem('appLanguage', data.locale);
+        }
+      })
+      .catch(() => {});
   }, []);
 
+  const persistLocale = useCallback((newLocale: Locale) => {
+    setLocaleState(newLocale);
+    localStorage.setItem('appLanguage', newLocale);
+    fetch('/api/settings/locale', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale: newLocale }),
+    }).catch(() => {});
+  }, []);
+
+  const setLocale = useCallback((newLocale: Locale) => {
+    persistLocale(newLocale);
+  }, [persistLocale]);
+
   const toggleLanguage = useCallback(() => {
-    setLocaleState(prev => {
+    setLocaleState((prev) => {
       const next = prev === 'en' ? 'bn' : 'en';
-      localStorage.setItem('appLanguage', next);
+      persistLocale(next);
       return next;
     });
-  }, []);
+  }, [persistLocale]);
 
   const t = useCallback((key: string, fallback?: string): string => {
     const dict = dictionaries[locale] || dictionaries.en;

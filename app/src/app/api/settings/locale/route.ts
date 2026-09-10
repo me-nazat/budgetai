@@ -19,13 +19,13 @@ const updateLocaleSchema = z.object({
 export const GET = apiHandler(
   withAuth(async (_request: NextRequest, { userId }) => {
     const [user] = await db
-      .select({ preferredLocale: users.preferredLocale })
+      .select({ locale: users.locale, preferredLocale: users.preferredLocale })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
     return NextResponse.json({
-      locale: user?.preferredLocale || 'en',
+      locale: user?.locale || user?.preferredLocale || 'en',
     });
   })
 );
@@ -41,7 +41,7 @@ export const PUT = apiHandler(
 
     await db
       .update(users)
-      .set({ preferredLocale: locale })
+      .set({ locale, preferredLocale: locale })
       .where(eq(users.id, userId));
 
     return NextResponse.json({
@@ -51,3 +51,6 @@ export const PUT = apiHandler(
     });
   })
 );
+
+export const POST = PUT;
+

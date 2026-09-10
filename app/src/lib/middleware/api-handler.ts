@@ -127,7 +127,28 @@ export function apiHandler<TContext extends NextRouteContext = NextRouteContext>
 
       // ── Server-Side Privacy Mode Redaction (Module 14) ──
       const privacyHeader = request.headers.get('X-Privacy-Mode') || request.headers.get('x-privacy-mode');
-      if (privacyHeader === '1' || privacyHeader === 'true') {
+      let isPrivacyActive = privacyHeader === '1' || privacyHeader === 'true';
+
+      const userId = (routeContext as any)?.userId;
+      if (!isPrivacyActive && userId && typeof userId === 'number' && privacyHeader !== '0') {
+        try {
+          const { userPrivacySettings } = await import('@/db/schema');
+          const { db } = await import('@/db/client');
+          const { eq } = await import('drizzle-orm');
+          const [settings] = await db
+            .select({ maskAccountNumbers: userPrivacySettings.maskAccountNumbers })
+            .from(userPrivacySettings)
+            .where(eq(userPrivacySettings.userId, userId))
+            .limit(1);
+          if (settings && settings.maskAccountNumbers === 1) {
+            isPrivacyActive = true;
+          }
+        } catch {
+          // Ignore DB preference lookup errors
+        }
+      }
+
+      if (isPrivacyActive) {
         const sensitivePaths = [
           '/api/dashboard',
           '/api/networth',

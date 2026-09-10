@@ -28,6 +28,7 @@ const DEFAULT_WIDGET_ORDER = [
   'investments-summary',
   'debt-progress',
   'ai-insights',
+  'peer-benchmarks',
 ];
 
 const UpdateSchema = z.object({

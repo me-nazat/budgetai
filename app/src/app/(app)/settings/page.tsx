@@ -39,7 +39,7 @@ export default function SettingsPage() {
     const [saved, setSaved] = useState(false);
     const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false);
     const [avatarHovered, setAvatarHovered] = useState(false);
-    const { locale, t } = useLanguage();
+    const { locale, setLocale, t } = useLanguage();
     const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
 
     // 2FA states
@@ -1101,29 +1101,65 @@ export default function SettingsPage() {
 
                         {/* Language & Locale */}
                         <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
-                            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">translate</span>
-                                {t('settingsPage.languageSelect', 'Language & Locale')}
-                            </h2>
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">translate</span>
+                                    {t('settingsPage.languageSelect', 'Language & Locale')}
+                                </h2>
+                                <button
+                                    onClick={() => setIsLanguagePickerOpen(true)}
+                                    className="text-xs text-primary hover:underline font-semibold flex items-center gap-1"
+                                >
+                                    <span>{t('common.more', 'All Dialects')}</span>
+                                    <span className="material-symbols-outlined text-sm">tune</span>
+                                </button>
+                            </div>
                             <p className="text-xs text-gray-500 dark:text-text-muted mb-4 font-medium">
                                 {t('settingsPage.localeSection', 'Switch between English and Bengali with locale-aware formatting.')}
                             </p>
+                            {/* Two-Option Segmented Control */}
+                            <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 dark:bg-[#161b22] rounded-2xl mb-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setLocale('en')}
+                                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all min-h-[44px] ${
+                                        locale === 'en'
+                                            ? 'bg-white dark:bg-[#1f2937] text-primary shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                                >
+                                    <span>🇺🇸</span>
+                                    <span>English</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setLocale('bn')}
+                                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all min-h-[44px] ${
+                                        locale === 'bn'
+                                            ? 'bg-white dark:bg-[#1f2937] text-primary shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                                >
+                                    <span>🇧🇩</span>
+                                    <span>বাংলা</span>
+                                </button>
+                            </div>
                             <button
                                 onClick={() => setIsLanguagePickerOpen(true)}
-                                className="w-full flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-[#161b22] border-2 border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-all text-left"
+                                className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-[#161b22] border border-gray-200/50 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10 transition-all text-left"
                             >
                                 <div className="flex items-center gap-3">
-                                    <span className="text-2xl select-none">{locale === 'bn' ? '🇧🇩' : '🇺🇸'}</span>
+                                    <span className="text-xl select-none">{locale === 'bn' ? '🇧🇩' : '🇺🇸'}</span>
                                     <div>
-                                        <div className="font-bold text-sm text-gray-900 dark:text-white">
+                                        <div className="font-bold text-xs text-gray-900 dark:text-white">
                                             {locale === 'bn' ? 'বাংলা (Bengali)' : 'English (US)'}
                                         </div>
-                                        <div className="text-xs text-primary font-medium">
+                                        <div className="text-[11px] text-primary font-medium">
                                             {locale === 'bn' ? 'বাংলা সংখ্যা ও পঞ্জিকা সক্রিয়' : 'Western digits & standard calendar'}
                                         </div>
                                     </div>
                                 </div>
-                                <span className="material-symbols-outlined text-gray-400">tune</span>
+                                <span className="material-symbols-outlined text-gray-400 text-sm">open_in_new</span>
                             </button>
                         </motion.div>
 

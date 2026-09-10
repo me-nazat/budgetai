@@ -170,6 +170,10 @@
 /* UTILITY LAYER                                */
 /* ============================================ */
 @layer utilities {
+  .safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
   .glass-card {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);

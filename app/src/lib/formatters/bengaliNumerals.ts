@@ -15,13 +15,14 @@ export function formatLocaleCurrency(
   locale: 'en' | 'bn',
   currencyCode: string = 'BDT'
 ): string {
+  const safeAmount = isNaN(amount) ? 0 : amount;
   if (locale === 'bn') {
     const formatted = new Intl.NumberFormat('bn-BD', {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount);
+    }).format(safeAmount);
 
     return toBengaliNumerals(formatted);
   }
@@ -30,5 +31,5 @@ export function formatLocaleCurrency(
     style: 'currency',
     currency: currencyCode,
     minimumFractionDigits: 2,
-  }).format(amount);
+  }).format(safeAmount);
 }

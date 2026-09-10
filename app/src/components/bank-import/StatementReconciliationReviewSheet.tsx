@@ -21,7 +21,7 @@ export interface ReconciliationItem {
     category: string;
     type?: string;
   } | null;
-  resolution: 'merged' | 'kept_both' | 'discarded';
+  resolution: 'merged' | 'kept_both' | 'discarded' | 'pending';
 }
 
 interface StatementReconciliationReviewSheetProps {
@@ -29,7 +29,7 @@ interface StatementReconciliationReviewSheetProps {
   item: ReconciliationItem | null;
   currencySymbol?: string;
   onClose: () => void;
-  onSelectResolution: (itemId: string, resolution: 'merged' | 'kept_both' | 'discarded') => void;
+  onSelectResolution: (itemId: string, resolution: 'merged' | 'kept_both' | 'discarded' | 'pending') => void;
 }
 
 /**

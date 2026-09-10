@@ -103,31 +103,36 @@ export default function LockScreen({
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [lockOnBackground]);
 
-  // Passkey / Biometric unlock
+  // Passkey / Biometric unlock (Module 14)
   const handlePasskeyUnlock = async () => {
     setLoading(true);
     setError('');
     try {
       const optRes = await fetch('/api/auth/passkeys/login/options', { method: 'POST' });
-      if (optRes.ok) {
-        const options = await optRes.json();
-        // Fallback simulate or WebAuthn credentials get
-        if (typeof window !== 'undefined' && 'credentials' in navigator) {
-          try {
-            // If browser supports webauthn
-            setIsLocked(false);
-            lastActivityRef.current = Date.now();
-            return;
-          } catch {
-            // fall back to verify
-          }
-        }
+      if (!optRes.ok) {
+        throw new Error('Biometric passkeys not configured');
       }
-      // If passkey flow succeeded
-      setIsLocked(false);
-      lastActivityRef.current = Date.now();
-    } catch {
-      setError('Biometric authentication failed. Please enter password.');
+      const options = await optRes.json();
+      const { startAuthentication } = await import('@simplewebauthn/browser');
+      const authResp = await startAuthentication(options);
+
+      const verifyRes = await fetch('/api/auth/verify-passkey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          response: authResp,
+          expectedChallenge: options.challenge,
+        }),
+      });
+
+      if (verifyRes.ok) {
+        setIsLocked(false);
+        lastActivityRef.current = Date.now();
+      } else {
+        setError('Biometric authentication failed. Please enter password.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Biometric authentication failed. Please enter password.');
     } finally {
       setLoading(false);
     }

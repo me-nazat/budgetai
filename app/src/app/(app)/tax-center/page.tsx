@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { useCurrency } from '@/hooks/useCurrency';
 import { AnnualReportGeneratorModal } from '@/components/tax/AnnualReportGeneratorModal';
+import { TaxReviewQueueModal } from '@/components/tax/TaxReviewQueueModal';
 import { InlineTaxTagPill } from '@/components/tax/InlineTaxTagPill';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -61,6 +62,7 @@ export default function TaxCenterPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'tagged' | 'untagged'>('all');
   const [selectedTaxCat, setSelectedTaxCat] = useState<TaxCategory | 'All'>('All');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showReviewQueue, setShowReviewQueue] = useState(false);
   const [taggingId, setTaggingId] = useState<number | null>(null);
 
   // Fetch all transactions for the current fiscal year
@@ -152,6 +154,13 @@ export default function TaxCenterPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowReviewQueue(true)}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm font-bold hover:bg-emerald-500/20 transition-all flex items-center gap-2 min-h-[44px]"
+          >
+            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+            AI Review Queue
+          </button>
           <button
             onClick={handleBulkTag}
             className="px-4 py-2.5 rounded-xl bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-sm font-bold hover:bg-accent-amber/20 transition-all flex items-center gap-2 min-h-[44px]"
@@ -350,6 +359,15 @@ export default function TaxCenterPage() {
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
         defaultYear={now.getFullYear()}
+      />
+
+      {/* ── AI Deduction Review Queue Modal ── */}
+      <TaxReviewQueueModal
+        isOpen={showReviewQueue}
+        onClose={() => setShowReviewQueue(false)}
+        onItemProcessed={() => {
+          mutate((key: string) => typeof key === 'string' && key.startsWith('/api/transactions'), undefined, { revalidate: true });
+        }}
       />
     </div>
   );

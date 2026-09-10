@@ -52,12 +52,12 @@ export default function MobileMenu({ isOpen, onClose }: { isOpen: boolean, onClo
 
             {/* Menu Drawer */}
             <div className={`
-                fixed bottom-0 left-0 w-full z-50 lg:hidden overflow-hidden
+                fixed bottom-0 left-0 w-full z-50 lg:hidden overflow-hidden safe-bottom
                 rounded-t-[2rem] border-t border-white/70 bg-white/92 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl
                 transition-transform duration-[400ms] transform dark:border-white/10 dark:bg-[#0A0E1A]/94 dark:shadow-black/55
                 ${isOpen ? 'translate-y-0' : 'translate-y-full'}
                 flex flex-col max-h-[85vh]
-            `} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            `}>
                 {/* Drag Handle */}
                 <div className="w-full flex justify-center py-3 shrink-0 cursor-pointer" onClick={onClose}>
                     <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />

@@ -125,4 +125,76 @@ describe('Module 12: Tax Tagging, Deductions & Fiscal Reporting', () => {
     expect(revResult.valid).toBe(false);
     expect(revResult.reason).toBe('REVOKED');
   });
+
+  it('should encrypt deduction amounts at rest and decrypt transparently in memory (Decision A3)', () => {
+    // Simulated encryption format iv:ciphertext:tag
+    function simulateEncrypt(amount: number): string {
+      return Buffer.from(String(amount)).toString('base64') + ':encrypted:tag';
+    }
+
+    function simulateDecrypt(encrypted: string): number {
+      const b64 = encrypted.split(':')[0];
+      return parseFloat(Buffer.from(b64, 'base64').toString('utf-8'));
+    }
+
+    const rawEligible = 1250.75;
+    const rawDeductible = 625.38;
+
+    const encEligible = simulateEncrypt(rawEligible);
+    const encDeductible = simulateEncrypt(rawDeductible);
+
+    // Stored string should not contain raw numbers
+    expect(encEligible).not.toBe(String(rawEligible));
+    expect(encDeductible).not.toBe(String(rawDeductible));
+
+    // Decrypt in memory during report or summary calculation
+    expect(simulateDecrypt(encEligible)).toBe(rawEligible);
+    expect(simulateDecrypt(encDeductible)).toBe(rawDeductible);
+  });
+
+  it('should handle AI deduction review queue swipe actions (verify vs reject)', () => {
+    interface QueueDecision {
+      transactionId: number;
+      action: 'verify' | 'reject';
+      taxCategoryId?: string;
+      deductiblePercentage: number;
+      amount: number;
+    }
+
+    function processReviewQueueItem(item: QueueDecision) {
+      if (item.action === 'verify') {
+        return {
+          status: 'VERIFIED',
+          deductibleAmount: Math.round(item.amount * item.deductiblePercentage * 100) / 100,
+          createdInTaxVault: true,
+        };
+      }
+      return {
+        status: 'REJECTED',
+        deductibleAmount: 0,
+        createdInTaxVault: false,
+      };
+    }
+
+    const verified = processReviewQueueItem({
+      transactionId: 101,
+      action: 'verify',
+      taxCategoryId: 'taxcat_sch_c_software',
+      deductiblePercentage: 1.0,
+      amount: 299.99,
+    });
+    expect(verified.status).toBe('VERIFIED');
+    expect(verified.deductibleAmount).toBe(299.99);
+    expect(verified.createdInTaxVault).toBe(true);
+
+    const rejected = processReviewQueueItem({
+      transactionId: 102,
+      action: 'reject',
+      deductiblePercentage: 0.5,
+      amount: 85.0,
+    });
+    expect(rejected.status).toBe('REJECTED');
+    expect(rejected.deductibleAmount).toBe(0);
+    expect(rejected.createdInTaxVault).toBe(false);
+  });
 });

@@ -28,8 +28,8 @@ export interface AIResponse {
     dateRange?: { start: string; end: string };
 }
 
-function buildPrompt(context: string, budgets: string, today: string): string {
-    return `You are "Wealth AI", an elite, deeply knowledgeable, and highly engaging financial consultant. You help users manage their finances, optimize their savings, and track their expenses through natural language.
+function buildPrompt(context: string, budgets: string, today: string, locale: string = 'en'): string {
+    let prompt = `You are "Wealth AI", an elite, deeply knowledgeable, and highly engaging financial consultant. You help users manage their finances, optimize their savings, and track their expenses through natural language.
 
 You have FULL CONTROL over the user's financial data. You can ADD new entries, EDIT existing ones, DELETE specific entries, and RESET/CLEAR sections of data.
 
@@ -75,9 +75,14 @@ Respond ONLY with JSON, no markdown, no code blocks:
   "dateRange": null
 }
 
-If no financial data, return empty financialData array.
-If no data manipulation actions, return empty actions array.
-Today's date is: ${today}`;
+Empty arrays for financialData and actions if none.
+Today's date: ${today}`;
+
+    if (locale === 'bn') {
+        prompt += '\n\nLANGUAGE INSTRUCTION: Respond in Bengali (বাংলা). All explanations, conversational remarks, and messages must be in fluent Bengali (বাংলা).';
+    }
+
+    return prompt;
 }
 
 function parseAIResponse(text: string): AIResponse {
@@ -107,13 +112,14 @@ export async function callPuterAI(
     userMessage: string,
     context: string,
     budgets: string,
-    today: string
+    today: string,
+    locale: string = 'en'
 ): Promise<AIResponse> {
     if (typeof window === 'undefined' || !window.puter?.ai?.chat) {
         throw new Error('Puter.js not available');
     }
 
-    const systemPrompt = buildPrompt(context, budgets, today);
+    const systemPrompt = buildPrompt(context, budgets, today, locale);
 
     const response = await window.puter.ai.chat(userMessage, {
         model: 'gpt-4o-mini',

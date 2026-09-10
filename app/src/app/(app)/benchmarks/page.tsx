@@ -117,15 +117,35 @@ export default function BenchmarksPage() {
       </div>
 
       {/* Check k-anonymity threshold state */}
-      {percentileData?.kAnonymityMet === false ? (
-        <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
-            <span className="material-symbols-outlined text-[28px]">lock</span>
+      {(percentileData?.kAnonymityMet === false || percentileData?.cohortForming) ? (
+        <div className="p-8 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+            <span className="material-symbols-outlined text-[32px]">lock</span>
           </div>
-          <h3 className="text-base font-bold text-content-primary">Cohort Under Construction (k &lt; 30)</h3>
-          <p className="text-xs text-content-muted max-w-md mx-auto leading-relaxed">
-            Your cohort currently has <strong>{percentileData?.cohortSize || 0} active members</strong>. To ensure complete privacy and prevent re-identification, individual percentile figures unlock once at least 30 peers share your demographic profile.
-          </p>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-content-primary">Cohort Under Construction (k &lt; 30)</h3>
+            <p className="text-xs text-content-muted max-w-md mx-auto leading-relaxed">
+              Your anonymous demographic cohort is currently forming. To ensure complete privacy and prevent re-identification, individual percentile benchmarks unlock once at least 30 peers share your demographic profile.
+            </p>
+          </div>
+
+          {/* Progress counter */}
+          <div className="max-w-xs mx-auto bg-surface-primary p-4 rounded-2xl border border-border-subtle space-y-2 text-left">
+            <div className="flex justify-between items-center text-xs font-bold">
+              <span className="text-content-muted">Peer Network</span>
+              <span className="text-amber-500 font-mono">
+                {percentileData?.sampleSize ?? percentileData?.cohortSize ?? 0} / {percentileData?.kAnonymityThreshold ?? 30} peers joined
+              </span>
+            </div>
+            <div className="w-full bg-surface-tertiary h-2.5 rounded-full overflow-hidden">
+              <div
+                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, Math.round(((percentileData?.sampleSize ?? percentileData?.cohortSize ?? 0) / (percentileData?.kAnonymityThreshold ?? 30)) * 100))}%`,
+                }}
+              />
+            </div>
+          </div>
         </div>
       ) : (
         <>

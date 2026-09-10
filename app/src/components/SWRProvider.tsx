@@ -1,6 +1,6 @@
 'use client';
 
-import { SWRConfig } from 'swr';
+import { SWRConfig, mutate as globalMutate } from 'swr';
 import type { Cache, State } from 'swr';
 
 /** Track whether a token refresh is in-flight to prevent parallel refreshes. */
@@ -39,14 +39,16 @@ async function refreshTokens(): Promise<boolean> {
 }
 
 const fetcher = async (url: string) => {
-    let r = await fetch(url);
+    const isPrivacy = typeof window !== 'undefined' && sessionStorage.getItem('privacyMode') === 'true';
+    const reqHeaders: Record<string, string> = isPrivacy ? { 'X-Privacy-Mode': '1' } : {};
+    let r = await fetch(url, { headers: reqHeaders });
 
     // Auto-refresh on 401 — the access token may have expired
     if (r.status === 401) {
         const refreshed = await refreshTokens();
         if (refreshed) {
             // Retry the original request with new cookies
-            r = await fetch(url);
+            r = await fetch(url, { headers: reqHeaders });
         } else {
             // Refresh failed — redirect to login
             if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
@@ -260,6 +262,13 @@ export default function SWRProvider({ children }: { children: React.ReactNode })
 
         // Set up authentication listener for cache warming
         setupAuthListener();
+
+        // Listen for privacy mode toggle to revalidate active queries with/without X-Privacy-Mode
+        const handlePrivacyChange = () => {
+            globalMutate(() => true);
+        };
+        window.addEventListener('privacy-mode-change', handlePrivacyChange);
+        return () => window.removeEventListener('privacy-mode-change', handlePrivacyChange);
     }, []);
 
     return (

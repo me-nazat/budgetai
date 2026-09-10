@@ -56,6 +56,12 @@ export const users = sqliteTable('users', {
    * User preferred UI locale language ('en' | 'bn').
    * @default 'en'
    */
+  locale: text('locale').default('en'),
+
+  /**
+   * Legacy alias for preferred UI locale language ('en' | 'bn').
+   * @default 'en'
+   */
   preferredLocale: text('preferred_locale').default('en'),
 
   /** Whether budget-related notifications are enabled. 1 = enabled, 0 = disabled. */

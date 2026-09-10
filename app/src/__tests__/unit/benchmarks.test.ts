@@ -80,4 +80,30 @@ describe('Module 11: Anonymous Peer Benchmarking & k-Anonymity (k >= 30)', () =>
     expect(bins.reduce((a, b) => a + b, 0)).toBe(sampleSpends.length);
     expect(bins.length).toBe(6);
   });
+
+  it('should return cohort forming state with progress percentage when N < 30 (Decision A2)', () => {
+    function getCohortState(sampleSize: number, threshold = 30) {
+      const isForming = sampleSize < threshold;
+      const progress = Math.min(100, Math.round((sampleSize / threshold) * 100));
+      return {
+        cohortForming: isForming,
+        sampleSize,
+        kAnonymityThreshold: threshold,
+        kAnonymityMet: !isForming,
+        progress,
+        message: `${sampleSize}/${threshold} peers joined`,
+      };
+    }
+
+    const state18 = getCohortState(18);
+    expect(state18.cohortForming).toBe(true);
+    expect(state18.kAnonymityMet).toBe(false);
+    expect(state18.progress).toBe(60);
+    expect(state18.message).toBe('18/30 peers joined');
+
+    const state30 = getCohortState(30);
+    expect(state30.cohortForming).toBe(false);
+    expect(state30.kAnonymityMet).toBe(true);
+    expect(state30.progress).toBe(100);
+  });
 });

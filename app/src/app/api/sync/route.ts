@@ -43,6 +43,33 @@ export const POST = apiHandler(
                     [userId, 'info', 'Recurring Transaction Added', `${item.name} (${item.amount}) was added for ${currentDate}.`]
                 );
 
+                // If tied to a household space, auto-create household expense and split fan-out
+                if (item.household_id && item.type === 'expense') {
+                    try {
+                        const expResult = await run(
+                            'INSERT INTO household_expenses (household_id, user_id, description, amount, category, split_between) VALUES (?, ?, ?, ?, ?, ?)',
+                            [item.household_id, userId, `[Auto Recurring] ${item.name}`, item.amount, item.category, 'all']
+                        );
+                        const hhMembers = await queryAll<{ user_id: number }>(
+                            'SELECT user_id FROM household_members WHERE household_id = ?',
+                            [item.household_id]
+                        );
+                        if (hhMembers.length > 1) {
+                            const splitAmount = Math.round((item.amount / hhMembers.length) * 100) / 100;
+                            for (const member of hhMembers) {
+                                if (member.user_id !== userId) {
+                                    await run(
+                                        'INSERT INTO household_settlements (household_id, payer_id, payee_id, amount, status) VALUES (?, ?, ?, ?, ?)',
+                                        [item.household_id, member.user_id, userId, splitAmount, 'pending']
+                                    );
+                                }
+                            }
+                        }
+                    } catch (hhErr) {
+                        console.error('[sync] Household auto-split failed for recurring transaction:', hhErr);
+                    }
+                }
+
                 currentDate = getNextDate(currentDate, item.frequency);
                 syncedCount++;
             }

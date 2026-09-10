@@ -174,6 +174,66 @@ export class RecurringService {
           accountId,
         });
 
+        // Auto-split household recurring bills if householdId is assigned
+        if (record.householdId && record.type === 'expense') {
+          try {
+            const { db } = await import('@/db/client');
+            const { householdExpenses, householdSettlements, householdMembers } = await import('@/db/schema');
+            const { eq } = await import('drizzle-orm');
+            const { encryptNumber } = await import('@/lib/crypto/encryption');
+            const { broadcastHouseholdUpdate } = await import('@/lib/household-sync');
+
+            const hhId = record.householdId;
+            const [insertedExp] = await db
+              .insert(householdExpenses)
+              .values({
+                householdId: hhId,
+                userId: record.userId,
+                description: `[Auto Recurring] ${record.name}`,
+                amount: record.amount,
+                category: record.category,
+                splitBetween: 'all',
+              })
+              .returning({ id: householdExpenses.id });
+
+            const members = await db
+              .select({ userId: householdMembers.userId })
+              .from(householdMembers)
+              .where(eq(householdMembers.householdId, hhId));
+
+            const memberIds = members.map((m) => m.userId);
+            if (memberIds.length > 1) {
+              const splitAmount = Math.round((record.amount / memberIds.length) * 100) / 100;
+              const settlementRows = memberIds
+                .filter((mId) => mId !== record.userId)
+                .map((mId) => ({
+                  householdId: hhId,
+                  payerId: mId,
+                  payeeId: record.userId,
+                  amount: splitAmount,
+                  encryptedAmount: encryptNumber(splitAmount, 'household-settlement'),
+                  status: 'pending' as const,
+                }));
+
+              if (settlementRows.length > 0) {
+                await db.insert(householdSettlements).values(settlementRows);
+              }
+
+              broadcastHouseholdUpdate(hhId, {
+                type: 'EXPENSE_ADDED',
+                data: {
+                  expenseId: insertedExp?.id,
+                  amount: record.amount,
+                  payerId: record.userId,
+                  description: `[Auto Recurring] ${record.name}`,
+                },
+              });
+            }
+          } catch (hhError) {
+            console.error(`[recurring] Failed to auto-split household bill for ID ${record.id}:`, hhError);
+          }
+        }
+
         // Calculate next execution date
         const nextDate = RecurringService.calculateNextDate(
           record.nextDate,
