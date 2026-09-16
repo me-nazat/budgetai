@@ -15,3 +15,5 @@ node_modules/
 *.sqlite-wal
 cookies.txt
 *.cookie
+.agent
+.agent/

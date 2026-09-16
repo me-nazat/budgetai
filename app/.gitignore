@@ -55,3 +55,5 @@ cookies.txt
 
 # misc
 .DS_Store
+.agent
+.agent/

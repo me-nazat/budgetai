@@ -40,7 +40,10 @@ async function refreshTokens(): Promise<boolean> {
 
 const fetcher = async (url: string) => {
     const isPrivacy = typeof window !== 'undefined' && sessionStorage.getItem('privacyMode') === 'true';
-    const reqHeaders: Record<string, string> = isPrivacy ? { 'X-Privacy-Mode': '1' } : {};
+    // Only send X-Privacy-Mode for account-related routes that mask sensitive account numbers.
+    // NEVER send it for transactions, dashboard, budgets, or cashflow totals.
+    const isSensitiveAccountPath = url.startsWith('/api/accounts') || url.startsWith('/api/bank-import');
+    const reqHeaders: Record<string, string> = (isPrivacy && isSensitiveAccountPath) ? { 'X-Privacy-Mode': '1' } : {};
     let r = await fetch(url, { headers: reqHeaders });
 
     // Auto-refresh on 401 — the access token may have expired
@@ -70,7 +73,7 @@ const fetcher = async (url: string) => {
     return (json && typeof json === 'object' && json.success === true && 'data' in json) ? json.data : json;
 };
 
-const STORAGE_KEY = 'wealth-ai-swr-cache-v1';
+const STORAGE_KEY = 'wealth-ai-swr-cache-v2';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours for instant loading on return visits
 const PERSISTED_PREFIXES = [
     '/api/dashboard',
@@ -97,6 +100,15 @@ function canPersistKey(key: string) {
 function readPersistentEntries() {
     if (typeof window === 'undefined') return [];
 
+    // Purge legacy v1 poisoned cache
+    try {
+        if (localStorage.getItem('wealth-ai-swr-cache-v1')) {
+            localStorage.removeItem('wealth-ai-swr-cache-v1');
+        }
+    } catch {
+        // Ignore localStorage access errors
+    }
+
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return [];
@@ -105,7 +117,18 @@ function readPersistentEntries() {
         const now = Date.now();
 
         return Object.entries(parsed)
-            .filter(([key, entry]) => canPersistKey(key) && now - entry.updatedAt < CACHE_TTL_MS)
+            .filter(([key, entry]) => {
+                if (!canPersistKey(key) || now - entry.updatedAt >= CACHE_TTL_MS) {
+                    return false;
+                }
+                // Reject poisoned transaction cache where all amounts are zero
+                const data = entry.value?.data as any;
+                if (key.startsWith('/api/transactions') && data?.transactions && Array.isArray(data.transactions) && data.transactions.length > 0) {
+                    const allZero = data.transactions.every((t: any) => t.amount === 0);
+                    if (allZero) return false;
+                }
+                return true;
+            })
             .map(([key, entry]) => [key, entry.value] as const);
     } catch {
         localStorage.removeItem(STORAGE_KEY);

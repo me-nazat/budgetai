@@ -73,12 +73,22 @@ if (typeof window !== 'undefined' && !(window as any)._waiPrivacyFetchPatched) {
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const isPrivacy = sessionStorage.getItem('privacyMode') === 'true';
     if (isPrivacy) {
-      init = init || {};
-      const headers = new Headers(init.headers || {});
-      if (!headers.has('X-Privacy-Mode')) {
-        headers.set('X-Privacy-Mode', '1');
+      const urlStr = typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : (input as Request)?.url || '';
+
+      // Strictly limit X-Privacy-Mode to account masking routes.
+      // NEVER attach to financial transaction or summary calculation routes.
+      if (urlStr.includes('/api/accounts') || urlStr.includes('/api/bank-import')) {
+        init = init || {};
+        const headers = new Headers(init.headers || {});
+        if (!headers.has('X-Privacy-Mode')) {
+          headers.set('X-Privacy-Mode', '1');
+        }
+        init.headers = headers;
       }
-      init.headers = headers;
     }
     return originalFetch(input, init);
   };
