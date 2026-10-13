@@ -134,7 +134,7 @@ export default function RegisterPage() {
                     <div className="flex-1 flex flex-col justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                         <h1 className="text-5xl font-black leading-tight mb-6 text-gray-900 dark:text-white">
                             Start building your<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-950 to-cyan-950 dark:from-emerald-400 dark:to-cyan-400">wealth today.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan-500 dark:from-emerald-400 dark:to-cyan-400">wealth today.</span>
                         </h1>
                         <p className="text-gray-600 dark:text-gray-300 text-lg max-w-md leading-relaxed mb-12">
                             Join thousands of people who use AI to make smarter financial decisions every single day.
@@ -268,14 +268,14 @@ export default function RegisterPage() {
                             <button
                                 type="submit"
                                 disabled={loading || (password !== confirm && confirm !== '')}
-                                className="relative w-full py-4 px-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-gray-900 font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 disabled:opacity-70 disabled:shadow-none mt-6 flex items-center justify-center gap-2 group overflow-hidden"
+                                className="relative w-full py-4 px-4 bg-gradient-to-r from-primary to-blue-600 hover:from-primary-hover hover:to-blue-500 text-white font-bold rounded-xl shadow-[0_0_24px_rgba(19,109,236,0.35)] hover:shadow-[0_0_32px_rgba(19,109,236,0.5)] transition-all duration-300 disabled:opacity-70 disabled:shadow-none mt-6 flex items-center justify-center gap-2 group overflow-hidden"
                             >
                                 {/* Button Glow Effect */}
                                 <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1s_forwards]" />
                                 
                                 {loading ? (
                                     <>
-                                        <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                         <span>Creating Account...</span>
                                     </>
                                 ) : (

@@ -308,7 +308,12 @@ export default function GenerativeArtPage() {
                 </span>
                 <span className="font-bold text-gray-900 dark:text-white">Tier {complexity}</span>
               </div>
+              <label htmlFor="harmonic-complexity" className="sr-only">
+                Harmonic Tier Complexity
+              </label>
               <input
+                id="harmonic-complexity"
+                aria-label="Harmonic Tier Complexity"
                 type="range"
                 min="1"
                 max="5"

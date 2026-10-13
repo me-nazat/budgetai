@@ -53,7 +53,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Groceries': '#10b981',
   'Utilities': '#f59e0b',
   'Dining & Food': '#ec4899',
-  'Entertainment': '#8b5cf6',
+  'Entertainment': '#0ea5e9',
   'Transportation': '#06b6d4',
   'Health': '#ef4444',
   'Other': '#6b7280',
@@ -206,8 +206,11 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <label htmlFor="allocation-month" className="sr-only">Select Allocation Month</label>
           <input
+            id="allocation-month"
             type="month"
+            aria-label="Select Allocation Month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="px-3 py-2 text-xs font-semibold rounded-xl bg-surface-secondary border border-border-subtle text-content-primary focus:outline-none focus:ring-2 focus:ring-emerald-500"

@@ -851,7 +851,7 @@ function TestimonialSection() {
                 className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center"
             >
                 <motion.span variants={fadeInUp} className="material-symbols-outlined text-4xl text-primary/30 dark:text-lp-cyan/30 mb-4 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
-                <motion.blockquote variants={fadeInUp} className="text-xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-8 tracking-tight" style={{ fontFamily: 'var(--font-fraunces), serif', fontStyle: 'italic', letterSpacing: '-0.02em', fontWeight: 500 }}>
+                <motion.blockquote variants={fadeInUp} className="text-xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-8 tracking-tight" style={{ fontFamily: 'var(--font-playfair), serif', fontStyle: 'italic', letterSpacing: '-0.02em', fontWeight: 500 }}>
                     &ldquo;Wealth AI turns complex financial data into living clarity and proactive guidance. It feels less like a tracker and more like an intelligent CFO for your future.&rdquo;
                 </motion.blockquote>
                 <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">

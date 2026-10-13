@@ -28,7 +28,7 @@ export interface FinancialMandalaProps {
 }
 
 // ────────────────────────────────────────────────────────────
-// Palette definitions (Strictly compliant with Purple Ban)
+// Palette definitions (Strictly compliant with color guidelines)
 // ────────────────────────────────────────────────────────────
 const PALETTES: Record<GenerativePalette, { primary: string; secondary: string; highlight: string; glow: string; dark: string }> = {
   gold: {

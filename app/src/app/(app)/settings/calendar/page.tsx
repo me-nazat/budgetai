@@ -489,7 +489,7 @@ export default function CalendarSettingsPage() {
                       log.sourceType === 'BILL'
                         ? 'bg-blue-500/10 text-blue-500'
                         : log.sourceType === 'SUBSCRIPTION'
-                        ? 'bg-purple-500/10 text-purple-500'
+                        ? 'bg-teal-500/10 text-teal-500'
                         : 'bg-amber-500/10 text-amber-500'
                     }`}
                   >

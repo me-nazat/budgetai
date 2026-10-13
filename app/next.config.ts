@@ -6,9 +6,10 @@ const securityHeaders = [
         value: [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
-            "style-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' data: https://fonts.gstatic.com",
             "img-src 'self' data: blob: https://maps.gstatic.com https://maps.googleapis.com https://*.googleusercontent.com https://*.ggpht.com",
-            "connect-src 'self' https://*.turso.io https://generativelanguage.googleapis.com https://openrouter.ai https://open.er-api.com https://www.googleapis.com https://maps.googleapis.com https://maps.gstatic.com",
+            "connect-src 'self' https://*.turso.io https://generativelanguage.googleapis.com https://openrouter.ai https://open.er-api.com https://www.googleapis.com https://maps.googleapis.com https://maps.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com",
             "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",

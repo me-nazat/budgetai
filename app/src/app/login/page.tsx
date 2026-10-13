@@ -226,7 +226,7 @@ function LoginForm() {
                     <div className="flex-1 flex flex-col justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                         <h1 className="text-5xl font-black leading-tight mb-8 text-gray-900 dark:text-white">
                             Master your money,<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-950 to-cyan-950 dark:from-emerald-400 dark:to-cyan-400">effortlessly.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan-500 dark:from-emerald-400 dark:to-cyan-400">effortlessly.</span>
                         </h1>
                         
                         {/* Carousel */}
@@ -421,13 +421,13 @@ function LoginForm() {
                                             <button
                                                 type="submit"
                                                 disabled={loading}
-                                                className="relative flex-1 flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-primary to-cyan-500 px-4 py-4 font-bold text-gray-900 shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-300 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-70 group"
+                                                className="relative flex-1 flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-4 font-bold text-white shadow-[0_0_24px_rgba(19,109,236,0.35)] transition-all duration-300 hover:from-primary-hover hover:to-blue-500 hover:shadow-[0_0_32px_rgba(19,109,236,0.5)] disabled:opacity-70 group"
                                             >
                                                 <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1s_forwards]" />
                                                 
                                                 {loading ? (
                                                     <>
-                                                        <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                                         <span>Authenticating...</span>
                                                     </>
                                                 ) : (
