@@ -21,14 +21,16 @@ import {
   cpSync,
   existsSync,
   lstatSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   rmSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 const cwd = process.cwd(); // /vercel/path0/app  OR  local workspace/app
 const isVercel = Boolean(process.env.VERCEL);
@@ -118,7 +120,38 @@ if (existsSync(routesManifest) && !existsSync(deterministicManifest)) {
   } catch {}
 }
 
-// ── 2c. Mirror app/.next/ → parent .next/ for Vercel's deploy CLI ─────────
+// ── 2c. Materialize external package symlinks in .next/node_modules ────────
+// Turbopack creates symlinks for external modules (e.g. .next/node_modules/@libsql/client-xxx -> ../../../node_modules/@libsql/client).
+// In Vercel serverless functions (AWS Lambda), symlinks referencing outside the container root fail with ERR_MODULE_NOT_FOUND.
+// We replace these symlinks with real directories containing the actual files.
+function materializeSymlinks(dir) {
+  if (!existsSync(dir)) return;
+  let entries;
+  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      try {
+        const linkTarget = readlinkSync(full);
+        const resolved = resolve(dir, linkTarget);
+        if (existsSync(resolved)) {
+          unlinkSync(full);
+          cpSync(resolved, full, { recursive: true, dereference: true });
+          console.log(`[postbuild] Materialized symlink to real folder: ${entry.name}`);
+        }
+      } catch (err) {
+        console.warn(`[postbuild] Could not materialize ${entry.name}:`, err.message);
+      }
+    } else if (entry.isDirectory()) {
+      materializeSymlinks(full);
+    }
+  }
+}
+
+const appNextNodeModules = join(appNextDir, 'node_modules');
+materializeSymlinks(appNextNodeModules);
+
+// ── 2d. Mirror app/.next/ → parent .next/ for Vercel's deploy CLI ─────────
 //
 // Vercel's "Deploying outputs..." phase reads routing metadata, manifest
 // files, and server chunks from /vercel/path0/.next/ (repo root). Since
@@ -131,6 +164,7 @@ if (isVercel) {
     cpSync(appNextDir, parentNextDir, {
       recursive: true,
       force: true,
+      dereference: true,
       filter: (src) => !src.includes(join(appNextDir, 'cache')),
     });
     console.log('[postbuild] Synced app/.next → parent .next for Vercel deploy CLI');
@@ -138,19 +172,25 @@ if (isVercel) {
     console.warn('[postbuild] Warning: could not sync parent .next:', err.message);
   }
 
-  // Bridge parent node_modules and package.json so that any NFT
-  // relative references (e.g. ../../node_modules/next/...) can resolve
-  // if Vercel Root Directory is not set to 'app'.
+  // Ensure parent .next/node_modules has no dangling symlinks
+  materializeSymlinks(join(parentNextDir, 'node_modules'));
+
+  // Copy essential runtime packages to parent node_modules so that any
+  // module trying to resolve from /var/task/node_modules succeeds
   const parentNodeModules = join(cwd, '..', 'node_modules');
   try {
-    let exists = false;
-    try { exists = existsSync(parentNodeModules) || lstatSync(parentNodeModules).isSymbolicLink(); } catch {}
-    if (!exists) {
-      symlinkSync(join(cwd, 'node_modules'), parentNodeModules, 'junction');
-      console.log('[postbuild] Linked app/node_modules → parent node_modules for NFT resolution');
+    mkdirSync(parentNodeModules, { recursive: true });
+    const essentialPkgs = ['@libsql', 'drizzle-orm', 'bcryptjs', '@upstash', 'jose', 'zod', 'dotenv'];
+    for (const pkg of essentialPkgs) {
+      const src = join(cwd, 'node_modules', pkg);
+      const dest = join(parentNodeModules, pkg);
+      if (existsSync(src) && !existsSync(dest)) {
+        cpSync(src, dest, { recursive: true, dereference: true });
+        console.log(`[postbuild] Copied ${pkg} → parent node_modules`);
+      }
     }
   } catch (err) {
-    console.warn('[postbuild] Warning: could not link parent node_modules:', err.message);
+    console.warn('[postbuild] Warning: could not copy parent node_modules:', err.message);
   }
 
   const parentPackageJson = join(cwd, '..', 'package.json');
