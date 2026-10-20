@@ -20,8 +20,8 @@
  * @module db/client
  */
 
-import { drizzle } from 'drizzle-orm/libsql';
-import { createClient, type Client } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql/web';
+import { createClient, type Client } from '@libsql/client/web';
 import * as schema from './schema';
 import { env } from '../lib/env';
 

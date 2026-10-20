@@ -23,20 +23,17 @@
  * ============================================
  */
 
-import { createClient, type Client, type InValue } from '@libsql/client';
+import { createClient, type Client, type InValue } from '@libsql/client/web';
+import { env } from './env';
 
 let client: Client | null = null;
 let initialized = false;
 
 function getClient(): Client {
   if (!client) {
-    const url = process.env.TURSO_DATABASE_URL;
-    if (!url) {
-      throw new Error('TURSO_DATABASE_URL environment variable is not set. Please add it to your environment variables.');
-    }
     client = createClient({
-      url,
-      authToken: process.env.TURSO_AUTH_TOKEN,
+      url: env.TURSO_DATABASE_URL,
+      authToken: env.TURSO_AUTH_TOKEN,
     });
   }
   return client;
@@ -44,7 +41,8 @@ function getClient(): Client {
 
 export async function ensureDbInitialized(): Promise<void> {
   if (initialized) return;
-  const c = getClient();
+  try {
+    const c = getClient();
 
   await c.batch([
     `CREATE TABLE IF NOT EXISTS users (
@@ -700,8 +698,11 @@ export async function ensureDbInitialized(): Promise<void> {
   try {
     await getClient().execute('ALTER TABLE household_settlements ADD COLUMN linked_transaction_id INTEGER');
   } catch { /* Ignore */ }
-
-  initialized = true;
+  } catch (err) {
+    console.warn('[db] ensureDbInitialized non-fatal setup warning:', err);
+  } finally {
+    initialized = true;
+  }
 }
 
 // Helper: convert libSQL row (which may be array-like) to a plain object
