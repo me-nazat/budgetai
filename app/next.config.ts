@@ -83,6 +83,11 @@ const nextConfig: NextConfig = {
         'jspdf-autotable',
     ],
 
+    transpilePackages: [
+        '@libsql/client',
+        'drizzle-orm',
+    ],
+
     poweredByHeader: false,
     productionBrowserSourceMaps: false,
     typescript: {
