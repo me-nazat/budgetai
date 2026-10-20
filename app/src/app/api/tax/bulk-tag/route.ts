@@ -34,6 +34,68 @@ export const POST = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
     const body = await request.json().catch(() => ({}));
     const apply = Boolean(body.apply);
+    const transactionIds = Array.isArray(body.transactionIds)
+      ? body.transactionIds.map(Number).filter((id: number) => !isNaN(id))
+      : null;
+    const action = body.action === 'untag' ? 'untag' : 'tag';
+
+    // Handle explicit transaction IDs if provided by bulk action bar
+    if (transactionIds && transactionIds.length > 0) {
+      if (action === 'untag') {
+        const { inArray } = await import('drizzle-orm');
+        await db
+          .delete(taxDeductions)
+          .where(and(eq(taxDeductions.userId, userId), inArray(taxDeductions.transactionId, transactionIds)));
+        await db
+          .update(transactions)
+          .set({ taxSuggested: 0 })
+          .where(and(eq(transactions.userId, userId), inArray(transactions.id, transactionIds)));
+
+        return NextResponse.json({
+          success: true,
+          count: transactionIds.length,
+          action: 'untag',
+        });
+      } else {
+        const { inArray } = await import('drizzle-orm');
+        const selectedTxns = await db
+          .select()
+          .from(transactions)
+          .where(and(eq(transactions.userId, userId), inArray(transactions.id, transactionIds)));
+
+        const defaultCategoryId = body.taxCategoryId || 'taxcat_sch_c_office';
+
+        for (const tx of selectedTxns) {
+          const deductionId = `deduct_${crypto.randomUUID()}`;
+          await db
+            .insert(taxDeductions)
+            .values({
+              id: deductionId,
+              userId,
+              transactionId: tx.id,
+              taxCategoryId: defaultCategoryId,
+              eligibleAmount: tx.amount,
+              deductibleAmount: tx.amount,
+              jurisdiction: 'US_IRS',
+              receiptDocumentId: null,
+              status: 'VERIFIED',
+              notes: 'Tagged via Bulk Action Bar',
+            })
+            .onConflictDoNothing();
+        }
+
+        await db
+          .update(transactions)
+          .set({ taxSuggested: 1 })
+          .where(and(eq(transactions.userId, userId), inArray(transactions.id, transactionIds)));
+
+        return NextResponse.json({
+          success: true,
+          count: selectedTxns.length,
+          action: 'tag',
+        });
+      }
+    }
 
     // 1. Fetch user's existing tagged transaction IDs
     const existingDeductions = await db

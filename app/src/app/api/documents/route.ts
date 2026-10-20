@@ -98,3 +98,26 @@ Do not enclose in markdown code fences. Respond with raw JSON only.`;
   }),
   { rateLimit: 'upload' }
 );
+
+export const DELETE = apiHandler(
+  withAuth(async (request: NextRequest, { userId }) => {
+    const url = new URL(request.url);
+    let id = url.searchParams.get('id');
+    if (!id) {
+      const body = await request.json().catch(() => ({}));
+      id = body?.id;
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: 'Document id is required' }, { status: 400 });
+    }
+
+    const deleted = await DocumentRepository.deleteDocument(id, userId);
+    if (!deleted) {
+      return NextResponse.json({ error: 'Document not found or unauthorized' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, deletedId: id });
+  }),
+  { rateLimit: 'api' }
+);

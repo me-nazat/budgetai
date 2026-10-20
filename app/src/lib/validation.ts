@@ -168,7 +168,12 @@ export const CreateTourSchema = z.object({
                 seen.add(key);
             });
         }),
-}).strict();
+    destination: z.string().max(100).optional().nullable(),
+    startDate: z.string().optional().nullable(),
+    endDate: z.string().optional().nullable(),
+    baseCurrency: z.string().max(10).optional().default("USD"),
+    totalBudget: z.coerce.number().optional().nullable(),
+}).passthrough();
 
 export const TourGroupSchema = CreateTourSchema;
 
@@ -179,9 +184,22 @@ export const TourTransactionSchema = z.object({
     date: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Invalid date format"),
     paidBy: z.coerce.number().int().positive("Paid By is required"),
     paidByParticipantId: z.coerce.number().int().positive().optional(),
-    splitType: z.enum(["equal", "percentage", "exact"]).default("equal"),
+    splitType: z.enum(["equal", "percentage", "exact", "shares"]).default("equal"),
+    entryType: z.enum(["expense", "deposit", "settlement"]).default("expense"),
+    fundingSource: z.enum(["member_direct", "tour_pool"]).default("member_direct"),
+    recipientMemberId: z.coerce.number().int().positive().optional().nullable(),
+    linkedAccountId: z.coerce.number().int().positive().optional().nullable(),
+    currency: z.string().trim().max(10).optional().default("USD"),
+    exchangeRateToTourBase: z.coerce.number().positive().optional().default(1.0),
     includeInMainLedger: z.boolean().optional(),
-}).strict().transform((value) => ({
+    customSplits: z.array(z.object({
+        memberId: z.number(),
+        shareAmount: z.number().optional(),
+        sharePercentage: z.number().optional(),
+        shareWeight: z.number().optional(),
+    })).optional().nullable(),
+    attachments: z.array(z.string()).optional().nullable(),
+}).passthrough().transform((value) => ({
     ...value,
     paidBy: value.paidByParticipantId ?? value.paidBy,
 }));

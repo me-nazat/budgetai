@@ -4,6 +4,9 @@
 
 import { AutomationRulesRepository } from '@/repositories/automation-rules.repository';
 import { AuditService } from '@/services/audit.service';
+import { db } from '@/db/client';
+import { transactions, automationAuditLog } from '@/db/schema';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
 export const createRuleSchema = z.object({
@@ -192,5 +195,55 @@ export class AutomationRulesService {
     }
 
     return { category: currentCategory, matchedRuleName: null, matchedRuleId: null };
+  }
+
+  /**
+   * Evaluates and applies active automation rules to all uncategorized transactions.
+   */
+  static async runRulesOnUncategorized(userId: number) {
+    const activeRules = await AutomationRulesRepository.findActiveByUserId(userId);
+    if (activeRules.length === 0) {
+      return { processed: 0, updated: 0 };
+    }
+
+    const txs = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          or(
+            isNull(transactions.category),
+            eq(transactions.category, ''),
+            eq(transactions.category, 'Other'),
+            eq(transactions.category, 'Uncategorized')
+          )
+        )
+      );
+
+    let updatedCount = 0;
+    for (const tx of txs) {
+      const match = await this.applyRules(userId, tx.description, tx.category || 'Other');
+      if (match.matchedRuleId && match.category !== tx.category) {
+        await db
+          .update(transactions)
+          .set({ category: match.category })
+          .where(eq(transactions.id, tx.id));
+
+        await db.insert(automationAuditLog).values({
+          userId,
+          ruleId: match.matchedRuleId,
+          transactionId: tx.id,
+          actionPerformed: `Auto-categorized as ${match.category}`,
+          previousValue: tx.category || 'Other',
+          newValue: match.category,
+          undone: 0,
+        });
+
+        updatedCount++;
+      }
+    }
+
+    return { processed: txs.length, updated: updatedCount };
   }
 }

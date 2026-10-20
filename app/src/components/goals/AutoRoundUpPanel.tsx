@@ -48,7 +48,7 @@ export function AutoRoundUpPanel({ goal, isOpen, onClose, onSaved }: AutoRoundUp
     async function loadData() {
       try {
         const [ruleRes, accRes] = await Promise.all([
-          fetch('/api/round-up'),
+          fetch('/api/round-ups'),
           fetch('/api/accounts'),
         ]);
 
@@ -96,7 +96,7 @@ export function AutoRoundUpPanel({ goal, isOpen, onClose, onSaved }: AutoRoundUp
     async function updatePreview() {
       setLoadingPreview(true);
       try {
-        const res = await fetch(`/api/round-up?multiplier=${multiplier}`);
+        const res = await fetch(`/api/round-ups?multiplier=${multiplier}`);
         if (res.ok) {
           const data = await res.json();
           if (isMounted && data.preview) {
@@ -126,7 +126,7 @@ export function AutoRoundUpPanel({ goal, isOpen, onClose, onSaved }: AutoRoundUp
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/round-up', {
+      const res = await fetch('/api/round-ups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

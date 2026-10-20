@@ -1,497 +1,1109 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler } from 'chart.js';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import useSWR, { mutate as globalMutate } from 'swr';
+import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Toaster, toast } from 'sonner';
 import { useCurrency } from '@/hooks/useCurrency';
-import { AutoRoundUpPanel } from '@/components/goals/AutoRoundUpPanel';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from 'recharts';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
+interface Goal {
+  id: number;
+  name: string;
+  target_amount: number;
+  saved_amount: number;
+  deadline: string | null;
+  linked_account: string | null;
+  created_at: string;
+  last_milestone_hit?: number;
+}
 
-interface NetWorthEntry { id: number; amount: number; note: string; created_at: string; }
-interface Goal { id: number; name: string; target_amount: number; saved_amount: number; deadline: string | null; linked_account: string | null; created_at: string; last_milestone_hit?: number; }
+interface Account {
+  id: number;
+  name: string;
+  type: string;
+  currentBalance: number;
+}
 
-function monthsUntil(deadline: string | null) {
-    if (!deadline) return 12;
-    const diff = new Date(deadline).getTime() - Date.now();
-    return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24 * 30)));
+interface RoundUpRuleData {
+  id?: string;
+  targetGoalId?: string | number;
+  multiplier?: number;
+  isActive?: boolean;
+  sourceAccountId?: number;
+}
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+function monthsBetween(deadline: string | null) {
+  if (!deadline) return 12;
+  const diff = new Date(deadline).getTime() - Date.now();
+  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24 * 30)));
+}
+
+function WealthGoalsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'independence' ? 'independence' : 'savings';
+  const { fmt } = useCurrency();
+
+  // SWR data queries
+  const { data: goalsData, isLoading: goalsLoading, mutate: mutateGoals } = useSWR<{ goals: Goal[] }>(
+    '/api/goals',
+    fetcher
+  );
+  const { data: networthData } = useSWR('/api/networth', fetcher);
+  const { data: accountsData } = useSWR<{ accounts: Account[] }>('/api/accounts', fetcher);
+  const { data: roundUpData, mutate: mutateRoundUp } = useSWR('/api/round-ups', fetcher);
+
+  const goals = useMemo(() => goalsData?.goals || [], [goalsData?.goals]);
+  const accounts = useMemo(() => accountsData?.accounts || [], [accountsData?.accounts]);
+  const activeRule: RoundUpRuleData | null = roundUpData?.rule || null;
+  const roundUpMonthlyStats = roundUpData?.monthlyStats || { totalSaved: 0, count: 0 };
+
+  // Modals & Drawers state
+  const [selectedGoalForDrawer, setSelectedGoalForDrawer] = useState<Goal | null>(null);
+  const [contributeGoal, setContributeGoal] = useState<Goal | null>(null);
+  const [contributionAmount, setContributionAmount] = useState('');
+  const [contributeAccountId, setContributeAccountId] = useState<number | ''>('');
+  const [isContributing, setIsContributing] = useState(false);
+
+  const [isNewGoalModalOpen, setIsNewGoalModalOpen] = useState(false);
+  const [newGoalName, setNewGoalName] = useState('');
+  const [newGoalTarget, setNewGoalTarget] = useState('');
+  const [newGoalDeadline, setNewGoalDeadline] = useState('');
+  const [newGoalAccount, setNewGoalAccount] = useState('');
+  const [isCreatingGoal, setIsCreatingGoal] = useState(false);
+
+  // Drawer edit state
+  const [drawerTarget, setDrawerTarget] = useState('');
+  const [drawerDeadline, setDrawerDeadline] = useState('');
+  const [isUpdatingDrawer, setIsUpdatingDrawer] = useState(false);
+
+  // FIRE Calculator state
+  const [swrRate, setSwrRate] = useState<number>(4.0); // 4% Rule
+  const [expectedReturn, setExpectedReturn] = useState<number>(7.0); // 7% Real Return
+
+  // Synchronize drawer input when a goal is selected
+  useEffect(() => {
+    if (selectedGoalForDrawer) {
+      setDrawerTarget(String(selectedGoalForDrawer.target_amount));
+      setDrawerDeadline(selectedGoalForDrawer.deadline || '');
+    }
+  }, [selectedGoalForDrawer]);
+
+  // Executive Top Metrics calculations
+  const totalSaved = useMemo(() => {
+    return goals.reduce((sum, g) => sum + (Number(g.saved_amount) || 0), 0);
+  }, [goals]);
+
+  const activeGoals = useMemo(() => {
+    return goals.filter((g) => (Number(g.saved_amount) || 0) < (Number(g.target_amount) || 0));
+  }, [goals]);
+
+  const monthlyRequiredPace = useMemo(() => {
+    return activeGoals.reduce((sum, g) => {
+      const remaining = Math.max(0, g.target_amount - g.saved_amount);
+      return sum + remaining / monthsBetween(g.deadline);
+    }, 0);
+  }, [activeGoals]);
+
+  const liquidReserves = useMemo(() => {
+    const liquidFromAccounts = accounts
+      .filter((a) => a.type === 'bank' || a.type === 'cash')
+      .reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0);
+    if (liquidFromAccounts > 0) return liquidFromAccounts;
+    return Number(networthData?.currentBreakdown?.liquidCash) || totalSaved;
+  }, [accounts, networthData, totalSaved]);
+
+  // Emergency runway: monthly essential spend estimate
+  const estimatedMonthlyBurn = useMemo(() => {
+    const nwLiabilities = Number(networthData?.currentBreakdown?.totalLiabilities) || 0;
+    const monthlySpendFromEntries =
+      networthData?.entries && networthData.entries.length > 1
+        ? Math.abs(networthData.entries[0].amount - networthData.entries[1].amount)
+        : 35000;
+    return Math.max(20000, monthlySpendFromEntries > 0 ? monthlySpendFromEntries : nwLiabilities / 12 || 35000);
+  }, [networthData]);
+
+  const emergencyRunwayMonths = useMemo(() => {
+    if (estimatedMonthlyBurn <= 0) return 6;
+    return Math.max(0, Math.round((liquidReserves / estimatedMonthlyBurn) * 10) / 10);
+  }, [liquidReserves, estimatedMonthlyBurn]);
+
+  // FIRE pre-populated values
+  const currentNetWorth = useMemo(() => {
+    return Number(networthData?.currentBreakdown?.netWorth ?? networthData?.entries?.[0]?.amount ?? liquidReserves);
+  }, [networthData, liquidReserves]);
+
+  const annualSpending = useMemo(() => {
+    return estimatedMonthlyBurn * 12;
+  }, [estimatedMonthlyBurn]);
+
+  const annualSavings = useMemo(() => {
+    return Math.max(0, monthlyRequiredPace * 12);
+  }, [monthlyRequiredPace]);
+
+  const fiNumber = useMemo(() => {
+    const swrDecimal = swrRate / 100;
+    return swrDecimal > 0 ? Math.round(annualSpending / swrDecimal) : 0;
+  }, [annualSpending, swrRate]);
+
+  const fiProgressPct = useMemo(() => {
+    if (fiNumber <= 0) return 0;
+    return Math.min(100, Math.round((currentNetWorth / fiNumber) * 1000) / 10);
+  }, [currentNetWorth, fiNumber]);
+
+  // Compound growth timeline for FIRE
+  const fireTimeline = useMemo(() => {
+    const points: Array<{ year: number; balance: number; fiTarget: number }> = [];
+    const r = expectedReturn / 100;
+    const currentYear = new Date().getFullYear();
+    let balance = currentNetWorth;
+    const annualContr = annualSavings > 0 ? annualSavings : estimatedMonthlyBurn * 0.4 * 12;
+
+    for (let yr = 0; yr <= 25; yr++) {
+      points.push({
+        year: currentYear + yr,
+        balance: Math.round(balance),
+        fiTarget: fiNumber,
+      });
+      balance = balance * (1 + r) + annualContr;
+    }
+    return points;
+  }, [currentNetWorth, expectedReturn, annualSavings, estimatedMonthlyBurn, fiNumber]);
+
+  const projectedFreedomYear = useMemo(() => {
+    const hit = fireTimeline.find((p) => p.balance >= fiNumber);
+    return hit ? hit.year : new Date().getFullYear() + 25;
+  }, [fireTimeline, fiNumber]);
+
+  // Actions
+  const handleTabChange = (tab: 'savings' | 'independence') => {
+    if (tab === 'independence') {
+      router.push('/wealth-goals?tab=independence');
+    } else {
+      router.push('/wealth-goals');
+    }
+  };
+
+  const handleToggleRoundUp = async (goalId: number, multiplier: number = 1.0) => {
+    const isCurrentlyTarget = String(activeRule?.targetGoalId) === String(goalId) && Boolean(activeRule?.isActive);
+    const newActiveState = !isCurrentlyTarget;
+
+    try {
+      const res = await fetch('/api/round-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: newActiveState,
+          targetGoalId: goalId,
+          multiplier,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update round-up rule');
+
+      await mutateRoundUp();
+      toast.success(
+        newActiveState
+          ? `Auto-Save spare change enabled (${multiplier}x) for this goal!`
+          : 'Auto-Save spare change disabled.'
+      );
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleCreateGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGoalName || !newGoalTarget || parseFloat(newGoalTarget) <= 0) {
+      toast.error('Please enter a goal name and valid target amount');
+      return;
+    }
+
+    setIsCreatingGoal(true);
+    try {
+      const res = await fetch('/api/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newGoalName,
+          target_amount: parseFloat(newGoalTarget),
+          deadline: newGoalDeadline || null,
+          linked_account: newGoalAccount || '',
+        }),
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Failed to create goal');
+      }
+
+      toast.success(`Savings goal "${newGoalName}" created!`);
+      setIsNewGoalModalOpen(false);
+      setNewGoalName('');
+      setNewGoalTarget('');
+      setNewGoalDeadline('');
+      setNewGoalAccount('');
+      await mutateGoals();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsCreatingGoal(false);
+    }
+  };
+
+  const handleContribute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contributeGoal) return;
+    const amt = parseFloat(contributionAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error('Please enter a valid contribution amount');
+      return;
+    }
+
+    setIsContributing(true);
+    try {
+      const res = await fetch('/api/goals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: contributeGoal.id,
+          contribution: amt,
+        }),
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Failed to record contribution');
+      }
+
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      toast.success(`Contributed ${fmt(amt)} to ${contributeGoal.name}!`);
+
+      setContributeGoal(null);
+      setContributionAmount('');
+      setContributeAccountId('');
+      await mutateGoals();
+      globalMutate((key) => typeof key === 'string' && key.startsWith('/api/accounts'));
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsContributing(false);
+    }
+  };
+
+  const handleUpdateDrawerGoal = async () => {
+    if (!selectedGoalForDrawer) return;
+    const targetAmt = parseFloat(drawerTarget);
+    if (isNaN(targetAmt) || targetAmt <= 0) {
+      toast.error('Valid target amount is required');
+      return;
+    }
+
+    setIsUpdatingDrawer(true);
+    try {
+      const res = await fetch('/api/goals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedGoalForDrawer.id,
+          target_amount: targetAmt,
+          deadline: drawerDeadline || null,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update goal');
+
+      toast.success('Goal updated successfully');
+      setSelectedGoalForDrawer(null);
+      await mutateGoals();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsUpdatingDrawer(false);
+    }
+  };
+
+  const handleDeleteGoal = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this goal permanently?')) return;
+    try {
+      const res = await fetch('/api/goals', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error('Failed to delete goal');
+
+      toast.success('Goal deleted');
+      setSelectedGoalForDrawer(null);
+      await mutateGoals();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 pb-24">
+      <Toaster position="top-center" richColors />
+
+      {/* Header and 2-View Segmented Switcher */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400 mb-1">
+            Wealth & Goals Engine
+          </p>
+          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            Financial Freedom Studio
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-400 mt-1 max-w-xl">
+            Autonomous wealth accumulation, zero-friction spare change savings, and institutional FIRE forecasting.
+          </p>
+        </div>
+
+        {/* View Switcher: Savings vs FIRE */}
+        <div className="flex items-center gap-3">
+          <div className="inline-flex p-1 rounded-2xl bg-slate-900/90 border border-white/10 backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => handleTabChange('savings')}
+              className={`relative px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all ${
+                activeTab === 'savings' ? 'text-white' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              {activeTab === 'savings' && (
+                <motion.div
+                  layoutId="activeWealthTab"
+                  className="absolute inset-0 rounded-xl bg-emerald-600/30 border border-emerald-500/50"
+                  transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">savings</span>
+                Savings & Targets
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange('independence')}
+              className={`relative px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all ${
+                activeTab === 'independence' ? 'text-white' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              {activeTab === 'independence' && (
+                <motion.div
+                  layoutId="activeWealthTab"
+                  className="absolute inset-0 rounded-xl bg-sky-600/30 border border-sky-500/50"
+                  transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">trending_up</span>
+                Financial Independence (FIRE)
+              </span>
+            </button>
+          </div>
+
+          {activeTab === 'savings' && (
+            <button
+              type="button"
+              onClick={() => setIsNewGoalModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+            >
+              <span className="material-symbols-outlined text-[18px]">add_circle</span>
+              New Goal
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Top Executive Summary Bar (3 Metrics Only, tabular-nums) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Metric 1: Total Saved Across Goals */}
+        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+            <span>Total Saved Across Goals</span>
+            <span className="material-symbols-outlined text-emerald-400 text-[18px]">account_balance</span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">
+            {fmt(totalSaved)}
+          </div>
+          <p className="text-[11px] text-emerald-400/80 mt-1.5 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[13px]">check_circle</span>
+            Linked to liquid cash & reserve accounts
+          </p>
+        </div>
+
+        {/* Metric 2: Monthly Auto-Contribution Rate */}
+        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-sky-500/30 transition-all">
+          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+            <span>Monthly Auto-Contribution Rate</span>
+            <span className="material-symbols-outlined text-sky-400 text-[18px]">speed</span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">
+            {fmt(monthlyRequiredPace)}
+            <span className="text-xs font-medium text-gray-400 ml-1">/mo</span>
+          </div>
+          <p className="text-[11px] text-sky-400/80 mt-1.5 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
+            Pacing across {activeGoals.length} active target{activeGoals.length === 1 ? '' : 's'}
+          </p>
+        </div>
+
+        {/* Metric 3: Emergency Runway */}
+        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-amber-500/30 transition-all">
+          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+            <span>Emergency Runway</span>
+            <span className="material-symbols-outlined text-amber-400 text-[18px]">shield</span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight flex items-baseline gap-2">
+            <span>{emergencyRunwayMonths}</span>
+            <span className="text-sm font-bold text-gray-400">Months</span>
+          </div>
+          <p className="text-[11px] text-amber-400/80 mt-1.5 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[13px]">schedule</span>
+            {emergencyRunwayMonths >= 6 ? 'Robust reserves (>6 months)' : 'Building to 6-month safety net'}
+          </p>
+        </div>
+      </div>
+
+      {/* VIEW 1: Savings & Targets */}
+      {activeTab === 'savings' && (
+        <div className="space-y-6">
+          {goalsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-56 rounded-3xl bg-white/[0.02] border border-white/5 animate-pulse" />
+              ))}
+            </div>
+          ) : goals.length === 0 ? (
+            <div className="p-12 text-center rounded-3xl bg-slate-900/40 border border-white/5 space-y-4">
+              <span className="material-symbols-outlined text-5xl text-gray-600">savings</span>
+              <h3 className="text-lg font-bold text-white">No Savings Goals Configured Yet</h3>
+              <p className="text-xs text-gray-400 max-w-md mx-auto">
+                Create a targeted goal to accumulate wealth with automatic progress tracking and silent spare change round-ups.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsNewGoalModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white transition-all shadow-lg"
+              >
+                Create Your First Goal
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {goals.map((g) => {
+                const targetAmt = Number(g.target_amount) || 1;
+                const savedAmt = Number(g.saved_amount) || 0;
+                const pct = Math.min(100, Math.round((savedAmt / targetAmt) * 100));
+                const remaining = Math.max(0, targetAmt - savedAmt);
+                const monthsLeft = monthsBetween(g.deadline);
+                const reqMonthly = remaining / monthsLeft;
+                const isRoundUpTarget =
+                  String(activeRule?.targetGoalId) === String(g.id) && Boolean(activeRule?.isActive);
+                const ruleMult = activeRule?.multiplier || 1.0;
+
+                return (
+                  <div
+                    key={g.id}
+                    className="p-6 rounded-3xl bg-slate-900/70 border border-white/10 hover:border-emerald-500/40 transition-all shadow-xl flex flex-col justify-between group"
+                  >
+                    <div>
+                      {/* Card Header: Goal Name & Icon & Drawer trigger */}
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div
+                          className="flex items-center gap-3 cursor-pointer flex-1"
+                          onClick={() => setSelectedGoalForDrawer(g)}
+                        >
+                          <div className="size-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-xl">savings</span>
+                          </div>
+                          <div>
+                            <h3 className="text-base font-black text-white group-hover:text-emerald-400 transition-colors">
+                              {g.name}
+                            </h3>
+                            <p className="text-[11px] text-gray-400">
+                              {g.deadline ? `Target: ${g.deadline}` : 'Open-ended Target'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Quick Action: Details Drawer */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGoalForDrawer(g)}
+                          title="Goal Details"
+                          className="size-8 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">more_horiz</span>
+                        </button>
+                      </div>
+
+                      {/* Progress Bar & Amounts */}
+                      <div className="space-y-2 mb-5">
+                        <div className="flex justify-between items-baseline text-xs">
+                          <span className="font-mono font-black text-white text-sm tabular-nums">
+                            {fmt(savedAmt)}
+                          </span>
+                          <span className="text-gray-400 font-bold tabular-nums">
+                            of {fmt(targetAmt)} ({pct}%)
+                          </span>
+                        </div>
+
+                        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/5">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.6, ease: 'easeOut' }}
+                            className={`h-full rounded-full ${
+                              pct >= 100
+                                ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                                : 'bg-gradient-to-r from-emerald-500 to-sky-400'
+                            }`}
+                          />
+                        </div>
+
+                        <div className="flex justify-between text-[11px] text-gray-400">
+                          <span>{pct >= 100 ? 'Goal Completed!' : `Still needed: ${fmt(remaining)}`}</span>
+                          <span>{monthsLeft} mo. left ({fmt(reqMonthly)}/mo)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Section: Silent Round-Up Toggle + Contribute Button */}
+                    <div className="space-y-3 pt-3 border-t border-white/5">
+                      {/* Embedded Silent Round-Up Control */}
+                      <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleRoundUp(g.id, ruleMult)}
+                            className={`size-6 rounded-full flex items-center justify-center transition-colors ${
+                              isRoundUpTarget
+                                ? 'bg-emerald-500 text-slate-950'
+                                : 'border border-white/20 text-transparent hover:border-emerald-400'
+                            }`}
+                            title={isRoundUpTarget ? 'Active Round-Up Target' : 'Enable Spare Change Auto-Save'}
+                          >
+                            <span className="material-symbols-outlined text-[14px] font-black">check</span>
+                          </button>
+                          <div>
+                            <p className="text-[11px] font-black text-gray-200">
+                              {isRoundUpTarget ? 'Auto-Save Active' : 'Auto-Save Spare Change'}
+                            </p>
+                            <p className="text-[10px] text-gray-400">
+                              {isRoundUpTarget
+                                ? `${ruleMult}x multiplier enabled`
+                                : 'Silently saves on expenses'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Multiplier Pills when active */}
+                        {isRoundUpTarget ? (
+                          <div className="flex items-center gap-1 bg-slate-800/80 p-0.5 rounded-lg border border-white/10">
+                            {[1.0, 2.0, 5.0].map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => handleToggleRoundUp(g.id, m)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-black transition-all ${
+                                  ruleMult === m
+                                    ? 'bg-emerald-500 text-slate-950'
+                                    : 'text-gray-400 hover:text-white'
+                                }`}
+                              >
+                                {m}x
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleRoundUp(g.id, 1.0)}
+                            className="text-[11px] font-bold text-emerald-400 hover:underline"
+                          >
+                            Enable
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Single-line Monthly Round-Up Badge if active */}
+                      {isRoundUpTarget && roundUpMonthlyStats.count > 0 && (
+                        <p className="text-[10px] text-emerald-400/90 font-mono font-bold flex items-center gap-1 justify-center">
+                          <span className="material-symbols-outlined text-[12px]">trending_up</span>
+                          +{fmt(roundUpMonthlyStats.totalSaved)} saved automatically from {roundUpMonthlyStats.count} round-ups this month
+                        </p>
+                      )}
+
+                      {/* Primary Single Contribute Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setContributeGoal(g);
+                          setContributionAmount('');
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-emerald-600 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 group-hover:bg-emerald-600 shadow-md"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">add</span>
+                        Contribute Funds
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 2: Financial Independence (FIRE) */}
+      {activeTab === 'independence' && (
+        <div className="space-y-8 animate-fade-in">
+          {/* FIRE Executive Dashboard */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-3xl bg-slate-900/60 border border-white/5">
+              <span className="text-xs text-gray-400 font-bold block mb-1">Current Net Worth</span>
+              <span className="text-2xl font-black text-white tabular-nums">{fmt(currentNetWorth)}</span>
+              <p className="text-[11px] text-emerald-400 mt-1">Pre-populated from Balance Sheet</p>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-slate-900/60 border border-white/5">
+              <span className="text-xs text-gray-400 font-bold block mb-1">FI Number (25x Spend)</span>
+              <span className="text-2xl font-black text-sky-400 tabular-nums">{fmt(fiNumber)}</span>
+              <p className="text-[11px] text-gray-400 mt-1">At {swrRate.toFixed(1)}% Safe Withdrawal Rate</p>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-slate-900/60 border border-white/5">
+              <span className="text-xs text-gray-400 font-bold block mb-1">FI Progress</span>
+              <span className="text-2xl font-black text-amber-400 tabular-nums">{fiProgressPct}%</span>
+              <div className="h-1.5 w-full bg-slate-800 rounded-full mt-2 overflow-hidden">
+                <div
+                  className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, fiProgressPct)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-slate-900/60 border border-white/5">
+              <span className="text-xs text-gray-400 font-bold block mb-1">Projected Freedom Year</span>
+              <span className="text-2xl font-black text-emerald-400 tabular-nums">{projectedFreedomYear}</span>
+              <p className="text-[11px] text-gray-400 mt-1">
+                {Math.max(0, projectedFreedomYear - new Date().getFullYear())} years to full independence
+              </p>
+            </div>
+          </div>
+
+          {/* Interactive FIRE Sliders (Only 2 Clean Sliders) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-slate-900/60 border border-white/10">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs font-black uppercase tracking-wider text-gray-300">
+                  Target Safe Withdrawal Rate (SWR)
+                </label>
+                <span className="text-sm font-black font-mono text-sky-400">{swrRate.toFixed(1)}%</span>
+              </div>
+              <input
+                type="range"
+                min="2.5"
+                max="6.0"
+                step="0.1"
+                value={swrRate}
+                onChange={(e) => setSwrRate(parseFloat(e.target.value))}
+                className="w-full accent-sky-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                <span>2.5% (Very Conservative)</span>
+                <span>4.0% (Trinity Rule)</span>
+                <span>6.0% (Aggressive)</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs font-black uppercase tracking-wider text-gray-300">
+                  Expected Real Annual Return
+                </label>
+                <span className="text-sm font-black font-mono text-emerald-400">
+                  {expectedReturn.toFixed(1)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="3.0"
+                max="12.0"
+                step="0.5"
+                value={expectedReturn}
+                onChange={(e) => setExpectedReturn(parseFloat(e.target.value))}
+                className="w-full accent-emerald-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                <span>3.0% (Bonds / Fixed)</span>
+                <span>7.0% (Inflation-Adjusted Equities)</span>
+                <span>12.0% (High Growth)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* FIRE Compounding Trajectory Chart */}
+          <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-white">Compounding Freedom Trajectory</h3>
+                <p className="text-xs text-gray-400">
+                  Compound capital growth vs. your FI target over the next 25 years.
+                </p>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-bold">
+                <span className="flex items-center gap-1.5 text-emerald-400">
+                  <span className="size-2.5 rounded-full bg-emerald-400" />
+                  Portfolio Wealth
+                </span>
+                <span className="flex items-center gap-1.5 text-sky-400">
+                  <span className="size-2.5 rounded-full bg-sky-400" />
+                  FI Number Target
+                </span>
+              </div>
+            </div>
+
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={fireTimeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="fireGrowthGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+                  <XAxis dataKey="year" stroke="#64748b" tick={{ fontSize: 11 }} />
+                  <YAxis
+                    stroke="#64748b"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : `${(v / 1000).toFixed(0)}k`)}
+                  />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: 'rgba(255,255,255,0.1)',
+                      borderRadius: '1rem',
+                      fontSize: '12px',
+                    }}
+                    formatter={(val: any) => [fmt(Number(val)), 'Amount']}
+                  />
+                  <ReferenceLine y={fiNumber} stroke="#0ea5e9" strokeDasharray="4 4" />
+                  <Area
+                    type="monotone"
+                    dataKey="balance"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#fireGrowthGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slide-Over Detail Drawer for a Goal */}
+      <AnimatePresence>
+        {selectedGoalForDrawer && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedGoalForDrawer(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            />
+
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-md h-full bg-[#0f172a] border-l border-white/10 p-6 overflow-y-auto space-y-6 shadow-2xl z-10"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-emerald-400">tune</span>
+                  <h3 className="text-base font-black text-white">{selectedGoalForDrawer.name}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedGoalForDrawer(null)}
+                  className="size-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+
+              {/* Automatic Milestones Progress */}
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 block">
+                  Automatic Milestone Progress
+                </span>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  {[25, 50, 75, 100].map((m) => {
+                    const isReached =
+                      ((selectedGoalForDrawer.saved_amount || 0) / (selectedGoalForDrawer.target_amount || 1)) * 100 >=
+                      m;
+                    return (
+                      <div
+                        key={m}
+                        className={`p-2 rounded-xl border text-xs font-black transition-all ${
+                          isReached
+                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                            : 'bg-white/[0.01] border-white/5 text-gray-500'
+                        }`}
+                      >
+                        <div>{m}%</div>
+                        <span className="material-symbols-outlined text-[14px] mt-0.5">
+                          {isReached ? 'check_circle' : 'radio_button_unchecked'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Edit Target & Deadline */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-wider text-gray-300 block mb-1">
+                    Target Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={drawerTarget}
+                    onChange={(e) => setDrawerTarget(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-white/10 text-white font-mono font-bold text-sm outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-black uppercase tracking-wider text-gray-300 block mb-1">
+                    Target Deadline
+                  </label>
+                  <input
+                    type="date"
+                    value={drawerDeadline}
+                    onChange={(e) => setDrawerDeadline(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-white/10 text-white font-bold text-sm outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Auto-Save Spare Change Toggle */}
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-emerald-300">Auto-Save Spare Change</span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleRoundUp(selectedGoalForDrawer.id, activeRule?.multiplier || 1.0)}
+                      className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                        String(activeRule?.targetGoalId) === String(selectedGoalForDrawer.id) && activeRule?.isActive
+                          ? 'bg-emerald-500 text-slate-950'
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      {String(activeRule?.targetGoalId) === String(selectedGoalForDrawer.id) && activeRule?.isActive
+                        ? 'Active Target'
+                        : 'Set as Active'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    Automatically rounds up every expense and credits difference directly to this goal.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-2 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={handleUpdateDrawerGoal}
+                  disabled={isUpdatingDrawer}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-all shadow-lg flex items-center justify-center gap-2"
+                >
+                  {isUpdatingDrawer ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteGoal(selectedGoalForDrawer.id)}
+                  className="w-full py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition-all"
+                >
+                  Delete Goal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: New Goal */}
+      <AnimatePresence>
+        {isNewGoalModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsNewGoalModalOpen(false)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-[#0f172a] border border-white/10 rounded-3xl p-6 shadow-2xl z-10"
+            >
+              <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-400">add_task</span>
+                Create Savings Goal
+              </h3>
+
+              <form onSubmit={handleCreateGoal} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 block mb-1">Goal Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Emergency Reserve, Japan Vacation, Down Payment"
+                    value={newGoalName}
+                    onChange={(e) => setNewGoalName(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white text-xs font-bold outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-400 block mb-1">Target Amount</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="e.g. 150000"
+                    value={newGoalTarget}
+                    onChange={(e) => setNewGoalTarget(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white text-xs font-mono font-bold outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-400 block mb-1">Target Date (Optional)</label>
+                  <input
+                    type="date"
+                    value={newGoalDeadline}
+                    onChange={(e) => setNewGoalDeadline(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white text-xs font-bold outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsNewGoalModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-gray-300 hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingGoal}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white shadow-lg"
+                  >
+                    {isCreatingGoal ? 'Creating...' : 'Create Goal'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Quick Contribute */}
+      <AnimatePresence>
+        {contributeGoal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setContributeGoal(null)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-sm bg-[#0f172a] border border-white/10 rounded-3xl p-6 shadow-2xl z-10"
+            >
+              <h3 className="text-base font-black text-white mb-2 flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-400">payments</span>
+                Contribute to {contributeGoal.name}
+              </h3>
+              <p className="text-xs text-gray-400 mb-4">
+                Current: {fmt(contributeGoal.saved_amount)} / {fmt(contributeGoal.target_amount)}
+              </p>
+
+              <form onSubmit={handleContribute} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 block mb-1">Contribution Amount</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    autoFocus
+                    placeholder="e.g. 5000"
+                    value={contributionAmount}
+                    onChange={(e) => setContributionAmount(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white text-sm font-mono font-black outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setContributeGoal(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-gray-300 hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isContributing}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white shadow-lg"
+                  >
+                    {isContributing ? 'Recording...' : 'Confirm'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 export default function WealthGoalsPage() {
-    const [entries, setEntries] = useState<NetWorthEntry[]>([]);
-    const [goals, setGoals] = useState<Goal[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showWorthForm, setShowWorthForm] = useState(false);
-    const [showGoalForm, setShowGoalForm] = useState(false);
-    const [amount, setAmount] = useState('');
-    const [note, setNote] = useState('');
-    const [name, setName] = useState('');
-    const [target, setTarget] = useState('');
-    const [deadline, setDeadline] = useState('');
-    const [linkedAccount, setLinkedAccount] = useState('');
-    const [contribId, setContribId] = useState<number | null>(null);
-    const [contribAmt, setContribAmt] = useState('');
-    const [roundUpGoal, setRoundUpGoal] = useState<Goal | null>(null);
-    const [showRoundUpPanel, setShowRoundUpPanel] = useState(false);
-    const [activeRuleTargetId, setActiveRuleTargetId] = useState<string | null>(null);
-    const { fmt } = useCurrency();
-
-    const triggerCelebration = (message: string) => {
-        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (!prefersReducedMotion) {
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        }
-        toast.success(message);
-    };
-
-    const load = async () => {
-        setLoading(true);
-        try {
-            const [worthRes, goalsRes, roundUpRes] = await Promise.all([
-                fetch('/api/networth'),
-                fetch('/api/goals'),
-                fetch('/api/round-up').catch(() => null)
-            ]);
-            const [worthData, goalsData] = await Promise.all([worthRes.json(), goalsRes.json()]);
-            setEntries(worthData.entries || []);
-            setGoals(goalsData.goals || []);
-
-            if (roundUpRes && roundUpRes.ok) {
-                const roundUpData = await roundUpRes.json();
-                if (roundUpData?.rule?.isActive && roundUpData?.rule?.targetGoalId) {
-                    setActiveRuleTargetId(String(roundUpData.rule.targetGoalId));
-                } else {
-                    setActiveRuleTargetId(null);
-                }
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { void load(); }, []);
-
-    const addEntry = async () => {
-        if (!amount) return;
-        await fetch('/api/networth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: parseFloat(amount), note }),
-        });
-        setAmount('');
-        setNote('');
-        setShowWorthForm(false);
-        await load();
-    };
-
-    const addGoal = async () => {
-        if (!name || !target || parseFloat(target) <= 0) return;
-        await fetch('/api/goals', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, target_amount: parseFloat(target), deadline: deadline || null, linked_account: linkedAccount || '' }),
-        });
-        setName('');
-        setTarget('');
-        setDeadline('');
-        setLinkedAccount('');
-        setShowGoalForm(false);
-        await load();
-    };
-
-    const contribute = async (id: number) => {
-        if (!contribAmt || parseFloat(contribAmt) <= 0) return;
-        const res = await fetch('/api/goals', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, contribution: parseFloat(contribAmt) }),
-        });
-        const data = await res.json();
-        
-        triggerCelebration(`Added ${fmt(parseFloat(contribAmt))} to goal! 🎉`);
-
-        setContribId(null);
-        setContribAmt('');
-        await load();
-    };
-
-    const removeGoal = async (id: number) => {
-        if (!confirm('Delete this goal permanently?')) return;
-        await fetch('/api/goals', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id }),
-        });
-        await load();
-    };
-
-    const currentWorth = entries[0]?.amount || 0;
-    const previousWorth = entries[1]?.amount;
-    const worthChange = previousWorth ? ((currentWorth - previousWorth) / previousWorth) * 100 : 0;
-    const totalSaved = goals.reduce((sum, goal) => sum + goal.saved_amount, 0);
-    const totalTarget = goals.reduce((sum, goal) => sum + goal.target_amount, 0);
-    const remainingTarget = Math.max(0, totalTarget - totalSaved);
-    const activeGoals = goals.filter(goal => goal.saved_amount < goal.target_amount);
-    const combinedProgress = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
-    const monthlyContribution = activeGoals.reduce((sum, goal) => {
-        const remaining = Math.max(0, goal.target_amount - goal.saved_amount);
-        return sum + remaining / monthsUntil(goal.deadline);
-    }, 0);
-
-    const reversed = useMemo(() => [...entries].reverse(), [entries]);
-    const chartData = {
-        labels: reversed.map(e => new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-        datasets: [{
-            label: 'Net Worth',
-            data: reversed.map(e => e.amount),
-            borderColor: '#136dec',
-            backgroundColor: 'rgba(19, 109, 236, 0.12)',
-            fill: true,
-            tension: 0.35,
-            borderWidth: 2,
-            pointRadius: 4,
-            pointBackgroundColor: '#136dec',
-        }],
-    };
-
-    const summaryCards = [
-        { label: 'Current Net Worth', value: fmt(currentWorth), icon: 'account_balance', tone: 'text-primary bg-primary/10 border-primary/20' },
-        { label: 'Goal Progress', value: `${combinedProgress}%`, icon: 'donut_large', tone: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' },
-        { label: 'Still Needed', value: fmt(remainingTarget), icon: 'track_changes', tone: 'text-amber-600 bg-amber-500/10 border-amber-500/20' },
-        { label: 'Monthly Target', value: fmt(monthlyContribution), icon: 'next_plan', tone: 'text-teal-600 bg-teal-500/10 border-teal-500/20' },
-    ];
-
-    return (
-        <div className="p-4 lg:p-8 max-w-[1500px] mx-auto page-enter pb-24">
-            <Toaster position="top-center" richColors />
-
-            {/* ENHANCED HEADER */}
-            <div className="mb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-                <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-3 shadow-[0_0_15px_rgba(19,109,236,0.15)]">
-                        <span className="material-symbols-outlined text-[16px]">stars</span>
-                        Premium Wealth Manager
-                    </div>
-                    <h1 className="text-3xl lg:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">Wealth & Goals</h1>
-                    <p className="mt-2 max-w-2xl text-sm font-medium text-gray-500 dark:text-text-muted">
-                        Track your ultimate financial freedom. Set targets, monitor net worth, and achieve milestones effortlessly.
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                    <button onClick={() => { setShowWorthForm(v => !v); setShowGoalForm(false); }} 
-                        className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 min-h-[44px] ${showWorthForm ? 'bg-gray-800 text-white dark:bg-white dark:text-black shadow-gray-400/20' : 'bg-primary text-white shadow-primary/30 hover:bg-blue-600'}`}>
-                        <span className="material-symbols-outlined text-[20px]">{showWorthForm ? 'close' : 'add_chart'}</span>
-                        {showWorthForm ? 'Cancel Update' : 'Update Net Worth'}
-                    </button>
-                    <button onClick={() => { setShowGoalForm(v => !v); setShowWorthForm(false); }} 
-                        className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 border min-h-[44px] ${showGoalForm ? 'bg-gray-100 border-gray-300 text-gray-800 dark:bg-white/10 dark:border-white/20 dark:text-white' : 'bg-white border-gray-200 text-gray-800 hover:border-emerald-500 hover:text-emerald-600 dark:bg-bg-dark dark:border-white/10 dark:text-gray-200 dark:hover:border-emerald-500 shadow-gray-200/50 dark:shadow-none'}`}>
-                        <span className="material-symbols-outlined text-[20px]">{showGoalForm ? 'close' : 'add_task'}</span>
-                        {showGoalForm ? 'Cancel Goal' : 'Create New Goal'}
-                    </button>
-                </div>
-            </div>
-
-            {/* QUICK STATS CARDS */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
-                {summaryCards.map((card, index) => (
-                    <div key={card.label} className="glass-panel rounded-3xl p-6 animate-slide-up border border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-colors" style={{ animationDelay: `${index * 0.05}s` }}>
-                        <div className={`mb-6 grid h-14 w-14 place-items-center rounded-2xl border ${card.tone}`}>
-                            <span className="material-symbols-outlined text-[28px]">{card.icon}</span>
-                        </div>
-                        <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">{card.label}</p>
-                        <p className="mt-2 text-3xl font-black tracking-tight text-gray-900 dark:text-white">{card.value}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* FORMS SECTION WITH ANIMATIONS */}
-            {(showWorthForm || showGoalForm) && (
-                <div className="mb-6 grid grid-cols-1 gap-4 animate-fade-in">
-                    {showWorthForm && (
-                        <form onSubmit={e => { e.preventDefault(); void addEntry(); }} className="glass-panel rounded-3xl p-6 lg:p-8 border-2 border-primary/20 shadow-[0_0_40px_rgba(19,109,236,0.08)]">
-                            <h2 className="mb-6 text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">monitoring</span>
-                                Log Net Worth Update
-                            </h2>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_1fr_auto]">
-                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Total Asset Value" className="rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-primary dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
-                                <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional note (e.g., 'Stock market rally')" className="rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-primary dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
-                                <button disabled={!amount} className="rounded-2xl bg-primary px-8 py-4 text-sm font-bold text-white shadow-lg shadow-primary/30 disabled:opacity-50 hover:bg-blue-600 active:scale-95 transition-all min-h-[44px]">Record Entry</button>
-                            </div>
-                        </form>
-                    )}
-                    {showGoalForm && (
-                        <form onSubmit={e => { e.preventDefault(); void addGoal(); }} className="glass-panel rounded-3xl p-6 lg:p-8 border-2 border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.08)]">
-                            <h2 className="mb-6 text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-emerald-500">flag</span>
-                                Define Savings Target
-                            </h2>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Goal Title</label>
-                                    <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Emergency Fund" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Linked Account (Optional)</label>
-                                    <input value={linkedAccount} onChange={e => setLinkedAccount(e.target.value)} placeholder="e.g. City Bank Savings" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Target Amount</label>
-                                    <input type="number" value={target} onChange={e => setTarget(e.target.value)} placeholder="0.00" className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Target Date (Optional)</label>
-                                    <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-5 py-4 text-sm font-medium text-gray-900 outline-none focus:border-emerald-500 dark:border-white/5 dark:bg-white/5 dark:text-white transition-colors min-h-[44px]" style={{ fontSize: '16px' }} />
-                                </div>
-                            </div>
-                            <div className="mt-6 flex justify-end">
-                                <button disabled={!name || !target} className="rounded-2xl bg-emerald-500 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 disabled:opacity-50 hover:bg-emerald-600 active:scale-95 transition-all min-h-[44px]">Launch Goal</button>
-                            </div>
-                        </form>
-                    )}
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                {/* SAVINGS GOALS MAIN VIEW */}
-                <div className="xl:col-span-2 flex flex-col">
-                    <div className="mb-5 flex items-center justify-between">
-                        <h2 className="text-xl font-black text-gray-900 dark:text-white">Active Goals</h2>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/10 text-xs font-bold text-gray-600 dark:text-gray-300">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            {goals.length} Tracked
-                        </span>
-                    </div>
-                    
-                    {loading ? (
-                        <div className="flex-1 glass-panel rounded-3xl p-12 flex items-center justify-center">
-                            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                        </div>
-                    ) : goals.length === 0 ? (
-                        <div className="flex-1 glass-panel rounded-3xl p-12 text-center flex flex-col items-center justify-center border border-dashed border-gray-300 dark:border-white/10">
-                            <div className="w-20 h-20 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
-                                <span className="material-symbols-outlined text-4xl text-gray-400">flag</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No active goals found</h3>
-                            <p className="text-sm text-gray-500 max-w-sm mb-6">Create your first savings goal to get AI-powered recommendations on monthly contributions.</p>
-                            <button onClick={() => setShowGoalForm(true)} className="rounded-xl bg-gray-900 dark:bg-white text-white dark:text-black px-6 py-3 font-bold text-sm shadow-lg active:scale-95 transition-transform min-h-[44px]">Create Goal</button>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                            {goals.map(goal => {
-                                const pct = Math.min(100, Math.round((goal.saved_amount / goal.target_amount) * 100));
-                                const complete = pct >= 100;
-                                const remaining = Math.max(0, goal.target_amount - goal.saved_amount);
-                                const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86400000) : null;
-                                
-                                return (
-                                    <div key={goal.id} className={`glass-panel relative overflow-hidden rounded-3xl p-6 transition-all hover:-translate-y-1 hover:shadow-xl ${complete ? 'border-2 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] bg-gradient-to-b from-emerald-50/50 to-white dark:from-emerald-900/10 dark:to-bg-dark' : 'border border-gray-100 dark:border-white/5 hover:border-primary/30'}`}>
-                                        <div className="relative mb-6 flex items-start justify-between gap-3">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${complete ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-primary/10 text-primary border border-primary/20'}`}>
-                                                    <span className="material-symbols-outlined text-[24px]">{complete ? 'emoji_events' : 'flag'}</span>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <h3 className="font-black text-gray-900 dark:text-white truncate text-lg leading-tight">{goal.name}</h3>
-                                                    {goal.linked_account && (
-                                                        <p className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded inline-block mt-1 mr-2">{goal.linked_account}</p>
-                                                    )}
-                                                    {goal.deadline && (
-                                                        <p className={`text-xs font-bold inline-block mt-1 ${daysLeft !== null && daysLeft < 0 ? 'text-rose-500' : 'text-gray-500 dark:text-gray-400'}`}>
-                                                            {daysLeft !== null && daysLeft < 0 ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days remaining`} • {goal.deadline}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <button onClick={() => void removeGoal(goal.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-500 dark:bg-white/5 dark:hover:bg-rose-500/20 transition-colors min-h-[44px] min-w-[44px]" aria-label="Delete goal">
-                                                <span className="material-symbols-outlined text-[16px]">delete</span>
-                                            </button>
-                                        </div>
-
-                                        {/* Milestone Progress Bar (25%, 50%, 75%, 100%) */}
-                                        <div className="mb-4">
-                                            <div className="flex justify-between items-center text-xs font-bold text-gray-400 mb-1.5">
-                                                <span>Milestones</span>
-                                                <span>{pct}%</span>
-                                            </div>
-                                            <div className="relative h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-visible flex items-center">
-                                                <div className="h-full rounded-full bg-accent-emerald transition-all" style={{ width: `${pct}%` }} />
-                                                {[25, 50, 75, 100].map(m => (
-                                                    <div
-                                                        key={m}
-                                                        className={`absolute -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white dark:border-surface-dark-2 flex items-center justify-center text-[8px] font-bold ${
-                                                            pct >= m
-                                                                ? 'bg-accent-emerald text-white'
-                                                                : 'bg-gray-300 dark:bg-gray-600 text-gray-500'
-                                                        }`}
-                                                        style={{ left: `${m}%` }}
-                                                        title={`${m}% milestone ${pct >= m ? 'achieved' : 'upcoming'}`}
-                                                    >
-                                                        {pct >= m ? '✓' : ''}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="relative mb-5 flex items-end justify-between">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-1">Current Balance</span>
-                                                <p className={`text-3xl font-black ${complete ? 'text-emerald-500' : 'text-gray-900 dark:text-white'}`}>{fmt(goal.saved_amount)}</p>
-                                            </div>
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-1">Target</span>
-                                                <p className="text-lg font-bold text-gray-500">{fmt(goal.target_amount)}</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="relative mb-4 flex items-center justify-between bg-gray-50 dark:bg-white/5 p-4 rounded-2xl">
-                                            <div>
-                                                <div className="text-xs font-bold text-gray-500 mb-1">Target Funding</div>
-                                                <div className="font-black text-gray-900 dark:text-white flex items-baseline gap-1">
-                                                    {fmt(remaining)} <span className="text-xs font-medium text-gray-400">left</span>
-                                                </div>
-                                            </div>
-                                            <div 
-                                                className="relative w-[52px] h-[52px] rounded-full flex items-center justify-center shrink-0" 
-                                                style={{ background: `conic-gradient(${complete ? '#10b981' : '#136dec'} ${pct}%, ${complete ? 'rgba(16,185,129,0.1)' : 'rgba(19,109,236,0.1)'} ${pct}%)` }}
-                                            >
-                                                <div className="absolute inset-[3px] bg-white dark:bg-[#1a1f2e] rounded-full flex items-center justify-center">
-                                                    <span className={`text-[11px] font-black ${complete ? 'text-emerald-500' : 'text-primary'}`}>{pct}%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {!complete && (
-                                            contribId === goal.id ? (
-                                                <div className="mt-5 flex gap-2 animate-fade-in relative z-10 bg-gray-50 dark:bg-white/5 p-2 rounded-2xl border border-gray-200 dark:border-white/10">
-                                                    <input type="number" value={contribAmt} onChange={e => setContribAmt(e.target.value)} placeholder="Add funds" className="min-w-0 flex-1 rounded-xl bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-bg-dark dark:text-white transition-all shadow-inner min-h-[44px]" style={{ fontSize: '16px' }} />
-                                                    <button onClick={() => void contribute(goal.id)} className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-black text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all min-h-[44px]">Add</button>
-                                                    <button onClick={() => { setContribId(null); setContribAmt(''); }} className="grid w-11 place-items-center rounded-xl bg-white text-gray-400 hover:text-gray-900 dark:bg-bg-dark dark:hover:text-white shadow-inner min-h-[44px]"><span className="material-symbols-outlined text-[20px]">close</span></button>
-                                                </div>
-                                            ) : (
-                                                <button onClick={() => setContribId(goal.id)} className="relative z-10 mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3.5 text-sm font-bold text-gray-600 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-primary dark:hover:bg-primary/10 transition-all active:scale-[0.98] min-h-[44px]">
-                                                    <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                                                    Log Contribution
-                                                </button>
-                                            )
-                                        )}
-                                        {complete && (
-                                            <div className="relative z-10 mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-50 py-3 text-sm font-bold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                                <span className="material-symbols-outlined text-[20px]">celebration</span>
-                                                Goal Accomplished!
-                                            </div>
-                                        )}
-
-                                        {/* Auto Round-Up action and status */}
-                                        <div className="relative z-10 mt-3 pt-3 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5 text-xs">
-                                                <span className="material-symbols-outlined text-[16px] text-emerald-500">savings</span>
-                                                {activeRuleTargetId === String(goal.id) ? (
-                                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Round-Up Active</span>
-                                                ) : (
-                                                    <span className="text-gray-400">Micro-Savings</span>
-                                                )}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setRoundUpGoal(goal); setShowRoundUpPanel(true); }}
-                                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
-                                                    activeRuleTargetId === String(goal.id)
-                                                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/25'
-                                                        : 'bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10'
-                                                }`}
-                                            >
-                                                <span className="material-symbols-outlined text-[14px]">tune</span>
-                                                {activeRuleTargetId === String(goal.id) ? 'Edit Rule' : '+ Auto Round-Up'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                {/* SIDEBAR ANALYTICS */}
-                <div className="space-y-6">
-                    <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5">
-                        <div className="mb-6 flex flex-col">
-                            <h2 className="text-xl font-black text-gray-900 dark:text-white">Net Worth Trend</h2>
-                            <p className="text-sm font-medium text-gray-500 mt-1">
-                                {previousWorth !== undefined ? (
-                                    <span className="flex items-center gap-1">
-                                        <span className={`material-symbols-outlined text-[16px] ${worthChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{worthChange >= 0 ? 'trending_up' : 'trending_down'}</span>
-                                        <span className={worthChange >= 0 ? 'text-emerald-500 font-bold' : 'text-rose-500 font-bold'}>{Math.abs(worthChange).toFixed(1)}%</span>
-                                        {" "}movement since last log
-                                    </span>
-                                ) : 'Add another entry to see movement.'}
-                            </p>
-                        </div>
-                        <div className="h-[240px] w-full">
-                            {entries.length > 1 ? (
-                                <Line data={chartData} options={{
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: { legend: { display: false } },
-                                    scales: {
-                                        x: { grid: { display: false }, ticks: { color: '#64748b', maxRotation: 45, minRotation: 45, font: { size: 10 } } },
-                                        y: { grid: { color: 'rgba(148, 163, 184, 0.1)' }, border: { dash: [4, 4] }, ticks: { color: '#64748b', font: { size: 11 }, callback: value => fmt(Number(value)) } },
-                                    },
-                                    interaction: { intersect: false, mode: 'index' }
-                                }} />
-                            ) : (
-                                <div className="grid h-full place-items-center text-center text-gray-400 rounded-2xl border border-dashed border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5">
-                                    <div>
-                                        <span className="material-symbols-outlined mb-2 block text-4xl opacity-40">show_chart</span>
-                                        <p className="text-xs font-bold px-6">Not enough data to graph.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="glass-panel rounded-3xl p-6 border border-gray-100 dark:border-white/5 bg-gradient-to-br from-white to-gray-50 dark:from-bg-dark dark:to-white/5">
-                        <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary">auto_awesome</span>
-                            Smart Strategy
-                        </h2>
-                        <p className="mt-2 text-sm font-medium text-gray-500 dark:text-gray-400 leading-relaxed">Based on your active goals and their deadlines, here is your required monthly pace.</p>
-                        
-                        <div className="mt-6 rounded-2xl border-2 border-primary/20 bg-white dark:bg-bg-dark p-5 shadow-[0_4px_20px_rgba(19,109,236,0.08)] text-center relative overflow-hidden">
-                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl"></div>
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-2 relative z-10">Monthly Set-Aside</p>
-                            <p className="text-4xl font-black text-gray-900 dark:text-white relative z-10">{fmt(monthlyContribution)}</p>
-                        </div>
-                        
-                        <div className="mt-6 space-y-3">
-                            {activeGoals.slice(0, 3).map(goal => {
-                                const remaining = Math.max(0, goal.target_amount - goal.saved_amount);
-                                const req = remaining / monthsUntil(goal.deadline);
-                                return (
-                                    <div key={goal.id} className="flex items-center justify-between gap-3 rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{goal.name}</p>
-                                            <p className="text-xs text-gray-500">{monthsUntil(goal.deadline)} months to go</p>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <span className="block text-sm font-bold text-primary">{fmt(req)}<span className="text-xs text-gray-400 font-medium">/mo</span></span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <AutoRoundUpPanel
-                goal={roundUpGoal}
-                isOpen={showRoundUpPanel}
-                onClose={() => setShowRoundUpPanel(false)}
-                onSaved={() => void load()}
-            />
-        </div>
-    );
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-gray-400">Loading Wealth & Goals Engine...</div>}>
+      <WealthGoalsContent />
+    </Suspense>
+  );
 }

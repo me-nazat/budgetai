@@ -21,11 +21,15 @@ import {
 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { PushService } from '@/services/push.service';
+import {
+  recordHouseholdSettlementTransfer,
+  broadcastHouseholdUpdate,
+} from '@/lib/household-sync';
 
 type RouteContext = { params: Promise<{ id: string; sid: string }> };
 
 export const POST = apiHandler(
-  withAuth<RouteContext>(async (_request: NextRequest, { userId }, routeContext) => {
+  withAuth<RouteContext>(async (request: NextRequest, { userId }, routeContext) => {
     const { id, sid } = await routeContext.params;
     const householdId = parseInt(id, 10);
     if (isNaN(householdId)) {
@@ -42,6 +46,9 @@ export const POST = apiHandler(
     if (!membership) {
       return NextResponse.json({ error: 'Forbidden: not a household member' }, { status: 403 });
     }
+
+    const body = await request.json().catch(() => ({}));
+    const accountId = body.accountId ? Number(body.accountId) : null;
 
     // Find upcoming settlement
     const [upcoming] = await db
@@ -65,14 +72,62 @@ export const POST = apiHandler(
       .set({ status: 'paid' })
       .where(eq(module20UpcomingSettlements.id, sid));
 
+    const isPayer = upcoming.fromUserId === userId;
+
     // Record in householdSettlements
-    await db.insert(householdSettlements).values({
-      householdId,
-      payerId: upcoming.fromUserId,
-      payeeId: upcoming.toUserId,
-      amount: upcoming.amount,
-      status: 'settled',
-      settledAt: new Date().toISOString(),
+    const [settlement] = await db
+      .insert(householdSettlements)
+      .values({
+        householdId,
+        payerId: upcoming.fromUserId,
+        payeeId: upcoming.toUserId,
+        amount: upcoming.amount,
+        status: 'settled',
+        settledAt: new Date().toISOString(),
+        payerAccountId: isPayer ? accountId : null,
+        payeeAccountId: !isPayer ? accountId : null,
+        settlementAccountId: accountId,
+      })
+      .returning();
+
+    // If an account was linked, record settlement transfer on personal bank ledger
+    let linkedTxId: number | undefined;
+    if (accountId) {
+      const counterpartId = isPayer ? upcoming.toUserId : upcoming.fromUserId;
+      const [counterpart] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, counterpartId))
+        .limit(1);
+
+      linkedTxId = await recordHouseholdSettlementTransfer({
+        householdId,
+        settlementId: settlement.id,
+        userId,
+        amount: upcoming.amount,
+        isPayer,
+        accountId,
+        counterpartName: counterpart?.name,
+        date: new Date().toISOString().split('T')[0],
+      });
+
+      if (linkedTxId) {
+        await db
+          .update(householdSettlements)
+          .set({ linkedTransactionId: linkedTxId })
+          .where(eq(householdSettlements.id, settlement.id));
+      }
+    }
+
+    // Broadcast SSE update
+    broadcastHouseholdUpdate(householdId, {
+      type: 'SETTLEMENT_CONFIRMED',
+      data: {
+        settlementId: sid,
+        status: 'paid',
+        amount: upcoming.amount,
+        linkedTransactionId: linkedTxId,
+      },
     });
 
     // Notify payer that settlement was confirmed
@@ -91,6 +146,7 @@ export const POST = apiHandler(
       success: true,
       settlementId: sid,
       status: 'paid',
+      linkedTransactionId: linkedTxId,
     });
   })
 );

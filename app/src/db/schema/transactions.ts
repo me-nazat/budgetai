@@ -53,6 +53,9 @@ export const transactions = sqliteTable('transactions', {
   /** Reference to the destination account/wallet if this is a transfer */
   toAccountId: integer('to_account_id').references(() => accounts.id, { onDelete: 'set null' }),
 
+  /** Transfer group ID for paired transfer legs */
+  transferGroupId: text('transfer_group_id'),
+
   /**
    * Transaction amount as a decimal number.
    * Must be positive and ≤ 999,999,999.
@@ -108,8 +111,64 @@ export const transactions = sqliteTable('transactions', {
   /** Split type for shared expenses */
   splitType: text('split_type', { enum: ['equal', 'percentage', 'exact'] }).default('equal'),
 
+  /** Category splits JSON string for split-category transactions */
+  splits: text('splits'),
+
+  /** Client mutation UUID for idempotent offline batch-sync deduplication */
+  clientMutationId: text('client_mutation_id'),
+
+  /** Optional user notes / context */
+  notes: text('notes').default(''),
+
+  /** Tax deduction flag */
+  taxDeductible: integer('tax_deductible').default(0),
+
+  /** Optional attachments metadata JSON */
+  attachments: text('attachments'),
+
   /** Tax deduction tag flag for Module 12 AI smart tax review queue. */
   taxSuggested: integer('tax_suggested').default(0),
+
+  /**
+   * Collaborative split-ledger fields:
+   * When a user pays a 10,000 group bill where their own share is 2,000,
+   * amount stores 10000 (actual cash from accountId), while personalShareAmount stores 2000.
+   */
+  personalShareAmount: real('personal_share_amount'),
+
+  /** Status of reimbursement owed to or by the user: 'none' | 'receivable' | 'payable' | 'settled' */
+  reimbursementStatus: text('reimbursement_status', {
+    enum: ['none', 'receivable', 'payable', 'settled'],
+  }).default('none'),
+
+  /** Collaborative source domain: 'tour' | 'household' | 'bill_split' | null */
+  collaborativeSourceType: text('collaborative_source_type', {
+    enum: ['tour', 'household', 'bill_split'],
+  }),
+
+  /** Foreign ID of the tour, household, or standalone bill split */
+  collaborativeSourceId: text('collaborative_source_id'),
+
+  /** Exact spending/expense row ID in the tour or household table for 1:1 idempotent sync */
+  collaborativeExpenseId: text('collaborative_expense_id'),
+
+  /**
+   * Settlement transfer marker:
+   * Payback transactions when a member settles debt. Updates account balance without altering P&L / budget.
+   */
+  isSettlementTransfer: integer('is_settlement_transfer').default(0),
+
+  /** Normalized merchant identifier (lowercase, noise-stripped) */
+  merchantNormalized: text('merchant_normalized'),
+
+  /** Split category indicator (1 if divided across multiple budget categories) */
+  isSplit: integer('is_split').default(0),
+
+  /** JSON array of split items [{ id, category, amount, note, isTaxDeductible }] */
+  splitItemsJson: text('split_items_json'),
+
+  /** Transaction reconciliation status: 'cleared' | 'pending' | 'reconciled' */
+  status: text('status', { enum: ['cleared', 'pending', 'reconciled'] }).notNull().default('cleared'),
 
   /** Record creation timestamp (UTC ISO-8601). */
   createdAt: text('created_at').default(sql`(datetime('now'))`),
@@ -118,8 +177,15 @@ export const transactions = sqliteTable('transactions', {
   index('idx_transactions_date').on(table.date),
   index('idx_transactions_tour').on(table.tourId),
   index('idx_transactions_user_date').on(table.userId, table.date),
+  index('idx_transactions_user_date_desc').on(table.userId, table.date),
+  index('idx_transactions_user_cat_date').on(table.userId, table.category, table.date),
+  index('idx_transactions_merchant_norm').on(table.userId, table.merchantNormalized),
   index('idx_transactions_user_amount').on(table.userId, table.amount),
+  index('idx_transactions_client_mutation').on(table.userId, table.clientMutationId),
   index('idx_transactions_composite').on(table.userId, table.tourId, table.date, table.amount),
+  index('idx_transactions_collab_exp').on(table.collaborativeExpenseId),
+  index('idx_transactions_collab_source').on(table.collaborativeSourceType, table.collaborativeSourceId),
+  index('idx_transactions_settlement_transfer').on(table.userId, table.isSettlementTransfer),
 ]);
 
 /** TypeScript type inferred from a SELECT on the transactions table. */

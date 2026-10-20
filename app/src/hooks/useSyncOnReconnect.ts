@@ -27,8 +27,11 @@ export function useSyncOnReconnect() {
                 }
 
                 const payloads = pending.map((record) => ({
-                    id: record.id,
-                    payload: record.payload,
+                    id: record.clientMutationId || record.id,
+                    payload: {
+                        ...record.payload,
+                        clientMutationId: record.clientMutationId || record.id,
+                    },
                 }));
 
                 const res = await fetch('/api/transactions/batch-sync', {
@@ -38,9 +41,22 @@ export function useSyncOnReconnect() {
                 });
 
                 if (res.ok) {
-                    // Successfully synced — remove all from IndexedDB
+                    const data = await res.json().catch(() => ({}));
+                    const processed = new Set<string>(data.processedIds || pending.map((p) => p.id));
+                    
                     for (const record of pending) {
-                        await deleteSyncedTransaction(record.id);
+                        const recId = record.clientMutationId || record.id;
+                        if (processed.has(recId) || processed.has(record.id)) {
+                            await deleteSyncedTransaction(record.id);
+                        } else if (record.retryCount >= MAX_RETRIES) {
+                            console.error(
+                                `[Sync] Abandoning transaction after ${MAX_RETRIES} retries:`,
+                                record.payload
+                            );
+                            await deleteSyncedTransaction(record.id);
+                        } else {
+                            await incrementRetryCount(record.id);
+                        }
                     }
                     // Revalidate SWR caches to replace optimistic data with server data
                     await invalidateFinancialData();

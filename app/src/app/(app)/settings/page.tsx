@@ -1,1386 +1,1188 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
-import { CURRENCIES, CurrencyCode } from '@/lib/currency';
-import type { Variants } from 'framer-motion';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Toaster, toast } from 'sonner';
-import { useLanguage } from '@/contexts/LanguageContext';
-import LanguagePickerSheet from '@/components/settings/LanguagePickerSheet';
+/**
+ * @fileoverview Unified Master Settings Workspace (Batch 8 Part 4).
+ * Consolidates all settings, security, privacy, integrations, and data controls into 4 clean tabs:
+ * 1. General & Regional (Profile, Base Currency, English/Bengali, Dark/Light Theme)
+ * 2. Security & Privacy (Passkeys, 2FA TOTP, Sessions, Auto-lock timer, Privacy masking)
+ * 3. Automations & Integrations (Merchant Auto-Rules, Google Calendar Sync, Push Notifications, PWA Install)
+ * 4. Data & Export (Full JSON/CSV Backup, Account Reset)
+ *
+ * @module app/(app)/settings/page
+ */
 
-function parseLocalDate(dateStr: string | null | undefined): Date | null {
-    if (!dateStr) return null;
-    const formatted = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
-    const parsed = new Date(formatted);
-    return isNaN(parsed.getTime()) ? new Date(dateStr) : parsed;
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import useSWR, { mutate } from 'swr';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { usePrivacy } from '@/contexts/PrivacyContext';
+import { useCurrency } from '@/hooks/useCurrency';
+import { CURRENCIES, CurrencyCode } from '@/lib/currency';
+import { usePWAInstall } from '@/components/InstallPrompt';
+
+type SettingsTab = 'general' | 'security' | 'integrations' | 'data';
+
+function SettingsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const activeTab = (searchParams.get('tab') as SettingsTab) || 'general';
+
+  const { locale, setLocale, t } = useLanguage();
+  const { isPrivacyMode, togglePrivacy } = usePrivacy();
+  const { currency, setCurrency } = useCurrency();
+  const { canInstall, install } = usePWAInstall();
+
+  const handleTabChange = (tab: SettingsTab) => {
+    router.push(`/settings?tab=${tab}`);
+  };
+
+  // General States
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [savingGeneral, setSavingGeneral] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+
+  // Security & Privacy States
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [passkeys, setPasskeys] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loginActivity, setLoginActivity] = useState<any[]>([]);
+  const [autoLockTimeout, setAutoLockTimeout] = useState<number>(5);
+  const [lockOnBackground, setLockOnBackground] = useState<boolean>(true);
+  const [shakeToHide, setShakeToHide] = useState<boolean>(true);
+  const [maskAccountNumbers, setMaskAccountNumbers] = useState<boolean>(true);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  // 2FA Setup Modal State
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [totpSetupData, setTotpSetupData] = useState<{ uri: string; backupCodes: string[]; secret?: string } | null>(null);
+  const [totpVerifyCode, setTotpVerifyCode] = useState('');
+  const [isVerifyingTotp, setIsVerifyingTotp] = useState(false);
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+
+  // Integrations States
+  const [calendarSettings, setCalendarSettings] = useState({
+    isConnected: false,
+    googleUserEmail: null as string | null,
+    syncBills: true,
+    syncSubscriptions: true,
+    syncDebts: true,
+    reminderDaysBefore: 2,
+  });
+  const [syncingCalendar, setSyncingCalendar] = useState(false);
+  const [connectingCalendar, setConnectingCalendar] = useState(false);
+  const [notifyBudget, setNotifyBudget] = useState(true);
+  const [notifyOverspend, setNotifyOverspend] = useState(true);
+
+  // Load User Data
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) {
+          setName(d.user.name || '');
+          setEmail(d.user.email || '');
+          setTotpEnabled(Boolean(d.user.totpEnabled));
+        }
+      })
+      .catch(() => {});
+
+    setIsDark(document.documentElement.classList.contains('dark'));
+  }, []);
+
+  const loadSecurityData = useCallback(() => {
+    fetch('/api/auth/passkeys')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.passkeys) setPasskeys(d.passkeys);
+      })
+      .catch(() => {});
+
+    fetch('/api/auth/sessions')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.sessions) setSessions(d.sessions);
+      })
+      .catch(() => {});
+
+    fetch('/api/auth/login-activity')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.activity) setLoginActivity(d.activity);
+      })
+      .catch(() => {});
+
+    fetch('/api/settings/privacy')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.data) {
+          setAutoLockTimeout(d.data.autoLockTimeoutMinutes ?? 5);
+          setLockOnBackground(d.data.lockOnBackground ?? true);
+          setShakeToHide(d.data.shakeToHideEnabled ?? true);
+          setMaskAccountNumbers(d.data.maskAccountNumbers ?? true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Load Passkeys, Sessions, Activity on Security tab activation
+  useEffect(() => {
+    if (activeTab === 'security') {
+      loadSecurityData();
+    }
+  }, [activeTab, loadSecurityData]);
+
+  // Load Calendar Settings
+  useEffect(() => {
+    if (activeTab === 'integrations') {
+      fetch('/api/settings/calendar')
+        .then((r) => r.json())
+        .then((json) => {
+          const data = json.data || json;
+          if (data) {
+            setCalendarSettings({
+              isConnected: Boolean(data.isConnected),
+              googleUserEmail: data.googleUserEmail || null,
+              syncBills: data.syncBills ?? true,
+              syncSubscriptions: data.syncSubscriptions ?? true,
+              syncDebts: data.syncDebts ?? true,
+              reminderDaysBefore: data.reminderDaysBefore ?? 2,
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [activeTab]);
+
+  // Save General Profile
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingGeneral(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, currency }),
+      });
+      if (res.ok) {
+        toast.success(locale === 'bn' ? 'প্রোফাইল আপডেট হয়েছে' : 'Profile updated');
+      }
+    } catch {
+      toast.error('Failed to update profile');
+    } finally {
+      setSavingGeneral(false);
+    }
+  };
+
+  // Toggle Dark Mode
+  const handleToggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem('budget-ai-theme', next ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', next);
+    toast.success(next ? 'Dark mode enabled' : 'Light mode enabled');
+  };
+
+  // Save Privacy Settings
+  const handleSavePrivacy = async (updates: any) => {
+    setSavingPrivacy(true);
+    const payload = {
+      autoLockTimeoutMinutes: updates.timeout ?? autoLockTimeout,
+      lockOnBackground: updates.bg ?? lockOnBackground,
+      shakeToHideEnabled: updates.shake ?? shakeToHide,
+      maskAccountNumbers: updates.maskAcc ?? maskAccountNumbers,
+    };
+    try {
+      const res = await fetch('/api/settings/privacy', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success('Security preferences saved');
+      }
+    } catch {
+      toast.error('Failed to save security settings');
+    } finally {
+      setSavingPrivacy(false);
+    }
+  };
+
+  // Passkey Registration & Revocation
+  const handleRegisterPasskey = async () => {
+    setIsRegisteringPasskey(true);
+    try {
+      const optRes = await fetch('/api/auth/passkeys/register/options', { method: 'POST' });
+      if (!optRes.ok) throw new Error('Failed to obtain passkey registration options');
+      const options = await optRes.json();
+
+      const { startRegistration } = await import('@simplewebauthn/browser');
+      const regResp = await startRegistration({ optionsJSON: options });
+
+      const deviceLabel = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
+        ? 'MacBook Touch ID'
+        : 'Biometric Authenticator';
+
+      const verifyRes = await fetch('/api/auth/passkeys/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          response: regResp,
+          name: deviceLabel,
+        }),
+      });
+
+      if (!verifyRes.ok) {
+        const err = await verifyRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Passkey verification failed');
+      }
+
+      toast.success('Passkey registered successfully');
+      loadSecurityData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Passkey registration cancelled or failed');
+    } finally {
+      setIsRegisteringPasskey(false);
+    }
+  };
+
+  const handleRevokePasskey = async (passkeyId: number) => {
+    try {
+      const res = await fetch('/api/auth/passkeys', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passkeyId }),
+      });
+      if (res.ok) {
+        toast.success('Passkey revoked');
+        loadSecurityData();
+      } else {
+        toast.error('Failed to revoke passkey');
+      }
+    } catch {
+      toast.error('Error revoking passkey');
+    }
+  };
+
+  // 2FA TOTP Setup & Confirmation
+  const handleStart2FASetup = async () => {
+    try {
+      const res = await fetch('/api/auth/2fa', { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to initiate 2FA setup');
+        return;
+      }
+      const data = await res.json();
+      let secret = '';
+      try {
+        const parsedUrl = new URL(data.uri);
+        secret = parsedUrl.searchParams.get('secret') || '';
+      } catch {
+        // Fallback
+      }
+      setTotpSetupData({ uri: data.uri, backupCodes: data.backupCodes || [], secret });
+      setShow2FAModal(true);
+    } catch {
+      toast.error('Failed to load 2FA configuration');
+    }
+  };
+
+  const handleConfirm2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!totpVerifyCode || totpVerifyCode.length !== 6) {
+      toast.error('Enter a valid 6-digit verification code');
+      return;
+    }
+    setIsVerifyingTotp(true);
+    try {
+      const res = await fetch('/api/auth/2fa', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          verificationCode: totpVerifyCode,
+          secret: totpSetupData?.secret || '',
+          backupCodes: totpSetupData?.backupCodes || [],
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Invalid 2FA code');
+      }
+      toast.success('Two-factor authentication enabled successfully!');
+      setTotpEnabled(true);
+      setShow2FAModal(false);
+      setTotpVerifyCode('');
+    } catch (err: any) {
+      toast.error(err.message || 'Verification failed');
+    } finally {
+      setIsVerifyingTotp(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!confirm('Disable Two-Factor Authentication? Your account security will be lowered.')) return;
+    try {
+      const res = await fetch('/api/auth/2fa', { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('2FA disabled');
+        setTotpEnabled(false);
+      } else {
+        toast.error('Failed to disable 2FA');
+      }
+    } catch {
+      toast.error('Error disabling 2FA');
+    }
+  };
+
+  // Sessions Revocation
+  const handleRevokeSession = async (sessionId: number) => {
+    try {
+      const res = await fetch(`/api/auth/sessions/${sessionId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Session revoked');
+        loadSecurityData();
+      } else {
+        toast.error('Failed to revoke session');
+      }
+    } catch {
+      toast.error('Error revoking session');
+    }
+  };
+
+  const handleRevokeAllOtherSessions = async () => {
+    if (!confirm('Revoke all other logged-in sessions? You will stay logged in on this device.')) return;
+    try {
+      const res = await fetch('/api/auth/sessions', { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('All other sessions revoked');
+        loadSecurityData();
+      } else {
+        toast.error('Failed to revoke other sessions');
+      }
+    } catch {
+      toast.error('Error revoking sessions');
+    }
+  };
+
+  // Calendar Sync Handlers
+  const handleCalendarToggle = async (key: 'syncBills' | 'syncSubscriptions' | 'syncDebts') => {
+    const nextVal = !calendarSettings[key];
+    const updated = { ...calendarSettings, [key]: nextVal };
+    setCalendarSettings(updated);
+    try {
+      await fetch('/api/settings/calendar', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: nextVal }),
+      });
+      toast.success('Sync settings updated');
+    } catch {
+      toast.error('Failed to update sync setting');
+    }
+  };
+
+  const handleSyncNow = async () => {
+    setSyncingCalendar(true);
+    try {
+      const res = await fetch('/api/calendar/sync', { method: 'POST' });
+      if (res.ok) {
+        toast.success('Calendar successfully synchronized!');
+      } else {
+        toast.error('Sync failed');
+      }
+    } catch {
+      toast.error('Sync error');
+    } finally {
+      setSyncingCalendar(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 space-y-6">
+      {/* Page Header */}
+      <div>
+        <div className="flex items-center gap-2.5">
+          <span className="material-symbols-outlined text-emerald-400 text-2xl">settings</span>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+            {locale === 'bn' ? 'সিস্টেম সেটিংস ও পছন্দসমূহ' : 'Settings & Preferences'}
+          </h1>
+        </div>
+        <p className="text-sm text-slate-400 mt-1">
+          {locale === 'bn'
+            ? 'প্রোফাইল, প্রাতিষ্ঠানিক নিরাপত্তা, অটোমেশন এবং ডেটা ম্যানেজমেন্ট'
+            : 'Unified personal profile, security passkeys, automated integrations, and vault exports'}
+        </p>
+      </div>
+
+      {/* 4 Clean Master Tabs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 backdrop-blur-md">
+        <button
+          onClick={() => handleTabChange('general')}
+          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'general'
+              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+          <span>General & Regional</span>
+        </button>
+
+        <button
+          onClick={() => handleTabChange('security')}
+          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'security'
+              ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">shield</span>
+          <span>Security & Privacy</span>
+        </button>
+
+        <button
+          onClick={() => handleTabChange('integrations')}
+          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'integrations'
+              ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">integration_instructions</span>
+          <span>Automations & Sync</span>
+        </button>
+
+        <button
+          onClick={() => handleTabChange('data')}
+          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'data'
+              ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">database</span>
+          <span>Data & Export</span>
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 1: GENERAL & REGIONAL */}
+      {/* ========================================================================= */}
+      {activeTab === 'general' && (
+        <div className="space-y-6">
+          <form
+            onSubmit={handleSaveProfile}
+            className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-5"
+          >
+            <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800/80 pb-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              Personal Profile & Preferences
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-xl bg-slate-950 border border-slate-800 p-3 text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Email Address</label>
+                <input
+                  type="email"
+                  disabled
+                  value={email}
+                  className="w-full rounded-xl bg-slate-950/50 border border-slate-800/60 p-3 text-slate-500 outline-none cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Base Currency</label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                  className="w-full rounded-xl bg-slate-950 border border-slate-800 p-3 text-white outline-none focus:border-emerald-500"
+                >
+                  {Object.entries(CURRENCIES).map(([code, cur]) => (
+                    <option key={code} value={code}>
+                      {code} ({cur.symbol}) - {cur.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Interface Language</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLocale('en')}
+                    className={`flex-1 p-3 rounded-xl border text-xs font-bold transition-all ${
+                      locale === 'en'
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    English (US)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocale('bn')}
+                    className={`flex-1 p-3 rounded-xl border text-xs font-bold transition-all ${
+                      locale === 'bn'
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    বাংলা (Bengali)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Appearance Theme */}
+            <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
+              <div>
+                <p className="text-xs font-bold text-white">Visual Appearance</p>
+                <p className="text-[11px] text-slate-400">Toggle dark / light high-contrast theme</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleTheme}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {isDark ? 'dark_mode' : 'light_mode'}
+                </span>
+                <span>{isDark ? 'Dark Theme' : 'Light Theme'}</span>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-3">
+              <button
+                type="submit"
+                disabled={savingGeneral}
+                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+              >
+                {savingGeneral ? 'Saving...' : 'Save Profile Preferences'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: SECURITY & PRIVACY (4-CARD INSTITUTIONAL SECURITY CENTER) */}
+      {/* ========================================================================= */}
+      {activeTab === 'security' && (
+        <div className="space-y-6">
+          {/* Card 1: Passkeys & Biometrics */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-400 text-lg">fingerprint</span>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Passkeys & Biometrics</h2>
+                  <p className="text-[11px] text-slate-400">Passwordless sign-in with Touch ID, Face ID, or security keys</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRegisterPasskey}
+                disabled={isRegisteringPasskey}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isRegisteringPasskey ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <span>Registering...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    <span>+ Register New Passkey</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {passkeys.length > 0 ? (
+              <div className="space-y-2">
+                {passkeys.map((pk) => (
+                  <div
+                    key={pk.id}
+                    className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[18px]">key</span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-white">{pk.name || 'WebAuthn Passkey'}</p>
+                        <p className="text-[10px] text-slate-400">
+                          Added: {pk.createdAt ? new Date(pk.createdAt).toLocaleDateString() : 'Recent'}
+                          {pk.lastUsedAt && ` • Last used: ${new Date(pk.lastUsedAt).toLocaleDateString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRevokePasskey(pk.id)}
+                      className="px-2.5 py-1 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-bold text-[11px] transition-colors"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 rounded-xl bg-slate-950/60 border border-slate-800/80 text-center">
+                <span className="material-symbols-outlined text-slate-600 text-3xl mb-1">fingerprint</span>
+                <p className="text-xs font-semibold text-slate-300">No passkeys registered yet</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Register your device biometrics for 1-click passwordless login.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Card 2: Two-Factor Authentication */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-sky-400 text-lg">shield_lock</span>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Two-Factor Authentication (TOTP)</h2>
+                  <p className="text-[11px] text-slate-400">Time-based one-time passwords via Google Authenticator, Authy, or 1Password</p>
+                </div>
+              </div>
+              <span
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  totpEnabled ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                {totpEnabled ? 'Active' : 'Disabled'}
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div>
+                <p className="text-xs font-bold text-white">
+                  {totpEnabled ? 'Two-Factor Protection Enabled' : 'Protect your vault with 2FA'}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {totpEnabled
+                    ? 'Requires a 6-digit code on new sign-ins from unrecognized browsers.'
+                    : 'Add a mandatory verification step using any standard authenticator app.'}
+                </p>
+              </div>
+
+              {totpEnabled ? (
+                <button
+                  type="button"
+                  onClick={handleDisable2FA}
+                  className="px-3.5 py-1.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition-all"
+                >
+                  Disable 2FA
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStart2FASetup}
+                  className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-sky-500/20"
+                >
+                  Setup 2FA Authenticator
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Card 3: Active Sessions */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-400 text-lg">devices</span>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Active Sessions</h2>
+                  <p className="text-[11px] text-slate-400">Logged-in browsers, operating systems, and remote IP addresses</p>
+                </div>
+              </div>
+              {sessions.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleRevokeAllOtherSessions}
+                  className="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all"
+                >
+                  Revoke All Other Sessions
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {sessions.map((sess) => (
+                <div
+                  key={sess.id}
+                  className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 text-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300">
+                      <span className="material-symbols-outlined text-[18px]">
+                        {sess.deviceName?.includes('iOS') || sess.deviceName?.includes('Android') ? 'smartphone' : 'laptop'}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{sess.deviceName || 'Web Browser'}</span>
+                        {sess.isCurrentDevice && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            Current Session
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        IP: {sess.ipAddress || 'Localhost'} • Last Active: {sess.lastUsedAt ? new Date(sess.lastUsedAt).toLocaleString() : 'Just now'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!sess.isCurrentDevice && (
+                    <button
+                      type="button"
+                      onClick={() => handleRevokeSession(sess.id)}
+                      className="px-2.5 py-1 rounded-lg border border-slate-700 hover:border-rose-500/40 text-slate-400 hover:text-rose-400 text-[11px] font-bold transition-all"
+                    >
+                      Revoke
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 4: Recent Login Activity */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-cyan-400 text-lg">history_toggle_off</span>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Recent Login Activity</h2>
+                  <p className="text-[11px] text-slate-400">Security audit timeline from account lockout and audit logs</p>
+                </div>
+              </div>
+            </div>
+
+            {loginActivity.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider">
+                      <th className="pb-2 font-bold">Status</th>
+                      <th className="pb-2 font-bold">Event</th>
+                      <th className="pb-2 font-bold">Device & IP</th>
+                      <th className="pb-2 font-bold text-right">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {loginActivity.slice(0, 5).map((act) => (
+                      <tr key={act.id} className="hover:bg-slate-950/40 transition-colors">
+                        <td className="py-2.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${
+                              act.success
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${act.success ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                            <span>{act.success ? 'Success' : 'Blocked'}</span>
+                          </span>
+                        </td>
+                        <td className="py-2.5 font-semibold text-white">{act.action}</td>
+                        <td className="py-2.5 text-slate-300">
+                          {act.deviceName} <span className="text-slate-500 font-mono text-[11px]">({act.ipAddress})</span>
+                        </td>
+                        <td className="py-2.5 text-right font-mono text-[11px] text-slate-400">
+                          {act.createdAt ? new Date(act.createdAt).toLocaleString() : 'Recent'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center text-xs text-slate-400">
+                No recent login anomalies recorded.
+              </div>
+            )}
+          </div>
+
+          {/* Inactivity Auto-Lock & Privacy Preferences */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-4">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800/80 pb-3">
+              <span className="material-symbols-outlined text-slate-400 text-lg">visibility_off</span>
+              Auto-Lock & Global Privacy Masking
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <label className="block text-slate-300 font-bold">Inactivity Auto-Lock Timer</label>
+                <p className="text-[11px] text-slate-400">
+                  Lock screen automatically after inactivity (Alt+L to lock immediately)
+                </p>
+                <select
+                  value={autoLockTimeout}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setAutoLockTimeout(val);
+                    void handleSavePrivacy({ timeout: val });
+                  }}
+                  className="w-full rounded-lg bg-slate-900 border border-slate-800 p-2 text-white outline-none"
+                >
+                  <option value={0}>Never (Disabled)</option>
+                  <option value={1}>1 Minute</option>
+                  <option value={5}>5 Minutes (Recommended)</option>
+                  <option value={15}>15 Minutes</option>
+                  <option value={30}>30 Minutes</option>
+                </select>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-slate-300">Lock on Background / Tab Switch</p>
+                    <p className="text-[11px] text-slate-400">Lock immediately when navigating away</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={lockOnBackground}
+                    onChange={(e) => {
+                      setLockOnBackground(e.target.checked);
+                      void handleSavePrivacy({ bg: e.target.checked });
+                    }}
+                    className="rounded border-slate-800 text-sky-500 focus:ring-0"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+                  <div>
+                    <p className="font-bold text-slate-300">Mask Account & Card Numbers</p>
+                    <p className="text-[11px] text-slate-400">Show only last 4 digits (•••• 4821)</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={maskAccountNumbers}
+                    onChange={(e) => {
+                      setMaskAccountNumbers(e.target.checked);
+                      void handleSavePrivacy({ maskAcc: e.target.checked });
+                    }}
+                    className="rounded border-slate-800 text-sky-500 focus:ring-0"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2FA Setup Modal */}
+          {show2FAModal && totpSetupData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+              <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-5 text-slate-100">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="font-bold text-base text-white">Setup Two-Factor Authentication</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShow2FAModal(false);
+                      setTotpVerifyCode('');
+                    }}
+                    className="text-slate-500 hover:text-white"
+                  >
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                </div>
+
+                <div className="text-center space-y-3">
+                  <p className="text-xs text-slate-400">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
+                  <div className="p-3 bg-white rounded-xl inline-block shadow-inner mx-auto">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(totpSetupData.uri)}`}
+                      alt="2FA QR Code"
+                      width={180}
+                      height={180}
+                      className="rounded"
+                    />
+                  </div>
+                  {totpSetupData.secret && (
+                    <div className="text-[11px] font-mono text-slate-400 bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                      <span className="truncate">Key: {totpSetupData.secret}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(totpSetupData.secret || '');
+                          toast.success('Secret key copied');
+                        }}
+                        className="text-emerald-400 font-bold ml-2 shrink-0 hover:underline"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <form onSubmit={handleConfirm2FA} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Enter 6-Digit Code from App
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={totpVerifyCode}
+                      onChange={(e) => setTotpVerifyCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="000000"
+                      className="w-full text-center text-lg font-mono font-bold tracking-widest py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-sky-500"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShow2FAModal(false)}
+                      className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isVerifyingTotp || totpVerifyCode.length !== 6}
+                      className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 disabled:opacity-50"
+                    >
+                      {isVerifyingTotp ? 'Verifying...' : 'Enable 2FA'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: AUTOMATIONS & INTEGRATIONS */}
+      {/* ========================================================================= */}
+      {activeTab === 'integrations' && (
+        <div className="space-y-6">
+          {/* Merchant Auto-Rules Quick Card */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-400 text-lg">rule</span>
+                Merchant Automation Rules
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Configure auto-categorization and tax tagging for repeating merchants
+              </p>
+            </div>
+            <Link
+              href="/automation-rules"
+              className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs font-bold text-emerald-400 flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <span>Manage Rules</span>
+              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </Link>
+          </div>
+
+          {/* Google Calendar Bill Sync */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-amber-400 text-lg">calendar_month</span>
+                  Google Calendar Synchronizer
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Synchronize recurring bills and debt due dates directly with Google Calendar
+                </p>
+              </div>
+
+              {calendarSettings.isConnected ? (
+                <button
+                  onClick={handleSyncNow}
+                  disabled={syncingCalendar}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold flex items-center gap-1.5"
+                >
+                  <span className={`material-symbols-outlined text-[16px] ${syncingCalendar ? 'animate-spin' : ''}`}>
+                    sync
+                  </span>
+                  <span>{syncingCalendar ? 'Syncing...' : 'Sync Now'}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => toast.info('Connecting to Google Calendar...')}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs font-bold"
+                >
+                  Connect Google Account
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+              <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer">
+                <span className="text-slate-300 font-semibold">Sync Bills</span>
+                <input
+                  type="checkbox"
+                  checked={calendarSettings.syncBills}
+                  onChange={() => handleCalendarToggle('syncBills')}
+                  className="rounded border-slate-800 text-amber-500 focus:ring-0"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer">
+                <span className="text-slate-300 font-semibold">Sync Subscriptions</span>
+                <input
+                  type="checkbox"
+                  checked={calendarSettings.syncSubscriptions}
+                  onChange={() => handleCalendarToggle('syncSubscriptions')}
+                  className="rounded border-slate-800 text-amber-500 focus:ring-0"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer">
+                <span className="text-slate-300 font-semibold">Sync Debt Due Dates</span>
+                <input
+                  type="checkbox"
+                  checked={calendarSettings.syncDebts}
+                  onChange={() => handleCalendarToggle('syncDebts')}
+                  className="rounded border-slate-800 text-amber-500 focus:ring-0"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* PWA Mobile App Installation */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-sky-400 text-lg">install_mobile</span>
+                Progressive Web App (PWA)
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Install Wealth AI on your device home screen for instant access and offline caching
+              </p>
+            </div>
+            {canInstall ? (
+              <button
+                onClick={install}
+                className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-sky-500/20"
+              >
+                Install App
+              </button>
+            ) : (
+              <span className="text-xs font-mono text-slate-500 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                PWA Installed / Running
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: DATA & EXPORT */}
+      {/* ========================================================================= */}
+      {activeTab === 'data' && (
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:p-6 shadow-xl backdrop-blur-md space-y-4">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800/80 pb-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              Certified Ledger & Vault Backups
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div>
+                  <p className="font-bold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-400 text-lg">csv</span>
+                    Full Ledger CSV Export
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Complete tabular export of all transactions, categories, and account transfers
+                  </p>
+                </div>
+                <a
+                  href="/api/export?format=csv"
+                  download
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-white font-bold transition-all"
+                >
+                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  <span>Download CSV</span>
+                </a>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div>
+                  <p className="font-bold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sky-400 text-lg">code</span>
+                    Complete JSON Snapshot
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Structured dump of accounts, debts, budgets, goals, and automation rules
+                  </p>
+                </div>
+                <a
+                  href="/api/export?format=json"
+                  download
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-white font-bold transition-all"
+                >
+                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  <span>Download JSON</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="rounded-2xl border border-rose-900/40 bg-rose-950/10 p-5 md:p-6 shadow-xl space-y-3">
+            <h3 className="text-sm font-bold text-rose-400 flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">warning</span>
+              Danger Zone
+            </h3>
+            <p className="text-xs text-slate-400">
+              Irreversible actions. Resetting or deleting will permanently remove all financial ledgers.
+            </p>
+            <button
+              onClick={() => {
+                if (confirm('Are you sure you want to reset all transaction data? This cannot be undone.')) {
+                  toast.error('Data reset requires master PIN confirmation.');
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold text-xs hover:bg-rose-500/25 transition-all"
+            >
+              Reset Financial Records
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    show: {
-        opacity: 1,
-        transition: { staggerChildren: 0.1 }
-    }
-};
-
-const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-};
-
 export default function SettingsPage() {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [currency, setCurrency] = useState<CurrencyCode>('BDT');
-    const [notifyBudget, setNotifyBudget] = useState(true);
-    const [notifyOverspend, setNotifyOverspend] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [saved, setSaved] = useState(false);
-    const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false);
-    const [avatarHovered, setAvatarHovered] = useState(false);
-    const { locale, setLocale, t } = useLanguage();
-    const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
-
-    // 2FA states
-    const [totpEnabled, setTotpEnabled] = useState(false);
-    const [totpSetupData, setTotpSetupData] = useState<{ uri: string; backupCodes: string[]; secret?: string } | null>(null);
-    const [totpCode, setTotpCode] = useState('');
-    const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
-    const [totpBackupCodesToShow, setTotpBackupCodesToShow] = useState<string[] | null>(null);
-    const [isDisabling2FA, setIsDisabling2FA] = useState(false);
-    const [isEnabling2FA, setIsEnabling2FA] = useState(false);
-
-    // Passkeys states
-    const [passkeys, setPasskeys] = useState<any[]>([]);
-    const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
-    const [passkeyName, setPasskeyName] = useState('');
-    const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
-
-    // Sessions states
-    const [sessions, setSessions] = useState<Array<{ id: number; deviceName: string; ipAddress: string; lastUsedAt: string; createdAt: string; isCurrentDevice: boolean }>>([]);
-    const [revokingSessions, setRevokingSessions] = useState<Record<number, boolean>>({});
-    const [isRevokingAll, setIsRevokingAll] = useState(false);
-
-    // Login activity states
-    const [loginActivity, setLoginActivity] = useState<Array<{ id: number; action: string; ipAddress: string; deviceName: string; success: boolean; reason?: string; createdAt: string }>>([]);
-    const [showLoginActivity, setShowLoginActivity] = useState(false);
-
-    // Mobile swipe state
-    const [swipedSessionId, setSwipedSessionId] = useState<number | null>(null);
-    const touchStartX = useRef<number>(0);
-
-    // Google Calendar states
-    const [calendarConnected, setCalendarConnected] = useState(false);
-    const [calendarLoading, setCalendarLoading] = useState(false);
-    const [calendarConnecting, setCalendarConnecting] = useState(false);
-
-    const fetchPasskeys = useCallback(async () => {
-        try {
-            const res = await fetch('/api/auth/passkeys');
-            const data = await res.json();
-            if (data.passkeys) setPasskeys(data.passkeys);
-        } catch (err) {
-            console.error('Failed to fetch passkeys', err);
-        }
-    }, []);
-
-    const fetchSessions = useCallback(async () => {
-        try {
-            const res = await fetch('/api/auth/sessions');
-            const data = await res.json();
-            if (data.sessions) setSessions(data.sessions);
-        } catch (err) {
-            console.error('Failed to fetch sessions', err);
-        }
-    }, []);
-
-    const fetchLoginActivity = useCallback(async () => {
-        try {
-            const res = await fetch('/api/auth/audit-log?limit=15');
-            const data = await res.json();
-            if (data.logs) setLoginActivity(data.logs);
-        } catch (err) {
-            console.error('Failed to fetch login activity', err);
-        }
-    }, []);
-
-    const fetchCalendarStatus = useCallback(async () => {
-        setCalendarLoading(true);
-        try {
-            const res = await fetch('/api/calendar/auth');
-            const data = await res.json();
-            setCalendarConnected(data.isConnected || false);
-        } catch (err) {
-            console.error('Failed to fetch calendar status', err);
-        } finally {
-            setCalendarLoading(false);
-        }
-    }, []);
-
-    const handleConnectCalendar = async () => {
-        setCalendarConnecting(true);
-        try {
-            const res = await fetch('/api/calendar/auth', { method: 'POST' });
-            const data = await res.json();
-            if (data.authUrl) {
-                window.location.href = data.authUrl;
-            } else {
-                toast.error(data.error || 'Failed to start calendar connection');
-            }
-        } catch {
-            toast.error('Failed to connect Google Calendar');
-        } finally {
-            setCalendarConnecting(false);
-        }
-    };
-
-    const handleDisconnectCalendar = async () => {
-        try {
-            await fetch('/api/calendar/auth', { method: 'DELETE' });
-            setCalendarConnected(false);
-            toast.success('Google Calendar disconnected');
-        } catch {
-            toast.error('Failed to disconnect calendar');
-        }
-    };
-
-    /** Downloads backup/recovery codes as a .txt file */
-    const downloadRecoveryCodes = (codes: string[]) => {
-        const content = [
-            'Wealth AI — Recovery Codes',
-            '================================',
-            'Store these codes in a safe place.',
-            'Each code can only be used once.',
-            '',
-            ...codes.map((code, i) => `${i + 1}. ${code}`),
-            '',
-            `Generated: ${new Date().toISOString()}`,
-        ].join('\n');
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'wealth-ai-recovery-codes.txt';
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('Recovery codes downloaded!');
-    };
-
-    /** Mobile swipe-to-revoke handlers */
-    const handleTouchStart = (e: React.TouchEvent, sessionId: number) => {
-        touchStartX.current = e.touches[0].clientX;
-        if (swipedSessionId !== sessionId) setSwipedSessionId(null);
-    };
-    const handleTouchEnd = (e: React.TouchEvent, sessionId: number, isCurrentDevice: boolean) => {
-        if (isCurrentDevice) return;
-        const diff = touchStartX.current - e.changedTouches[0].clientX;
-        if (diff > 80) {
-            setSwipedSessionId(sessionId);
-        } else if (diff < -40) {
-            setSwipedSessionId(null);
-        }
-    };
-
-    useEffect(() => {
-        const observer = new MutationObserver(() => {
-            setIsDark(document.documentElement.classList.contains('dark'));
-        });
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-
-        fetch('/api/auth/me').then(r => r.json()).then(d => {
-            if (d.user) {
-                setName(d.user.name || ''); 
-                setEmail(d.user.email || ''); 
-                setCurrency((d.user.currency || 'BDT') as CurrencyCode);
-                setNotifyBudget(d.user.notifyBudget !== undefined ? !!d.user.notifyBudget : !!d.user.notify_budget); 
-                setNotifyOverspend(d.user.notifyOverspend !== undefined ? !!d.user.notifyOverspend : !!d.user.notify_overspend);
-                setTotpEnabled(!!d.user.totpEnabled);
-            }
-        });
-
-        fetchPasskeys();
-        fetchSessions();
-        fetchLoginActivity();
-        fetchCalendarStatus();
-
-        // Handle OAuth redirect query params
-        const params = new URLSearchParams(window.location.search);
-        const calendarStatus = params.get('calendar');
-        if (calendarStatus === 'connected') {
-            toast.success('Google Calendar connected successfully!');
-            setCalendarConnected(true);
-            window.history.replaceState({}, '', '/settings');
-        } else if (calendarStatus === 'denied') {
-            toast.error('Google Calendar access was denied');
-            window.history.replaceState({}, '', '/settings');
-        } else if (calendarStatus === 'error') {
-            toast.error('Failed to connect Google Calendar');
-            window.history.replaceState({}, '', '/settings');
-        }
-
-        return () => observer.disconnect();
-    }, [fetchPasskeys, fetchSessions, fetchLoginActivity, fetchCalendarStatus]);
-
-    const save = async () => {
-        setSaving(true);
-        await fetch('/api/settings', {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, currency, notifyBudget, notifyOverspend })
-        });
-        localStorage.setItem('budget-ai-currency', currency);
-        setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000);
-    };
-
-    const toggleTheme = useCallback(() => {
-        const html = document.documentElement;
-        html.classList.add('theme-transitioning');
-        html.classList.toggle('dark');
-        const newDark = html.classList.contains('dark');
-        setIsDark(newDark);
-        localStorage.setItem('budget-ai-theme', newDark ? 'dark' : 'light');
-        setTimeout(() => html.classList.remove('theme-transitioning'), 400);
-    }, []);
-
-    const handleSignOut = async () => {
-        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-        localStorage.removeItem('wealth-ai-swr-cache-v1');
-        localStorage.removeItem('wealth-ai-auth-state');
-        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        window.location.href = '/login';
-    };
-
-    const handleStart2FASetup = async () => {
-        try {
-            const res = await fetch('/api/auth/2fa', { method: 'POST' });
-            const data = await res.json();
-            if (data.uri && data.backupCodes) {
-                const url = new URL(data.uri);
-                const secret = url.searchParams.get('secret') || '';
-                setTotpSetupData({ uri: data.uri, backupCodes: data.backupCodes, secret });
-                setIs2FAModalOpen(true);
-            }
-        } catch (err) {
-            toast.error('Failed to initiate 2FA setup');
-        }
-    };
-
-    const handleConfirm2FA = async () => {
-        if (!totpSetupData) return;
-        setIsEnabling2FA(true);
-        try {
-            const res = await fetch('/api/auth/2fa', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    verificationCode: totpCode,
-                    secret: totpSetupData.secret,
-                    backupCodes: totpSetupData.backupCodes,
-                }),
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setTotpEnabled(true);
-                setIs2FAModalOpen(false);
-                setTotpBackupCodesToShow(totpSetupData.backupCodes);
-                setTotpCode('');
-                setTotpSetupData(null);
-                toast.success('Two-factor authentication enabled successfully!');
-            } else {
-                toast.error(data.error?.message || 'Invalid verification code');
-            }
-        } catch (err) {
-            toast.error('Failed to confirm 2FA setup');
-        } finally {
-            setIsEnabling2FA(false);
-        }
-    };
-
-    const handleDisable2FA = async () => {
-        if (!confirm('Are you sure you want to disable Two-Factor Authentication? This will reduce your account security.')) return;
-        setIsDisabling2FA(true);
-        try {
-            const res = await fetch('/api/auth/2fa', { method: 'DELETE' });
-            if (res.ok) {
-                setTotpEnabled(false);
-                toast.success('Two-factor authentication disabled successfully.');
-            } else {
-                toast.error('Failed to disable 2FA');
-            }
-        } catch (err) {
-            toast.error('Error disabling 2FA');
-        } finally {
-            setIsDisabling2FA(false);
-        }
-    };
-
-    const handleRegisterPasskey = async () => {
-        if (!passkeyName) {
-            toast.error('Please enter a name for your passkey');
-            return;
-        }
-        setIsRegisteringPasskey(true);
-        try {
-            const res = await fetch('/api/auth/passkeys/register/options', { method: 'POST' });
-            if (!res.ok) throw new Error('Failed to fetch registration options');
-            const options = await res.json();
-
-            const { startRegistration } = await import('@simplewebauthn/browser');
-            const credential = await startRegistration({ optionsJSON: options });
-
-            const verifyRes = await fetch('/api/auth/passkeys/register/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ response: credential, name: passkeyName }),
-            });
-            const verifyData = await verifyRes.json();
-
-            if (verifyRes.ok) {
-                toast.success('Passkey registered successfully!');
-                setIsPasskeyModalOpen(false);
-                setPasskeyName('');
-                fetchPasskeys();
-            } else {
-                toast.error(verifyData.error || 'Failed to verify passkey');
-            }
-        } catch (err: any) {
-            console.error(err);
-            toast.error(err.message || 'Failed to register passkey. Make sure you are using a secure origin (localhost or HTTPS).');
-        } finally {
-            setIsRegisteringPasskey(false);
-        }
-    };
-
-    const handleDeletePasskey = async (passkeyId: number) => {
-        if (!confirm('Are you sure you want to delete this passkey?')) return;
-        try {
-            const res = await fetch('/api/auth/passkeys', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ passkeyId }),
-            });
-            if (res.ok) {
-                toast.success('Passkey deleted successfully.');
-                fetchPasskeys();
-            } else {
-                toast.error('Failed to delete passkey');
-            }
-        } catch (err) {
-            toast.error('Error deleting passkey');
-        }
-    };
-
-    const handleRevokeSession = async (sessionId: number) => {
-        if (!confirm('Are you sure you want to terminate this session?')) return;
-        setRevokingSessions(prev => ({ ...prev, [sessionId]: true }));
-        try {
-            const res = await fetch(`/api/auth/sessions/${sessionId}`, { method: 'DELETE' });
-            if (res.ok) {
-                toast.success('Session terminated.');
-                fetchSessions();
-            } else {
-                toast.error('Failed to revoke session');
-            }
-        } catch (err) {
-            toast.error('Error revoking session');
-        } finally {
-            setRevokingSessions(prev => ({ ...prev, [sessionId]: false }));
-        }
-    };
-
-    const handleRevokeAllSessions = async () => {
-        if (!confirm('Are you sure you want to sign out of all other sessions?')) return;
-        setIsRevokingAll(true);
-        try {
-            const res = await fetch('/api/auth/sessions', { method: 'DELETE' });
-            if (res.ok) {
-                toast.success('All other sessions revoked.');
-                fetchSessions();
-            } else {
-                toast.error('Failed to revoke sessions');
-            }
-        } catch (err) {
-            toast.error('Error revoking sessions');
-        } finally {
-            setIsRevokingAll(false);
-        }
-    };
-
-    return (
-        <motion.div 
-            className="p-4 lg:p-8 max-w-[800px] mx-auto"
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-        >
-
-            {/* ═══════════════════════════════════════════════
-               MOBILE SETTINGS VIEW
-               ═══════════════════════════════════════════════ */}
-            <div className="lg:hidden space-y-6">
-                {/* Profile Header (Redesigned) */}
-                <motion.div variants={itemVariants} className="flex flex-col items-center text-center pt-4 relative">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 dark:bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" />
-
-                    <div className="relative w-24 h-24 rounded-[2rem] bg-gradient-to-br from-primary via-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-xl shadow-primary/20 mb-4 overflow-hidden border border-white/20">
-                        <div className="absolute inset-0 bg-white/20 rounded-full blur-xl animate-pulse" style={{ animationDuration: '3s' }} />
-                        <span className="relative z-10">{name?.charAt(0)?.toUpperCase() || 'U'}</span>
-                    </div>
-
-                    <div className="bg-white/50 dark:bg-[#161b22]/50 backdrop-blur-md px-6 py-2 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{name || 'User'}</h2>
-                        <p className="text-sm font-medium text-gray-500 dark:text-text-muted">{email}</p>
-                    </div>
-                </motion.div>
-
-                {/* Settings Groups */}
-                <div className="space-y-4">
-                    {/* Account */}
-                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
-                            <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Account</p>
-                        </div>
-                        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d]">
-                            <label className="text-xs font-semibold text-gray-500 dark:text-text-muted uppercase tracking-wider mb-1.5 block">Display Name</label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
-                            />
-                        </div>
-                        <button onClick={save} disabled={saving} className="w-full px-4 py-3.5 text-sm font-bold text-primary dark:text-emerald-400 text-center active:bg-gray-50 dark:active:bg-[#0A0E1A] transition-colors disabled:opacity-50">
-                            {saved ? '✓ Saved Successfully' : saving ? 'Saving...' : 'Save Profile'}
-                        </button>
-                    </motion.div>
-
-                    {/* Preferences */}
-                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
-                            <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Preferences</p>
-                        </div>
-                        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d]">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
-                                    </div>
-                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Currency</span>
-                                </div>
-                                <select
-                                    value={currency}
-                                    onChange={e => { setCurrency(e.target.value as CurrencyCode); }}
-                                    className="bg-gray-100 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] rounded-lg px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 font-bold outline-none"
-                                >
-                                    {(Object.keys(CURRENCIES) as CurrencyCode[]).map(code => (
-                                        <option key={code} value={code}>{CURRENCIES[code].flag} {code}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="px-4 py-3.5">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-amber-500 text-[18px]">{isDark ? 'dark_mode' : 'light_mode'}</span>
-                                    </div>
-                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Dark Mode</span>
-                                </div>
-                                <button
-                                    onClick={toggleTheme}
-                                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isDark ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                >
-                                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-500 ease-spring ${isDark ? 'translate-x-6' : 'translate-x-0'}`} />
-                                </button>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Notifications */}
-                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
-                            <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Notifications</p>
-                        </div>
-                        {[
-                            { label: 'Budget Alerts', icon: 'trending_up', desc: 'Alert when nearing budget limits', value: notifyBudget, setter: setNotifyBudget, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-                            { label: 'Overspending', icon: 'warning', desc: 'Alert on unusual spending', value: notifyOverspend, setter: setNotifyOverspend, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-                        ].map((item, i) => (
-                            <div key={i} className={`px-4 py-3.5 ${i < 1 ? 'border-b border-gray-100 dark:border-[#21262d]' : ''}`}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full ${item.bg} flex items-center justify-center`}>
-                                            <span className={`material-symbols-outlined ${item.color} text-[18px]`}>{item.icon}</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.label}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => item.setter(!item.value)}
-                                        className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${item.value ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                    >
-                                        <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-500 ease-spring ${item.value ? 'translate-x-6' : 'translate-x-0'}`} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </motion.div>
-
-                    {/* Security */}
-                    <motion.div variants={itemVariants} className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#0A0E1A]/80 backdrop-blur-md border-b border-gray-100 dark:border-[#21262d]">
-                            <p className="text-[11px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider">Security</p>
-                        </div>
-                        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d]">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-primary text-[18px]">vibration</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">2FA (TOTP)</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={totpEnabled ? handleDisable2FA : handleStart2FASetup}
-                                    disabled={isDisabling2FA}
-                                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${totpEnabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                >
-                                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-500 ease-spring ${totpEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
-                                </button>
-                            </div>
-
-                            {totpBackupCodesToShow && (
-                                <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                                    <p className="text-xs font-bold mb-1">✓ 2FA Activated!</p>
-                                    <p className="text-[10px] leading-relaxed mb-2">Save these backup codes. They will not be shown again:</p>
-                                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px] select-all bg-black/20 p-2 rounded-lg text-center tracking-wider">
-                                        {totpBackupCodesToShow.map((code, idx) => (
-                                            <div key={idx}>{code}</div>
-                                        ))}
-                                    </div>
-                                    <div className="flex items-center gap-3 mt-2">
-                                        <button onClick={() => downloadRecoveryCodes(totpBackupCodesToShow)} className="text-[10px] font-bold underline hover:text-emerald-300 flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-[12px]">download</span> Download .txt
-                                        </button>
-                                        <button onClick={() => setTotpBackupCodesToShow(null)} className="text-[10px] font-bold underline hover:text-emerald-300">
-                                            I&apos;ve saved them
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-[#21262d] space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-indigo-500 text-[18px]">fingerprint</span>
-                                    </div>
-                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Passkeys</span>
-                                </div>
-                                <button
-                                    onClick={() => setIsPasskeyModalOpen(true)}
-                                    className="px-3 py-1.5 bg-primary text-white text-[11px] font-bold rounded-lg"
-                                >
-                                    Add
-                                </button>
-                            </div>
-
-                            {passkeys.length > 0 && (
-                                <div className="space-y-1.5 pt-1.5 border-t border-gray-100 dark:border-white/5">
-                                    {passkeys.map((p) => (
-                                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/10">
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold truncate text-gray-800 dark:text-gray-200">{p.name}</p>
-                                            </div>
-                                            <button onClick={() => handleDeletePasskey(p.id)} className="text-rose-500 p-1">
-                                                <span className="material-symbols-outlined text-[16px]">delete</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="px-4 py-3.5 space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-amber-500 text-[18px]">devices</span>
-                                    </div>
-                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Active Sessions</span>
-                                </div>
-                            </div>
-                            <div className="space-y-1.5 pt-1.5 border-t border-gray-100 dark:border-white/5">
-                                {sessions.map((s) => (
-                                    <div
-                                        key={s.id}
-                                        className="relative overflow-hidden rounded-lg"
-                                        onTouchStart={(e) => handleTouchStart(e, s.id)}
-                                        onTouchEnd={(e) => handleTouchEnd(e, s.id, s.isCurrentDevice)}
-                                    >
-                                        {/* Swipe-to-revoke background */}
-                                        {!s.isCurrentDevice && (
-                                            <div className="absolute inset-y-0 right-0 w-20 bg-rose-500 flex items-center justify-center">
-                                                <span className="material-symbols-outlined text-white text-[18px]">logout</span>
-                                            </div>
-                                        )}
-                                        <div
-                                            className={`relative flex items-center justify-between p-2.5 bg-gray-50 dark:bg-black/10 transition-transform duration-200 ${swipedSessionId === s.id ? '-translate-x-20' : 'translate-x-0'}`}
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-1.5">
-                                                    <p className="text-xs font-bold truncate text-gray-800 dark:text-gray-200">{s.deviceName}</p>
-                                                    {s.isCurrentDevice && (
-                                                        <span className="shrink-0 px-1.5 py-0.5 text-[8px] font-bold rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">
-                                                            This device
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-[9px] text-gray-400 truncate">IP: {s.ipAddress} · {s.lastUsedAt ? (parseLocalDate(s.lastUsedAt)?.toLocaleDateString() || 'Invalid Date') : 'Active'}</p>
-                                            </div>
-                                            {!s.isCurrentDevice && (
-                                                <button
-                                                    onClick={() => handleRevokeSession(s.id)}
-                                                    disabled={revokingSessions[s.id]}
-                                                    className="text-rose-500 p-1 disabled:opacity-50 hidden lg:block"
-                                                >
-                                                    <span className="material-symbols-outlined text-[16px]">logout</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                        {/* Swipe confirm button (visible when swiped) */}
-                                        {swipedSessionId === s.id && (
-                                            <button
-                                                onClick={() => { handleRevokeSession(s.id); setSwipedSessionId(null); }}
-                                                className="absolute inset-y-0 right-0 w-20 bg-rose-500 flex items-center justify-center active:bg-rose-600"
-                                            >
-                                                <span className="text-white text-[10px] font-bold">Revoke</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Login Activity Timeline (Mobile) */}
-                            <div className="pt-3 border-t border-gray-100 dark:border-white/5">
-                                <button
-                                    onClick={() => setShowLoginActivity(!showLoginActivity)}
-                                    className="flex items-center justify-between w-full py-1"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-gray-400 text-[16px]">history</span>
-                                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Login Activity</span>
-                                    </div>
-                                    <span className={`material-symbols-outlined text-gray-400 text-[16px] transition-transform ${showLoginActivity ? 'rotate-180' : ''}`}>expand_more</span>
-                                </button>
-                                <AnimatePresence>
-                                    {showLoginActivity && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="overflow-hidden"
-                                        >
-                                            <div className="space-y-1.5 pt-2 max-h-48 overflow-y-auto custom-scrollbar">
-                                                {loginActivity.length === 0 ? (
-                                                    <p className="text-[10px] text-gray-400 text-center py-2">No login activity recorded yet</p>
-                                                ) : (
-                                                    loginActivity.map((event) => (
-                                                        <div key={event.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50/50 dark:bg-white/[0.02]">
-                                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${event.success ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
-                                                                <span className={`material-symbols-outlined text-[12px] ${event.success ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                    {event.action === 'LOGOUT' ? 'logout' : event.success ? 'check' : 'close'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 truncate">
-                                                                    {event.action === 'LOGIN' ? 'Signed in' : event.action === 'LOGOUT' ? 'Signed out' : 'Failed login'}
-                                                                    {event.reason && <span className="text-gray-400 font-normal"> · {event.reason}</span>}
-                                                                </p>
-                                                                <p className="text-[9px] text-gray-400 truncate">{event.deviceName} · {event.ipAddress}</p>
-                                                            </div>
-                                                            <span className="text-[9px] text-gray-400 shrink-0 tabular-nums">
-                                                                {parseLocalDate(event.createdAt)?.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                            </span>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Sign Out */}
-                    <motion.div variants={itemVariants}>
-                        <button
-                            onClick={handleSignOut}
-                            className="w-full glass-panel rounded-2xl p-4 text-rose-500 font-bold text-sm text-center active:scale-[0.98] transition-transform shadow-sm flex items-center justify-center gap-2"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">logout</span> Sign Out
-                        </button>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="text-center pt-2 pb-6">
-                        <p className="text-[11px] font-medium tracking-wide text-gray-400 dark:text-text-muted/60 uppercase">Wealth AI Version 1.5.0</p>
-                        <p className="text-[10px] text-gray-400/60 dark:text-text-muted/40 mt-1">Made with ❤️ for precision</p>
-                    </motion.div>
-                </div>
-            </div>
-
-            {/* ═══════════════════════════════════════════════
-               DESKTOP VIEW (hidden on mobile)
-               ═══════════════════════════════════════════════ */}
-            <div className="hidden lg:block">
-                <motion.div variants={itemVariants} className="mb-10">
-                    <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 mb-2 tracking-tight">Settings</h1>
-                    <p className="text-gray-500 dark:text-text-muted text-sm font-medium">Manage your personal profile and application preferences</p>
-                </motion.div>
-
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left Column */}
-                    <div className="col-span-8 space-y-6">
-                        {/* Profile Card */}
-                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-8 relative overflow-hidden group">
-                            {/* Decorative Background */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-transform duration-700 group-hover:scale-110" />
-                            
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 relative z-10">
-                                <span className="material-symbols-outlined text-primary">person</span>Profile Information
-                            </h2>
-                            
-                            <div className="flex items-start gap-8 relative z-10">
-                                {/* Dynamic Avatar */}
-                                <div 
-                                    className="relative w-24 h-24 rounded-full p-1 bg-gradient-to-br from-primary via-blue-500 to-indigo-600 shadow-xl shadow-primary/20 shrink-0 cursor-pointer overflow-hidden"
-                                    onMouseEnter={() => setAvatarHovered(true)}
-                                    onMouseLeave={() => setAvatarHovered(false)}
-                                >
-                                    <div className="w-full h-full rounded-full bg-white dark:bg-[#0A0E1A] flex items-center justify-center relative overflow-hidden">
-                                        {/* Name Initial */}
-                                        <span className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-tr from-primary to-cyan-600 transition-transform duration-300 ${avatarHovered ? 'scale-90 opacity-0' : 'scale-100 opacity-100'}`}>
-                                            {name?.charAt(0)?.toUpperCase() || 'U'}
-                                        </span>
-                                        
-                                        {/* Hover Overlay */}
-                                        <div className={`absolute inset-0 bg-primary/90 flex flex-col items-center justify-center text-white transition-opacity duration-300 ${avatarHovered ? 'opacity-100' : 'opacity-0'}`}>
-                                            <span className="material-symbols-outlined text-[20px] mb-0.5">add_a_photo</span>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider">Change</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex-1 space-y-5">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Display Name</label>
-                                        <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-gray-100 focus:bg-white dark:bg-[#161b22] dark:hover:bg-[#1c2128] dark:focus:bg-[#0A0E1A] dark:border-white/5 text-gray-900 dark:text-white outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-medium" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Email Address</label>
-                                        <input type="email" value={email} disabled className="w-full px-4 py-3 rounded-xl border border-transparent bg-gray-50 dark:bg-[#0A0E1A] text-gray-400 font-medium cursor-not-allowed opacity-70" />
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* Notifications */}
-                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-8">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">notifications_active</span>Notification Preferences
-                            </h2>
-                            <div className="space-y-4">
-                                {[{ label: 'Budget Limit Alerts', desc: 'Receive immediate alerts when you exceed 80% of your category limits.', value: notifyBudget, setter: setNotifyBudget, icon: 'account_balance_wallet', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                                { label: 'Overspending Detection', desc: 'AI-powered alerts for unusual or exceptionally high transactions.', value: notifyOverspend, setter: setNotifyOverspend, icon: 'monitoring', color: 'text-amber-500', bg: 'bg-amber-500/10' },
-                                ].map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-gray-50 dark:bg-[#161b22] border border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-colors group">
-                                        <div className="flex items-start gap-4">
-                                            <div className={`w-10 h-10 rounded-xl ${item.bg} flex items-center justify-center shrink-0`}>
-                                                <span className={`material-symbols-outlined ${item.color}`}>{item.icon}</span>
-                                            </div>
-                                            <div>
-                                                <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">{item.label}</h3>
-                                                <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">{item.desc}</p>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => item.setter(!item.value)}
-                                            className={`relative w-14 h-7 rounded-full transition-colors duration-300 outline-none shadow-inner shrink-0 ${item.value ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                            <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-500 ease-spring ${item.value ? 'translate-x-7' : 'translate-x-0'}`} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                        {/* Security Card */}
-                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-8 space-y-8">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">security</span>Security & Privacy Settings
-                            </h2>
-
-                            {/* Privacy & Data Protection Center (Module 14) */}
-                            <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                                        <span className="material-symbols-outlined text-primary">shield</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Privacy & Data Protection Center</h3>
-                                        <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
-                                            Configure auto-lock timers, mobile shake-to-hide, account masking, and balance shielding.
-                                        </p>
-                                    </div>
-                                </div>
-                                <Link
-                                    href="/settings/privacy"
-                                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primary-hover transition-colors inline-flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
-                                >
-                                    <span>Manage Privacy</span>
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </Link>
-                            </div>
-
-                            {/* 2FA Section */}
-                            <div className="p-6 rounded-2xl bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-100 dark:border-white/5 transition-colors">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                            <span className="material-symbols-outlined text-primary">vibration</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Two-Factor Authentication (TOTP)</h3>
-                                            <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
-                                                Protect your account with a temporary verification code from your authenticator app.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={totpEnabled ? handleDisable2FA : handleStart2FASetup}
-                                        disabled={isDisabling2FA}
-                                        className={`relative w-14 h-7 rounded-full transition-colors duration-300 outline-none shadow-inner shrink-0 ${totpEnabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                    >
-                                        <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-500 ease-spring ${totpEnabled ? 'translate-x-7' : 'translate-x-0'}`} />
-                                    </button>
-                                </div>
-
-                                {totpBackupCodesToShow && (
-                                    <div className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                                        <p className="text-xs font-bold mb-2">✓ Two-Factor Authentication Activated!</p>
-                                        <p className="text-[11px] leading-relaxed mb-3">
-                                            Save these backup codes in a secure place. They will not be shown again. Each code can be used once if you lose access to your authenticator.
-                                        </p>
-                                        <div className="grid grid-cols-2 gap-2 font-mono text-xs select-all bg-black/20 p-3 rounded-lg text-center tracking-wider">
-                                            {totpBackupCodesToShow.map((code, idx) => (
-                                                <div key={idx}>{code}</div>
-                                            ))}
-                                        </div>
-                                        <div className="flex items-center gap-4 mt-3">
-                                            <button onClick={() => downloadRecoveryCodes(totpBackupCodesToShow)} className="text-xs font-bold underline hover:text-emerald-300 flex items-center gap-1.5">
-                                                <span className="material-symbols-outlined text-[14px]">download</span> Download as .txt
-                                            </button>
-                                            <button onClick={() => setTotpBackupCodesToShow(null)} className="text-xs font-bold underline hover:text-emerald-300 block">
-                                                I have saved these codes
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Passkeys Section */}
-                            <div className="p-6 rounded-2xl bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-100 dark:border-white/5 transition-colors space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
-                                            <span className="material-symbols-outlined text-indigo-500">fingerprint</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Passkeys</h3>
-                                            <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
-                                                Sign in securely using biometric verification (Face ID, Touch ID) or a physical hardware security key.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setIsPasskeyModalOpen(true)}
-                                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
-                                    >
-                                        Add Passkey
-                                    </button>
-                                </div>
-
-                                {passkeys.length > 0 ? (
-                                    <div className="space-y-2 pt-2 border-t border-gray-200/50 dark:border-[#30363d]/50">
-                                        {passkeys.map((p) => (
-                                            <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-white/40 dark:bg-black/20 border border-gray-100 dark:border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="material-symbols-outlined text-gray-400 dark:text-text-muted">key</span>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-gray-900 dark:text-white">{p.name}</p>
-                                                        <p className="text-[10px] text-gray-400 dark:text-text-muted/60 mt-0.5">
-                                                            Registered {parseLocalDate(p.createdAt)?.toLocaleDateString()}
-                                                            {p.lastUsedAt && ` • Used ${parseLocalDate(p.lastUsedAt)?.toLocaleDateString()}`}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <button onClick={() => handleDeletePasskey(p.id)} className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg active:scale-95 transition-transform">
-                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-[11px] text-gray-400 dark:text-text-muted/60 italic pt-2">No passkeys registered yet.</p>
-                                )}
-                            </div>
-
-                            {/* Active Sessions Section */}
-                            <div className="p-6 rounded-2xl bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-100 dark:border-white/5 transition-colors space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                                            <span className="material-symbols-outlined text-amber-500">devices</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-1">Active Sessions</h3>
-                                            <p className="text-gray-500 dark:text-text-muted text-xs font-medium leading-relaxed max-w-md">
-                                                List of active devices logged into your account.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {sessions.length > 1 && (
-                                        <button
-                                            onClick={handleRevokeAllSessions}
-                                            disabled={isRevokingAll}
-                                            className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold rounded-xl transition-all disabled:opacity-50"
-                                        >
-                                            {isRevokingAll ? 'Revoking...' : 'Revoke All Others'}
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2 pt-2 border-t border-gray-200/50 dark:border-[#30363d]/50">
-                                    {sessions.map((s) => (
-                                        <div key={s.id} className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${s.isCurrentDevice ? 'bg-emerald-500/5 dark:bg-emerald-500/5 border-emerald-500/20' : 'bg-white/40 dark:bg-black/20 border-gray-100 dark:border-white/5'}`}>
-                                            <div className="flex items-center gap-3">
-                                                <span className="material-symbols-outlined text-gray-400 dark:text-text-muted">
-                                                    {s.deviceName?.toLowerCase()?.includes('phone') || s.deviceName?.toLowerCase()?.includes('android') || s.deviceName?.toLowerCase()?.includes('iphone') ? 'smartphone' : 'laptop'}
-                                                </span>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-xs font-bold text-gray-900 dark:text-white">{s.deviceName}</p>
-                                                        {s.isCurrentDevice && (
-                                                            <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                This device
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-[10px] text-gray-400 dark:text-text-muted/60 mt-0.5">
-                                                        IP: {s.ipAddress} • Active: {parseLocalDate(s.lastUsedAt || s.createdAt)?.toLocaleString()}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            {!s.isCurrentDevice && (
-                                                <button
-                                                    onClick={() => handleRevokeSession(s.id)}
-                                                    disabled={revokingSessions[s.id]}
-                                                    className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg active:scale-95 transition-transform disabled:opacity-50"
-                                                >
-                                                    <span className="material-symbols-outlined text-[18px]">logout</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Login Activity Timeline (Desktop) */}
-                                <div className="pt-4 mt-4 border-t border-gray-200/50 dark:border-[#30363d]/50">
-                                    <button
-                                        onClick={() => setShowLoginActivity(!showLoginActivity)}
-                                        className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors group"
-                                    >
-                                        <span className="material-symbols-outlined text-[18px] text-gray-400 group-hover:text-primary transition-colors">history</span>
-                                        Login Activity
-                                        <span className={`material-symbols-outlined text-[16px] text-gray-400 transition-transform ${showLoginActivity ? 'rotate-180' : ''}`}>expand_more</span>
-                                    </button>
-                                    <AnimatePresence>
-                                        {showLoginActivity && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="space-y-1.5 pt-3 max-h-64 overflow-y-auto custom-scrollbar">
-                                                    {loginActivity.length === 0 ? (
-                                                        <p className="text-xs text-gray-400 text-center py-4">No login activity recorded yet</p>
-                                                    ) : (
-                                                        loginActivity.map((event) => (
-                                                            <div key={event.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/40 dark:bg-black/10 border border-gray-100 dark:border-white/5">
-                                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${event.success ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
-                                                                    <span className={`material-symbols-outlined text-[14px] ${event.success ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                        {event.action === 'LOGOUT' ? 'logout' : event.success ? 'check_circle' : 'cancel'}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="min-w-0 flex-1">
-                                                                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                                                                        {event.action === 'LOGIN' ? 'Successful sign-in' : event.action === 'LOGOUT' ? 'Signed out' : 'Failed login attempt'}
-                                                                        {event.reason && <span className="text-gray-400 font-normal"> — {event.reason}</span>}
-                                                                    </p>
-                                                                    <p className="text-[10px] text-gray-400 mt-0.5">{event.deviceName} · {event.ipAddress}</p>
-                                                                </div>
-                                                                <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
-                                                                    {parseLocalDate(event.createdAt)?.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                                </span>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="col-span-4 space-y-6">
-                        {/* Appearance / Theme */}
-                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6 relative overflow-hidden group cursor-pointer" onClick={toggleTheme}>
-                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-colors duration-500 ${isDark ? 'bg-amber-500/10' : 'bg-primary/10'}`} />
-                            
-                            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2 relative z-10">
-                                <span className={`material-symbols-outlined ${isDark ? 'text-amber-500' : 'text-primary'}`}>{isDark ? 'dark_mode' : 'light_mode'}</span>Appearance
-                            </h2>
-                            <div className="flex items-center justify-between relative z-10">
-                                <div>
-                                    <h3 className="text-gray-900 dark:text-white font-bold text-sm">Dark Mode</h3>
-                                    <p className="text-gray-500 dark:text-text-muted text-xs mt-0.5 font-medium">{isDark ? 'Enabled' : 'Disabled'}</p>
-                                </div>
-                                <div className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isDark ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-500 ease-spring ${isDark ? 'translate-x-6' : 'translate-x-0'}`} />
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* Currency */}
-                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
-                            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">payments</span>Currency
-                            </h2>
-                            <div className="space-y-3">
-                                {(Object.keys(CURRENCIES) as CurrencyCode[]).map(code => {
-                                    const cur = CURRENCIES[code];
-                                    const isActive = currency === code;
-                                    return (
-                                        <button
-                                            key={code}
-                                            onClick={() => setCurrency(code)}
-                                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${isActive
-                                                ? 'bg-primary/10 border-2 border-primary/20 shadow-sm'
-                                                : 'bg-gray-50 dark:bg-[#161b22] border-2 border-transparent hover:border-gray-200 dark:hover:border-white/10'
-                                                }`}
-                                        >
-                                            <span className="text-2xl drop-shadow-sm">{cur.flag}</span>
-                                            <div className="text-left flex-1 min-w-0">
-                                                <div className={`font-bold text-sm ${isActive ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
-                                                    {cur.symbol} {cur.code}
-                                                </div>
-                                            </div>
-                                            {isActive && (
-                                                <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </motion.div>
-
-                        {/* Language & Locale */}
-                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
-                            <div className="flex items-center justify-between mb-2">
-                                <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary">translate</span>
-                                    {t('settingsPage.languageSelect', 'Language & Locale')}
-                                </h2>
-                                <button
-                                    onClick={() => setIsLanguagePickerOpen(true)}
-                                    className="text-xs text-primary hover:underline font-semibold flex items-center gap-1"
-                                >
-                                    <span>{t('common.more', 'All Dialects')}</span>
-                                    <span className="material-symbols-outlined text-sm">tune</span>
-                                </button>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-text-muted mb-4 font-medium">
-                                {t('settingsPage.localeSection', 'Switch between English and Bengali with locale-aware formatting.')}
-                            </p>
-                            {/* Two-Option Segmented Control */}
-                            <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 dark:bg-[#161b22] rounded-2xl mb-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setLocale('en')}
-                                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all min-h-[44px] ${
-                                        locale === 'en'
-                                            ? 'bg-white dark:bg-[#1f2937] text-primary shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                                >
-                                    <span>🇺🇸</span>
-                                    <span>English</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setLocale('bn')}
-                                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all min-h-[44px] ${
-                                        locale === 'bn'
-                                            ? 'bg-white dark:bg-[#1f2937] text-primary shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                                >
-                                    <span>🇧🇩</span>
-                                    <span>বাংলা</span>
-                                </button>
-                            </div>
-                            <button
-                                onClick={() => setIsLanguagePickerOpen(true)}
-                                className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-[#161b22] border border-gray-200/50 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10 transition-all text-left"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xl select-none">{locale === 'bn' ? '🇧🇩' : '🇺🇸'}</span>
-                                    <div>
-                                        <div className="font-bold text-xs text-gray-900 dark:text-white">
-                                            {locale === 'bn' ? 'বাংলা (Bengali)' : 'English (US)'}
-                                        </div>
-                                        <div className="text-[11px] text-primary font-medium">
-                                            {locale === 'bn' ? 'বাংলা সংখ্যা ও পঞ্জিকা সক্রিয়' : 'Western digits & standard calendar'}
-                                        </div>
-                                    </div>
-                                </div>
-                                <span className="material-symbols-outlined text-gray-400 text-sm">open_in_new</span>
-                            </button>
-                        </motion.div>
-
-                        {/* Google Calendar Integration */}
-                        <motion.div variants={itemVariants} className="glass-panel rounded-3xl p-6">
-                            <div className="flex items-center justify-between mb-2">
-                                <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary">calendar_month</span>
-                                    {t('calendar.title', 'Google Calendar')}
-                                </h2>
-                                <Link
-                                    href="/settings/calendar"
-                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                                >
-                                    Control Center <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                                </Link>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-text-muted mb-4 font-medium">
-                                {t('calendar.subtitle', 'Sync your bills, debt payoffs, and reminders to Google Calendar.')}
-                            </p>
-                            {calendarLoading ? (
-                                <div className="flex items-center gap-2 text-sm text-gray-400">
-                                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                    Checking connection...
-                                </div>
-                            ) : calendarConnected ? (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-sm font-bold text-accent-emerald">
-                                            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                                            {t('calendar.statusConnected', 'Connected')}
-                                        </div>
-                                        <Link
-                                            href="/settings/calendar"
-                                            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all"
-                                        >
-                                            Configure Toggles
-                                        </Link>
-                                    </div>
-                                    <button
-                                        onClick={handleDisconnectCalendar}
-                                        className="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors"
-                                    >
-                                        {t('calendar.disconnectButton', 'Disconnect')}
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="space-y-2.5">
-                                    <button
-                                        onClick={handleConnectCalendar}
-                                        disabled={calendarConnecting}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50"
-                                    >
-                                        {calendarConnecting ? (
-                                            <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Connecting...</>
-                                        ) : (
-                                            <><span className="material-symbols-outlined text-[18px]">link</span> {t('calendar.connectButton', 'Connect Google Calendar')}</>
-                                        )}
-                                    </button>
-                                    <Link
-                                        href="/settings/calendar"
-                                        className="block text-center text-xs text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
-                                    >
-                                        Advanced calendar settings & push alert rules →
-                                    </Link>
-                                </div>
-                            )}
-                        </motion.div>
-
-                        {/* System Info */}
-                        <motion.div variants={itemVariants} className="pt-4 px-2">
-                            <p className="text-[11px] font-bold tracking-widest text-gray-400 dark:text-text-muted uppercase mb-1">System Version</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">Wealth AI <span className="text-primary">v1.5.0</span></p>
-                        </motion.div>
-                    </div>
-                </div>
-
-                {/* Bottom Action Bar */}
-                <motion.div variants={itemVariants} className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200/60 dark:border-[#30363d]/50">
-                    <button
-                        onClick={handleSignOut}
-                        className="flex items-center gap-2 px-5 py-2.5 text-rose-500 font-bold text-sm hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">logout</span> Sign Out
-                    </button>
-
-                    <button onClick={save} disabled={saving}
-                        className="flex items-center gap-2 px-8 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-black/10 dark:shadow-white/10">
-                        {saved ? <><span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span> Saved</> :
-                            saving ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div> Saving...</> :
-                                'Save Changes'}
-                    </button>
-                </motion.div>
-            </div>
-
-            <Toaster position="top-right" richColors />
-
-            {/* 2FA Setup Modal/Drawer */}
-            {(is2FAModalOpen && totpSetupData) && (
-                <>
-                    {/* Backdrop */}
-                    <div className="fixed inset-0 bg-slate-950/55 z-[99] backdrop-blur-md transition-opacity" onClick={() => setIs2FAModalOpen(false)} />
-
-                    {/* Mobile Sheet / Desktop Modal */}
-                    <div className={`
-                        fixed z-[100] overflow-hidden transition-all duration-[400ms] transform
-                        lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-[480px] lg:rounded-3xl lg:border lg:h-auto
-                        bottom-0 left-0 w-full rounded-t-[2rem] border-t max-h-[90vh] flex flex-col
-                        bg-white dark:bg-[#0A0E1A] border-gray-200/80 dark:border-white/10 shadow-2xl
-                    `}>
-                        {/* Mobile Drag Handle */}
-                        <div className="w-full flex justify-center py-3 shrink-0 lg:hidden" onClick={() => setIs2FAModalOpen(false)}>
-                            <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />
-                        </div>
-
-                        {/* Modal/Drawer Header */}
-                        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 shrink-0">
-                            <h3 className="text-gray-900 dark:text-white font-black text-lg">Set Up Two-Factor Auth</h3>
-                            <button onClick={() => setIs2FAModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 transition-colors">
-                                <span className="material-symbols-outlined text-[18px]">close</span>
-                            </button>
-                        </div>
-
-                        {/* Modal/Drawer Content */}
-                        <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh] lg:max-h-[600px] scrollbar-none">
-                            <div className="space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">1</span>
-                                    <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">Scan this QR code with Google Authenticator or another TOTP app:</p>
-                                </div>
-
-                                <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-100 shadow-inner max-w-[200px] mx-auto">
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(totpSetupData.uri)}`} alt="2FA QR Code" className="w-[180px] h-[180px] object-contain" />
-                                </div>
-
-                                <div className="flex items-start gap-3 pt-2">
-                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">2</span>
-                                    <div className="flex-1">
-                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">Or enter this key manually:</p>
-                                        <p className="font-mono text-xs font-bold tracking-wider text-primary select-all bg-gray-100 dark:bg-white/5 px-3 py-2 rounded-xl mt-2 break-all text-center">{totpSetupData.secret}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3 pt-2 border-t border-gray-100 dark:border-white/5">
-                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">3</span>
-                                    <div className="flex-1 space-y-3">
-                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">Enter the 6-digit confirmation code from your app:</p>
-                                        <input
-                                            type="text"
-                                            value={totpCode}
-                                            onChange={e => setTotpCode(e.target.value)}
-                                            placeholder="000000"
-                                            maxLength={6}
-                                            className="w-full text-center px-4 py-3 rounded-xl font-mono text-lg tracking-[0.5rem] border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-black/40 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleConfirm2FA}
-                                disabled={isEnabling2FA || totpCode.length !== 6}
-                                className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-black/10 dark:shadow-white/10"
-                            >
-                                {isEnabling2FA ? 'Verifying...' : 'Enable 2FA'}
-                            </button>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* Add Passkey Modal/Drawer */}
-            {isPasskeyModalOpen && (
-                <>
-                    <div className="fixed inset-0 bg-slate-950/55 z-[99] backdrop-blur-md transition-opacity" onClick={() => setIsPasskeyModalOpen(false)} />
-
-                    <div className={`
-                        fixed z-[100] overflow-hidden transition-all duration-[400ms] transform
-                        lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-[400px] lg:rounded-3xl lg:border lg:h-auto
-                        bottom-0 left-0 w-full rounded-t-[2rem] border-t max-h-[80vh] flex flex-col
-                        bg-white dark:bg-[#0A0E1A] border-gray-200/80 dark:border-white/10 shadow-2xl
-                    `}>
-                        <div className="w-full flex justify-center py-3 shrink-0 lg:hidden" onClick={() => setIsPasskeyModalOpen(false)}>
-                            <div className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />
-                        </div>
-
-                        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 shrink-0">
-                            <h3 className="text-gray-900 dark:text-white font-black text-lg">Add Passkey</h3>
-                            <button onClick={() => setIsPasskeyModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 transition-colors">
-                                <span className="material-symbols-outlined text-[18px]">close</span>
-                            </button>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            <div className="space-y-2">
-                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Passkey Name</label>
-                                <input
-                                    type="text"
-                                    value={passkeyName}
-                                    onChange={e => setPasskeyName(e.target.value)}
-                                    placeholder="e.g. iPhone, YubiKey, MacBook"
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-black/40 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium"
-                                />
-                            </div>
-
-                            <button
-                                onClick={handleRegisterPasskey}
-                                disabled={isRegisteringPasskey || !passkeyName}
-                                className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-black/10 dark:shadow-white/10"
-                            >
-                                {isRegisteringPasskey ? 'Registering...' : 'Register Passkey'}
-                            </button>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            <LanguagePickerSheet
-                isOpen={isLanguagePickerOpen}
-                onClose={() => setIsLanguagePickerOpen(false)}
-            />
-        </motion.div>
-    );
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm">
+          Loading Settings...
+        </div>
+      }
+    >
+      <SettingsContent />
+    </Suspense>
+  );
 }

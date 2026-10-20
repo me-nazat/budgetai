@@ -4,12 +4,13 @@
  * @fileoverview Locale Context (Module 17).
  * Provides client-side bilingual localization context ('en' | 'bn'),
  * state management, translation helper t(key), and sync with users.locale.
+ * Seamlessly aliases the canonical LanguageContext to prevent duplicate state trees.
  *
  * @module contexts/LocaleContext
  */
 
-import React from 'react';
 import {
+  LanguageContext,
   LanguageProvider as LocaleProvider,
   useLanguage as useLocale,
   type Locale,
@@ -17,15 +18,5 @@ import {
 
 export type { Locale };
 export { LocaleProvider, useLocale };
-
-export const LocaleContext = React.createContext<{
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-  toggleLanguage: () => void;
-  t: (key: string, fallback?: string) => string;
-}>({
-  locale: 'en',
-  setLocale: () => {},
-  toggleLanguage: () => {},
-  t: (key, fallback) => fallback || key,
-});
+export const LocaleContext = LanguageContext;
+export default useLocale;

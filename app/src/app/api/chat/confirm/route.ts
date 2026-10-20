@@ -5,15 +5,16 @@ export const dynamic = 'force-dynamic';
  *
  * Supports execution for:
  * - create_transaction / add_expense / createTransaction
- * - create_budget / set_budget / setBudgetLimit
+ * - create_budget / set_budget / setBudgetLimit / update_budget_limit
  * - create_goal / add_goal / createSavingsGoal
- * - analyze_idle_cash / compare_peer_benchmarks / suggest_tax_deductions
+ * - transfer_between_accounts / transferBetweenAccounts
+ * - create_automation_rule / createAutomationRule
  *
  * Enforces:
  * - Rate limiting (5 executions per minute per user)
  * - Permission checking via module_29_action_permissions
- * - Inverse operation capture for 5-second undo
- * - Audit logging in agent_action_logs
+ * - Inverse operation capture for 1-click undo
+ * - Audit logging in agent_action_logs with previousStateJson and createdRecordId
  *
  * @module api/chat/confirm
  */
@@ -29,6 +30,8 @@ import {
   transactions,
   budgets,
   savingsGoals,
+  accounts,
+  automationRules,
 } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -92,7 +95,7 @@ export const POST = apiHandler(
     }
 
     // 3. Check tool permissions
-    const normalizedToolName = (toolName || '').toLowerCase();
+    const normalizedToolName = (toolName || '').toLowerCase().replace(/_/g, '');
     const [perm] = await db
       .select()
       .from(module29ActionPermissions)
@@ -112,36 +115,55 @@ export const POST = apiHandler(
 
     let result: any = null;
     let inversePayload: any = null;
+    let createdRecordId: any = null;
 
     try {
       if (
-        normalizedToolName === 'create_transaction' ||
-        normalizedToolName === 'add_expense' ||
-        normalizedToolName === 'createtransaction'
+        normalizedToolName === 'createtransaction' ||
+        normalizedToolName === 'addexpense'
       ) {
+        const txAmount = parseFloat(parameters.amount);
+        const txType = (parameters.type || 'expense').toLowerCase() as any;
+        const targetAccountId = parameters.accountId ? parseInt(parameters.accountId, 10) : undefined;
+
         const created = await TransactionService.create(userId, {
-          name: parameters.description || parameters.name || 'AI Added Transaction',
-          amount: parseFloat(parameters.amount),
-          type: (parameters.type || 'expense').toLowerCase() as any,
+          name: parameters.description || parameters.merchant || parameters.name || 'AI Added Transaction',
+          amount: txAmount,
+          type: txType,
           category: parameters.categoryName || parameters.category || 'Other',
           date: parameters.date || new Date().toISOString().split('T')[0],
+          accountId: targetAccountId,
         });
 
+        // If target account provided, adjust account balance
+        if (targetAccountId && !isNaN(targetAccountId)) {
+          const delta = txType === 'earning' || txType === 'income' ? txAmount : -txAmount;
+          await db
+            .update(accounts)
+            .set({ currentBalance: sql`${accounts.currentBalance} + ${delta}` })
+            .where(and(eq(accounts.id, targetAccountId), eq(accounts.userId, userId)));
+        }
+
         result = created;
+        createdRecordId = created.id;
         inversePayload = {
           action: 'delete_transaction',
           transactionId: created.id,
+          accountId: targetAccountId,
+          amount: txAmount,
+          type: txType,
         };
       } else if (
-        normalizedToolName === 'create_budget' ||
-        normalizedToolName === 'set_budget' ||
-        normalizedToolName === 'setbudgetlimit'
+        normalizedToolName === 'createbudget' ||
+        normalizedToolName === 'setbudget' ||
+        normalizedToolName === 'setbudgetlimit' ||
+        normalizedToolName === 'updatebudgetlimit'
       ) {
         const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const month = parameters.month || now.getMonth() + 1;
+        const year = parameters.year || now.getFullYear();
         const category = parameters.categoryName || parameters.category;
-        const newLimit = parseFloat(parameters.monthlyLimit || parameters.amount);
+        const newLimit = parseFloat(parameters.monthlyLimit || parameters.newLimit || parameters.amount);
 
         // Check previous limit for undo rollback
         const [prevBudget] = await db
@@ -164,6 +186,7 @@ export const POST = apiHandler(
           year,
         });
 
+        createdRecordId = result.id;
         inversePayload = {
           action: 'restore_budget',
           budgetId: result.id,
@@ -173,21 +196,110 @@ export const POST = apiHandler(
           previousMonthlyLimit: prevBudget ? prevBudget.monthlyLimit : null,
         };
       } else if (
-        normalizedToolName === 'create_goal' ||
-        normalizedToolName === 'add_goal' ||
+        normalizedToolName === 'creategoal' ||
+        normalizedToolName === 'addgoal' ||
         normalizedToolName === 'createsavingsgoal'
       ) {
         result = await GoalRepository.create({
           userId,
-          name: parameters.goalName || parameters.name,
+          name: parameters.goalName || parameters.name || 'Savings Goal',
           targetAmount: parseFloat(parameters.targetAmount || parameters.amount),
           savedAmount: 0,
           deadline: parameters.targetDate || parameters.deadline || undefined,
         });
 
+        createdRecordId = result.id;
         inversePayload = {
           action: 'delete_goal',
           goalId: result.id,
+        };
+      } else if (
+        normalizedToolName === 'transferbetweenaccounts' ||
+        normalizedToolName === 'transfer'
+      ) {
+        const fromAccountId = parseInt(parameters.fromAccountId, 10);
+        const toAccountId = parseInt(parameters.toAccountId, 10);
+        const transferAmount = parseFloat(parameters.amount);
+        const note = parameters.description || `Transfer to account #${toAccountId}`;
+        const date = parameters.date || new Date().toISOString().split('T')[0];
+
+        // Decrement source account
+        await db
+          .update(accounts)
+          .set({ currentBalance: sql`${accounts.currentBalance} - ${transferAmount}` })
+          .where(and(eq(accounts.id, fromAccountId), eq(accounts.userId, userId)));
+
+        // Increment target account
+        await db
+          .update(accounts)
+          .set({ currentBalance: sql`${accounts.currentBalance} + ${transferAmount}` })
+          .where(and(eq(accounts.id, toAccountId), eq(accounts.userId, userId)));
+
+        // Record transfer expense on source
+        const [txOut] = await db
+          .insert(transactions)
+          .values({
+            userId,
+            accountId: fromAccountId,
+            type: 'expense',
+            amount: transferAmount,
+            category: 'Transfer',
+            description: note,
+            date,
+          })
+          .returning();
+
+        // Record transfer earning on target
+        const [txIn] = await db
+          .insert(transactions)
+          .values({
+            userId,
+            accountId: toAccountId,
+            type: 'earning',
+            amount: transferAmount,
+            category: 'Transfer',
+            description: parameters.description || `Transfer from account #${fromAccountId}`,
+            date,
+          })
+          .returning();
+
+        result = { fromAccountId, toAccountId, amount: transferAmount, txOutId: txOut.id, txInId: txIn.id };
+        createdRecordId = txOut.id;
+        inversePayload = {
+          action: 'reverse_transfer',
+          fromAccountId,
+          toAccountId,
+          amount: transferAmount,
+          fromTxId: txOut.id,
+          toTxId: txIn.id,
+        };
+      } else if (
+        normalizedToolName === 'createautomationrule' ||
+        normalizedToolName === 'automationrule'
+      ) {
+        const keyword = parameters.keyword || parameters.triggerValue || '';
+        const category = parameters.category || parameters.actionValue || 'Other';
+        const ruleName = `Auto-categorize "${keyword}" -> ${category}`;
+
+        const [newRule] = await db
+          .insert(automationRules)
+          .values({
+            userId,
+            name: ruleName,
+            triggerType: 'description_contains',
+            triggerValue: keyword,
+            actionType: 'set_category',
+            actionValue: category,
+            active: 1,
+            priority: 0,
+          })
+          .returning();
+
+        result = newRule;
+        createdRecordId = newRule.id;
+        inversePayload = {
+          action: 'delete_automation_rule',
+          ruleId: newRule.id,
         };
       } else {
         // Generic fallback execution
@@ -226,12 +338,17 @@ export const POST = apiHandler(
         executionRecordId = inserted.id;
       }
 
-      // Audit in agentActionLogs
+      // Audit in agentActionLogs with previousStateJson and createdRecordId
+      const actionLogId = `act_${randomUUID()}`;
       await db.insert(agentActionLogs).values({
-        id: `act_${randomUUID()}`,
+        id: actionLogId,
         userId,
         actionType: toolName || 'UNKNOWN',
-        payloadJson: JSON.stringify(parameters),
+        payloadJson: JSON.stringify({
+          ...parameters,
+          previousStateJson: inversePayload,
+          createdRecordId,
+        }),
         status: 'EXECUTED',
         executedAt: Math.floor(Date.now() / 1000),
         createdAt: sql`(unixepoch())`,
@@ -241,6 +358,7 @@ export const POST = apiHandler(
         status: 'executed',
         message: 'Action executed successfully.',
         executionId: executionRecordId,
+        actionLogId,
         canUndo: true,
         result,
       });

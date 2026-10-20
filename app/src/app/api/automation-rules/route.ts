@@ -19,6 +19,11 @@ export const POST = apiHandler(
     const ip = getClientIP(request);
     const userAgent = request.headers.get('user-agent') || undefined;
 
+    if (body.action === 'run_on_uncategorized') {
+      const result = await AutomationRulesService.runRulesOnUncategorized(userId);
+      return NextResponse.json(result);
+    }
+
     const newRule = await AutomationRulesService.createRule(userId, body, ip, userAgent);
     return NextResponse.json(newRule, { status: 201 });
   })

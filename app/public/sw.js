@@ -46,6 +46,12 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests and chrome-extension URLs
   if (request.method !== 'GET' || url.protocol === 'chrome-extension:') return;
 
+  // Bypass cache completely for auth and export endpoints
+  if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/export')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // API calls: Network-first
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(

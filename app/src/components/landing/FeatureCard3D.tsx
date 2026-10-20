@@ -1,152 +1,61 @@
 /**
- * @fileoverview 3D tilt card component with perspective transforms.
+ * @fileoverview Performance-tuned surface card component.
  *
- * Creates a premium card effect that responds to mouse movement with
- * 3D rotation and dynamic lighting. Uses Framer Motion's `useMotionValue`
- * and `useTransform` for GPU-accelerated transforms.
+ * Replaces heavy 3D perspective transforms and mouse-tracking calculations
+ * with a clean 1px border highlight and hover elevation shift via pure CSS transitions.
  *
  * @module components/landing/FeatureCard3D
  */
 
 'use client';
 
-import { useRef, type ReactNode } from 'react';
-import {
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-} from 'framer-motion';
+import { type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 
 /**
  * Props for the FeatureCard3D component.
  */
-interface FeatureCard3DProps {
+export interface FeatureCard3DProps {
   /** Card content (icon, title, description). */
   children: ReactNode;
   /** Additional CSS class names. */
   className?: string;
-  /** Maximum tilt angle in degrees. Default: 15. */
+  /** Maximum tilt angle in degrees (preserved for API compatibility). */
   maxTilt?: number;
-  /** Whether to add a glare effect. Default: true. */
+  /** Whether to add a glare effect (preserved for API compatibility). */
   glare?: boolean;
   /** Delay before the whileInView animation starts (seconds). */
   delay?: number;
 }
 
 /**
- * FeatureCard3D — interactive card with mouse-tracking 3D perspective.
+ * FeatureCard3D — institutional surface card with subtle hover elevation.
  *
- * The card tilts toward the user's cursor position, creating a premium
- * 3D effect. A glare overlay follows the cursor for added realism.
- *
- * @example
- * ```tsx
- * <FeatureCard3D delay={0.2}>
- *   <h3>AI Analysis</h3>
- *   <p>Smart financial insights powered by AI.</p>
- * </FeatureCard3D>
- * ```
+ * 3D perspective tilting has been replaced with a crisp 1px border highlight
+ * and translateY(-1px) hover elevation to ensure 60fps locked rendering.
  */
 export default function FeatureCard3D({
   children,
   className = '',
-  maxTilt = 15,
-  glare = true,
+  maxTilt: _maxTilt = 15,
+  glare: _glare = true,
   delay = 0,
 }: FeatureCard3DProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  // Raw motion values for cursor position
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  // Spring-smoothed rotation
-  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [maxTilt, -maxTilt]), {
-    stiffness: 300,
-    damping: 30,
-  });
-  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-maxTilt, maxTilt]), {
-    stiffness: 300,
-    damping: 30,
-  });
-
-  // Glare position
-  const glareX = useTransform(mouseX, [-0.5, 0.5], ['0%', '100%']);
-  const glareY = useTransform(mouseY, [-0.5, 0.5], ['0%', '100%']);
-  const glareOpacity = useSpring(0, { stiffness: 300, damping: 30 });
-
-  const glareBackground = useTransform(
-    [glareX, glareY],
-    ([x, y]) => `radial-gradient(circle at ${x} ${y}, rgba(255,255,255,0.15), transparent 60%)`
-  );
-
-  /**
-   * Handles mouse move over the card.
-   * Calculates normalized cursor position (-0.5 to 0.5).
-   */
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-
-    const rect = cardRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    // Normalize to -0.5 to 0.5
-    mouseX.set((e.clientX - centerX) / rect.width);
-    mouseY.set((e.clientY - centerY) / rect.height);
-    glareOpacity.set(0.15);
-  };
-
-  /**
-   * Resets the card to its neutral position on mouse leave.
-   */
-  const handleMouseLeave = () => {
-    mouseX.set(0);
-    mouseY.set(0);
-    glareOpacity.set(0);
-  };
-
   return (
     <motion.div
-      ref={cardRef}
-      className={`feature-card-3d ${className}`}
-      style={{
-        rotateX,
-        rotateY,
-        transformStyle: 'preserve-3d',
-        perspective: 1000,
-      }}
-      initial={{ opacity: 0, y: 40 }}
+      className={`feature-card-3d relative rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors transition-transform duration-150 ease-out hover:-translate-y-[1px] hover:border-[var(--border-strong)] ${className}`}
+      initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
+      viewport={{ once: true, margin: '-40px' }}
       transition={{
-        duration: 0.6,
+        duration: 0.3,
         delay,
-        ease: [0.25, 0.46, 0.45, 0.94],
+        ease: [0.16, 1, 0.3, 1],
       }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
     >
-      {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, transform: 'translateZ(20px)' }}>
+      <div className="relative z-10 w-full h-full p-6">
         {children}
       </div>
-
-      {/* Glare overlay */}
-      {glare && (
-        <motion.div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: 'inherit',
-            background: glareBackground,
-            opacity: glareOpacity,
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        />
-      )}
     </motion.div>
   );
 }

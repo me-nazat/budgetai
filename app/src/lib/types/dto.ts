@@ -192,6 +192,10 @@ export const CreateAccountDTO = z.object({
   currency: z.string().min(3).max(3).default('BDT'),
   openingBalance: z.number().default(0),
   colorTag: z.string().default('#136dec'),
+  creditLimit: z.number().positive().nullable().optional(),
+  statementClosingDay: z.number().int().min(1).max(31).nullable().optional(),
+  paymentDueDate: z.number().int().min(1).max(31).nullable().optional(),
+  apr: z.number().min(0).max(100).nullable().optional(),
 }).strict();
 export type CreateAccountDTO = z.infer<typeof CreateAccountDTO>;
 
@@ -202,6 +206,10 @@ export const UpdateAccountDTO = z.object({
   currency: z.string().min(3).max(3).optional(),
   colorTag: z.string().optional(),
   isArchived: z.boolean().optional(),
+  creditLimit: z.number().positive().nullable().optional(),
+  statementClosingDay: z.number().int().min(1).max(31).nullable().optional(),
+  paymentDueDate: z.number().int().min(1).max(31).nullable().optional(),
+  apr: z.number().min(0).max(100).nullable().optional(),
 }).strict();
 export type UpdateAccountDTO = z.infer<typeof UpdateAccountDTO>;
 
@@ -209,17 +217,64 @@ export type UpdateAccountDTO = z.infer<typeof UpdateAccountDTO>;
    TRANSACTION DTOs
    ═══════════════════════════════════════════════════════════════ */
 
+/** Single item within a split-category transaction. */
+export const TransactionSplitItemDTO = z.object({
+  id: z.string(),
+  category: z.string().min(1).max(50),
+  amount: z.number().positive(),
+  note: z.string().max(255).optional(),
+  isTaxDeductible: z.boolean().optional(),
+});
+export type TransactionSplitItemDTO = z.infer<typeof TransactionSplitItemDTO>;
+
 /** Create transaction request body. */
 export const CreateTransactionDTO = z.object({
   type: transactionTypeSchema,
   amount: amountSchema,
-  category: categorySchema,
-  description: descriptionSchema,
+  category: categorySchema.optional().default('Other'),
+  description: descriptionSchema.optional().default(''),
   date: optionalDateSchema,
   notes: z.string().max(1000).optional().default(''),
   accountId: z.number().int().positive().optional().nullable(),
   toAccountId: z.number().int().positive().optional().nullable(),
-}).strict();
+  splits: z.array(TransactionSplitItemDTO).optional(),
+  splitItemsJson: z.union([z.string(), z.array(TransactionSplitItemDTO)]).optional().nullable(),
+  isSplit: z.union([z.boolean(), z.number()]).optional(),
+  merchantNormalized: z.string().optional().nullable(),
+  status: z.enum(['cleared', 'pending', 'reconciled'] as const).optional().default('cleared'),
+  clientMutationId: z.string().optional().nullable(),
+  taxDeductible: z.union([z.boolean(), z.number()]).optional(),
+  taxSuggested: z.number().optional(),
+  attachments: z.string().optional().nullable(),
+  receipt_image: z.string().optional().nullable(),
+  personalShareAmount: z.number().optional().nullable(),
+  reimbursementStatus: z.enum(['none', 'receivable', 'payable', 'settled'] as const).optional().nullable(),
+  collaborativeSourceType: z.enum(['tour', 'household', 'bill_split'] as const).optional().nullable(),
+  collaborativeSourceId: z.string().optional().nullable(),
+  collaborativeExpenseId: z.string().optional().nullable(),
+  isSettlementTransfer: z.union([z.boolean(), z.number()]).optional().nullable(),
+}).refine(
+  (data) => {
+    let splitList = data.splits;
+    if (!splitList && data.splitItemsJson) {
+      try {
+        splitList = typeof data.splitItemsJson === 'string' ? JSON.parse(data.splitItemsJson) : data.splitItemsJson;
+      } catch {
+        return false;
+      }
+    }
+    if (splitList && splitList.length > 0) {
+      const splitTotal = splitList.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+      const target = data.personalShareAmount ?? data.amount;
+      return Math.abs(splitTotal - target) <= 0.01;
+    }
+    return true;
+  },
+  {
+    message: 'Sum of split amounts must equal the transaction amount (within 0.01 tolerance)',
+    path: ['splits'],
+  }
+);
 export type CreateTransactionDTO = z.infer<typeof CreateTransactionDTO>;
 
 /** Update transaction request body. */
@@ -227,14 +282,100 @@ export const UpdateTransactionDTO = z.object({
   id: z.number().int().positive('Invalid transaction ID'),
   type: transactionTypeSchema,
   amount: amountSchema,
-  category: categorySchema,
-  description: descriptionSchema,
+  category: categorySchema.optional().default('Other'),
+  description: descriptionSchema.optional().default(''),
   date: optionalDateSchema,
   notes: z.string().max(1000).optional().default(''),
   accountId: z.number().int().positive().optional().nullable(),
   toAccountId: z.number().int().positive().optional().nullable(),
-}).strict();
+  splits: z.array(TransactionSplitItemDTO).optional(),
+  splitItemsJson: z.union([z.string(), z.array(TransactionSplitItemDTO)]).optional().nullable(),
+  isSplit: z.union([z.boolean(), z.number()]).optional(),
+  merchantNormalized: z.string().optional().nullable(),
+  status: z.enum(['cleared', 'pending', 'reconciled'] as const).optional(),
+  clientMutationId: z.string().optional().nullable(),
+  taxDeductible: z.union([z.boolean(), z.number()]).optional(),
+  taxSuggested: z.number().optional(),
+  attachments: z.string().optional().nullable(),
+  receipt_image: z.string().optional().nullable(),
+  personalShareAmount: z.number().optional().nullable(),
+  reimbursementStatus: z.enum(['none', 'receivable', 'payable', 'settled'] as const).optional().nullable(),
+  collaborativeSourceType: z.enum(['tour', 'household', 'bill_split'] as const).optional().nullable(),
+  collaborativeSourceId: z.string().optional().nullable(),
+  collaborativeExpenseId: z.string().optional().nullable(),
+  isSettlementTransfer: z.union([z.boolean(), z.number()]).optional().nullable(),
+}).refine(
+  (data) => {
+    let splitList = data.splits;
+    if (!splitList && data.splitItemsJson) {
+      try {
+        splitList = typeof data.splitItemsJson === 'string' ? JSON.parse(data.splitItemsJson) : data.splitItemsJson;
+      } catch {
+        return false;
+      }
+    }
+    if (splitList && splitList.length > 0) {
+      const splitTotal = splitList.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+      const target = data.personalShareAmount ?? data.amount;
+      return Math.abs(splitTotal - target) <= 0.01;
+    }
+    return true;
+  },
+  {
+    message: 'Sum of split amounts must equal the total transaction amount (within 0.01 tolerance)',
+    path: ['splits'],
+  }
+);
 export type UpdateTransactionDTO = z.infer<typeof UpdateTransactionDTO>;
+
+/** Patch transaction request body for inline cell editing. */
+export const PatchTransactionDTO = z.object({
+  id: z.number().int().positive('Invalid transaction ID'),
+  type: transactionTypeSchema.optional(),
+  amount: amountSchema.optional(),
+  category: categorySchema.optional(),
+  description: descriptionSchema.optional(),
+  date: dateSchema.optional(),
+  notes: z.string().max(1000).optional(),
+  accountId: z.number().int().positive().optional().nullable(),
+  toAccountId: z.number().int().positive().optional().nullable(),
+  splits: z.array(TransactionSplitItemDTO).optional(),
+  splitItemsJson: z.union([z.string(), z.array(TransactionSplitItemDTO)]).optional().nullable(),
+  isSplit: z.union([z.boolean(), z.number()]).optional(),
+  merchantNormalized: z.string().optional().nullable(),
+  status: z.enum(['cleared', 'pending', 'reconciled'] as const).optional(),
+  taxDeductible: z.union([z.boolean(), z.number()]).optional(),
+  taxSuggested: z.number().optional(),
+  attachments: z.string().optional().nullable(),
+  personalShareAmount: z.number().optional().nullable(),
+  reimbursementStatus: z.enum(['none', 'receivable', 'payable', 'settled'] as const).optional().nullable(),
+  collaborativeSourceType: z.enum(['tour', 'household', 'bill_split'] as const).optional().nullable(),
+  collaborativeSourceId: z.string().optional().nullable(),
+  collaborativeExpenseId: z.string().optional().nullable(),
+  isSettlementTransfer: z.union([z.boolean(), z.number()]).optional().nullable(),
+}).refine(
+  (data) => {
+    let splitList = data.splits;
+    if (!splitList && data.splitItemsJson) {
+      try {
+        splitList = typeof data.splitItemsJson === 'string' ? JSON.parse(data.splitItemsJson) : data.splitItemsJson;
+      } catch {
+        return false;
+      }
+    }
+    if (splitList && splitList.length > 0 && data.amount !== undefined) {
+      const splitTotal = splitList.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+      const target = data.personalShareAmount ?? data.amount;
+      return Math.abs(splitTotal - target) <= 0.01;
+    }
+    return true;
+  },
+  {
+    message: 'Sum of split amounts must equal the transaction amount (within 0.01 tolerance)',
+    path: ['splits'],
+  }
+);
+export type PatchTransactionDTO = z.infer<typeof PatchTransactionDTO>;
 
 /** Transaction query filters. */
 export const TransactionQueryDTO = z.object({
@@ -259,7 +400,24 @@ export const TransactionResponseDTO = z.object({
   createdAt: z.string().optional(),
   accountId: z.number().optional().nullable(),
   toAccountId: z.number().optional().nullable(),
-}).strict();
+  splits: z.array(TransactionSplitItemDTO).optional().nullable(),
+  splitItemsJson: z.union([z.string(), z.array(TransactionSplitItemDTO)]).optional().nullable(),
+  isSplit: z.union([z.number(), z.boolean()]).optional().nullable(),
+  merchantNormalized: z.string().optional().nullable(),
+  status: z.enum(['cleared', 'pending', 'reconciled'] as const).optional(),
+  notes: z.string().optional().nullable(),
+  taxDeductible: z.union([z.number(), z.boolean()]).optional(),
+  taxSuggested: z.number().optional(),
+  transferGroupId: z.string().optional().nullable(),
+  attachments: z.string().optional().nullable(),
+  personalShareAmount: z.number().optional().nullable(),
+  reimbursementStatus: z.enum(['none', 'receivable', 'payable', 'settled'] as const).optional().nullable(),
+  collaborativeSourceType: z.enum(['tour', 'household', 'bill_split'] as const).optional().nullable(),
+  collaborativeSourceId: z.string().optional().nullable(),
+  collaborativeExpenseId: z.string().optional().nullable(),
+  isSettlementTransfer: z.union([z.number(), z.boolean()]).optional().nullable(),
+  clientMutationId: z.string().optional().nullable(),
+});
 export type TransactionResponseDTO = z.infer<typeof TransactionResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -272,10 +430,22 @@ export const CreateBudgetDTO = z.object({
   monthlyLimit: amountSchema,
   month: z.number().int().min(1).max(12, 'Month must be 1–12'),
   year: z.number().int().min(2000).max(2100, 'Invalid year'),
+  rolloverEnabled: z.boolean().optional().default(false),
+  rolloverBalance: z.number().optional().default(0),
 }).strict();
 export type CreateBudgetDTO = z.infer<typeof CreateBudgetDTO>;
 
-/** Budget in API responses. */
+/** Rebalance budget envelopes without altering total allocated amount. */
+export const RebalanceBudgetsDTO = z.object({
+  fromBudgetId: z.number().int().positive('Source budget required'),
+  toBudgetId: z.number().int().positive('Destination budget required'),
+  amount: amountSchema,
+  month: z.number().int().min(1).max(12),
+  year: z.number().int().min(2000).max(2100),
+}).strict();
+export type RebalanceBudgetsDTO = z.infer<typeof RebalanceBudgetsDTO>;
+
+/** Budget in API responses with auto-pacing and rollover details. */
 export const BudgetResponseDTO = z.object({
   id: z.number(),
   category: z.string(),
@@ -284,6 +454,16 @@ export const BudgetResponseDTO = z.object({
   year: z.number(),
   spent: z.number().optional(),
   percentage: z.number().optional(),
+  rolloverEnabled: z.boolean().optional(),
+  rolloverBalance: z.number().optional(),
+  effectiveLimit: z.number().optional(),
+  remaining: z.number().optional(),
+  idealDailyBurn: z.number().optional(),
+  actualDailyBurn: z.number().optional(),
+  pacingStatus: z.enum(['on_track', 'pacing_fast', 'exhausted']).optional(),
+  pacingDeltaPercent: z.number().optional(),
+  projectedMonthEndSpend: z.number().optional(),
+  daysRemaining: z.number().optional(),
 }).strict();
 export type BudgetResponseDTO = z.infer<typeof BudgetResponseDTO>;
 
@@ -372,6 +552,75 @@ export const RecurringResponseDTO = z.object({
 export type RecurringResponseDTO = z.infer<typeof RecurringResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════
+   SUBSCRIPTION INTELLIGENCE DTOs
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Create subscription request body. */
+export const CreateSubscriptionDTO = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  amount: amountSchema,
+  currency: z.string().min(3).max(3).optional().default('BDT'),
+  billingCycle: z.enum(['weekly', 'monthly', 'yearly'] as const).default('monthly'),
+  nextRenewalDate: z.string().min(10, 'Renewal date required'),
+  category: categorySchema.optional().default('Other'),
+  logoUrl: z.string().optional().nullable(),
+  isActive: z.union([z.boolean(), z.number()]).optional().default(1),
+  trialEndsAt: z.string().optional().nullable(),
+  previousAmount: z.number().optional().nullable(),
+  accountId: z.number().int().positive().optional().nullable(),
+  cancelReminderDays: z.number().int().min(0).max(30).optional().default(3),
+}).strict();
+export type CreateSubscriptionDTO = z.infer<typeof CreateSubscriptionDTO>;
+
+/** Update subscription request body. */
+export const UpdateSubscriptionDTO = z.object({
+  name: z.string().min(1).max(100).optional(),
+  amount: amountSchema.optional(),
+  currency: z.string().min(3).max(3).optional(),
+  billingCycle: z.enum(['weekly', 'monthly', 'yearly'] as const).optional(),
+  nextRenewalDate: z.string().optional(),
+  category: categorySchema.optional(),
+  logoUrl: z.string().optional().nullable(),
+  isActive: z.union([z.boolean(), z.number()]).optional(),
+  trialEndsAt: z.string().optional().nullable(),
+  previousAmount: z.number().optional().nullable(),
+  accountId: z.number().int().positive().optional().nullable(),
+  cancelReminderDays: z.number().int().min(0).max(30).optional(),
+}).strict();
+export type UpdateSubscriptionDTO = z.infer<typeof UpdateSubscriptionDTO>;
+
+/** Subscription intelligence response DTO. */
+export const SubscriptionResponseDTO = z.object({
+  id: z.number(),
+  name: z.string(),
+  amount: z.number(),
+  currency: z.string(),
+  billingCycle: z.enum(['weekly', 'monthly', 'yearly']),
+  nextRenewalDate: z.string(),
+  category: z.string(),
+  logoUrl: z.string().nullable().optional(),
+  isActive: z.number(),
+  trialEndsAt: z.string().nullable().optional(),
+  previousAmount: z.number().nullable().optional(),
+  accountId: z.number().nullable().optional(),
+  cancelReminderDays: z.number().optional(),
+  createdAt: z.string().optional(),
+  priceHikeAlert: z.object({
+    detected: z.boolean(),
+    previousAmount: z.number(),
+    currentAmount: z.number(),
+    delta: z.number(),
+    percentageIncrease: z.number(),
+    lastChargedDate: z.string().optional(),
+  }).optional(),
+  daysUntilRenewal: z.number().optional(),
+  trialCountdownDays: z.number().nullable().optional(),
+  monthlyNormalizedAmount: z.number().optional(),
+  annualNormalizedAmount: z.number().optional(),
+}).strict();
+export type SubscriptionResponseDTO = z.infer<typeof SubscriptionResponseDTO>;
+
+/* ═══════════════════════════════════════════════════════════════
    NOTIFICATION DTOs
    ═══════════════════════════════════════════════════════════════ */
 
@@ -410,6 +659,69 @@ export const DashboardQueryDTO = z.object({
 }).strict();
 export type DashboardQueryDTO = z.infer<typeof DashboardQueryDTO>;
 
+/** Safe to Spend breakdown schema. */
+export const SafeToSpendDTO = z.object({
+  safeToSpendTotal: z.number(),
+  dailySafeAllowance: z.number(),
+  daysRemaining: z.number(),
+  liquidCash: z.number(),
+  upcomingCommittedBills: z.number(),
+  remainingBudgetReservations: z.number(),
+  creditCardCurrentBalance: z.number(),
+});
+export type SafeToSpendDTO = z.infer<typeof SafeToSpendDTO>;
+
+/** Spending velocity pace schema. */
+export const SpendingPaceDTO = z.object({
+  currentMonthSpendToDate: z.number(),
+  previousMonthSpendSameDay: z.number(),
+  paceDeltaPercent: z.number(),
+  projectedMonthEndSpend: z.number(),
+  dayOfMonth: z.number(),
+  daysInMonth: z.number(),
+  monthElapsedPercent: z.number(),
+  budgetConsumedPercent: z.number(),
+});
+export type SpendingPaceDTO = z.infer<typeof SpendingPaceDTO>;
+
+/** Accounts & Liquidity summary schema. */
+export const AccountsSummaryDTO = z.object({
+  totalAssets: z.number(),
+  totalLiabilities: z.number(),
+  netWorth: z.number(),
+  assetToLiabilityRatio: z.number(),
+  liquidCash: z.number(),
+  liquidRatio: z.number(),
+  accounts: z.array(z.object({
+    id: z.number(),
+    name: z.string(),
+    type: z.string(),
+    currency: z.string(),
+    currentBalance: z.number(),
+    balance: z.number(),
+    isLiability: z.boolean(),
+    colorTag: z.string(),
+    isArchived: z.number(),
+  })),
+});
+export type AccountsSummaryDTO = z.infer<typeof AccountsSummaryDTO>;
+
+/** Financial Health Score schema. */
+export const HealthScoreDTO = z.object({
+  score: z.number(),
+  grade: z.string(),
+  pillars: z.object({
+    savingsRate: z.object({ score: z.number(), max: z.number(), action: z.string() }),
+    budgetAdherence: z.object({ score: z.number(), max: z.number(), action: z.string() }),
+    emergencyRunway: z.object({ score: z.number(), max: z.number(), action: z.string() }),
+    debtLoad: z.object({ score: z.number(), max: z.number(), action: z.string() }),
+  }),
+  breakdown: z.record(z.string(), z.any()).optional(),
+  history: z.array(z.object({ month: z.string(), score: z.number() })).optional(),
+  insight: z.string().optional(),
+});
+export type HealthScoreDTO = z.infer<typeof HealthScoreDTO>;
+
 /** Dashboard data response. */
 export const DashboardResponseDTO = z.object({
   expenses: z.object({
@@ -439,7 +751,12 @@ export const DashboardResponseDTO = z.object({
     percentage: z.number(),
   })),
   netWorth: z.number(),
-}).strict();
+  safeToSpend: SafeToSpendDTO.optional(),
+  spendingPace: SpendingPaceDTO.optional(),
+  accountsSummary: AccountsSummaryDTO.optional(),
+  healthScore: HealthScoreDTO.optional(),
+  totalTransactions: z.number().optional(),
+}).passthrough();
 export type DashboardResponseDTO = z.infer<typeof DashboardResponseDTO>;
 
 /* ═══════════════════════════════════════════════════════════════

@@ -66,6 +66,12 @@ export const householdMembers = sqliteTable(
     /** Role within the household. */
     role: text('role', { enum: ['owner', 'member'] }).notNull().default('member'),
 
+    /** Income weight for pro-rata split calculations (e.g. 1.0, 1.5, 2.0). */
+    incomeWeight: real('income_weight').default(1.0),
+
+    /** Explicit default allocation percentage (0 to 100). */
+    defaultAllocationPercentage: real('default_allocation_percentage'),
+
     joinedAt: text('joined_at')
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -95,12 +101,27 @@ export const householdExpenses = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
 
+    /** Explicit alias for payer user ID */
+    payerUserId: integer('payer_user_id'),
+
     description: text('description').notNull(),
     amount: real('amount').notNull(),
     category: text('category').notNull().default('Other'),
 
     /** Who should share this expense: 'all' or JSON array of user IDs. */
     splitBetween: text('split_between').notNull().default('all'),
+
+    /** Funding account ID if paid from user's personal bank account */
+    fundingAccountId: integer('funding_account_id'),
+
+    /** Personal share of the expense for the payer's own budget */
+    personalShareAmount: real('personal_share_amount'),
+
+    /** Linked transaction in main ledger */
+    linkedTransactionId: integer('linked_transaction_id'),
+
+    /** Detailed split breakdown JSON storing member shares */
+    splitBreakdownJson: text('split_breakdown_json'),
 
     createdAt: text('created_at')
       .notNull()
@@ -137,6 +158,13 @@ export const householdSettlements = sqliteTable(
     sourceRuleId: integer('source_rule_id'),
     status: text('status', { enum: ['pending', 'settled'] }).notNull().default('pending'),
     settledAt: text('settled_at'),
+
+    /** Personal account IDs for settlement transfer tracking */
+    payerAccountId: integer('payer_account_id'),
+    payeeAccountId: integer('payee_account_id'),
+    settlementAccountId: integer('settlement_account_id'),
+    linkedTransactionId: integer('linked_transaction_id'),
+
     createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
   },
   (table) => [

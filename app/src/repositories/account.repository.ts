@@ -72,12 +72,37 @@ export class AccountRepository {
   /**
    * Safely increments or decrements an account balance transactionally.
    */
-  static async updateBalance(id: number, amountDiff: number): Promise<void> {
-    await db
+  static async updateBalance(id: number, amountDiff: number, txClient?: any): Promise<void> {
+    const client = txClient || db;
+    await client
       .update(accounts)
       .set({
         currentBalance: sql`current_balance + ${amountDiff}`,
       })
       .where(eq(accounts.id, id));
+  }
+
+  /**
+   * Atomically applies consolidated balance deltas to multiple accounts in a single pass.
+   */
+  static async applyBalanceDeltas(
+    deltas: Map<number, number> | Record<number, number>,
+    txClient?: any
+  ): Promise<void> {
+    const client = txClient || db;
+    const entries = deltas instanceof Map
+      ? Array.from(deltas.entries())
+      : Object.entries(deltas).map(([k, v]) => [Number(k), v] as [number, number]);
+
+    for (const [accId, diff] of entries) {
+      if (diff !== 0 && accId) {
+        await client
+          .update(accounts)
+          .set({
+            currentBalance: sql`current_balance + ${diff}`,
+          })
+          .where(eq(accounts.id, accId));
+      }
+    }
   }
 }

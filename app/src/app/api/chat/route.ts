@@ -146,15 +146,120 @@ export const POST = apiHandler(
             attachments,
         );
 
-        let actionResults: ActionResult[] = [];
-        let storedTransactions: StoredTransaction[] = [];
+        const actionResults: ActionResult[] = [];
+        const storedTransactions: StoredTransaction[] = [];
+        let toolCall: { name: string; parameters: Record<string, any>; executionId: number } | null = null;
 
-        if (!hasAttachments) {
-            if (aiResponse.actions?.length) {
-                actionResults = await processDataActions(aiResponse.actions, userId, chatSessionId);
-            }
-            if (aiResponse.financialData?.length) {
-                storedTransactions = await storeFinancialData(aiResponse.financialData, userId, today, contextBundle.currencySymbol);
+        // Stage all mutation writes into verifiable action cards (zero unconfirmed writes)
+        const hasMutations = (aiResponse.financialData && aiResponse.financialData.length > 0) ||
+                             (aiResponse.actions && aiResponse.actions.length > 0);
+
+        if (hasMutations) {
+            // Determine primary staged tool call
+            if (aiResponse.financialData && aiResponse.financialData.length > 0) {
+                const first = aiResponse.financialData[0];
+                const params = {
+                    amount: first.amount,
+                    type: first.type === 'earning' ? 'INCOME' : 'EXPENSE',
+                    description: first.description,
+                    categoryName: first.category,
+                    date: first.date || today,
+                };
+                try {
+                    const { db } = await import('@/db/client');
+                    const { chatToolExecutions, agentActionLogs } = await import('@/db/schema');
+                    const { randomUUID } = await import('crypto');
+
+                    const [execution] = await db
+                        .insert(chatToolExecutions)
+                        .values({
+                            userId,
+                            toolName: 'createTransaction',
+                            parametersJson: JSON.stringify(params),
+                            status: 'pending',
+                        })
+                        .returning();
+
+                    await db.insert(agentActionLogs).values({
+                        id: `act_${randomUUID()}`,
+                        userId,
+                        sessionId: chatSessionId,
+                        actionType: 'CREATE_TRANSACTION',
+                        payloadJson: JSON.stringify(params),
+                        status: 'PENDING_APPROVAL',
+                    });
+
+                    toolCall = {
+                        name: 'createTransaction',
+                        parameters: params,
+                        executionId: execution.id,
+                    };
+                } catch (e) {
+                    console.error('Failed to stage tool execution:', e);
+                }
+            } else if (aiResponse.actions && aiResponse.actions.length > 0) {
+                const act = aiResponse.actions[0];
+                let toolName = 'createTransaction';
+                let params: Record<string, any> = {};
+
+                if (act.target === 'transactions') {
+                    toolName = 'createTransaction';
+                    params = {
+                        amount: act.updates?.amount || 0,
+                        type: act.updates?.type === 'earning' ? 'INCOME' : 'EXPENSE',
+                        description: act.updates?.description || 'Transaction',
+                        categoryName: act.updates?.category || 'Other',
+                        date: act.updates?.date || today,
+                    };
+                } else if (act.target === 'budgets') {
+                    toolName = 'setBudgetLimit';
+                    params = {
+                        categoryName: act.updates?.category || act.filter?.category || 'Category',
+                        monthlyLimit: act.updates?.monthly_limit || act.updates?.amount || 0,
+                    };
+                } else if (act.target === 'savings_goals') {
+                    toolName = 'createSavingsGoal';
+                    params = {
+                        goalName: act.updates?.name || act.updates?.description || 'Goal',
+                        targetAmount: act.updates?.amount || act.updates?.target_amount || 0,
+                        targetDate: act.updates?.date,
+                    };
+                }
+
+                if (params && Object.keys(params).length > 0) {
+                    try {
+                        const { db } = await import('@/db/client');
+                        const { chatToolExecutions, agentActionLogs } = await import('@/db/schema');
+                        const { randomUUID } = await import('crypto');
+
+                        const [execution] = await db
+                            .insert(chatToolExecutions)
+                            .values({
+                                userId,
+                                toolName,
+                                parametersJson: JSON.stringify(params),
+                                status: 'pending',
+                            })
+                            .returning();
+
+                        await db.insert(agentActionLogs).values({
+                            id: `act_${randomUUID()}`,
+                            userId,
+                            sessionId: chatSessionId,
+                            actionType: toolName.toUpperCase(),
+                            payloadJson: JSON.stringify(params),
+                            status: 'PENDING_APPROVAL',
+                        });
+
+                        toolCall = {
+                            name: toolName,
+                            parameters: params,
+                            executionId: execution.id,
+                        };
+                    } catch (e) {
+                        console.error('Failed to stage tool execution:', e);
+                    }
+                }
             }
         }
 
@@ -165,13 +270,8 @@ export const POST = apiHandler(
                 'INSERT INTO chat_messages (user_id, role, content, mode, session_id) VALUES (?, ?, ?, ?, ?)',
                 [userId, 'assistant', aiMessage, mode, chatSessionId]
             );
-        } else if (!hasAttachments && (storedTransactions.length > 0 || actionResults.length > 0)) {
-            const parts: string[] = [];
-            if (storedTransactions.length > 0) {
-                parts.push(storedTransactions.map(t => `${t.type}: ${contextBundle.currencySymbol}${t.amount} (${t.category})`).join(', '));
-            }
-            if (actionResults.length > 0) parts.push(actionResults.map(r => r.detail).join(', '));
-            aiMessage = `Saved: ${parts.join(' | ')}`;
+        } else if (hasMutations) {
+            aiMessage = `Proposed action: please confirm to apply.`;
             await run(
                 'INSERT INTO chat_messages (user_id, role, content, mode, session_id) VALUES (?, ?, ?, ?, ?)',
                 [userId, 'system', aiMessage, mode, chatSessionId]
@@ -179,13 +279,11 @@ export const POST = apiHandler(
         }
 
         return NextResponse.json({
-            message: hasAttachments
-                ? aiResponse.message || 'I reviewed the attachment. Confirm the proposed items before I save them.'
-                : mode === 'chat' ? aiMessage : (storedTransactions.length > 0 || actionResults.length > 0 ? aiMessage : ''),
+            message: mode === 'chat' ? aiMessage : (hasMutations ? aiMessage : ''),
             transactions: storedTransactions,
             actionResults,
-            toolCall: (aiResponse as any).toolCall || null,
-            pendingActions: hasAttachments ? {
+            toolCall,
+            pendingActions: hasMutations ? {
                 financialData: aiResponse.financialData || [],
                 actions: aiResponse.actions || [],
             } : null,
@@ -194,6 +292,7 @@ export const POST = apiHandler(
                 summary: a.extractedText ? 'Text extracted and analyzed.' : 'Visual/document content analyzed by AI where supported.',
                 confidence: a.extractedText || a.data ? 'medium' : 'low',
             })),
+            snapshot: contextBundle.snapshot,
             isReportRequest: aiResponse.isReportRequest,
             reportFormat: aiResponse.reportFormat,
             reportType: aiResponse.reportType,

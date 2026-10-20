@@ -13,7 +13,27 @@ import { NotFoundError, ErrorCode } from '@/lib/types/errors';
 /**
  * GoalService — business logic for savings goals.
  */
+export interface GoalMilestoneCalculated {
+  percentage: number;
+  amount: number;
+  isAchieved: boolean;
+}
+
 export class GoalService {
+  /**
+   * Automatically computes milestones (25%, 50%, 75%, 100%) from target and saved amount.
+   */
+  static calculateMilestones(targetAmount: number, savedAmount: number): GoalMilestoneCalculated[] {
+    const thresholds = [25, 50, 75, 100];
+    const currentPct = targetAmount > 0 ? (savedAmount / targetAmount) * 100 : 0;
+
+    return thresholds.map((pct) => ({
+      percentage: pct,
+      amount: Math.round(((targetAmount * pct) / 100) * 100) / 100,
+      isAchieved: currentPct >= pct,
+    }));
+  }
+
   /**
    * Retrieves all goals for a user with calculated progress.
    *

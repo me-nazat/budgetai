@@ -2,13 +2,16 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useCurrency } from '@/hooks/useCurrency';
+import useSWR from 'swr';
 
 interface ParticipantDraft {
   id: string;
   name: string;
+  emailOrNote?: string;
 }
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 };
@@ -19,23 +22,59 @@ function createParticipant(name = '', id?: string): ParticipantDraft {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random()}`),
     name,
+    emailOrNote: '',
   };
 }
 
+const POPULAR_CURRENCIES = [
+  { code: 'BDT', label: 'BDT (৳)', symbol: '৳' },
+  { code: 'USD', label: 'USD ($)', symbol: '$' },
+  { code: 'EUR', label: 'EUR (€)', symbol: '€' },
+  { code: 'GBP', label: 'GBP (£)', symbol: '£' },
+  { code: 'THB', label: 'THB (฿)', symbol: '฿' },
+  { code: 'JPY', label: 'JPY (¥)', symbol: '¥' },
+  { code: 'INR', label: 'INR (₹)', symbol: '₹' },
+];
+
 export default function NewTourPage() {
-  const [name, setName] = useState('');
-  const [participants, setParticipants] = useState<ParticipantDraft[]>([
-    createParticipant('', 'participant-0'),
-    createParticipant('', 'participant-1'),
-  ]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const haptics = useHaptics();
+  const { currency: defaultCurrency } = useCurrency();
+
+  const { data: authData } = useSWR<{ user?: { id: number; name: string; email: string } }>('/api/auth/me');
+  const currentUserName = authData?.user?.name || 'Me';
+
+  // Form States
+  const [name, setName] = useState('');
+  const [destination, setDestination] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [baseCurrency, setBaseCurrency] = useState<string>(defaultCurrency || 'BDT');
+  const [totalBudget, setTotalBudget] = useState('');
+  const [enableKittyPool, setEnableKittyPool] = useState(true);
+
+  // Participants
+  const [participants, setParticipants] = useState<ParticipantDraft[]>([
+    createParticipant(currentUserName, 'participant-me'),
+    createParticipant('', 'participant-1'),
+  ]);
+
+  // Optional Category Budget Allocations
+  const [showCategoryBreakdown, setShowCategoryBreakdown] = useState(false);
+  const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>({
+    Accommodation: '',
+    Transport: '',
+    Food: '',
+    Activities: '',
+    Shopping: '',
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const validParticipants = useMemo(
-    () => participants.map((participant) => participant.name.trim()).filter(Boolean),
-    [participants],
+    () => participants.map((p) => p.name.trim()).filter(Boolean),
+    [participants]
   );
 
   const canSubmit = name.trim().length > 0 && validParticipants.length >= 2 && !isSubmitting;
@@ -48,22 +87,22 @@ export default function NewTourPage() {
   const handleRemoveParticipant = (id: string) => {
     if (participants.length <= 2) return;
     haptics.tap();
-    setParticipants((current) => current.filter((participant) => participant.id !== id));
+    setParticipants((current) => current.filter((p) => p.id !== id));
   };
 
   const handleParticipantChange = (id: string, value: string) => {
-    setParticipants((current) => current.map((participant) => (
-      participant.id === id ? { ...participant, name: value } : participant
-    )));
+    setParticipants((current) =>
+      current.map((p) => (p.id === id ? { ...p, name: value } : p))
+    );
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!canSubmit) return;
 
-    const deduped = new Set(validParticipants.map((participant) => participant.toLocaleLowerCase()));
+    const deduped = new Set(validParticipants.map((p) => p.toLocaleLowerCase()));
     if (deduped.size !== validParticipants.length) {
-      setError('Participant names must be unique.');
+      setError('Traveller names must be unique to prevent split confusion.');
       haptics.error();
       return;
     }
@@ -71,192 +110,266 @@ export default function NewTourPage() {
     setIsSubmitting(true);
     setError(null);
 
+    const budgetNum = totalBudget ? parseFloat(totalBudget) : null;
+
     try {
       const res = await fetch('/api/bill-splits/tours', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), participants: validParticipants }),
+        body: JSON.stringify({
+          name: name.trim(),
+          destination: destination.trim() || null,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          baseCurrency,
+          totalBudget: budgetNum,
+          enableKittyPool,
+          participants: validParticipants,
+          categoryAllocations: showCategoryBreakdown ? categoryBudgets : undefined,
+        }),
       });
+
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.success || !data?.tour?.id) {
-        throw new Error(getApiErrorMessage(data, 'Failed to create tour budget.'));
+        throw new Error(getApiErrorMessage(data, 'Failed to create tour.'));
       }
 
       haptics.success();
       router.push(`/tours/${data.tour.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create tour budget.');
+      setError(err instanceof Error ? err.message : 'Failed to create tour.');
       haptics.error();
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="mx-auto min-h-dvh max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto min-h-dvh max-w-3xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
       <motion.button
         type="button"
         onClick={() => router.back()}
         whileTap={{ scale: 0.97 }}
         transition={spring}
-        className="mb-8 inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/70 px-4 py-2 text-sm font-bold text-gray-500 shadow-sm backdrop-blur-xl hover:text-gray-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-400 dark:hover:text-white"
+        className="inline-flex items-center gap-2 rounded-2xl border border-border-subtle bg-surface-primary px-4 py-2 text-xs font-bold text-gray-400 hover:text-white transition-colors"
       >
         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-        Back
+        Back to Tours
       </motion.button>
 
-      <motion.header
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={spring}
-        className="mb-8"
-      >
-        <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-primary">Tour Setup</p>
-        <h1 className="max-w-2xl text-balance text-4xl font-black tracking-tight text-gray-950 dark:text-white sm:text-5xl">
-          Start a shared budget that feels effortless.
+      <header>
+        <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-400 mb-1">Trip Creator</p>
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+          Create New Group Tour
         </h1>
-        <p className="mt-3 max-w-xl text-pretty text-sm font-medium leading-6 text-gray-500 dark:text-gray-400">
-          Name the trip, add everyone who is paying, then move into a dedicated spendings workspace.
+        <p className="mt-1 text-xs sm:text-sm text-gray-400">
+          Set trip details, target budgets, shared kitty pool, and initial travellers.
         </p>
-      </motion.header>
+      </header>
 
-      <motion.form
-        onSubmit={handleSubmit}
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ ...spring, delay: 0.05 }}
-        className="glass-panel overflow-hidden rounded-[2rem] p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6"
-      >
-        <div className="space-y-2">
-          <label htmlFor="tour-name" className="ml-1 text-xs font-black uppercase tracking-[0.18em] text-gray-500">
-            Name of the tour
-          </label>
-          <div className="group relative">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-primary">
-              map
-            </span>
-            <input
-              id="tour-name"
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Bali summer trip"
-              className="w-full rounded-2xl border border-gray-200 bg-white/80 py-4 pl-12 pr-4 text-base font-bold text-gray-950 outline-none backdrop-blur-xl placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-[#0A0E1A]/72 dark:text-white dark:placeholder:text-gray-600"
-              required
-            />
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-300">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Tour Details */}
+        <div className="p-6 rounded-3xl bg-surface-primary border border-border-subtle space-y-4 shadow-xl">
+          <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-400 text-[18px]">flight_takeoff</span>
+            1. Trip Essentials
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                Tour Name *
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Cox's Bazar Road Trip, Bali Vacation 2026"
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                Destination (Optional)
+              </label>
+              <input
+                type="text"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="e.g. Cox's Bazar, Bali, Rome"
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                Base Currency
+              </label>
+              <select
+                value={baseCurrency}
+                onChange={(e) => setBaseCurrency(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none focus:border-emerald-500"
+              >
+                {POPULAR_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-emerald-500"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="mt-7 space-y-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <label className="ml-1 text-xs font-black uppercase tracking-[0.18em] text-gray-500">
-                Participants
-              </label>
-              <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                Add at least two unique names.
+        {/* Target Budget & Kitty Pool Toggle */}
+        <div className="p-6 rounded-3xl bg-surface-primary border border-border-subtle space-y-4 shadow-xl">
+          <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-sky-400 text-[18px]">payments</span>
+            2. Budget & Kitty Pool
+          </h2>
+
+          <div>
+            <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+              Total Target Budget (Optional)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={totalBudget}
+                onChange={(e) => setTotalBudget(e.target.value)}
+                placeholder="e.g. 50000"
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-base font-mono font-bold text-white outline-none focus:border-sky-500"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                {baseCurrency}
+              </span>
+            </div>
+          </div>
+
+          {/* Shared Tour Kitty Pool Switch */}
+          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-400 text-[20px]">savings</span>
+                <span className="text-xs font-black text-white uppercase tracking-wider">
+                  Enable Shared Tour Kitty / Pool
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Allows group members to deposit cash up front into a shared pool to pay for fuel, tolls, and group meals.
               </p>
             </div>
-            <span className="rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs font-black text-gray-500 dark:border-white/10 dark:bg-white/[0.04]">
-              {validParticipants.length} ready
-            </span>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={enableKittyPool}
+                onChange={(e) => setEnableKittyPool(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
+            </label>
           </div>
-
-          <motion.div layout className="space-y-3">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {participants.map((participant, index) => (
-                <motion.div
-                  key={participant.id}
-                  layout
-                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                  transition={spring}
-                  className="flex items-center gap-3"
-                >
-                  <div className="group relative flex-1">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-primary">
-                      {index === 0 ? 'person' : 'group_add'}
-                    </span>
-                    <input
-                      type="text"
-                      value={participant.name}
-                      onChange={(event) => handleParticipantChange(participant.id, event.target.value)}
-                      placeholder={index === 0 ? 'You or organizer' : `Participant ${index + 1}`}
-                      className="w-full rounded-2xl border border-gray-200 bg-white/75 py-3.5 pl-12 pr-4 text-sm font-bold text-gray-950 outline-none backdrop-blur-xl placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-[#0A0E1A]/72 dark:text-white dark:placeholder:text-gray-600"
-                      required={index < 2}
-                    />
-                  </div>
-                  <AnimatePresence>
-                    {participants.length > 2 && (
-                      <motion.button
-                        type="button"
-                        onClick={() => handleRemoveParticipant(participant.id)}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        whileTap={{ scale: 0.92 }}
-                        transition={spring}
-                        aria-label={`Remove participant ${index + 1}`}
-                        className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-500 hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:hover:bg-rose-500/15"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">close</span>
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-
-          <motion.button
-            type="button"
-            onClick={handleAddParticipant}
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            transition={spring}
-            className="inline-flex items-center gap-2 rounded-2xl border border-primary/15 bg-primary/10 px-4 py-3 text-sm font-black text-primary hover:bg-primary/15"
-          >
-            <span className="material-symbols-outlined text-[20px]">add_circle</span>
-            Add Person
-          </motion.button>
         </div>
 
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={spring}
-              className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-500 dark:text-rose-300"
+        {/* Travellers Section */}
+        <div className="p-6 rounded-3xl bg-surface-primary border border-border-subtle space-y-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-400 text-[18px]">group</span>
+              3. Travellers & Members ({validParticipants.length})
+            </h2>
+            <button
+              type="button"
+              onClick={handleAddParticipant}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-secondary border border-border-subtle text-xs font-bold text-emerald-400 hover:bg-surface-tertiary transition-colors"
             >
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <span className="material-symbols-outlined text-[16px]">person_add</span>
+              Add Traveller
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400">
+            Add friends, family, or offline guests. Registered users can claim their spot later with the invite link.
+          </p>
 
+          <div className="space-y-2.5">
+            {participants.map((p, idx) => (
+              <div key={p.id} className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 border border-white/10 text-xs font-bold text-gray-400 shrink-0">
+                  #{idx + 1}
+                </div>
+                <input
+                  type="text"
+                  value={p.name}
+                  onChange={(e) => handleParticipantChange(p.id, e.target.value)}
+                  placeholder={`Traveller ${idx + 1} name`}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#0f172a] border border-border-subtle text-xs font-bold text-white outline-none focus:border-amber-400"
+                  required
+                />
+                {participants.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveParticipant(p.id)}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 shrink-0 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">remove</span>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Submit Button */}
         <motion.button
           type="submit"
-          disabled={!canSubmit}
-          whileHover={canSubmit ? { y: -1 } : undefined}
-          whileTap={canSubmit ? { scale: 0.97 } : undefined}
-          transition={spring}
-          className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-base font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.22)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+          disabled={!canSubmit || isSubmitting}
+          whileHover={{ scale: canSubmit ? 1.01 : 1 }}
+          whileTap={{ scale: canSubmit ? 0.98 : 1 }}
+          className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-600 font-black text-sm text-white shadow-xl shadow-emerald-500/25 transition-all disabled:opacity-50 disabled:pointer-events-none"
         >
           {isSubmitting ? (
-            <>
-              <span className="size-5 rounded-full border-2 border-white/35 border-t-white animate-spin" />
-              Creating...
-            </>
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
           ) : (
             <>
-              <span className="material-symbols-outlined text-[20px]">route</span>
-              Create Tour Budget
+              <span className="material-symbols-outlined text-[20px]">check</span>
+              Launch Tour Workspace
             </>
           )}
         </motion.button>
-      </motion.form>
+      </form>
     </div>
   );
 }

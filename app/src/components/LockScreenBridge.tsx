@@ -14,7 +14,7 @@
  */
 
 import useSWR from 'swr';
-import LockScreen from '@/components/LockScreen';
+import LockScreen from '@/components/security/LockScreen';
 
 interface PrivacySettings {
   autoLockTimeoutMinutes: number;

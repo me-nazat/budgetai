@@ -17,3 +17,6 @@ cookies.txt
 *.cookie
 .agent
 .agent/
+/.agents/
+/scripts/
+/skills-lock.json

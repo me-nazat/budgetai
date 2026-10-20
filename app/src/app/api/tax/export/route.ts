@@ -3,7 +3,15 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
-import { generateTaxPDF, generateTaxExcel, TaxExportData, TaxExportItem, MissingReceiptItem, TaxCategorySummary } from '@/lib/export/taxExporter';
+import {
+  generateTaxPDF,
+  generateTaxExcel,
+  generateTaxCSV,
+  TaxExportData,
+  TaxExportItem,
+  MissingReceiptItem,
+  TaxCategorySummary,
+} from '@/lib/export/taxExporter';
 import { db } from '@/db/client';
 import { taxDeductions, taxCategories, transactions, users } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -28,9 +36,12 @@ export const GET = apiHandler(
         encryptedEligibleAmount: taxDeductions.encryptedEligibleAmount,
         encryptedDeductibleAmount: taxDeductions.encryptedDeductibleAmount,
         receiptDocumentId: taxDeductions.receiptDocumentId,
+        notes: taxDeductions.notes,
+        status: taxDeductions.status,
         categoryName: taxCategories.name,
         txnDescription: transactions.description,
         txnDate: transactions.date,
+        txnAttachments: transactions.attachments,
       })
       .from(taxDeductions)
       .leftJoin(taxCategories, eq(taxDeductions.taxCategoryId, taxCategories.id))
@@ -70,7 +81,15 @@ export const GET = apiHandler(
           deductible: existing.deductible + deductibleAmount,
         });
 
-        if (!d.receiptDocumentId && amount > 75) {
+        let hasProof = Boolean(d.receiptDocumentId);
+        if (!hasProof && d.txnAttachments) {
+          try {
+            const att = JSON.parse(d.txnAttachments);
+            if (Array.isArray(att) && att.length > 0) hasProof = true;
+          } catch {}
+        }
+
+        if (!hasProof && amount > 75) {
           missingReceipts.push({
             date: d.txnDate || `${year}-01-01`,
             merchant: d.txnDescription || 'Unverified Expense',
@@ -85,7 +104,9 @@ export const GET = apiHandler(
           taxCategory: cat,
           amount,
           deductibleAmount,
-          receiptRef: d.receiptDocumentId ? `DOC-${d.receiptDocumentId}` : 'NONE_FLAGGED',
+          receiptRef: d.receiptDocumentId ? `DOC-${d.receiptDocumentId}` : (hasProof ? 'ATTACHED' : 'NONE_FLAGGED'),
+          receiptStatus: hasProof ? 'Verified' : 'Missing Receipt',
+          notes: d.notes || undefined,
         };
       });
     } else {
@@ -98,6 +119,7 @@ export const GET = apiHandler(
           amount: 2140.0,
           deductibleAmount: 2140.0,
           receiptRef: 'DOC-8921',
+          receiptStatus: 'Verified',
         },
         {
           date: `${year}-03-01`,
@@ -106,6 +128,7 @@ export const GET = apiHandler(
           amount: 1890.0,
           deductibleAmount: 1890.0,
           receiptRef: 'DOC-8922',
+          receiptStatus: 'Verified',
         },
         {
           date: `${year}-04-10`,
@@ -114,6 +137,7 @@ export const GET = apiHandler(
           amount: 3420.0,
           deductibleAmount: 3420.0,
           receiptRef: 'NONE_FLAGGED',
+          receiptStatus: 'Missing Receipt',
         },
       ];
 
@@ -142,6 +166,17 @@ export const GET = apiHandler(
       missingReceipts,
       categoryBreakdown: categoryBreakdown.length > 0 ? categoryBreakdown : undefined,
     };
+
+    if (format === 'csv') {
+      const csvContent = generateTaxCSV(exportData);
+      return new NextResponse(csvContent, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="WealthAI_FiscalReport_${year}.csv"`,
+        },
+      });
+    }
 
     if (format === 'xlsx') {
       const excelBuffer = await generateTaxExcel(exportData);

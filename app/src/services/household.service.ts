@@ -2,12 +2,32 @@
  * @fileoverview Household Service — business logic & settlement engine.
  *
  * Implements net balance calculation and minimal cash-flow debt simplification
- * for household expenses, supporting auto-split recurring bills.
+ * for household expenses, supporting auto-split recurring bills, proportional split rules,
+ * category spending cap enforcement, and personal bank account ledger synchronization.
  *
  * @module services/household.service
  */
 
+import { db } from '@/db/client';
+import {
+  householdMembers,
+  householdExpenses,
+  householdSettlements,
+  householdSplitRules,
+} from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { HouseholdRepository } from '@/repositories/household.repository';
+import {
+  allocatePennyShares,
+  calculateMinSettlements,
+  type BalanceNode,
+  type ParticipantShareInput,
+} from '@/lib/algorithms/minSettlement';
+import {
+  syncHouseholdExpenseToPersonalLedger,
+  broadcastHouseholdUpdate,
+} from '@/lib/household-sync';
+import { encryptNumber } from '@/lib/crypto/encryption';
 
 export interface NetMemberBalance {
   userId: number;
@@ -25,11 +45,312 @@ export interface SuggestedSettlement {
 
 export class HouseholdService {
   /**
-   * Calculates net balances for all members in a household.
+   * Automatically determines split percentages using strict priority order:
+   * 1. Explicit custom split passed in payload.
+   * 2. Category-specific rule configured in householdSplitRules.
+   * 3. Household member allocation weights (defaultAllocationPercentage or incomeWeight).
+   * 4. Equal split fallback (100 / memberCount).
+   */
+  static async determineSplitShares(
+    householdId: number,
+    amount: number,
+    category: string,
+    customSplits?: Record<string | number, number> | Array<{ userId: number; percentage?: number; amount?: number; weight?: number }>
+  ): Promise<{
+    splitBreakdown: Array<{
+      userId: number;
+      userName: string;
+      shareAmount: number;
+      sharePercentage: number;
+      shareWeight: number;
+    }>;
+    strategy: 'custom' | 'category_rule' | 'allocation_weight' | 'equal_fallback';
+  }> {
+    const members = await HouseholdRepository.findMembers(householdId);
+    const membersWithWeights = await db
+      .select({
+        userId: householdMembers.userId,
+        incomeWeight: householdMembers.incomeWeight,
+        defaultAllocationPercentage: householdMembers.defaultAllocationPercentage,
+      })
+      .from(householdMembers)
+      .where(eq(householdMembers.householdId, householdId));
+
+    const weightMap = new Map(membersWithWeights.map((m) => [m.userId, m]));
+    const nameMap = new Map(members.map((m) => [m.userId, m.userName || `User #${m.userId}`]));
+
+    if (members.length === 0) {
+      return { splitBreakdown: [], strategy: 'equal_fallback' };
+    }
+
+    // Priority 1: Explicit custom split
+    if (customSplits) {
+      const inputs: ParticipantShareInput[] = [];
+      if (Array.isArray(customSplits) && customSplits.length > 0) {
+        customSplits.forEach((cs) => {
+          const w = cs.percentage ?? cs.amount ?? cs.weight ?? 1.0;
+          inputs.push({
+            id: cs.userId,
+            name: nameMap.get(cs.userId),
+            weight: w,
+          });
+        });
+      } else if (typeof customSplits === 'object' && Object.keys(customSplits).length > 0) {
+        for (const [key, val] of Object.entries(customSplits)) {
+          const uId = Number(key);
+          inputs.push({
+            id: uId,
+            name: nameMap.get(uId),
+            weight: Number(val),
+          });
+        }
+      }
+
+      if (inputs.length > 0) {
+        const allocated = allocatePennyShares(amount, inputs);
+        return {
+          splitBreakdown: allocated.map((a) => ({
+            userId: Number(a.id),
+            userName: a.name || nameMap.get(Number(a.id)) || `User #${a.id}`,
+            shareAmount: a.shareAmount,
+            sharePercentage: a.sharePercentage,
+            shareWeight: inputs.find((i) => i.id === a.id)?.weight ?? 1,
+          })),
+          strategy: 'custom',
+        };
+      }
+    }
+
+    // Priority 2: Category-specific rule
+    const rules = await db
+      .select()
+      .from(householdSplitRules)
+      .where(
+        and(
+          eq(householdSplitRules.householdId, householdId),
+          eq(householdSplitRules.active, 1)
+        )
+      );
+
+    const categoryRule =
+      rules.find((r) => r.category.toLowerCase() === category.toLowerCase()) ||
+      rules.find((r) => r.category === 'All');
+
+    if (categoryRule && categoryRule.splitShares) {
+      try {
+        const parsed = JSON.parse(categoryRule.splitShares);
+        const inputs: ParticipantShareInput[] = [];
+        for (const [key, val] of Object.entries(parsed)) {
+          const uId = Number(key);
+          inputs.push({
+            id: uId,
+            name: nameMap.get(uId),
+            weight: Number(val),
+          });
+        }
+        if (inputs.length > 0) {
+          const allocated = allocatePennyShares(amount, inputs);
+          return {
+            splitBreakdown: allocated.map((a) => ({
+              userId: Number(a.id),
+              userName: a.name || nameMap.get(Number(a.id)) || `User #${a.id}`,
+              shareAmount: a.shareAmount,
+              sharePercentage: a.sharePercentage,
+              shareWeight: inputs.find((i) => i.id === a.id)?.weight ?? 1,
+            })),
+            strategy: 'category_rule',
+          };
+        }
+      } catch {
+        // Fall through to priority 3
+      }
+    }
+
+    // Priority 3: Household member allocation weights (HouseholdAllocationWheel)
+    const hasCustomAllocations = membersWithWeights.some(
+      (m) =>
+        (typeof m.defaultAllocationPercentage === 'number' && m.defaultAllocationPercentage > 0) ||
+        (typeof m.incomeWeight === 'number' && m.incomeWeight !== 1.0)
+    );
+
+    if (hasCustomAllocations) {
+      const inputs: ParticipantShareInput[] = members.map((m) => {
+        const mw = weightMap.get(m.userId);
+        const weight = mw?.defaultAllocationPercentage ?? mw?.incomeWeight ?? 1.0;
+        return {
+          id: m.userId,
+          name: m.userName,
+          weight: Number(weight),
+        };
+      });
+
+      const allocated = allocatePennyShares(amount, inputs);
+      return {
+        splitBreakdown: allocated.map((a) => ({
+          userId: Number(a.id),
+          userName: a.name || nameMap.get(Number(a.id)) || `User #${a.id}`,
+          shareAmount: a.shareAmount,
+          sharePercentage: a.sharePercentage,
+          shareWeight: inputs.find((i) => i.id === a.id)?.weight ?? 1,
+        })),
+        strategy: 'allocation_weight',
+      };
+    }
+
+    // Priority 4: Equal split fallback
+    const inputs: ParticipantShareInput[] = members.map((m) => ({
+      id: m.userId,
+      name: m.userName,
+      weight: 1.0,
+    }));
+
+    const allocated = allocatePennyShares(amount, inputs);
+    return {
+      splitBreakdown: allocated.map((a) => ({
+        userId: Number(a.id),
+        userName: a.name || nameMap.get(Number(a.id)) || `User #${a.id}`,
+        shareAmount: a.shareAmount,
+        sharePercentage: a.sharePercentage,
+        shareWeight: 1,
+      })),
+      strategy: 'equal_fallback',
+    };
+  }
+
+  /**
+   * Creates a household expense using strict split priority, checks spending caps,
+   * updates the personal ledger, and fans out pending settlements.
+   */
+  static async createHouseholdExpense(params: {
+    householdId: number;
+    userId: number;
+    description: string;
+    amount: number;
+    category?: string;
+    fundingAccountId?: number | null;
+    customSplits?: Record<string | number, number> | Array<{ userId: number; percentage?: number; amount?: number; weight?: number }>;
+    date?: string;
+  }) {
+    const {
+      householdId,
+      userId,
+      description,
+      amount,
+      category = 'Other',
+      fundingAccountId,
+      customSplits,
+      date = new Date().toISOString().split('T')[0],
+    } = params;
+
+    // 1. Check category cap
+    const capCheck = await HouseholdRepository.checkCategoryCap(householdId, category, amount);
+    const capWarning = capCheck.capExceeded;
+
+    // 2. Determine split shares
+    const { splitBreakdown, strategy } = await this.determineSplitShares(
+      householdId,
+      amount,
+      category,
+      customSplits
+    );
+
+    const payerShare = splitBreakdown.find((s) => s.userId === userId)?.shareAmount || 0;
+    const splitBreakdownJson = JSON.stringify(splitBreakdown);
+
+    // 3. Insert into householdExpenses
+    const [expense] = await db
+      .insert(householdExpenses)
+      .values({
+        householdId,
+        userId,
+        payerUserId: userId,
+        description,
+        amount,
+        category,
+        fundingAccountId: fundingAccountId || null,
+        personalShareAmount: payerShare,
+        splitBreakdownJson,
+        splitBetween: splitBreakdownJson,
+      })
+      .returning();
+
+    let linkedTransactionId: number | undefined;
+
+    // 4. Sync to personal ledger if funding account provided
+    if (fundingAccountId) {
+      const syncRes = await syncHouseholdExpenseToPersonalLedger({
+        householdId,
+        expenseId: expense.id,
+        totalAmount: amount,
+        category,
+        description,
+        payerUserId: userId,
+        fundingAccountId,
+        personalShareAmount: payerShare,
+        currentUserId: userId,
+        date,
+      });
+      linkedTransactionId = syncRes.linkedTransactionId;
+      if (linkedTransactionId) {
+        await db
+          .update(householdExpenses)
+          .set({ linkedTransactionId })
+          .where(eq(householdExpenses.id, expense.id));
+      }
+    }
+
+    // 5. Fan-out insert pending settlement records for other members
+    const settlementsToInsert = splitBreakdown
+      .filter((s) => s.userId !== userId && s.shareAmount > 0)
+      .map((s) => ({
+        householdId,
+        payerId: s.userId, // debtor
+        payeeId: userId,   // creditor
+        amount: s.shareAmount,
+        encryptedAmount: encryptNumber(s.shareAmount, 'household-settlement'),
+        status: 'pending' as const,
+      }));
+
+    if (settlementsToInsert.length > 0) {
+      await db.insert(householdSettlements).values(settlementsToInsert);
+    }
+
+    // 6. Broadcast SSE
+    broadcastHouseholdUpdate(householdId, {
+      type: 'EXPENSE_ADDED',
+      data: {
+        expenseId: expense.id,
+        amount,
+        payerId: userId,
+        description,
+        capWarning,
+      },
+    });
+
+    return {
+      expense: {
+        ...expense,
+        linkedTransactionId: linkedTransactionId ?? expense.linkedTransactionId,
+      },
+      splitBreakdown,
+      strategy,
+      capWarning,
+      capDetails: capCheck,
+      settlementsCreated: settlementsToInsert.length,
+    };
+  }
+
+  /**
+   * Calculates net balances for all members in a household using minSettlement debt simplification.
    */
   static async calculateBalances(householdId: number): Promise<{
     memberBalances: NetMemberBalance[];
     suggestedSettlements: SuggestedSettlement[];
+    metrics?: {
+      rawTransactionsCount: number;
+      simplifiedTransfers: any[];
+      transfersSavedCount: number;
+    };
   }> {
     const members = await HouseholdRepository.findMembers(householdId);
     const expenses = await HouseholdRepository.findExpenses(householdId);
@@ -48,38 +369,37 @@ export class HouseholdService {
       const payerId = exp.userId;
       const totalAmount = exp.amount;
 
-      // Determine target participants
-      let targetUserIds: number[] = [];
-      if (exp.splitBetween === 'all' || !exp.splitBetween) {
-        targetUserIds = members.map((m) => m.userId);
-      } else {
+      let hasCustomBreakdown = false;
+      const rawBreakdown = (exp as any).splitBreakdownJson || exp.splitBetween;
+      if (rawBreakdown && rawBreakdown !== 'all') {
         try {
-          const parsed = JSON.parse(exp.splitBetween);
+          const parsed = JSON.parse(rawBreakdown);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            targetUserIds = parsed;
-          } else {
-            targetUserIds = members.map((m) => m.userId);
+            hasCustomBreakdown = true;
+            balancesMap.set(payerId, (balancesMap.get(payerId) || 0) + totalAmount);
+            for (const item of parsed) {
+              const uId = Number(item.userId ?? item.id);
+              const share = Number(item.shareAmount ?? item.amount ?? 0);
+              balancesMap.set(uId, (balancesMap.get(uId) || 0) - share);
+            }
           }
         } catch {
-          targetUserIds = members.map((m) => m.userId);
+          hasCustomBreakdown = false;
         }
       }
 
-      const sharePerPerson = totalAmount / targetUserIds.length;
-
-      // Payer paid totalAmount
-      balancesMap.set(payerId, (balancesMap.get(payerId) || 0) + totalAmount);
-
-      // Each participant owes their share
-      for (const targetId of targetUserIds) {
-        balancesMap.set(targetId, (balancesMap.get(targetId) || 0) - sharePerPerson);
+      if (!hasCustomBreakdown) {
+        const sharePerPerson = totalAmount / members.length;
+        balancesMap.set(payerId, (balancesMap.get(payerId) || 0) + totalAmount);
+        for (const m of members) {
+          balancesMap.set(m.userId, (balancesMap.get(m.userId) || 0) - sharePerPerson);
+        }
       }
     }
 
     // Process settled transfers
     for (const st of settlements) {
       if (st.status === 'settled') {
-        // payerId paid payeeId
         balancesMap.set(st.payerId, (balancesMap.get(st.payerId) || 0) + st.amount);
         balancesMap.set(st.payeeId, (balancesMap.get(st.payeeId) || 0) - st.amount);
       }
@@ -92,14 +412,34 @@ export class HouseholdService {
       netBalance: Math.round((balancesMap.get(m.userId) || 0) * 100) / 100,
     }));
 
-    // Compute min-cash-flow greedy settlements
-    const suggestedSettlements = this.computeMinCashFlowSettlements(memberBalances);
+    const balanceNodes: BalanceNode[] = memberBalances.map((m) => ({
+      userId: m.userId,
+      userName: m.userName,
+      netBalance: m.netBalance,
+    }));
 
-    return { memberBalances, suggestedSettlements };
+    const minTransfers = calculateMinSettlements(balanceNodes);
+    const suggestedSettlements: SuggestedSettlement[] = minTransfers.map((p) => ({
+      fromUserId: Number(p.fromUserId),
+      fromUserName: p.fromUserName || `User #${p.fromUserId}`,
+      toUserId: Number(p.toUserId),
+      toUserName: p.toUserName || `User #${p.toUserId}`,
+      amount: p.amount,
+    }));
+
+    return {
+      memberBalances,
+      suggestedSettlements,
+      metrics: {
+        rawTransactionsCount: minTransfers.rawTransactionsCount,
+        simplifiedTransfers: minTransfers.simplifiedTransfers,
+        transfersSavedCount: minTransfers.transfersSavedCount,
+      },
+    };
   }
 
   /**
-   * Greedy min-cash-flow debt simplification algorithm.
+   * Greedy min-cash-flow debt simplification algorithm (maintained for direct unit test calls).
    */
   private static computeMinCashFlowSettlements(balances: NetMemberBalance[]): SuggestedSettlement[] {
     const debtors: { userId: number; name: string; amount: number }[] = [];
@@ -113,7 +453,6 @@ export class HouseholdService {
       }
     }
 
-    // Sort descending by amount
     debtors.sort((a, b) => b.amount - a.amount);
     creditors.sort((a, b) => b.amount - a.amount);
 

@@ -1,74 +1,34 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import NLInput from './NLInput';
+/**
+ * @fileoverview Minimalist Unobtrusive Floating Action Button (Batch 8 Part 4).
+ * Safely positioned above mobile bottom bars and desktop margins, never obstructing
+ * table pagination or modal bottom sheets.
+ *
+ * @module components/FloatingActionButton
+ */
+
+import React from 'react';
+import { motion } from 'framer-motion';
 
 export default function FloatingActionButton() {
-    const [open, setOpen] = useState(false);
+  const handleClick = () => {
+    window.dispatchEvent(new CustomEvent('open-quick-add'));
+  };
 
-    return (
-        <>
-            {/* Overlay */}
-            <AnimatePresence>
-                {open && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] lg:hidden"
-                        onClick={() => setOpen(false)}
-                    />
-                )}
-            </AnimatePresence>
-
-            {/* Quick Add Panel */}
-            <AnimatePresence>
-                {open && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                        className="fixed bottom-24 left-4 right-4 z-[61] lg:hidden"
-                    >
-                        <div className="rounded-2xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-white/10 shadow-2xl p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                        bolt
-                                    </span>
-                                    Quick Add
-                                </h3>
-                                <button
-                                    onClick={() => setOpen(false)}
-                                    className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-400"
-                                >
-                                    <span className="material-symbols-outlined text-[16px]">close</span>
-                                </button>
-                            </div>
-                            <NLInput />
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* FAB Button */}
-            <motion.button
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.5 }}
-                onClick={() => setOpen(o => !o)}
-                className="fixed bottom-20 right-4 z-[59] w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/30 hover:bg-blue-600 active:scale-90 transition-colors lg:hidden"
-            >
-                <motion.span
-                    className="material-symbols-outlined text-2xl"
-                    animate={{ rotate: open ? 45 : 0 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    add
-                </motion.span>
-            </motion.button>
-        </>
-    );
+  return (
+    <motion.button
+      type="button"
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={handleClick}
+      aria-label="Quick Add Transaction"
+      className="fixed bottom-24 right-5 lg:bottom-8 lg:right-8 z-40 w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 flex items-center justify-center transition-colors border border-emerald-400/40 cursor-pointer"
+    >
+      <span className="material-symbols-outlined text-2xl font-bold">add</span>
+    </motion.button>
+  );
 }

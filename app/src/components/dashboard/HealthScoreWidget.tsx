@@ -1,32 +1,38 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
-import { SparklesIcon } from '@heroicons/react/24/outline';
 import useSWR from 'swr';
+
+interface PillarScore {
+  score: number;
+  max: number;
+  action: string;
+}
 
 interface HealthScoreData {
   score: number;
-  breakdown: {
-    savingsRate: { score: number; max: number };
-    budgetAdherence: { score: number; max: number };
-    netWorth: { score: number; max: number };
-    emergencyFund: { score: number; max: number };
-    consistency: { score: number; max: number };
+  grade: string;
+  pillars: {
+    savingsRate: PillarScore;
+    budgetAdherence: PillarScore;
+    emergencyRunway: PillarScore;
+    debtLoad: PillarScore;
   };
-  history: { month: string; score: number }[];
-  insight: string;
+  breakdown?: Record<string, any>;
+  history?: { month: string; score: number }[];
+  insight?: string;
 }
 
 export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
-  const ref = React.useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
   const [displayScore, setDisplayScore] = useState(0);
 
   const { data, error, isLoading, mutate } = useSWR<HealthScoreData>(
     '/api/health-score',
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { revalidateOnFocus: false, dedupingInterval: 15000 }
   );
 
   const fetchData = useCallback(() => {
@@ -35,19 +41,16 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     if (isInView && data) {
-      const start = 0;
       const end = data.score;
-      if (start === end) return;
-      const duration = 1500;
+      const duration = 1000;
       const startTime = performance.now();
-      
+
       const animate = (currentTime: number) => {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        // easeOutQuart
-        const ease = 1 - Math.pow(1 - progress, 4);
+        const ease = 1 - Math.pow(1 - progress, 3);
         setDisplayScore(Math.round(ease * end));
-        
+
         if (progress < 1) {
           requestAnimationFrame(animate);
         }
@@ -58,64 +61,109 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
 
   if (isLoading) {
     return (
-      <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface/50 dark:bg-surface-dark/50 animate-pulse rounded-2xl border border-gray-200 dark:border-[#30363d] flex items-center justify-center`}>
+      <div
+        className={`w-full ${
+          compact ? 'h-48' : 'h-80'
+        } bg-[var(--bg-surface)] animate-pulse rounded-2xl border border-[var(--border-subtle)] flex items-center justify-center`}
+      >
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Analyzing your finances...</p>
+          <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+          <p className="text-xs font-medium text-[var(--color-text-muted)]">Calculating 4-pillar financial health...</p>
         </div>
       </div>
     );
   }
 
-  // Error state with retry button
   if (error || !data) {
     return (
-      <div className={`w-full ${compact ? 'h-48' : 'h-80'} bg-surface dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-[#30363d] flex flex-col items-center justify-center p-6 text-center`}>
-        <div className="w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-2xl text-amber-500">error_outline</span>
+      <div
+        className={`w-full ${
+          compact ? 'h-48' : 'h-80'
+        } bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] flex flex-col items-center justify-center p-6 text-center`}
+      >
+        <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-3">
+          <span className="material-symbols-outlined text-2xl">error_outline</span>
         </div>
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Health Score Unavailable</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 max-w-[240px]">
-          {error?.message || 'Unable to calculate your financial health score right now.'}
+        <p className="text-sm font-semibold text-[var(--color-text-main)] mb-1">Health Score Unavailable</p>
+        <p className="text-xs text-[var(--color-text-muted)] mb-4 max-w-[260px]">
+          {error?.message || 'Unable to calculate your health score right now.'}
         </p>
-        <button 
+        <button
+          type="button"
           onClick={fetchData}
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-all duration-200 active:scale-95"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--color-text-main)] bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] rounded-lg transition-colors"
         >
           <span className="material-symbols-outlined text-sm">refresh</span>
-          Try Again
+          Retry calculation
         </button>
       </div>
     );
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 70) return '#10b981'; // Emerald
-    if (score >= 40) return '#f59e0b'; // Amber
-    return '#ef4444'; // Red
-  };
-
-  const getScoreGradient = (score: number) => {
-    if (score >= 70) return 'from-emerald-500/20 to-emerald-500/5';
-    if (score >= 40) return 'from-amber-500/20 to-amber-500/5';
-    return 'from-red-500/20 to-red-500/5';
+    if (score >= 80) return '#10b981'; // Emerald
+    if (score >= 65) return '#06b6d4'; // Teal
+    if (score >= 45) return '#f59e0b'; // Amber
+    return '#f43f5e'; // Rose
   };
 
   const color = getScoreColor(data.score);
-  const radius = compact ? 60 : 80;
-  const circumference = Math.PI * radius; // Half circle
+  const radius = compact ? 56 : 74;
+  const circumference = Math.PI * radius; // 180 degree semi-circle
   const strokeDashoffset = circumference - (data.score / 100) * circumference;
 
+  const pillarsList = [
+    {
+      id: 'savingsRate',
+      label: 'Savings Rate',
+      score: data.pillars?.savingsRate?.score ?? 20,
+      max: 25,
+      action: data.pillars?.savingsRate?.action ?? 'Save 20% of monthly income to earn maximum points',
+    },
+    {
+      id: 'budgetAdherence',
+      label: 'Budget Adherence',
+      score: data.pillars?.budgetAdherence?.score ?? 20,
+      max: 25,
+      action: data.pillars?.budgetAdherence?.action ?? 'Keep category spending within envelopes',
+    },
+    {
+      id: 'emergencyRunway',
+      label: 'Emergency Runway',
+      score: data.pillars?.emergencyRunway?.score ?? 20,
+      max: 25,
+      action: data.pillars?.emergencyRunway?.action ?? 'Maintain 6 months of liquid cash reserves',
+    },
+    {
+      id: 'debtLoad',
+      label: 'Debt & Utilization',
+      score: data.pillars?.debtLoad?.score ?? 20,
+      max: 25,
+      action: data.pillars?.debtLoad?.action ?? 'Keep credit utilization under 10%',
+    },
+  ];
+
   return (
-    <div 
+    <div
       ref={ref}
-      className={`w-full bg-surface dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-[#30363d] overflow-hidden flex ${compact ? 'flex-col' : 'flex-col md:flex-row'} relative`}
+      className={`w-full bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)] overflow-hidden flex ${
+        compact ? 'flex-col' : 'flex-col lg:flex-row'
+      } relative`}
     >
-      {/* Gauge Section */}
-      <div className={`p-6 flex flex-col items-center justify-center ${compact ? '' : 'border-b md:border-b-0 md:border-r'} border-gray-200 dark:border-[#30363d] w-full ${compact ? '' : 'md:w-1/3'} bg-gradient-to-b ${getScoreGradient(data.score)} relative`}>
-        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 tracking-wider uppercase">Financial Health</h3>
-        
-        <div className={`relative ${compact ? 'w-36 h-20' : 'w-48 h-28'} flex items-end justify-center overflow-hidden`}>
+      {/* ── Gauge & Composite Score Section ── */}
+      <div
+        className={`p-6 flex flex-col items-center justify-center ${
+          compact ? '' : 'border-b lg:border-b-0 lg:border-r'
+        } border-[var(--border-subtle)] w-full ${compact ? '' : 'lg:w-[35%]'} relative`}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <span className="material-symbols-outlined text-[18px] text-emerald-500">health_and_safety</span>
+          <h3 className="text-xs font-semibold text-[var(--color-text-muted)] tracking-wider uppercase">
+            Financial Health Score
+          </h3>
+        </div>
+
+        <div className={`relative ${compact ? 'w-36 h-20' : 'w-44 h-24'} flex items-end justify-center overflow-hidden`}>
           {/* Background Arc */}
           <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 200 100">
             <path
@@ -124,7 +172,7 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
               stroke="currentColor"
               strokeWidth="12"
               strokeLinecap="round"
-              className="text-gray-200 dark:text-[#30363d]"
+              className="text-[var(--border-subtle)]"
             />
           </svg>
           {/* Animated Arc */}
@@ -138,34 +186,39 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
               strokeDasharray={circumference}
               initial={{ strokeDashoffset: circumference }}
               animate={isInView ? { strokeDashoffset } : {}}
-              transition={{ duration: 1.5, ease: "easeOut" }}
+              transition={{ duration: 1, ease: 'easeOut' }}
             />
           </svg>
           <div className="flex flex-col items-center z-10 -mb-2">
-            <span className={`${compact ? 'text-4xl' : 'text-5xl'} font-bold tabular-nums`} style={{ color }}>{displayScore}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 uppercase font-semibold tracking-wider">
-              {data.score >= 70 ? 'Excellent' : data.score >= 40 ? 'Fair' : 'Needs Work'}
+            <span
+              className={`${compact ? 'text-3xl' : 'text-4xl'} font-bold tabular-nums font-mono`}
+              style={{ color }}
+            >
+              {displayScore}
+            </span>
+            <span className="text-[11px] text-[var(--color-text-muted)] uppercase font-semibold tracking-wider">
+              {data.grade || (data.score >= 80 ? 'Excellent' : data.score >= 65 ? 'Good' : data.score >= 45 ? 'Fair' : 'Needs Work')}
             </span>
           </div>
         </div>
 
-        {/* Sparkline History - hide on compact */}
-        {!compact && (
-          <div className="w-full h-12 mt-6 px-4">
+        {/* Sparkline History */}
+        {!compact && data.history && data.history.length > 0 && (
+          <div className="w-full h-10 mt-5 px-3">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data.history}>
                 <defs>
-                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                  <linearGradient id="colorHealthScore" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.25} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <Area 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke={color} 
-                  fillOpacity={1} 
-                  fill="url(#colorScore)" 
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke={color}
+                  fillOpacity={1}
+                  fill="url(#colorHealthScore)"
                   strokeWidth={2}
                   isAnimationActive={isInView}
                 />
@@ -175,52 +228,59 @@ export function HealthScoreWidget({ compact = false }: { compact?: boolean }) {
         )}
       </div>
 
-      {/* Breakdown Section */}
-      <div className={`p-6 w-full ${compact ? '' : 'md:w-2/3'} flex flex-col justify-between`}>
-        {!compact && (
-          <div className="space-y-4">
-            <ScoreRow label="Savings Rate" score={data.breakdown.savingsRate.score} max={data.breakdown.savingsRate.max} />
-            <ScoreRow label="Budget Adherence" score={data.breakdown.budgetAdherence.score} max={data.breakdown.budgetAdherence.max} />
-            <ScoreRow label="Net Worth Trend" score={data.breakdown.netWorth.score} max={data.breakdown.netWorth.max} />
-            <ScoreRow label="Emergency Fund" score={data.breakdown.emergencyFund.score} max={data.breakdown.emergencyFund.max} />
-            <ScoreRow label="Expense Consistency" score={data.breakdown.consistency.score} max={data.breakdown.consistency.max} />
+      {/* ── 4 Transparent Pillars Section (25 pts each) ── */}
+      <div className={`p-6 w-full ${compact ? '' : 'lg:w-[65%]'} flex flex-col justify-between space-y-4`}>
+        <div className="space-y-3.5">
+          {pillarsList.map((p) => {
+            const pct = (p.score / p.max) * 100;
+            return (
+              <div key={p.id} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-[var(--color-text-main)]">{p.label}</span>
+                  <span className="font-mono tabular-nums text-[var(--color-text-dim)] font-semibold">
+                    {p.score} / {p.max} pts
+                  </span>
+                </div>
+                {/* Horizontal Progress Bar */}
+                <div className="w-full h-1.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full ${
+                      pct >= 80
+                        ? 'bg-emerald-500'
+                        : pct >= 50
+                          ? 'bg-teal-500'
+                          : pct >= 30
+                            ? 'bg-amber-500'
+                            : 'bg-rose-500'
+                    }`}
+                    initial={{ width: 0 }}
+                    animate={isInView ? { width: `${pct}%` } : {}}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                  />
+                </div>
+                {/* Concrete action to gain points */}
+                <p className="text-[11px] text-[var(--color-text-muted)] truncate" title={p.action}>
+                  {p.action}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Global Actionable Callout */}
+        {data.insight && (
+          <div className="mt-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex gap-2.5 items-start">
+            <span className="material-symbols-outlined text-[18px] text-emerald-500 shrink-0 mt-0.5">
+              lightbulb
+            </span>
+            <p className="text-xs text-[var(--color-text-main)] leading-relaxed font-medium">
+              {data.insight}
+            </p>
           </div>
         )}
-
-        <div className={`${compact ? 'mt-0' : 'mt-6'} p-4 rounded-xl bg-primary/10 border border-primary/20 flex gap-3 items-start`}>
-          <SparklesIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-medium">
-            {data.insight}
-          </p>
-        </div>
       </div>
     </div>
   );
 }
 
-function ScoreRow({ label, score, max }: { label: string, score: number, max: number }) {
-  const percentage = (score / max) * 100;
-  const getGradientClass = (pct: number) => {
-    if (pct >= 80) return 'bg-gradient-to-r from-emerald-500 to-teal-400';
-    if (pct >= 50) return 'bg-gradient-to-r from-amber-500 to-yellow-450';
-    return 'bg-gradient-to-r from-rose-500 to-orange-400';
-  };
-  
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex justify-between items-center text-sm">
-        <span className="text-gray-600 dark:text-gray-300 font-medium">{label}</span>
-        <span className="text-gray-500 dark:text-gray-400 font-mono text-xs">{score}/{max}</span>
-      </div>
-      <div className="w-full h-1.5 bg-gray-100 dark:bg-surface-hover rounded-full overflow-hidden">
-        <motion.div 
-          className={`h-full ${getGradientClass(percentage)} rounded-full`}
-          initial={{ width: 0 }}
-          whileInView={{ width: `${percentage}%` }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-        />
-      </div>
-    </div>
-  );
-}
+export default HealthScoreWidget;

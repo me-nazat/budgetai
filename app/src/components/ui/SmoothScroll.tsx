@@ -1,13 +1,18 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 
-interface SmoothScrollProps {
+export interface SmoothScrollProps {
   children: ReactNode;
 }
 
+/**
+ * SmoothScroll — Pass-through wrapper.
+ * Pure native hardware-accelerated OS scrolling preserves trackpad momentum,
+ * eliminates input lag, and supports native browser search (Cmd+F).
+ */
 export function SmoothScroll({ children }: SmoothScrollProps) {
-  // We removed ReactLenis to fix low scroll sensitivity and jittering issues.
-  // Native OS scroll physics (like Mac trackpads) are far superior and 60fps locked.
   return <>{children}</>;
 }
+
+export default SmoothScroll;

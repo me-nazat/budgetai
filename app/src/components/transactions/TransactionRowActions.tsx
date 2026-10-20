@@ -4,19 +4,23 @@ import React, { useRef, useEffect } from 'react';
 
 export interface TransactionActionItem {
     id: number | string;
-    type: 'expense' | 'earning';
+    type: 'expense' | 'earning' | 'transfer' | string;
     amount: number;
     category: string;
     description?: string;
     date: string;
     created_at?: string;
     pending?: boolean;
+    isSplit?: boolean | number;
+    attachments?: string | null;
 }
 
 interface TransactionRowActionsProps {
     transaction: TransactionActionItem;
     onView: (tx: TransactionActionItem) => void;
     onEdit: (tx: TransactionActionItem) => void;
+    onSplit?: (tx: TransactionActionItem) => void;
+    onAttachReceipt?: (tx: TransactionActionItem) => void;
     onDuplicate: (tx: TransactionActionItem) => void;
     onDelete: (id: number | string) => void;
     isOpen: boolean;
@@ -28,6 +32,8 @@ export const TransactionRowActions: React.FC<TransactionRowActionsProps> = ({
     transaction,
     onView,
     onEdit,
+    onSplit,
+    onAttachReceipt,
     onDuplicate,
     onDelete,
     isOpen,
@@ -68,25 +74,13 @@ export const TransactionRowActions: React.FC<TransactionRowActionsProps> = ({
                     onToggle();
                 }}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
-                title="Options"
+                title="Actions"
             >
                 <span className="material-symbols-outlined text-[18px]">more_vert</span>
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1 w-36 origin-top-right rounded-2xl border border-gray-200 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/95 animate-fade-in">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            onClose();
-                            onView(transaction);
-                        }}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10 transition-colors"
-                    >
-                        <span className="material-symbols-outlined text-[16px] text-primary">visibility</span>
-                        <span>Details</span>
-                    </button>
-
+                <div className="absolute right-0 top-full z-50 mt-1 w-44 origin-top-right rounded-2xl border border-gray-200 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/95 animate-fade-in">
                     <button
                         type="button"
                         onClick={() => {
@@ -95,8 +89,34 @@ export const TransactionRowActions: React.FC<TransactionRowActionsProps> = ({
                         }}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10 transition-colors"
                     >
-                        <span className="material-symbols-outlined text-[16px] text-amber-500">edit</span>
-                        <span>Edit</span>
+                        <span className="material-symbols-outlined text-[16px] text-primary">edit</span>
+                        <span>Edit Details</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onClose();
+                            if (onSplit) onSplit(transaction);
+                            else onEdit(transaction);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10 transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[16px] text-indigo-500">call_split</span>
+                        <span>Split Transaction</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onClose();
+                            if (onAttachReceipt) onAttachReceipt(transaction);
+                            else onView(transaction);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10 transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[16px] text-emerald-500">attach_file</span>
+                        <span>Attach Receipt</span>
                     </button>
 
                     <button
@@ -107,7 +127,7 @@ export const TransactionRowActions: React.FC<TransactionRowActionsProps> = ({
                         }}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10 transition-colors"
                     >
-                        <span className="material-symbols-outlined text-[16px] text-teal-500">content_copy</span>
+                        <span className="material-symbols-outlined text-[16px] text-sky-500">content_copy</span>
                         <span>Duplicate</span>
                     </button>
 

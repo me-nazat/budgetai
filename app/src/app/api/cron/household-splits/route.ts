@@ -68,6 +68,35 @@ export async function GET(request: NextRequest) {
 
     for (const rule of dueRules) {
       try {
+        // Idempotency check: verify an expense for this recurring split wasn't already generated today
+        const existingExpense = await db
+          .select({ id: householdExpenses.id })
+          .from(householdExpenses)
+          .where(
+            and(
+              eq(householdExpenses.householdId, rule.householdId),
+              eq(householdExpenses.description, `[Auto-Split] ${rule.name}`),
+              sql`DATE(${householdExpenses.createdAt}) = ${today}`
+            )
+          )
+          .limit(1);
+
+        if (existingExpense.length > 0) {
+          // Already processed today - advance nextRunDate if needed and skip duplicate creation
+          const nextDate = advanceRunDate(
+            rule.nextRunDate || today,
+            rule.frequency as 'monthly' | 'biweekly' | 'weekly',
+            rule.dayOfMonth
+          );
+          if (rule.nextRunDate && rule.nextRunDate <= today) {
+            await db
+              .update(householdSplitRules)
+              .set({ nextRunDate: nextDate })
+              .where(eq(householdSplitRules.id, rule.id));
+          }
+          continue;
+        }
+
         // Create a household expense for this recurring split
         await db.insert(householdExpenses).values({
           householdId: rule.householdId,

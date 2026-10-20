@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * @fileoverview Privacy Mode context provider with per-field granularity (Module 14).
+ * @fileoverview Privacy Mode context provider with per-field granularity (Module 14 / Part 2).
  *
  * Implements:
  * - Persistent toggle synchronized with /api/settings/privacy (maskAccountNumbers)
  * - App-wide fetch wrapper attaching 'X-Privacy-Mode: 1'
  * - Mobile deliberate shake-to-hide gesture via devicemotion
- * - Skeleton-shaped placeholder masking ("৳••,•••") preventing layout shift and DOM leaks
- * - Inactivity tracking state for auto-lock timeout
+ * - Zero-layout-shift tabular placeholder masking ("••••••") and CSS blur on .currency-value, .stat-value, [data-private="true"]
+ * - Keyboard shortcuts: Alt+P and Cmd+Shift+P / Ctrl+Shift+P
  *
  * @module contexts/PrivacyContext
  */
@@ -26,6 +26,8 @@ interface PrivacyContextValue {
   isPrivacyMode: boolean;
   /** Alias for isPrivacyMode */
   isPrivate: boolean;
+  /** Alias for isPrivacyMode */
+  isMasked: boolean;
   /** Current masking scope */
   maskScope: PrivacyMaskScope;
   /** Auto-lock timeout in minutes (0 = disabled) */
@@ -45,7 +47,7 @@ interface PrivacyContextValue {
    */
   maskNumber: (value: number | string, fieldScope?: PrivacyFieldScope) => string;
   /**
-   * Format or mask amount string with skeleton placeholder.
+   * Format or mask amount string with fixed-width placeholder.
    */
   formatAmount: (amount: number, formattedStr: string) => string;
 }
@@ -53,14 +55,15 @@ interface PrivacyContextValue {
 const PrivacyContext = createContext<PrivacyContextValue>({
   isPrivacyMode: false,
   isPrivate: false,
+  isMasked: false,
   maskScope: 'all',
   autoLockTimeoutMinutes: 5,
   shakeToHideEnabled: true,
   togglePrivacy: () => {},
   setMaskScope: () => {},
   mask: (v) => v,
-  maskNumber: () => '••••',
-  formatAmount: (amount, formattedStr) => formattedStr,
+  maskNumber: () => '••••••',
+  formatAmount: (_amount, formattedStr) => formattedStr,
 });
 
 export function usePrivacy() {
@@ -79,8 +82,6 @@ if (typeof window !== 'undefined' && !(window as any)._waiPrivacyFetchPatched) {
           ? input.toString()
           : (input as Request)?.url || '';
 
-      // Strictly limit X-Privacy-Mode to account masking routes.
-      // NEVER attach to financial transaction or summary calculation routes.
       if (urlStr.includes('/api/accounts') || urlStr.includes('/api/bank-import')) {
         init = init || {};
         const headers = new Headers(init.headers || {});
@@ -109,6 +110,13 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     const storedScope = sessionStorage.getItem('privacyMaskScope') as PrivacyMaskScope | null;
     return (storedScope && ['all', 'balances_only', 'transactions_only'].includes(storedScope)) ? storedScope : 'all';
   });
+
+  // Apply global zero-layout-shift blur to document.body
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('privacy-mode-active', isPrivacyMode);
+    }
+  }, [isPrivacyMode]);
 
   // Sync settings with /api/settings/privacy on mount
   useEffect(() => {
@@ -155,7 +163,7 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     sessionStorage.setItem('privacyMaskScope', scope);
   }, []);
 
-  // Keyboard shortcut: Ctrl/Cmd + Shift + P
+  // Keyboard shortcut: Alt+P or Ctrl/Cmd + Shift + P
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -168,7 +176,10 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+      const isAltP = e.altKey && (e.key === 'p' || e.key === 'P');
+      const isCmdShiftP = (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P');
+
+      if (isAltP || isCmdShiftP) {
         e.preventDefault();
         togglePrivacy();
       }
@@ -182,7 +193,7 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     if (!shakeToHideEnabled || typeof window === 'undefined') return;
 
     let lastShakeTime = 0;
-    const SHAKE_THRESHOLD = 24.0; // Acceleration magnitude m/s^2
+    const SHAKE_THRESHOLD = 24.0;
 
     const handleMotion = (event: DeviceMotionEvent) => {
       const current = event.accelerationIncludingGravity || event.acceleration;
@@ -225,13 +236,12 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
 
   const maskNumber = useCallback((value: number | string, fieldScope?: PrivacyFieldScope) => {
     if (!shouldMask(fieldScope)) return String(value);
-    return '৳••,•••';
+    return '••••••';
   }, [shouldMask]);
 
-  const formatAmount = useCallback((amount: number, formattedStr: string) => {
+  const formatAmount = useCallback((_amount: number, formattedStr: string) => {
     if (isPrivacyMode) {
-      // Skeleton placeholder preserving layout width
-      return '৳••,•••';
+      return '••••••';
     }
     return formattedStr;
   }, [isPrivacyMode]);
@@ -241,6 +251,7 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
       value={{
         isPrivacyMode,
         isPrivate: isPrivacyMode,
+        isMasked: isPrivacyMode,
         maskScope,
         autoLockTimeoutMinutes,
         shakeToHideEnabled,
@@ -251,6 +262,16 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
         formatAmount,
       }}
     >
+      {/* Global CSS injection for zero-layout-shift blur */}
+      <style jsx global>{`
+        body.privacy-mode-active .currency-value,
+        body.privacy-mode-active .stat-value,
+        body.privacy-mode-active [data-private="true"] {
+          filter: blur(6px) !important;
+          user-select: none !important;
+          transition: filter 0.2s ease-in-out !important;
+        }
+      `}</style>
       {children}
     </PrivacyContext.Provider>
   );

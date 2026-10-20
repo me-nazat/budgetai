@@ -5,6 +5,8 @@ import {
   calculateDateScore,
   calculateDescriptionSimilarity,
   deduplicatePageTransactions,
+  parseStatementCSV,
+  reconcileWithLedger,
   ParsedStatementTransaction,
 } from '@/lib/ai/statementParser';
 
@@ -163,6 +165,103 @@ describe('Module 16: Statement Parser & Confidence Scoring Rubric', () => {
       expect(createdCount).toBe(1);
       expect(discardedCount).toBe(1);
       expect(mergedCount + createdCount).toBe(2); // Total active rows committed
+    });
+  });
+
+  describe('Deterministic parseStatementCSV', () => {
+    it('should parse standard CSV with Date, Description, Amount columns', () => {
+      const csv = `Date,Description,Amount
+2026-03-10,Whole Foods Market,-82.40
+2026-03-12,Employer Direct Deposit,3200.00
+2026-03-14,Starbucks Coffee,-5.75`;
+
+      const result = parseStatementCSV(csv);
+      expect(result.transactions).toHaveLength(3);
+      expect(result.transactions[0].description).toBe('Whole Foods Market');
+      expect(result.transactions[0].amount).toBe(82.4);
+      expect(result.transactions[0].type).toBe('expense');
+      expect(result.transactions[0].suggestedCategory).toBe('Groceries');
+
+      expect(result.transactions[1].description).toBe('Employer Direct Deposit');
+      expect(result.transactions[1].amount).toBe(3200.0);
+      expect(result.transactions[1].type).toBe('earning');
+      expect(result.transactions[1].suggestedCategory).toBe('Salary');
+
+      expect(result.transactions[2].suggestedCategory).toBe('Food');
+    });
+
+    it('should handle Debit and Credit split columns and quotes', () => {
+      const tsv = `Date\tDescription\tDebit\tCredit\tBalance
+2026-03-01\t"Rent payment, apt 4B"\t1200.00\t\t4500.00
+2026-03-05\tClient Consulting Payment\t\t850.00\t5350.00`;
+
+      const result = parseStatementCSV(tsv);
+      expect(result.transactions).toHaveLength(2);
+      expect(result.transactions[0].type).toBe('expense');
+      expect(result.transactions[0].amount).toBe(1200.0);
+      expect(result.transactions[0].suggestedCategory).toBe('Housing');
+      expect(result.transactions[1].type).toBe('earning');
+      expect(result.transactions[1].amount).toBe(850.0);
+    });
+  });
+
+  describe('reconcileWithLedger', () => {
+    it('should accurately tag exact match, probable duplicate, and new transaction', () => {
+      const parsed = [
+        {
+          date: '2026-03-15',
+          description: 'Amazon Retail Purchase',
+          amount: 45.99,
+          type: 'expense' as const,
+          suggestedCategory: 'Shopping',
+        },
+        {
+          date: '2026-03-15',
+          description: 'Target Store #102',
+          amount: 89.5,
+          type: 'expense' as const,
+          suggestedCategory: 'Shopping',
+        },
+        {
+          date: '2026-03-20',
+          description: 'New Local Bistro',
+          amount: 34.0,
+          type: 'expense' as const,
+          suggestedCategory: 'Food',
+        },
+      ];
+
+      const ledger = [
+        {
+          id: 101,
+          date: '2026-03-15',
+          description: 'Amazon Retail Purchase',
+          amount: 45.99,
+        },
+        {
+          id: 102,
+          date: '2026-03-17',
+          description: 'Target Express',
+          amount: 89.5,
+        },
+      ];
+
+      const reconciled = reconcileWithLedger(parsed, ledger);
+      expect(reconciled).toHaveLength(3);
+
+      // Exact match
+      expect(reconciled[0].status).toBe('exact_match');
+      expect(reconciled[0].action).toBe('skip');
+      expect(reconciled[0].matchedExistingTransactionId).toBe(101);
+
+      // Probable duplicate
+      expect(reconciled[1].status).toBe('probable_duplicate');
+      expect(reconciled[1].matchedExistingTransactionId).toBe(102);
+
+      // New transaction
+      expect(reconciled[2].status).toBe('new_transaction');
+      expect(reconciled[2].action).toBe('import');
+      expect(reconciled[2].matchedExistingTransactionId).toBeNull();
     });
   });
 });

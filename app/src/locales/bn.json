@@ -41,7 +41,15 @@
       "yAxis": "পরিমাণ",
       "incomeVsExpense": "আয় বনাম ব্যয়ের অনুপাত",
       "viewAll": "সম্পূর্ণ বিশ্লেষণ দেখুন",
-      "export": "রিপোর্ট এক্সপোর্ট করুন"
+      "export": "রিপোর্ট এক্সপোর্ট করুন",
+      "burnTrajectory": "ব্যয় গতিপথ",
+      "categoryBreakdown": "বিভাগীয় বিবরণ",
+      "zeroSpendDays": "শূন্য-ব্যয় দিবস",
+      "markPaid": "পরিশোধিত চিহ্নিত করুন",
+      "upcomingBills": "আসন্ন বিল",
+      "actionableBriefing": "করণীয় ব্রিফিং",
+      "monthGrid": "মাসের গ্রিড",
+      "yearlyActivity": "১২ মাসের কার্যক্রম"
     },
     "recent": {
       "title": "সাম্প্রতিক লেনদেন",
@@ -49,13 +57,6 @@
       "viewAll": "সকল লেনদেন দেখুন",
       "empty": "এখনো কোনো লেনদেন রেকর্ড করা হয়নি",
       "noTransactions": "আপনার সাম্প্রতিক হিসাবসমূহ এখানে প্রদর্শিত হবে।"
-    },
-    "mandala": {
-      "title": "জেনারেটিভ ওয়েলথ মন্ডলা",
-      "subtitle": "আপনার আর্থিক ভারসাম্যের অ্যালগরিদমিক জ্যামিতিক প্রতিফলন",
-      "harmonyScore": "ভারসাম্য সূচক",
-      "regenerate": "নতুন জ্যামিতি তৈরি করুন",
-      "downloadArt": "ক্যানভাস ডাউনলোড করুন"
     },
     "predictive": {
       "title": "ভবিষ্যদ্বাণীমূলক ক্যাশ ফ্লো",
@@ -115,7 +116,10 @@
       "undoExpired": "পূর্বাবস্থায় ফেরার সময় শেষ",
       "transactionSuccess": "লেনদেনটি সফলভাবে লেজারে যুক্ত হয়েছে।",
       "budgetSuccess": "বাজেটের বরাদ্দ সফলভাবে হালনাগাদ করা হয়েছে।",
-      "goalSuccess": "লক্ষ্যের অনুকূলে অর্থ বরাদ্দ করা হয়েছে।"
+      "goalSuccess": "লক্ষ্যের অনুকূলে অর্থ বরাদ্দ করা হয়েছে।",
+      "staged": "প্রস্তাবিত পরিবর্তন • অনুমোদনের অপেক্ষায়",
+      "executedLedger": "লেজারে সফলভাবে যুক্ত হয়েছে",
+      "revertedLedger": "পূর্বাবস্থায় ফিরিয়ে নেওয়া হয়েছে"
     }
   },
   "transactions": {
@@ -157,7 +161,24 @@
       "recurringLabel": "পুনরাবৃত্তিমূলক হিসেবে চিহ্নিত করুন",
       "notesLabel": "অতিরিক্ত নোট",
       "saveButton": "লেনদেন সংরক্ষণ করুন",
-      "cancelButton": "বাতিল"
+      "cancelButton": "বাতিল",
+      "splitTransaction": "বিভক্ত লেনদেন",
+      "splitAcrossCategories": "একাধিক ক্যাটাগরিতে বিভক্ত করুন",
+      "splitCategories": "বিভক্ত ক্যাটাগরি",
+      "splitBreakdown": "বিভাজনের বিবরণ",
+      "remainingToAllocate": "বরাদ্দ বাকি",
+      "fullyAllocated": "সম্পূর্ণ বরাদ্দকৃত",
+      "overAllocated": "অতিরিক্ত বরাদ্দকৃত",
+      "autoBalance": "বাকি অংশ সমন্বয় করুন",
+      "addSplitRow": "নতুন বিভক্ত ক্যাটাগরি যোগ করুন",
+      "convertLineItemsToSplits": "রসিদের আইটেমগুলোকে বিভক্ত ক্যাটাগরিতে রূপান্তর করুন",
+      "pendingOfflineSync": "অফলাইন সিঙ্ক অপেক্ষমান",
+      "offlineSyncSuccess": "অফলাইন লেনদেন সফলভাবে সিঙ্ক হয়েছে",
+      "tokenPreviewType": "ধরন",
+      "tokenPreviewAmount": "পরিমাণ",
+      "tokenPreviewCategory": "ক্যাটেগরি",
+      "tokenPreviewAccount": "অ্যাকাউন্ট",
+      "tokenPreviewDate": "তারিখ"
     }
   },
   "budgets": {
@@ -182,8 +203,6 @@
   "myMonth": "আমার মাস",
   "reports": "রিপোর্ট",
   "overview": "একনজরে",
-  "generativeArt": "জেনারেটিভ স্টুডিও",
-  "benchmarks": "বেঞ্চমার্ক",
   "insights": {
     "title": "ইউনিফাইড ফাইন্যান্সিয়াল ইনসাইটস হাব",
     "subtitle": "এআই ভিত্তিক ব্যয় বিশ্লেষণ, অসঙ্গতি শনাক্তকরণ এবং অর্থ সাশ্রয়ের সুযোগ",
@@ -252,7 +271,6 @@
   },
   "forecast": "ক্যাশ ফ্লো পূর্বাভাস",
   "investments": "বিনিয়োগ",
-  "achievements": "অর্জনসমূহ",
   "networth": "নেট ওয়ার্থ",
   "fireSimulator": "ফায়ার সিমুলেটর",
   "taxCenter": {
@@ -333,6 +351,7 @@
   "googleCalendar": "গুগল ক্যালেন্ডার",
   "connect": "সংযুক্ত করুন",
   "disconnect": "বিচ্ছিন্ন করুন",
+  "more": "আরও",
   "common": {
     "confirm": "নিশ্চিত করুন",
     "back": "পেছনে",
@@ -357,7 +376,8 @@
     "account": "অ্যাকাউন্ট",
     "description": "বিবরণ",
     "notes": "নোট",
-    "viewAll": "সব দেখুন"
+    "viewAll": "সব দেখুন",
+    "more": "আরও"
   },
   "dashboardPage": {
     "welcome": "স্বাগতম",
@@ -368,6 +388,15 @@
     "monthlyBurn": "মাসিক খরচ প্রবাহ",
     "savingsRate": "সঞ্চয়ের হার",
     "healthScore": "আর্থিক স্বাস্থ্য স্কোর",
+    "safeToSpend": "নিরাপদ খরচযোগ্য উদ্বৃত্ত",
+    "dailyAllowance": "দৈনিক বরাদ্দ",
+    "spendingPace": "খরচের গতি",
+    "emergencyRunway": "জরুরি তহবিল স্থায়িত্ব",
+    "budgetConsumed": "বাজেট ব্যয়",
+    "monthElapsed": "মাস অতিক্রান্ত",
+    "accountsLiquidity": "অ্যাকাউন্ট এবং তারল্য",
+    "liquidRatio": "তারল্য অনুপাত",
+    "upcomingBills": "আসন্ন বিল",
     "intelHub": "ইন্টেল হাব ও মার্কেট সিগন্যাল",
     "quickAdd": "দ্রুত লেনদেন যোগ করুন",
     "noTransactions": "এই মাসে কোনো লেনদেন পাওয়া যায়নি।",
@@ -432,7 +461,19 @@
     "colCategory": "ক্যাটাগরি শ্রেণীবিভাগ",
     "colAccount": "সম্পদ অ্যাকাউন্ট",
     "colAmount": "আর্থিক পরিমাণ",
-    "colActions": "পদক্ষেপ"
+    "colActions": "পদক্ষেপ",
+    "bulkMoveAccount": "অ্যাকাউন্টে স্থানান্তর",
+    "bulkTaxTag": "ট্যাক্স ট্যাগ",
+    "bulkExport": "নির্বাচিত এক্সপোর্ট",
+    "selectedCount": "নির্বাচিত",
+    "inlineEditing": "সম্পাদনা করতে ক্লিক করুন",
+    "keyboardNavTip": "সারি ব্রাউজ করতে j/k, নির্বাচন করতে Space, সম্পাদনা করতে e চাপুন",
+    "dailyNet": "দৈনিক নিট",
+    "selectGroup": "গ্রুপ নির্বাচন",
+    "filteredSummary": "ফিল্টারকৃত সংক্ষিপ্তসার",
+    "inflows": "জমা",
+    "outflows": "খরচ",
+    "netCashflow": "নিট নগদ প্রবাহ"
   },
   "budgetsPage": {
     "title": "বাজেট খাম ও ব্যয়ের সীমা",
@@ -460,7 +501,49 @@
     "deleteBudget": "বাজেট খাম মুছে ফেলুন",
     "rolloverEnabled": "উদ্বৃত্ত রোলওভার সক্রিয়",
     "rolloverDisabled": "মাসিক নতুন সূচনা",
-    "dailySpendingAllowance": "পরামর্শিত দৈনিক ব্যয়ের সীমা"
+    "dailySpendingAllowance": "পরামর্শিত দৈনিক ব্যয়ের সীমা",
+    "rebalanceCategories": "ক্যাটাগরি ভারসাম্য সমন্বয়",
+    "rebalanceModalTitle": "খাম ক্যাটাগরি ভারসাম্য সমন্বয়",
+    "rebalanceModalDesc": "আপনার সামগ্রিক মাসিক বাজেট পরিবর্তন না করে অতিরিক্ত উদ্বৃত্ত সম্পন্ন খাম থেকে ঘাটতি থাকা খামে অর্থ স্থানান্তর করুন।",
+    "fromEnvelope": "উদ্বৃত্ত খাম থেকে",
+    "toEnvelope": "গন্তব্য খামে",
+    "transferAmount": "স্থানান্তরের পরিমাণ",
+    "availableSurplus": "বিদ্যমান উদ্বৃত্ত",
+    "zeroBasedInvariant": "শূন্য-ভিত্তিক নীতি: মোট বরাদ্দ অপরিবর্তিত থাকে",
+    "confirmRebalance": "ভারসাম্য নিশ্চিত করুন",
+    "pacingFast": "দ্রুত খরচ হচ্ছে",
+    "exhausted": "সম্পূর্ণ শেষ",
+    "dailyBurnRate": "দৈনিক খরচের গতি",
+    "idealBurn": "আদর্শ গতি",
+    "actualBurn": "বাস্তব গতি",
+    "overspendingAlertTitle": "অতিরিক্ত ব্যয়ের সতর্কতা",
+    "overspendingAlertDesc": "টি খাম নির্ধারিত গতির চেয়ে দ্রুত খরচ হচ্ছে বা শেষ হয়ে গেছে।",
+    "rebalanceNow": "এখনই ভারসাম্য করুন",
+    "rolloverCarried": "পূর্বে হতে যুক্ত",
+    "rolloverTooltip": "খরচ না হওয়া উদ্বৃত্ত পরবর্তী মাসে স্থানান্তরিত হবে"
+  },
+  "subscriptionsPage": {
+    "title": "সাবস্ক্রিপশন ইন্টেলিজেন্স",
+    "subtitle": "নিয়মিত খরচ ট্র্যাক করুন, মূল্যবৃদ্ধি শনাক্ত করুন, ফ্রি ট্রায়াল পরিচালনা করুন এবং ৩০ দিনের বিল ক্যালেন্ডার দেখুন।",
+    "monthlyView": "মাসিক ভিউ",
+    "annualView": "বার্ষিক ভিউ",
+    "priceHikeDetected": "মূল্যবৃদ্ধি সতর্কবার্তা",
+    "priceHikeBadge": "মূল্য বৃদ্ধি পেয়েছে",
+    "priceHikeDesc": "পূর্ববর্তী খরচের তুলনায় মূল্য বৃদ্ধি শনাক্ত হয়েছে।",
+    "freeTrialEnding": "ট্রায়াল শীঘ্রই শেষ হচ্ছে",
+    "freeTrialDaysRemaining": "দিন বাকি আছে ফ্রি ট্রায়ালে",
+    "billCalendar": "৩০ দিনের বিল ক্যালেন্ডার",
+    "upcomingCommitments": "আসন্ন অঙ্গীকার (পরবর্তী ৩০ দিন)",
+    "cancelReminder": "বাতিলের তাগিদ",
+    "cancelReminderActive": "তাগিদ নির্ধারিত",
+    "markRenewed": "নবায়ন নিশ্চিত করুন",
+    "renewedSuccess": "সাবস্ক্রিপশন সফলভাবে নবায়ন হয়েছে",
+    "updateBillingAccount": "অ্যাকাউন্ট পরিবর্তন করুন",
+    "selectAccount": "বিলিং অ্যাকাউন্ট নির্বাচন করুন",
+    "daysUntilRenewal": "নবায়নের বাকি দিন",
+    "daysOverdue": "মেয়াদোত্তীর্ণ দিন",
+    "dueToday": "আজ প্রদেয়",
+    "noUpcomingBills": "এই সময়ের মধ্যে কোনো বিল প্রদেয় নেই"
   },
   "goalsPage": {
     "title": "আর্থিক লক্ষ্য ও মাইলফলক",
@@ -546,15 +629,6 @@
     "owedToYou": "পাবেন",
     "youOwe": "দেবেন"
   },
-  "benchmarksPage": {
-    "title": "জনসংখ্যাতাত্ত্বিক আর্থিক বেঞ্চমার্কিং",
-    "globalCohort": "গ্লোবাল গড়",
-    "myCohort": "আমার বয়স ও আয়ের গ্রুপ",
-    "optInTitle": "আমার বেঞ্চমার্ক উন্নত করুন",
-    "optInDesc": "আপনার বয়সভিত্তিক গ্রুপের ব্যবহারকারীদের সাথে সঞ্চয় ও ব্যয়ের তুলনা করতে সম্মতি দিন।",
-    "savingsRatePercentile": "সঞ্চয় হারের পারসেন্টাইল",
-    "healthScore": "আর্থিক স্বাস্থ্য স্কোর"
-  },
   "taxPage": {
     "title": "ট্যাক্স সেন্টার ও কর ছাড় ট্র্যাকার",
     "exportPdf": "পিডিএফ শিডিউল এক্সপোর্ট করুন",
@@ -604,31 +678,28 @@
     }
   },
   "nav": {
-    "dashboard": "ড্যাশবোর্ড",
-    "accounts": "অ্যাকাউন্টস",
-    "chat": "এআই চ্যাট",
+    "commandCenter": "কমান্ড সেন্টার",
+    "accountsCards": "অ্যাকাউন্ট ও কার্ড",
     "transactions": "লেনদেন",
-    "budgets": "বাজেট",
-    "myMonth": "আমার মাস",
-    "reports": "রিপোর্ট",
-    "overview": "একনজরে",
-    "generativeArt": "জেনারেটিভ স্টুডিও",
-    "benchmarks": "বেঞ্চমার্ক",
-    "insights": "ইনসাইটস",
-    "household": "হাউসহোল্ড",
-    "billSplit": "বিল স্প্লিট",
-    "tourManager": "ট্যুর ম্যানেজার",
-    "wealthGoals": "ওয়েল্থ ও লক্ষ্য",
+    "budgetSubscriptions": "বাজেট ও সাবস্ক্রিপশন",
+    "collaborativeWealth": "যৌথ আর্থিক ব্যবস্থাপনা",
+    "goalsNetWorth": "লক্ষ্য ও নিট সম্পদ",
+    "intelligenceVault": "এআই ইন্টেলিজেন্স ও ভল্ট",
+    "dashboard": "কমান্ড সেন্টার",
+    "accounts": "অ্যাকাউন্ট ও কার্ড",
+    "budgets": "বাজেট ও সাবস্ক্রিপশন",
+    "household": "যৌথ আর্থিক ব্যবস্থাপনা",
+    "wealthGoals": "লক্ষ্য ও নিট সম্পদ",
+    "insights": "এআই ইন্টেলিজেন্স ও ভল্ট",
+    "chat": "এআই ফাইন্যান্সিয়াল অ্যাডভাইজার",
+    "tourManager": "ট্যুর ও ট্রিপ লেজার",
     "debts": "ঋণ পরিকল্পনা",
-    "forecast": "ক্যাশ ফ্লো পূর্বাভাস",
     "investments": "বিনিয়োগ",
-    "achievements": "অর্জনসমূহ",
-    "networth": "নেট ওয়ার্থ",
-    "fireSimulator": "ফায়ার সিমুলেটর",
     "taxCenter": "ট্যাক্স সেন্টার",
-    "documents": "ডকুমেন্টস",
+    "taxVault": "ট্যাক্স ও ভল্ট",
+    "documents": "ডকুমেন্ট ভল্ট",
     "bankImport": "ব্যাংক ইমপোর্ট",
-    "recurring": "পুনরাবৃত্তিমূলক",
+    "recurring": "পুনরাবৃত্তিমূলক ও সাবস্ক্রিপশন",
     "automationRules": "অটোমেশন রুলস",
     "alerts": "সতর্কবার্তা",
     "settings": "সেটিংস"
@@ -769,5 +840,20 @@
     "noSearchResultsDesc": "শব্দ পরিবর্তন করুন বা ফিল্টার রিসেট করে আবার চেষ্টা করুন।",
     "noInsightsTitle": "কোনো আর্থিক অসঙ্গতি ধরা পড়েনি",
     "noInsightsDesc": "ওয়েলথএআই আপনার ব্যয়ে কোনো অস্বাভাবিক স্পাইক বা লিকেজ খুঁজে পায়নি।"
+  },
+  "netWorthPage": {
+    "title": "মোট সম্পদ ও সম্পদ ট্র্যাকিং",
+    "subtitle": "নগদ অর্থ, বিনিয়োগ, স্থাবর সম্পত্তি এবং ঋণ পরিশোধের সমন্বিত ব্যালেন্স শিট",
+    "consolidatedNetWorth": "সমন্বিত মোট সম্পদ",
+    "totalAssets": "মোট সম্পদ",
+    "totalLiabilities": "মোট দায় ও ঋণ",
+    "debtToAssetRatio": "ঋণ ও সম্পদের অনুপাত",
+    "logSnapshot": "ব্যালেন্স স্ন্যাপশট সংরক্ষণ",
+    "assetAllocation": "সম্পদের বণ্টন",
+    "liabilityBreakdown": "দায়ের বিবরণ",
+    "liquidCash": "নগদ অর্থ ও সঞ্চয়",
+    "investments": "বিনিয়োগ ও হোল্ডিংস",
+    "realEstate": "স্থাবর সম্পত্তি ও রিয়েল এস্টেট",
+    "physicalAssets": "মূল্যবান ও বাস্তব সম্পদ"
   }
 }

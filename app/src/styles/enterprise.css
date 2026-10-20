@@ -1,8 +1,8 @@
 /**
- * @fileoverview Global CSS additions for enterprise UI enhancements.
+ * @fileoverview Global CSS additions for institutional enterprise UI enhancements.
  *
- * Contains skeleton shimmer animations, glassmorphism utilities,
- * and premium design tokens that extend the existing design system.
+ * Implements Linear- & Stripe-inspired token hierarchy, tabular numeral discipline,
+ * subtle structural shadows, and crisp surface cards without GPU-heavy blurs.
  *
  * @module styles/enterprise.css
  */
@@ -14,9 +14,9 @@
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 75%
+    rgba(255, 255, 255, 0.02) 25%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.02) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -32,91 +32,140 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GLASSMORPHISM UTILITY CLASSES
+   INSTITUTIONAL SURFACE CARDS (REPLACING HEAVY FROSTED GLASS)
    ═══════════════════════════════════════════════════════════════ */
 
+/* Clean standard card surface with 1px hairline border */
 .glass-card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: var(--bg-surface, #11131A);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
 }
 
+/* Elevated card / modal surface */
 .glass-card-elevated {
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: var(--bg-elevated, #161922);
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.14));
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
+}
+
+/* Strictly constrained 12px blur for sticky headers and navigation bars */
+.glass-header,
+.glass-nav-blur {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GRADIENT MESH BACKGROUND
+   SURFACE BACKGROUND
    ═══════════════════════════════════════════════════════════════ */
 
 .gradient-mesh-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.08), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(6, 182, 212, 0.06), transparent),
-    radial-gradient(ellipse 70% 60% at 50% 90%, rgba(16, 185, 129, 0.05), transparent),
-    linear-gradient(135deg, #0a0a0f 0%, #0d0d1a 50%, #0a0a0f 100%);
+  background: var(--bg-canvas, #090A0F);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MICRO INTERACTIONS
+   CRISP HOVER ELEVATION & MICRO-INTERACTIONS
    ═══════════════════════════════════════════════════════════════ */
 
 .hover-lift {
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
 }
 
 .hover-glow {
-  transition: box-shadow 0.3s ease;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
 .hover-glow:hover {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15),
-              0 0 40px rgba(99, 102, 241, 0.05);
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ENTERPRISE TEXT STYLES
+   INSTITUTIONAL TYPOGRAPHY & TABULAR NUMERAL DISCIPLINE
    ═══════════════════════════════════════════════════════════════ */
 
+/* Strict numerical alignment across all financial figures */
+table,
+th,
+td,
+.font-mono,
+.tabular-nums,
+.currency-value,
+.stat-value,
+[data-numeric="true"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Page titles */
+.page-title {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+/* Section & card headers */
+.section-header,
+.card-header-title {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Primary KPI / Net Worth display numbers */
+.kpi-display-number,
+.net-worth-ticker {
+  font-size: clamp(1.875rem, 3.5vw, 2.25rem); /* 30px to 36px */
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Standard body & table cells */
+.body-default,
+table td,
+table th {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5;
+}
+
+/* Metadata, timestamps, and column headers */
+.meta-muted,
+.table-column-header,
+.timestamp-meta {
+  font-size: 0.75rem; /* 12px */
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #94A3B8;
+}
+
+/* Semantic text accents */
 .text-gradient-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent-primary, #6366F1);
 }
 
 .text-gradient-success {
-  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--finance-positive, #10B981);
 }
 
 .text-gradient-warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--finance-warning, #F59E0B);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SCROLLBAR STYLING (WEBKIT)
+   SCROLLBAR STYLING (THIN 6PX UNOBTRUSIVE)
    ═══════════════════════════════════════════════════════════════ */
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -129,12 +178,20 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-strong, rgba(255, 255, 255, 0.14));
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-strong, rgba(15, 23, 42, 0.16));
+}
+
+html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -148,14 +205,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ANIMATED PULSE DOT (FOR LIVE INDICATORS)
+   ANIMATED PULSE DOT (FOR LIVE STATUS INDICATORS)
    ═══════════════════════════════════════════════════════════════ */
 
 .pulse-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--finance-positive, #10B981);
   position: relative;
 }
 
@@ -164,7 +221,7 @@
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  background: rgba(16, 185, 129, 0.3);
+  background: var(--finance-positive-bg, rgba(16, 185, 129, 0.12));
   animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -178,10 +235,10 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #6366f1;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-top-color: var(--accent-primary, #6366F1);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

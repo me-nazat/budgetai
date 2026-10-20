@@ -259,7 +259,7 @@ export class RecurringService {
    *
    * @internal
    */
-  private static calculateNextDate(
+  public static calculateNextDate(
     currentDate: string,
     frequency: 'weekly' | 'monthly' | 'yearly'
   ): string {
@@ -280,3 +280,378 @@ export class RecurringService {
     return d.toISOString().split('T')[0];
   }
 }
+
+import { SubscriptionRepository } from '@/repositories/subscription.repository';
+import { CreateSubscriptionDTO, UpdateSubscriptionDTO, type SubscriptionResponseDTO } from '@/lib/types/dto';
+
+/**
+ * SubscriptionService — subscription intelligence suite with price-hike detection,
+ * free-trial expiration counters, and renewal calendar calculations.
+ */
+export class SubscriptionService {
+  /**
+   * Retrieves all active and past subscriptions enriched with price-hike alerts,
+   * trial expiration countdowns, and renewal metrics.
+   *
+   * @param userId - The user's ID.
+   * @returns Array of enriched subscription DTOs.
+   */
+  static async getAll(userId: number): Promise<SubscriptionResponseDTO[]> {
+    const records = await SubscriptionRepository.findAll(userId);
+
+    // Retrieve historical expense transactions to detect anomalous price hikes
+    const pastTransactions = await TransactionRepository.findAll(userId, {
+      type: 'expense',
+      limit: 250,
+    }).catch(() => []);
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    return records.map((sub) => {
+      const subNameLower = sub.name.toLowerCase().trim();
+
+      // Find matching transactions for this subscription merchant
+      const matchingTxs = pastTransactions
+        .filter((tx) => {
+          const descLower = (tx.description || '').toLowerCase();
+          return descLower.includes(subNameLower) || subNameLower.includes(descLower);
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      let priceHikeAlert: SubscriptionResponseDTO['priceHikeAlert'] | undefined = undefined;
+
+      // 1. Check transaction historical price divergence
+      if (matchingTxs.length >= 2) {
+        const latestCharge = matchingTxs[0].amount;
+        const previousCharge = matchingTxs[1].amount;
+        if (latestCharge > previousCharge) {
+          const delta = Math.round((latestCharge - previousCharge) * 100) / 100;
+          const percentageIncrease = Math.round((delta / previousCharge) * 100);
+          priceHikeAlert = {
+            detected: true,
+            previousAmount: previousCharge,
+            currentAmount: latestCharge,
+            delta,
+            percentageIncrease,
+            lastChargedDate: matchingTxs[0].date,
+          };
+        }
+      }
+
+      // 2. Check previousAmount recorded on the subscription record itself
+      if (!priceHikeAlert && sub.previousAmount && sub.amount > sub.previousAmount) {
+        const delta = Math.round((sub.amount - sub.previousAmount) * 100) / 100;
+        const percentageIncrease = Math.round((delta / sub.previousAmount) * 100);
+        priceHikeAlert = {
+          detected: true,
+          previousAmount: sub.previousAmount,
+          currentAmount: sub.amount,
+          delta,
+          percentageIncrease,
+          lastChargedDate: matchingTxs[0]?.date,
+        };
+      }
+
+      // Compute days until renewal
+      let daysUntilRenewal = 0;
+      if (sub.nextRenewalDate) {
+        const renewalDate = new Date(sub.nextRenewalDate + 'T00:00:00Z');
+        daysUntilRenewal = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      // Compute free-trial countdown
+      let trialCountdownDays: number | null = null;
+      if (sub.trialEndsAt) {
+        const trialDate = new Date(sub.trialEndsAt + 'T00:00:00Z');
+        trialCountdownDays = Math.ceil((trialDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      // Monthly and annual normalized costs
+      let monthlyNormalizedAmount = sub.amount;
+      if (sub.billingCycle === 'weekly') {
+        monthlyNormalizedAmount = Math.round(sub.amount * 4.33 * 100) / 100;
+      } else if (sub.billingCycle === 'yearly') {
+        monthlyNormalizedAmount = Math.round((sub.amount / 12) * 100) / 100;
+      }
+      const annualNormalizedAmount = Math.round(monthlyNormalizedAmount * 12 * 100) / 100;
+
+      return {
+        id: sub.id,
+        name: sub.name,
+        amount: sub.amount,
+        currency: sub.currency || 'BDT',
+        billingCycle: sub.billingCycle as 'weekly' | 'monthly' | 'yearly',
+        nextRenewalDate: sub.nextRenewalDate,
+        category: sub.category,
+        logoUrl: sub.logoUrl ?? undefined,
+        isActive: sub.isActive ?? 1,
+        trialEndsAt: sub.trialEndsAt ?? undefined,
+        previousAmount: sub.previousAmount ?? undefined,
+        accountId: sub.accountId ?? undefined,
+        cancelReminderDays: sub.cancelReminderDays ?? 3,
+        createdAt: sub.createdAt ?? undefined,
+        priceHikeAlert,
+        daysUntilRenewal,
+        trialCountdownDays,
+        monthlyNormalizedAmount,
+        annualNormalizedAmount,
+      };
+    });
+  }
+
+  /**
+   * Scans historical transactions and flags anomalous price increases for recurring merchants.
+   */
+  static async detectPriceHikes(userId: number) {
+    const subscriptionsList = await this.getAll(userId);
+    return subscriptionsList
+      .filter((s) => s.priceHikeAlert?.detected)
+      .map((s) => ({
+        subscriptionId: s.id,
+        name: s.name,
+        ...s.priceHikeAlert!,
+      }));
+  }
+
+  /**
+   * Creates a new subscription.
+   */
+  static async create(
+    userId: number,
+    data: unknown,
+    ctx: { ip?: string; userAgent?: string } = {}
+  ): Promise<SubscriptionResponseDTO> {
+    const validated = validateInput(CreateSubscriptionDTO, data);
+
+    const record = await SubscriptionRepository.create({
+      userId,
+      name: validated.name,
+      amount: validated.amount,
+      currency: validated.currency,
+      billingCycle: validated.billingCycle,
+      nextRenewalDate: validated.nextRenewalDate,
+      category: validated.category,
+      logoUrl: validated.logoUrl,
+      isActive: validated.isActive ? 1 : 0,
+      trialEndsAt: validated.trialEndsAt,
+      previousAmount: validated.previousAmount,
+      accountId: validated.accountId,
+      cancelReminderDays: validated.cancelReminderDays,
+    });
+
+    AuditService.logCreate(
+      userId,
+      'recurring',
+      record.id,
+      { name: validated.name, amount: validated.amount, billingCycle: validated.billingCycle },
+      ctx.ip,
+      ctx.userAgent
+    );
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const renewalDate = new Date(record.nextRenewalDate + 'T00:00:00Z');
+    const daysUntilRenewal = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    let monthlyNormalizedAmount = record.amount;
+    if (record.billingCycle === 'weekly') monthlyNormalizedAmount = Math.round(record.amount * 4.33 * 100) / 100;
+    else if (record.billingCycle === 'yearly') monthlyNormalizedAmount = Math.round((record.amount / 12) * 100) / 100;
+
+    return {
+      id: record.id,
+      name: record.name,
+      amount: record.amount,
+      currency: record.currency || 'BDT',
+      billingCycle: record.billingCycle as 'weekly' | 'monthly' | 'yearly',
+      nextRenewalDate: record.nextRenewalDate,
+      category: record.category,
+      logoUrl: record.logoUrl ?? undefined,
+      isActive: record.isActive ?? 1,
+      trialEndsAt: record.trialEndsAt ?? undefined,
+      previousAmount: record.previousAmount ?? undefined,
+      accountId: record.accountId ?? undefined,
+      cancelReminderDays: record.cancelReminderDays ?? 3,
+      createdAt: record.createdAt ?? undefined,
+      daysUntilRenewal,
+      monthlyNormalizedAmount,
+      annualNormalizedAmount: Math.round(monthlyNormalizedAmount * 12 * 100) / 100,
+    };
+  }
+
+  /**
+   * Updates an existing subscription.
+   */
+  static async update(
+    userId: number,
+    id: number,
+    data: unknown,
+    ctx: { ip?: string; userAgent?: string } = {}
+  ): Promise<SubscriptionResponseDTO> {
+    const validated = validateInput(UpdateSubscriptionDTO, data);
+
+    const existing = await SubscriptionRepository.findById(userId, id);
+    if (!existing) {
+      throw new NotFoundError('Subscription not found');
+    }
+
+    const updated = await SubscriptionRepository.update(userId, id, {
+      ...validated,
+      isActive: validated.isActive !== undefined ? (validated.isActive ? 1 : 0) : undefined,
+    });
+
+    AuditService.logUpdate(
+      userId,
+      'recurring',
+      id,
+      { amount: existing.amount, nextRenewalDate: existing.nextRenewalDate },
+      { amount: updated?.amount, nextRenewalDate: updated?.nextRenewalDate },
+      ctx.ip,
+      ctx.userAgent
+    );
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const renewalDate = new Date(updated!.nextRenewalDate + 'T00:00:00Z');
+    const daysUntilRenewal = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    let monthlyNormalizedAmount = updated!.amount;
+    if (updated!.billingCycle === 'weekly') monthlyNormalizedAmount = Math.round(updated!.amount * 4.33 * 100) / 100;
+    else if (updated!.billingCycle === 'yearly') monthlyNormalizedAmount = Math.round((updated!.amount / 12) * 100) / 100;
+
+    return {
+      id: updated!.id,
+      name: updated!.name,
+      amount: updated!.amount,
+      currency: updated!.currency || 'BDT',
+      billingCycle: updated!.billingCycle as 'weekly' | 'monthly' | 'yearly',
+      nextRenewalDate: updated!.nextRenewalDate,
+      category: updated!.category,
+      logoUrl: updated!.logoUrl ?? undefined,
+      isActive: updated!.isActive ?? 1,
+      trialEndsAt: updated!.trialEndsAt ?? undefined,
+      previousAmount: updated!.previousAmount ?? undefined,
+      accountId: updated!.accountId ?? undefined,
+      cancelReminderDays: updated!.cancelReminderDays ?? 3,
+      createdAt: updated!.createdAt ?? undefined,
+      daysUntilRenewal,
+      monthlyNormalizedAmount,
+      annualNormalizedAmount: Math.round(monthlyNormalizedAmount * 12 * 100) / 100,
+    };
+  }
+
+  /**
+   * Quick Action: Advances the renewal date by 1 billing cycle and updates previousAmount.
+   */
+  static async markRenewed(
+    userId: number,
+    id: number,
+    ctx: { ip?: string; userAgent?: string } = {}
+  ): Promise<SubscriptionResponseDTO> {
+    const existing = await SubscriptionRepository.findById(userId, id);
+    if (!existing) {
+      throw new NotFoundError('Subscription not found');
+    }
+
+    const nextDate = RecurringService.calculateNextDate(
+      existing.nextRenewalDate,
+      existing.billingCycle as 'weekly' | 'monthly' | 'yearly'
+    );
+
+    const updated = await SubscriptionRepository.markRenewed(userId, id, nextDate, existing.amount);
+
+    AuditService.logUpdate(
+      userId,
+      'recurring',
+      id,
+      { action: 'mark_renewed', previousDate: existing.nextRenewalDate },
+      { nextRenewalDate: nextDate },
+      ctx.ip,
+      ctx.userAgent
+    );
+
+    return (await this.getAll(userId)).find((s) => s.id === id)!;
+  }
+
+  /**
+   * Quick Action: Updates the cancel reminder days.
+   */
+  static async updateCancelReminder(
+    userId: number,
+    id: number,
+    days: number,
+    ctx: { ip?: string; userAgent?: string } = {}
+  ): Promise<SubscriptionResponseDTO> {
+    const existing = await SubscriptionRepository.findById(userId, id);
+    if (!existing) {
+      throw new NotFoundError('Subscription not found');
+    }
+
+    await SubscriptionRepository.update(userId, id, { cancelReminderDays: days });
+
+    AuditService.logUpdate(
+      userId,
+      'recurring',
+      id,
+      { cancelReminderDays: existing.cancelReminderDays },
+      { cancelReminderDays: days },
+      ctx.ip,
+      ctx.userAgent
+    );
+
+    return (await this.getAll(userId)).find((s) => s.id === id)!;
+  }
+
+  /**
+   * Quick Action: Updates the linked payment account.
+   */
+  static async updateBillingAccount(
+    userId: number,
+    id: number,
+    accountId: number | null,
+    ctx: { ip?: string; userAgent?: string } = {}
+  ): Promise<SubscriptionResponseDTO> {
+    const existing = await SubscriptionRepository.findById(userId, id);
+    if (!existing) {
+      throw new NotFoundError('Subscription not found');
+    }
+
+    await SubscriptionRepository.update(userId, id, { accountId });
+
+    AuditService.logUpdate(
+      userId,
+      'recurring',
+      id,
+      { accountId: existing.accountId },
+      { accountId },
+      ctx.ip,
+      ctx.userAgent
+    );
+
+    return (await this.getAll(userId)).find((s) => s.id === id)!;
+  }
+
+  /**
+   * Deletes a subscription.
+   */
+  static async delete(
+    userId: number,
+    id: number,
+    ctx: { ip?: string; userAgent?: string } = {}
+  ): Promise<void> {
+    const deleted = await SubscriptionRepository.delete(userId, id);
+    if (!deleted) {
+      throw new NotFoundError('Subscription not found');
+    }
+
+    AuditService.logDelete(
+      userId,
+      'recurring',
+      id,
+      { name: deleted.name, amount: deleted.amount },
+      ctx.ip,
+      ctx.userAgent
+    );
+  }
+}
+

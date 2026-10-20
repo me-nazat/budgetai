@@ -27,6 +27,7 @@ export class TaxRepository {
         transactionName: transactions.description,
         transactionDate: transactions.date,
         transactionCategory: transactions.category,
+        transactionAttachments: transactions.attachments,
       })
       .from(taxDeductions)
       .leftJoin(taxCategories, eq(taxDeductions.taxCategoryId, taxCategories.id))
@@ -34,7 +35,11 @@ export class TaxRepository {
       .where(eq(taxDeductions.userId, userId))
       .orderBy(sql`${taxDeductions.createdAt} DESC`);
 
-    const rows = await query;
+    let rows = await query;
+    if (taxYear) {
+      const yearStr = String(taxYear);
+      rows = rows.filter((r) => !r.transactionDate || r.transactionDate.startsWith(yearStr));
+    }
 
     // Decrypt amounts in memory per Decision A3
     return rows.map((r) => {
@@ -57,6 +62,14 @@ export class TaxRepository {
         }
       }
 
+      let hasReceiptProof = Boolean(r.receiptDocumentId);
+      if (!hasReceiptProof && r.transactionAttachments) {
+        try {
+          const parsed = JSON.parse(r.transactionAttachments);
+          if (Array.isArray(parsed) && parsed.length > 0) hasReceiptProof = true;
+        } catch {}
+      }
+
       return {
         id: r.id,
         userId: r.userId,
@@ -68,6 +81,7 @@ export class TaxRepository {
         eligibleAmount: eligible,
         deductibleAmount: deductible,
         receiptDocumentId: r.receiptDocumentId,
+        hasReceiptProof,
         status: r.status,
         notes: r.notes,
         createdAt: r.createdAt,
@@ -134,17 +148,30 @@ export class TaxRepository {
 
     const categoryBreakdown: Record<string, number> = {};
     let totalDeductibleAmount = 0;
+    let approvedWithProof = 0;
+    let approvedCount = 0;
 
     items.forEach((item) => {
       totalDeductibleAmount += item.deductibleAmount;
       categoryBreakdown[item.deductionCategory] =
         (categoryBreakdown[item.deductionCategory] || 0) + item.deductibleAmount;
+      if (item.status === 'VERIFIED') {
+        approvedCount++;
+        if (item.hasReceiptProof) {
+          approvedWithProof++;
+        }
+      }
     });
+
+    const auditReadinessPercent = approvedCount > 0 ? Math.round((approvedWithProof / approvedCount) * 100) : 100;
 
     return {
       taxYear: taxYear || new Date().getFullYear(),
       totalDeductibleAmount,
       totalItemsCount: items.length,
+      approvedCount,
+      approvedWithProof,
+      auditReadinessPercent,
       categoryBreakdown,
       items,
     };

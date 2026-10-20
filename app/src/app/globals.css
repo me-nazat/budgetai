@@ -7,20 +7,40 @@
   /* Font Family Definitions */
   --font-playfair: var(--font-playfair), serif;
 
+  /* Surface & Canvas Hierarchy */
+  --color-bg-canvas: var(--bg-canvas);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-hover: var(--bg-hover);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
+  /* Semantic Financial Colors */
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-finance-positive: var(--finance-positive);
+  --color-finance-positive-bg: var(--finance-positive-bg);
+  --color-finance-negative: var(--finance-negative);
+  --color-finance-negative-bg: var(--finance-negative-bg);
+  --color-finance-warning: var(--finance-warning);
+  --color-finance-warning-bg: var(--finance-warning-bg);
+  --color-finance-neutral: var(--finance-neutral);
+  --color-finance-neutral-bg: var(--finance-neutral-bg);
+
   /* Extreme Dark Mode (OLED) */
-  --color-bg-dark: #0A0E1B;
-  --color-surface-dark: #12182B;
-  --color-surface-dark-2: #1A2238;
-  --color-surface-hover: #1E293B;
-  --color-surface-border: rgba(255, 255, 255, 0.08);
+  --color-bg-dark: #090A0F;
+  --color-surface-dark: #11131A;
+  --color-surface-dark-2: #161922;
+  --color-surface-hover: rgba(255, 255, 255, 0.035);
+  --color-surface-border: rgba(255, 255, 255, 0.07);
   
   /* Wealth AI Accents */
-  --color-primary: #136dec;
-  --color-primary-hover: #0f5ec8;
-  --color-primary-light: rgba(19, 109, 236, 0.1);
-  --color-accent-emerald: #10b981;
-  --color-accent-amber: #FFB800;
-  --color-accent-rose: #FF2A5F;
+  --color-primary: #6366F1;
+  --color-primary-hover: #4F46E5;
+  --color-primary-light: rgba(99, 102, 241, 0.1);
+  --color-accent-emerald: #10B981;
+  --color-accent-amber: #F59E0B;
+  --color-accent-rose: #F43F5E;
   
   /* Text */
   --color-text-main: var(--text-main);
@@ -28,21 +48,21 @@
   --color-text-secondary: var(--text-secondary);
   
   /* Light Mode (Premium White) */
-  --color-bg-light: #F7F9FC;
+  --color-bg-light: #F8FAFC;
   --color-surface-light: #FFFFFF;
   
   /* Landing page colors */
-  --color-lp-cyan: #5b8ff9;
-  --color-lp-cyan-dark: #136dec;
-  --color-lp-bg-dark: #0A0E1B;
-  --color-lp-card-dark: #12182B;
-  --color-lp-navy: #1A2238;
-  --color-lp-navy-light: #f0f2f8;
+  --color-lp-cyan: #6366F1;
+  --color-lp-cyan-dark: #4F46E5;
+  --color-lp-bg-dark: #090A0F;
+  --color-lp-card-dark: #11131A;
+  --color-lp-navy: #161922;
+  --color-lp-navy-light: #F1F5F9;
 
   /* Premium gradient palette */
-  --color-gradient-start: #136dec;
-  --color-gradient-mid: #1e3a8a;
-  --color-gradient-end: #10b981;
+  --color-gradient-start: #6366F1;
+  --color-gradient-mid: #4F46E5;
+  --color-gradient-end: #10B981;
 }
 
 /* ============================================ */
@@ -59,56 +79,147 @@
   }
 
   :root {
+    /* Surface and border token hierarchy — Light Mode */
+    --bg-canvas: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-elevated: #F1F5F9;
+    --bg-hover: rgba(15, 23, 42, 0.03);
+    --border-subtle: rgba(15, 23, 42, 0.08);
+    --border-strong: rgba(15, 23, 42, 0.16);
+
+    /* Semantic financial color tokens */
+    --accent-primary: #6366F1;
+    --accent-primary-hover: #4F46E5;
+    --finance-positive: #10B981;
+    --finance-positive-bg: rgba(16, 185, 129, 0.12);
+    --finance-negative: #F43F5E;
+    --finance-negative-bg: rgba(244, 63, 94, 0.12);
+    --finance-warning: #F59E0B;
+    --finance-warning-bg: rgba(245, 158, 11, 0.12);
+    --finance-neutral: #64748B;
+    --finance-neutral-bg: rgba(100, 116, 139, 0.12);
+
     --text-main: #0F172A;
     --text-muted: #64748B;
     --text-secondary: #475569;
     --color-text-main: #0F172A;
     --color-text-muted: #64748B;
     --color-text-secondary: #475569;
-    --color-chart-line: #136dec;
-    --graph-canvas-bg: #ffffff;
+    --color-chart-line: #6366F1;
+    --graph-canvas-bg: #FFFFFF;
     --graph-grid-color: rgba(107, 114, 128, 0.18);
     --graph-axis-text: rgba(107, 114, 128, 0.72);
-    --graph-gradient-start: #10b981;
-    --graph-gradient-end: #2563eb;
-    --checklist-text: #1a1a1a;
-    --checklist-text-muted: #4b5563;
-    --checklist-badge-bg: #f3f4f6;
-    --checklist-badge-text: #6b7280;
+    --graph-gradient-start: #10B981;
+    --graph-gradient-end: #6366F1;
+    --checklist-text: #1A1A1A;
+    --checklist-text-muted: #4B5563;
+    --checklist-badge-bg: #F3F4F6;
+    --checklist-badge-text: #6B7280;
   }
 
   html.dark, :where(.dark) {
     color-scheme: dark;
+    /* Surface and border token hierarchy — Dark Mode */
+    --bg-canvas: #090A0F;
+    --bg-surface: #11131A;
+    --bg-elevated: #161922;
+    --bg-hover: rgba(255, 255, 255, 0.035);
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.14);
+
+    /* Semantic financial color tokens */
+    --accent-primary: #6366F1;
+    --accent-primary-hover: #4F46E5;
+    --finance-positive: #10B981;
+    --finance-positive-bg: rgba(16, 185, 129, 0.12);
+    --finance-negative: #F43F5E;
+    --finance-negative-bg: rgba(244, 63, 94, 0.12);
+    --finance-warning: #F59E0B;
+    --finance-warning-bg: rgba(245, 158, 11, 0.12);
+    --finance-neutral: #64748B;
+    --finance-neutral-bg: rgba(100, 116, 139, 0.12);
+
     --text-main: #FAFAFA;
     --text-muted: #8E8E93;
     --text-secondary: #A1A1A6;
     --color-text-main: #FAFAFA;
     --color-text-muted: #8E8E93;
     --color-text-secondary: #A1A1A6;
-    --color-chart-line: #5b8ff9;
-    --graph-canvas-bg: #0f172a;
+    --color-chart-line: #6366F1;
+    --graph-canvas-bg: #090A0F;
     --graph-grid-color: rgba(255, 255, 255, 0.08);
     --graph-axis-text: rgba(203, 213, 225, 0.75);
-    --graph-gradient-start: #34d399;
-    --graph-gradient-end: #38bdf8;
-    --checklist-text: #ffffff;
-    --checklist-text-muted: #9ca3af;
+    --graph-gradient-start: #34D399;
+    --graph-gradient-end: #818CF8;
+    --checklist-text: #FFFFFF;
+    --checklist-text-muted: #9CA3AF;
     --checklist-badge-bg: rgba(255, 255, 255, 0.05);
-    --checklist-badge-text: #9ca3af;
+    --checklist-badge-text: #9CA3AF;
   }
 
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
-    background: #f8f9fb;
+    background: var(--bg-canvas, #F8FAFC);
     color: var(--color-text-main);
     text-rendering: optimizeLegibility;
   }
 
   :where(.dark) body {
-    background: #0A0E1B;
+    background: var(--bg-canvas, #090A0F);
     color: var(--color-text-main);
+  }
+
+  /* Tabular numeral discipline across financial platform */
+  table,
+  th,
+  td,
+  .font-mono,
+  .tabular-nums,
+  .currency-value,
+  .stat-value,
+  [data-numeric="true"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Institutional Typographic Scale */
+  .page-title {
+    font-size: 1.5rem; /* 24px */
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+  }
+
+  .section-header,
+  .card-header-title {
+    font-size: 0.9375rem; /* 15px */
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .kpi-display-number,
+  .net-worth-ticker {
+    font-size: clamp(1.875rem, 3.5vw, 2.25rem); /* 30px to 36px */
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .body-default,
+  table td,
+  table th {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+  }
+
+  .meta-muted,
+  .table-column-header,
+  .timestamp-meta {
+    font-size: 0.75rem; /* 12px */
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #94A3B8;
   }
 
   /* Custom scrollbar — Dark */
@@ -205,83 +316,75 @@
   }
 
   .glass-card {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
   .app-surface {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 249, 251, 1) 42%),
-      #f8f9fb;
+    background: var(--bg-canvas);
   }
 
   :where(.dark) .app-surface {
-    background:
-      linear-gradient(180deg, rgba(10, 14, 26, 0.36) 0%, rgba(10, 14, 26, 1) 48%),
-      #0A0E1B;
+    background: var(--bg-canvas);
   }
 
   .glass-panel {
-    backdrop-filter: blur(24px) saturate(1.2);
-    -webkit-backdrop-filter: blur(24px) saturate(1.2);
-    background: rgba(255, 255, 255, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.04);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
   :where(.dark) .glass-panel {
-    background: rgba(10, 14, 26, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 30px rgba(0, 0, 0, 0.5);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
-  /* PREMIUM CARD — For backward compatibility during migration */
+  /* PREMIUM CARD — Clean institutional surface */
   .card-premium {
-    backdrop-filter: blur(24px) saturate(1.2);
-    -webkit-backdrop-filter: blur(24px) saturate(1.2);
-    background: rgba(255, 255, 255, 0.86);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.05);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
     transition-property: border-color, box-shadow, background-color, transform;
-    transition-duration: 220ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   :where(.dark) .card-premium {
-    background: rgba(10, 14, 26, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 40px rgba(0, 0, 0, 0.4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
-  /* Capability Card - Section 1.1 */
+  /* Capability Card */
   .capability-card {
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    transition: transform 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
   }
 
   :where(.dark) .capability-card {
-    background: linear-gradient(135deg, rgba(10, 14, 26, 0.7) 0%, rgba(18, 28, 56, 0.8) 100%) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
   .capability-card:hover {
-    border-color: rgba(19, 109, 236, 0.2);
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 16px 48px rgba(19, 109, 236, 0.1);
-    transform: translateY(-4px);
+    border-color: var(--border-strong);
+    background: var(--bg-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    transform: translateY(-1px);
   }
 
   :where(.dark) .capability-card:hover {
-    border-color: rgba(19, 109, 236, 0.55) !important;
-    background: linear-gradient(135deg, rgba(14, 25, 59, 0.95) 0%, rgba(30, 48, 97, 0.95) 100%) !important;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-    transform: translateY(-4px);
-    filter: saturate(1.35) brightness(1.35);
+    border-color: var(--border-strong);
+    background: var(--bg-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    transform: translateY(-1px);
   }
 
   /* Force child elements to high-contrast white on hover of capability card */
@@ -470,42 +573,41 @@
 /* Landing Page Styles                          */
 /* ============================================ */
 
-/* Glass Card for Landing */
+/* Surface Card for Landing */
 .lp-glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+  transition: transform 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
 .dark .lp-glass-card,
 :where(.dark) .lp-glass-card {
-  background: linear-gradient(135deg, rgba(10, 20, 42, 0.75) 0%, rgba(16, 28, 56, 0.85) 100%) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
 }
 
 html:not(.dark) .lp-glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
 }
 
 .lp-glass-card:hover {
-  border-color: rgba(19, 109, 236, 0.2);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 16px 48px rgba(19, 109, 236, 0.1);
-  transform: translateY(-4px);
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+  transform: translateY(-1px);
 }
 
 .dark .lp-glass-card:hover,
 :where(.dark) .lp-glass-card:hover {
-  border-color: rgba(19, 109, 236, 0.4) !important;
-  background: linear-gradient(135deg, rgba(15, 28, 58, 0.85) 0%, rgba(22, 38, 76, 0.9) 100%) !important;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-  transform: translateY(-4px);
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+  transform: translateY(-1px);
 }
 
 /* Glow Button */
@@ -1235,26 +1337,30 @@ html:not(.dark) .lp-section-divider {
 /* ============================================ */
 @layer utilities {
   .card-glass {
-    backdrop-filter: blur(24px) saturate(1.6);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
-    background: rgba(255, 255, 255, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 0.28s ease,
-      border-color 0.28s ease;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    transition: transform 150ms ease-out,
+      box-shadow 150ms ease-out,
+      border-color 150ms ease-out;
   }
 
   :where(.dark) .card-glass {
-    background: rgba(22, 27, 34, 0.45);
-    border: 1px solid rgba(240, 246, 252, 0.08);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
   .card-glass:hover {
-    transform: translateY(-2px) scale(1.015);
-    box-shadow: 0 12px 40px rgba(19, 109, 236, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-    border-color: rgba(19, 109, 236, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    border-color: var(--border-strong);
+  }
+
+  :where(.dark) .card-glass:hover {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    border-color: var(--border-strong);
   }
 
   :where(.dark) .card-glass:hover {
@@ -1569,84 +1675,46 @@ html:not(.dark) .auth-mesh-bg {
      PREMIUM V2 DESIGN SYSTEM
      ══════════════════════════════════════════════ */
 
-  /* Card with inner glow border — premium upgrade */
+  /* Card with clean surface — institutional design */
   .card-premium-v2 {
-    backdrop-filter: blur(24px) saturate(1.5);
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
-    background: rgba(255, 255, 255, 0.88);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.03),
-      0 12px 28px rgba(15, 23, 42, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
     transition-property: border-color, box-shadow, background-color, transform;
-    transition-duration: 280ms;
-    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   :where(.dark) .card-premium-v2 {
-    background: rgba(22, 27, 34, 0.75);
-    border: 1px solid rgba(240, 246, 252, 0.06);
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.2),
-      0 18px 40px rgba(0, 0, 0, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
   .card-premium-v2:hover {
-    transform: translateY(-2px);
-    box-shadow:
-      0 8px 25px -6px rgba(19, 109, 236, 0.14),
-      0 4px 12px rgba(0, 0, 0, 0.04),
-      inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    border-color: rgba(19, 109, 236, 0.18);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    border-color: var(--border-strong);
   }
 
   :where(.dark) .card-premium-v2:hover {
-    box-shadow:
-      0 8px 25px -6px rgba(19, 109, 236, 0.18),
-      0 12px 36px rgba(0, 0, 0, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    border-color: rgba(19, 109, 236, 0.22);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    border-color: var(--border-strong);
   }
 
-  /* Ambient glow utility — adds floating orb behind content */
-  .ambient-glow {
-    position: relative;
-  }
-
-  .ambient-glow::before {
-    content: '';
-    position: absolute;
-    width: 60%;
-    height: 60%;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(circle, rgba(19, 109, 236, 0.08) 0%, transparent 70%);
-    border-radius: 9999px;
-    filter: blur(40px);
-    pointer-events: none;
-    z-index: -1;
-  }
-
-  :where(.dark) .ambient-glow::before {
-    background: radial-gradient(circle, rgba(19, 109, 236, 0.12) 0%, transparent 70%);
-  }
-
-  /* Enhanced glassmorphism with saturation */
+  /* Elevated surface */
   .glass-premium {
-    backdrop-filter: blur(28px) saturate(1.8);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
   :where(.dark) .glass-premium {
-    background: rgba(22, 27, 34, 0.5);
-    border: 1px solid rgba(240, 246, 252, 0.08);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
   }
 
   /* Premium text gradient with animated sweep */
@@ -1861,12 +1929,12 @@ html:not(.dark) .auth-mesh-bg {
 }
 
 .auth-glass-card {
-  @apply relative bg-white/70 dark:bg-[#111827]/70 backdrop-blur-2xl border border-white/40 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden;
+  @apply relative bg-[var(--bg-surface)] backdrop-blur-md border border-[var(--border-subtle)] rounded-3xl shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)] overflow-hidden;
 }
 
 .auth-glass-card::before {
   content: '';
-  @apply absolute inset-0 rounded-3xl p-[1px] bg-gradient-to-br from-primary/30 to-transparent pointer-events-none;
+  @apply absolute inset-0 rounded-3xl p-[1px] bg-gradient-to-br from-primary/20 to-transparent pointer-events-none;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -1880,19 +1948,6 @@ html:not(.dark) .auth-mesh-bg {
 .animate-glow-border {
   animation: glowBorder 4s ease infinite;
   background-size: 200% 200%;
-}
-
-@theme {
-  --animate-aurora: aurora 60s linear infinite;
-
-  @keyframes aurora {
-    from {
-      background-position: 50% 50%, 50% 50%;
-    }
-    to {
-      background-position: 350% 50%, 350% 50%;
-    }
-  }
 }
 
 /* Landing page financial line graph */

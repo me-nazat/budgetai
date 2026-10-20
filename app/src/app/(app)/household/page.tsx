@@ -11,6 +11,7 @@ import { getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import dynamic from 'next/dynamic';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend, ArcElement } from 'chart.js';
+import CollaborativeNavSwitcher from '@/components/CollaborativeNavSwitcher';
 
 const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), { ssr: false });
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, ArcElement);
@@ -123,6 +124,8 @@ export default function HouseholdPage() {
   return (
     <div className="p-4 lg:p-8 max-w-[1400px] mx-auto page-enter pb-24">
       <Toaster position="top-center" richColors />
+
+      <CollaborativeNavSwitcher />
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">

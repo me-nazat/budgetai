@@ -129,23 +129,31 @@ export function AnnualReportGeneratorModal({ isOpen, onClose, defaultYear = 2026
           <span className="text-xs font-bold uppercase tracking-wider text-content-muted block">
             Direct Downloads
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <a
+              href={`/api/tax/export?year=${taxYear}&jurisdiction=${jurisdiction}&format=csv`}
+              download
+              className="min-h-[44px] px-3 py-3 rounded-xl bg-surface-secondary hover:bg-surface-tertiary border border-border-subtle text-content-primary font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">table_chart</span>
+              CSV Ledger
+            </a>
             <a
               href={`/api/tax/export?year=${taxYear}&jurisdiction=${jurisdiction}&format=pdf`}
               target="_blank"
               rel="noreferrer"
-              className="min-h-[44px] px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors"
+              className="min-h-[44px] px-3 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-              Download PDF Report
+              PDF Report
             </a>
             <a
               href={`/api/tax/export?year=${taxYear}&jurisdiction=${jurisdiction}&format=xlsx`}
               download
-              className="min-h-[44px] px-4 py-3 rounded-xl bg-surface-secondary hover:bg-surface-tertiary border border-border-subtle text-content-primary font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+              className="min-h-[44px] px-3 py-3 rounded-xl bg-surface-secondary hover:bg-surface-tertiary border border-border-subtle text-content-primary font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">table_view</span>
-              Download Excel (4 Sheets)
+              Excel (4 Sheets)
             </a>
           </div>
         </div>

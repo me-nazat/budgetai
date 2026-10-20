@@ -1,70 +1,101 @@
 "use client";
 
 import { motion, HTMLMotionProps } from "framer-motion";
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-interface FluidButtonProps extends HTMLMotionProps<"button"> {
-  children: ReactNode;
+export interface FluidButtonProps extends HTMLMotionProps<"button"> {
+  children?: ReactNode;
   variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
   size?: "sm" | "md" | "lg" | "icon";
+  loading?: boolean;
   isLoading?: boolean;
 }
 
-export function FluidButton({
-  children,
-  className,
-  variant = "primary",
-  size = "md",
-  isLoading,
-  disabled,
-  ...props
-}: FluidButtonProps) {
-  
-  const baseClasses = "relative inline-flex items-center justify-center font-medium transition-colors outline-none overflow-hidden rounded-xl group";
-  
-  const variants = {
-    primary: "bg-primary text-black hover:bg-primary-hover shadow-[0_0_12px_rgba(0,229,255,0.25)] hover:shadow-[0_4px_20px_rgba(0,229,255,0.45)] border border-primary/20",
-    secondary: "bg-surface-dark-2 text-text-main border border-white/5 hover:border-white/10 hover:bg-surface-hover shadow-sm",
-    outline: "bg-transparent border border-white/10 text-text-main hover:bg-white/5",
-    ghost: "bg-transparent text-text-main hover:bg-white/5",
-    danger: "bg-accent-rose/10 text-accent-rose border border-accent-rose/20 hover:bg-accent-rose hover:text-white shadow-[0_0_12px_rgba(255,42,95,0.1)] hover:shadow-[0_4px_20px_rgba(255,42,95,0.3)]",
-  };
-  
-  const sizes = {
-    sm: "h-9 px-4 text-sm",
-    md: "h-11 px-6 text-[15px]",
-    lg: "h-13 px-8 text-base",
-    icon: "h-11 w-11 flex items-center justify-center",
-  };
+/**
+ * Institutional button component tuned for financial platforms.
+ * Uses consistent heights (h-8 compact, h-9 standard, h-10 primary),
+ * tactile active:scale-[0.99] press feedback, keyboard focus rings,
+ * and built-in loading protection.
+ */
+export const FluidButton = React.forwardRef<HTMLButtonElement, FluidButtonProps>(
+  (
+    {
+      children,
+      className,
+      variant = "primary",
+      size = "md",
+      loading = false,
+      isLoading = false,
+      disabled,
+      type = "button",
+      ...props
+    },
+    ref
+  ) => {
+    const isBusy = Boolean(loading || isLoading);
+    const isDisabled = Boolean(disabled || isBusy);
 
-  return (
-    <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97, transition: { type: "spring", stiffness: 400, damping: 10 } }}
-      className={cn(
-        baseClasses,
-        variants[variant],
-        sizes[size],
-        (disabled || isLoading) && "opacity-60 cursor-not-allowed pointer-events-none",
-        className
-      )}
-      disabled={disabled || isLoading}
-      {...props}
-    >
-      {/* Light sweep effect on hover for primary/danger */}
-      {(variant === 'primary' || variant === 'danger') && (
-        <span className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-      )}
-      
-      {isLoading ? (
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          <span>Loading...</span>
-        </div>
-      ) : (
-        <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
-      )}
-    </motion.button>
-  );
-}
+    const baseClasses =
+      "relative inline-flex items-center justify-center font-medium rounded-lg select-none " +
+      "transition-colors duration-150 ease-out " +
+      "active:scale-[0.99] active:transition-transform active:duration-75 " +
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 " +
+      "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none";
+
+    const variants = {
+      primary:
+        "bg-[var(--accent-primary,#6366F1)] text-white hover:bg-[var(--accent-primary-hover,#4F46E5)] " +
+        "border border-transparent shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
+      secondary:
+        "bg-[var(--bg-elevated,#161922)] text-[var(--color-text-main,#FAFAFA)] " +
+        "border border-[var(--border-subtle,rgba(255,255,255,0.07))] " +
+        "hover:border-[var(--border-strong,rgba(255,255,255,0.14))] hover:bg-[var(--bg-hover)]",
+      outline:
+        "bg-transparent text-[var(--color-text-main,#FAFAFA)] " +
+        "border border-[var(--border-subtle,rgba(255,255,255,0.07))] " +
+        "hover:border-[var(--border-strong,rgba(255,255,255,0.14))] hover:bg-[var(--bg-hover)]",
+      ghost:
+        "bg-transparent text-[var(--color-text-main,#FAFAFA)] border border-transparent " +
+        "hover:bg-[var(--bg-hover)]",
+      danger:
+        "bg-[var(--finance-negative-bg,rgba(244,63,94,0.12))] text-[var(--finance-negative,#F43F5E)] " +
+        "border border-[var(--finance-negative,#F43F5E)]/20 " +
+        "hover:bg-[var(--finance-negative,#F43F5E)] hover:text-white shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
+    };
+
+    const sizes = {
+      sm: "h-8 px-3 text-xs gap-1.5",
+      md: "h-9 px-4 text-sm gap-2",
+      lg: "h-10 px-5 text-sm font-semibold tracking-[-0.01em] gap-2.5",
+      icon: "h-9 w-9 p-0 flex items-center justify-center",
+    };
+
+    return (
+      <motion.button
+        ref={ref}
+        type={type}
+        disabled={isDisabled}
+        className={cn(baseClasses, variants[variant], sizes[size], className)}
+        {...props}
+      >
+        {isBusy ? (
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Loading...</span>
+            {children}
+          </span>
+        ) : (
+          children
+        )}
+      </motion.button>
+    );
+  }
+);
+
+FluidButton.displayName = "FluidButton";
+
+export default FluidButton;

@@ -41,7 +41,7 @@ export const snapTransition: Transition = {
 /** Gentle ease for opacity-dominant transitions */
 export const gentleEase: Transition = {
   duration: 0.2,
-  ease: [0.32, 0.72, 0, 1],
+  ease: [0.16, 1, 0.3, 1],
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -80,7 +80,7 @@ export const scaleIn: Variants = {
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { ...springTransition, delay: 0.1 },
+    transition: snapTransition,
   },
 };
 

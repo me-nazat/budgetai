@@ -18,7 +18,11 @@ import {
   module23DocumentChunks,
 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { chunkDocumentText, generateTextEmbedding } from '@/lib/ai/semanticVector';
+import {
+  chunkDocumentText,
+  generateTextEmbedding,
+  generateDeterministicEmbedding,
+} from '@/lib/ai/semanticVector';
 import { encryptField, decryptField, isEncrypted } from '@/lib/crypto/encryption';
 
 export const POST = apiHandler(
@@ -58,8 +62,50 @@ export const POST = apiHandler(
         rawText = `${doc.merchantName || ''} - ${doc.fileName}\nTotal: $${doc.totalAmount || 0}`;
       }
 
+      // 1. Structured metadata extraction (merchant, date, amount, tax year, keywords)
+      const extractedMerchant = doc.merchantName;
+      let extractedDate = doc.documentDate;
+      let extractedAmount = doc.totalAmount;
+      const extractedTax = doc.taxAmount;
+
+      // Extract amount from text if not present
+      if (extractedAmount === null || extractedAmount === undefined) {
+        const amtMatch = rawText.match(/(?:total|amount|subtotal|balance|due|net)[\s:$]*([0-9,]+\.[0-9]{2})/i) ||
+                         rawText.match(/\$([0-9,]+\.[0-9]{2})/);
+        if (amtMatch) {
+          extractedAmount = parseFloat(amtMatch[1].replace(/,/g, ''));
+        }
+      }
+
+      // Extract date from text if not present
+      if (!extractedDate) {
+        const dateMatch = rawText.match(/\b(202[3-7]-[0-1][0-9]-[0-3][0-9])\b/) ||
+                          rawText.match(/\b([0-1]?[0-9]\/[0-3]?[0-9]\/(202[3-7]))\b/);
+        if (dateMatch) {
+          extractedDate = dateMatch[0];
+        } else {
+          extractedDate = new Date().toISOString().split('T')[0];
+        }
+      }
+
+      // Compute Tax Year
+      const taxYear = extractedDate ? parseInt(extractedDate.slice(0, 4), 10) || new Date().getFullYear() : new Date().getFullYear();
+
+      // Extract top keywords
+      const keywords = Array.from(new Set(
+        rawText.toLowerCase()
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .split(/\s+/)
+          .filter((w) => w.length >= 4 && !['this', 'that', 'with', 'from', 'have', 'your', 'invoice', 'receipt', 'total'].includes(w))
+      )).slice(0, 10);
+
       // Generate document-level vector embedding
-      const fullVector = await generateTextEmbedding(rawText);
+      let fullVector: number[] = [];
+      try {
+        fullVector = await generateTextEmbedding(rawText);
+      } catch {
+        fullVector = generateDeterministicEmbedding(rawText);
+      }
       const encryptedEmbedding = encryptField(JSON.stringify(fullVector), 'document-vault');
 
       const chunks = chunkDocumentText(rawText, 800);
@@ -81,11 +127,15 @@ export const POST = apiHandler(
         createdChunkIds.push(chunkId);
       }
 
-      // 2. Mark as READY and save encrypted embedding directly to documentMetadata
+      // 2. Mark as READY and save updated metadata + encrypted embedding directly to documentMetadata
       const now = Math.floor(Date.now() / 1000);
       await db
         .update(documentMetadata)
         .set({
+          merchantName: extractedMerchant,
+          documentDate: extractedDate,
+          totalAmount: extractedAmount,
+          taxAmount: extractedTax,
           embedding: encryptedEmbedding,
           embeddingStatus: 'READY',
           embeddingCompletedAt: now,
@@ -96,6 +146,13 @@ export const POST = apiHandler(
         success: true,
         documentId,
         status: 'READY',
+        metadata: {
+          merchantName: extractedMerchant,
+          documentDate: extractedDate,
+          totalAmount: extractedAmount,
+          taxYear,
+          keywords,
+        },
         chunksCreated: chunks.length,
         chunkIds: createdChunkIds,
       });

@@ -23,20 +23,29 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateGeminiResponse } from '@/lib/ai';
 import { encryptNumber, decryptNumber } from '@/lib/crypto/encryption';
 
-const DEDUCTIBLE_KEYWORDS = /aws|amazon web services|github|vercel|jetbrains|adobe|google cloud|openai|software|saas|api|hosting|server|laptop|apple|dell|monitor|hardware|office|desk|chair|stationery|supplies|flight|hotel|airbnb|delta|united|airline|uber|lyft|taxi|travel|conference|seminar|course|book|training|internet|wifi|phone|zoom|slack|domain|notion|figma/i;
+const DEDUCTIBLE_KEYWORDS = /medical|healthcare|hospital|clinic|pharmacy|doctor|dental|therapy|prescription|optometry|health|charity|donation|zakat|sadaqah|donate|relief|nonprofit|red cross|education|tuition|course|training|certification|university|college|book|udemy|coursera|school|seminar|workshop|aws|amazon web services|github|vercel|jetbrains|adobe|google cloud|openai|software|saas|api|hosting|server|laptop|apple|dell|monitor|hardware|office|desk|chair|stationery|supplies|flight|hotel|airbnb|delta|united|airline|uber|lyft|taxi|travel|conference|internet|wifi|broadband|phone|zoom|slack|domain|notion|figma|utility|electricity|power|investment|broker|rebate/i;
+
+const DEDUCTIBLE_CATEGORIES = /health|medical|charity|donation|education|tuition|business|office|software|supplies|travel|utilities|internet|work|training/i;
 
 export const GET = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
+    const { searchParams } = new URL(request.url);
+    const year = searchParams.get('year') || String(new Date().getFullYear());
+
     // 1. Fetch tax categories
     let categories = await db.select().from(taxCategories);
     if (categories.length === 0) {
       // Seed default IRS categories if empty
       const defaultCategories = [
         { id: 'taxcat_sch_c_software', code: 'SOFTWARE_100', name: 'Schedule C — Software & Cloud Tools', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
-        { id: 'taxcat_sch_c_office', code: 'SCH_C_OFFICE', name: 'Schedule C — Office Supplies & Hardware', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
+        { id: 'taxcat_sch_c_office', code: 'SCH_C_OFFICE', name: 'Schedule C — Business & Office Supplies', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
         { id: 'taxcat_sch_c_travel', code: 'SCH_C_TRAVEL', name: 'Schedule C — Business Travel', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
         { id: 'taxcat_sch_c_meals', code: 'MEALS_50', name: 'Schedule C — Business Meals (50%)', deductiblePercentage: 0.5, jurisdiction: 'US_IRS' },
-        { id: 'taxcat_sch_c_utilities', code: 'SCH_C_UTILITIES', name: 'Schedule C — Home Office Utilities', deductiblePercentage: 0.3, jurisdiction: 'US_IRS' },
+        { id: 'taxcat_sch_c_utilities', code: 'SCH_C_UTILITIES', name: 'Schedule C — Home Office & Internet', deductiblePercentage: 0.3, jurisdiction: 'US_IRS' },
+        { id: 'taxcat_medical', code: 'MEDICAL_100', name: 'Medical & Healthcare Deductions', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
+        { id: 'taxcat_charity', code: 'CHARITY_100', name: 'Charity & Donations (501c3)', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
+        { id: 'taxcat_education', code: 'EDUCATION_100', name: 'Education & Professional Training', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
+        { id: 'taxcat_zakat_rebate', code: 'INVEST_ZAKAT', name: 'Investment Tax / Zakat / Rebate', deductiblePercentage: 1.0, jurisdiction: 'US_IRS' },
       ];
       for (const cat of defaultCategories) {
         await db.insert(taxCategories).values(cat).onConflictDoNothing();
@@ -68,15 +77,16 @@ export const GET = apiHandler(
         )
       )
       .orderBy(desc(transactions.date))
-      .limit(60);
+      .limit(100);
 
     // Filter candidate list: taxSuggested === 1 or description/category matches deductible patterns
     const candidates = candidateRows.filter((t) => {
+      if (year && t.date && !t.date.startsWith(year)) return false;
       if (t.taxSuggested === 1) return true;
       if (t.taxSuggested === -1) return false; // user previously rejected
       const textToMatch = `${t.description} ${t.category}`;
-      return DEDUCTIBLE_KEYWORDS.test(textToMatch);
-    }).slice(0, 15);
+      return DEDUCTIBLE_KEYWORDS.test(textToMatch) || DEDUCTIBLE_CATEGORIES.test(t.category);
+    }).slice(0, 20);
 
     if (candidates.length === 0) {
       return apiSuccess({ items: [], totalCandidates: 0 });
@@ -130,13 +140,23 @@ Respond strictly in JSON format as an array:
 
       if (!selectedCat) {
         // Deterministic heuristic fallback
-        const descLower = c.description.toLowerCase();
-        if (/aws|software|cloud|github|vercel|jetbrains|openai/i.test(descLower)) {
+        const descAndCat = `${c.description} ${c.category}`.toLowerCase();
+        if (/health|medical|doctor|dental|clinic|hospital|pharmacy/i.test(descAndCat)) {
+          selectedCat = categories.find((cat) => cat.id === 'taxcat_medical') || categories[0];
+        } else if (/charity|donation|zakat|sadaqah|relief/i.test(descAndCat)) {
+          selectedCat = categories.find((cat) => cat.id === 'taxcat_charity') || categories[0];
+        } else if (/education|tuition|course|training|school|university|book/i.test(descAndCat)) {
+          selectedCat = categories.find((cat) => cat.id === 'taxcat_education') || categories[0];
+        } else if (/internet|wifi|phone|cellular|broadband|utility|utilities/i.test(descAndCat)) {
+          selectedCat = categories.find((cat) => cat.id === 'taxcat_sch_c_utilities') || categories[0];
+        } else if (/aws|software|cloud|github|vercel|jetbrains|openai|saas/i.test(descAndCat)) {
           selectedCat = categories.find((cat) => cat.id === 'taxcat_sch_c_software') || categories[0];
-        } else if (/hotel|flight|airline|delta|uber|lyft/i.test(descLower)) {
+        } else if (/hotel|flight|airline|delta|uber|lyft|travel/i.test(descAndCat)) {
           selectedCat = categories.find((cat) => cat.id === 'taxcat_sch_c_travel') || categories[0];
-        } else if (/meal|dinner|lunch|restaurant|food/i.test(descLower)) {
+        } else if (/meal|dinner|lunch|restaurant|food/i.test(descAndCat)) {
           selectedCat = categories.find((cat) => cat.id === 'taxcat_sch_c_meals') || categories[0];
+        } else if (/investment|zakat|broker|rebate/i.test(descAndCat)) {
+          selectedCat = categories.find((cat) => cat.id === 'taxcat_zakat_rebate') || categories[0];
         } else {
           selectedCat = categories.find((cat) => cat.id === 'taxcat_sch_c_office') || categories[0];
         }

@@ -9,6 +9,8 @@ export interface TaxExportItem {
   amount: number;
   deductibleAmount: number;
   receiptRef: string;
+  receiptStatus?: string;
+  notes?: string;
 }
 
 export interface MissingReceiptItem {
@@ -33,6 +35,91 @@ export interface TaxExportData {
   items: TaxExportItem[];
   missingReceipts?: MissingReceiptItem[];
   categoryBreakdown?: TaxCategorySummary[];
+}
+
+/**
+ * Escapes a cell value for safe RFC 4180 CSV compliance.
+ */
+function escapeCSV(val: string | number | null | undefined): string {
+  if (val === null || val === undefined) return '""';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return `"${str}"`;
+}
+
+/**
+ * Generates an institutional-grade, audit-ready CSV ledger of qualifying tax write-offs
+ * grouped by Tax Category, including Transaction Date, Merchant, Category, Gross Amount,
+ * Deductible Amount, Receipt Status ('Verified' vs 'Missing Receipt'), and Notes.
+ */
+export function generateTaxCSV(data: TaxExportData): string {
+  const lines: string[] = [];
+
+  // Metadata headers
+  lines.push(`"WealthAI Certified Tax & Fiscal Report"`);
+  lines.push(`"Tax Year",${escapeCSV(data.taxYear)}`);
+  lines.push(`"Taxpayer",${escapeCSV(data.userName)}`);
+  lines.push(`"Jurisdiction",${escapeCSV(data.jurisdiction || 'US_IRS')}`);
+  lines.push(`"Total Certified Deductions ($)",${escapeCSV(data.totalDeductions.toFixed(2))}`);
+  lines.push(`"Total Claimed Items",${escapeCSV(data.items.length)}`);
+  lines.push(`"Generated At",${escapeCSV(new Date().toISOString())}`);
+  lines.push('');
+
+  // Category Summary
+  lines.push(`"--- CATEGORY SUMMARY ---"`);
+  lines.push(`"Tax Category","Item Count","Gross Total ($)","Deductible Total ($)"`);
+  if (data.categoryBreakdown && data.categoryBreakdown.length > 0) {
+    for (const cat of data.categoryBreakdown) {
+      lines.push(`${escapeCSV(cat.category)},${cat.count},${escapeCSV(cat.totalAmount.toFixed(2))},${escapeCSV(cat.deductibleAmount.toFixed(2))}`);
+    }
+  }
+  lines.push('');
+
+  // Itemized Ledger Grouped by Category
+  lines.push(`"--- ITEMIZED QUALIFYING WRITE-OFFS ---"`);
+  lines.push(`"Transaction Date","Merchant / Payee","Tax Category","Gross Amount ($)","Deductible Amount ($)","Receipt Status","Notes","Receipt Reference"`);
+
+  // Group items by category
+  const grouped = new Map<string, TaxExportItem[]>();
+  for (const item of data.items) {
+    const cat = item.taxCategory || 'General Deduction';
+    const list = grouped.get(cat) || [];
+    list.push(item);
+    grouped.set(cat, list);
+  }
+
+  for (const [catName, catItems] of grouped.entries()) {
+    for (const item of catItems) {
+      const status = item.receiptStatus || (item.receiptRef && item.receiptRef !== 'NONE_FLAGGED' ? 'Verified' : 'Missing Receipt');
+      lines.push([
+        escapeCSV(item.date),
+        escapeCSV(item.merchant),
+        escapeCSV(catName),
+        escapeCSV(item.amount.toFixed(2)),
+        escapeCSV(item.deductibleAmount.toFixed(2)),
+        escapeCSV(status),
+        escapeCSV(item.notes || ''),
+        escapeCSV(item.receiptRef),
+      ].join(','));
+    }
+  }
+
+  lines.push('');
+  lines.push(`"TOTAL",,"",,${escapeCSV(data.totalDeductions.toFixed(2))},,,`);
+
+  // Missing Receipts Section if any exist
+  if (data.missingReceipts && data.missingReceipts.length > 0) {
+    lines.push('');
+    lines.push(`"--- AUDIT WARNING: MISSING RECEIPTS OVER $75 THRESHOLD ---"`);
+    lines.push(`"Date","Merchant","Amount ($)","Compliance Note"`);
+    for (const m of data.missingReceipts) {
+      lines.push(`${escapeCSV(m.date)},${escapeCSV(m.merchant)},${escapeCSV(m.amount.toFixed(2))},${escapeCSV(m.reason)}`);
+    }
+  }
+
+  return lines.join('\r\n');
 }
 
 export function generateTaxPDF(data: TaxExportData): Uint8Array {

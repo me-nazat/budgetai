@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/security/session-manager';
 import { queryAll, queryOne, run } from '@/lib/db';
-import { resolveIcon, resolveColor } from '@/lib/categoryUtils';
+import { resolveIcon, resolveColor, UNIFIED_DEFAULT_CATEGORIES } from '@/lib/categoryUtils';
 
 export async function GET(request: Request) {
     try {
@@ -11,22 +11,67 @@ export async function GET(request: Request) {
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const { searchParams } = new URL(request.url);
-        const type = searchParams.get('type'); // optional: 'expense' | 'earning'
+        const type = searchParams.get('type'); // optional: 'expense' | 'earning' | 'all'
 
         let sql = 'SELECT * FROM custom_categories WHERE user_id = ?';
         const params: unknown[] = [session.userId];
 
-        if (type) {
+        if (type && type !== 'all') {
             sql += ' AND type = ?';
             params.push(type);
         }
 
         sql += ' ORDER BY created_at DESC';
 
-        const categories = await queryAll(sql, params);
-        return NextResponse.json({ categories });
+        const customRows = await queryAll<{
+            id: number;
+            name: string;
+            type: string;
+            icon?: string;
+            color?: string;
+        }>(sql, params);
+
+        const customList = customRows.map((c) => ({
+            id: c.id,
+            name: c.name,
+            type: c.type,
+            icon: c.icon || resolveIcon(c.name),
+            color: c.color || resolveColor(c.name),
+            group: c.type === 'earning' || c.type === 'income' ? 'Income' : 'Lifestyle',
+            isCustom: true,
+        }));
+
+        const defaultList = UNIFIED_DEFAULT_CATEGORIES
+            .filter((c) => {
+                if (!type || type === 'all') return true;
+                if (type === 'expense') return c.type === 'expense';
+                if (type === 'earning' || type === 'income') return c.type === 'income';
+                if (type === 'transfer') return c.type === 'transfer';
+                return true;
+            })
+            .map((c) => ({
+                id: c.id,
+                name: c.name,
+                type: c.type === 'income' ? 'earning' : c.type,
+                icon: c.icon,
+                color: c.color,
+                group: c.group,
+                isCustom: false,
+            }));
+
+        const customNames = new Set(customList.map((c) => c.name.toLowerCase()));
+        const combined = [
+            ...customList,
+            ...defaultList.filter((d) => !customNames.has(d.name.toLowerCase())),
+        ];
+
+        return NextResponse.json({
+            categories: combined,
+            customCategories: customList,
+            defaultCategories: defaultList,
+        });
     } catch (error) {
-        console.error('Custom categories GET error:', error);
+        console.error('Categories GET error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

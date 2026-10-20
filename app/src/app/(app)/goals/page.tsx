@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 
-export default function GoalsRedirect() {
-    redirect('/wealth-goals');
+export default function GoalsRedirectPage() {
+  redirect('/wealth-goals');
 }
-

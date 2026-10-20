@@ -257,9 +257,15 @@ export class RoundUpRepository {
 
   /**
    * Process automatic round-up sweep for an expense transaction (Module 15).
-   * Updates encrypted savings goal balance and triggers milestone events.
+   * Updates encrypted savings goal balance, deducts from source account for double-entry integrity,
+   * and triggers milestone events.
    */
-  static async processRoundUpForExpense(userId: number, expenseAmount: number, transactionId?: number) {
+  static async processRoundUpForExpense(
+    userId: number,
+    expenseAmount: number,
+    transactionId?: number,
+    accountId?: number
+  ) {
     const rule = await this.getRule(userId);
     if (!rule || !rule.isActive || !rule.targetGoalId) return null;
 
@@ -281,6 +287,21 @@ export class RoundUpRepository {
       .where(and(eq(savingsGoals.id, goalIdNum), eq(savingsGoals.userId, userId)));
 
     if (!goal) return null;
+
+    // 0. Double-entry deduction from source bank account
+    const sourceAccId = accountId || rule.sourceAccountId;
+    if (sourceAccId) {
+      try {
+        await db
+          .update(accounts)
+          .set({
+            currentBalance: sql`${accounts.currentBalance} - ${roundUpDiff}`,
+          })
+          .where(and(eq(accounts.id, sourceAccId), eq(accounts.userId, userId)));
+      } catch (err) {
+        console.error('[roundUp] Failed to deduct round-up from bank account:', err);
+      }
+    }
 
     // Decrypt current saved amount
     let currentSaved = goal.savedAmount || 0;
@@ -357,6 +378,39 @@ export class RoundUpRepository {
       newSavedAmount,
       goalId: goal.id,
       milestoneHit: newlyHitMilestone,
+    };
+  }
+
+  /**
+   * Returns monthly round-up statistics for a specific goal.
+   * e.g., total amount saved and number of round-ups swept in the current calendar month.
+   */
+  static async getGoalMonthlyRoundUpStats(userId: number, goalId: number | string) {
+    const goalIdStr = String(goalId);
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const startTimestamp = Math.floor(startOfMonth.getTime() / 1000);
+
+    const sweeps = await db
+      .select({
+        multipliedAmount: roundUpTransfers.multipliedAmount,
+      })
+      .from(roundUpTransfers)
+      .innerJoin(roundUpRules, eq(roundUpTransfers.ruleId, roundUpRules.id))
+      .where(
+        and(
+          eq(roundUpRules.userId, userId),
+          eq(roundUpRules.targetGoalId, goalIdStr),
+          eq(roundUpTransfers.status, 'SWEPT'),
+          gte(roundUpTransfers.sweptAt, startTimestamp)
+        )
+      );
+
+    const totalSaved = sweeps.reduce((sum, s) => sum + (s.multipliedAmount || 0), 0);
+    return {
+      totalSaved: Math.round(totalSaved * 100) / 100,
+      count: sweeps.length,
     };
   }
 }

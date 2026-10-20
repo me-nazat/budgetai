@@ -22,6 +22,7 @@ import {
   sanitizeRAGContext,
 } from '@/lib/ai/semanticVector';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { DocumentRepository } from '@/repositories/document.repository';
 
 export const POST = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
@@ -35,84 +36,52 @@ export const POST = apiHandler(
       );
     }
 
-    // 1. Fetch user's documents
-    const queryCond = documentId
-      ? and(eq(documentMetadata.userId, userId), eq(documentMetadata.id, documentId))
-      : eq(documentMetadata.userId, userId);
+    // 1. Fetch matching documents using multi-field SQL metadata + OCR text search
+    let matchingDocs = await DocumentRepository.searchDocuments(userId, question);
 
-    const userDocs = await db
-      .select()
-      .from(documentMetadata)
-      .where(queryCond);
-
-    if (userDocs.length === 0) {
-      return NextResponse.json({
-        question,
-        answer: 'You do not have any documents in your vault matching this query. Please upload receipts or bank statements to ask questions.',
-        sources: [],
-      });
+    if (documentId) {
+      matchingDocs = matchingDocs.filter((d: { id: string }) => d.id === documentId);
     }
 
-    const docMap = new Map(userDocs.map((d) => [d.id, d]));
-
-    // 2. Fetch chunks
-    const allChunks = await db.select().from(module23DocumentChunks);
-    const relevantChunks = allChunks.filter((c) => docMap.has(c.documentId));
-
-    // 3. Rank chunks against question embedding
-    const questionVec = await generateTextEmbedding(question);
-
-    interface Scored {
-      documentId: string;
-      chunkText: string;
-      score: number;
-    }
-
-    const scored: Scored[] = [];
-    if (relevantChunks.length > 0) {
-      for (const c of relevantChunks) {
-        const cVec = generateDeterministicEmbedding(c.chunkText);
-        const score = cosineSimilarity(questionVec, cVec);
-        scored.push({
-          documentId: c.documentId,
-          chunkText: c.chunkText,
-          score,
+    if (matchingDocs.length === 0) {
+      // Fallback: fetch all user documents if search returned no direct match
+      const allDocs = await DocumentRepository.getDocuments(userId);
+      if (allDocs.length === 0) {
+        return NextResponse.json({
+          question,
+          answer: 'You do not have any documents in your vault matching this query. Please upload receipts or bank statements to ask questions.',
+          sources: [],
         });
       }
-    } else {
-      for (const d of userDocs) {
-        const text = `${d.merchantName || ''} ${d.fileName} ${d.ocrRawText || ''}`;
-        const dVec = generateDeterministicEmbedding(text);
-        const score = cosineSimilarity(questionVec, dVec);
-        scored.push({
-          documentId: d.id,
-          chunkText: text,
-          score,
-        });
-      }
+      matchingDocs = allDocs.slice(0, 5).map((d: any) => ({
+        ...d,
+        relevanceScore: 0.5,
+        matchSnippet: d.ocrRawText ? d.ocrRawText.slice(0, 120) : (d.merchantName || d.fileName),
+      }));
     }
 
-    scored.sort((a, b) => b.score - a.score);
-    const topContext = scored.slice(0, 5);
+    const topDocs = matchingDocs.slice(0, 5);
 
-    // 4. Build sanitized context
-    const contextLines = topContext.map((c, i) => {
-      const doc = docMap.get(c.documentId);
-      const safeText = sanitizeRAGContext(c.chunkText);
-      return `[Doc #${i + 1}: ${doc?.merchantName || doc?.fileName || 'Document'}, Date: ${doc?.documentDate || 'N/A'}, Total: $${doc?.totalAmount || 0}]\n${safeText}`;
+    // 2. Build sanitized context from top matching document rows
+    const contextLines = topDocs.map((doc: any, i: number) => {
+      const lineItemsSummary = (doc.lineItems || [])
+        .map((li: any) => `${li.description}: $${li.totalPrice.toFixed(2)}`)
+        .join(', ');
+      const rawText = sanitizeRAGContext(doc.ocrRawText || '');
+      return `[Doc #${i + 1}: ${doc.merchantName || doc.fileName}, Date: ${doc.documentDate || 'N/A'}, Total: $${doc.totalAmount || 0}]
+Line Items: ${lineItemsSummary || 'None specified'}
+OCR Text: ${rawText.slice(0, 800)}`;
     }).join('\n\n---\n\n');
 
-    const sources = topContext.map((c) => {
-      const doc = docMap.get(c.documentId)!;
-      return {
-        documentId: doc.id,
-        fileName: doc.fileName,
-        merchantName: doc.merchantName || 'Receipt / Invoice',
-        documentDate: doc.documentDate || 'Recent',
-        totalAmount: doc.totalAmount || 0,
-        snippet: c.chunkText.slice(0, 140) + '...',
-      };
-    });
+    const sources = topDocs.map((doc: any) => ({
+      documentId: doc.id,
+      fileName: doc.fileName,
+      merchantName: doc.merchantName || 'Receipt / Invoice',
+      documentDate: doc.documentDate || 'Recent',
+      totalAmount: doc.totalAmount || 0,
+      snippet: doc.matchSnippet || (doc.ocrRawText ? doc.ocrRawText.slice(0, 140) + '...' : doc.fileName),
+      relevanceScore: doc.relevanceScore,
+    }));
 
     // 5. Generate Answer via Gemini with Fallback
     let answer = '';
@@ -143,8 +112,8 @@ Provide a clear, helpful response:`;
 
     if (!answer) {
       // Offline / Test deterministic synthesis
-      const matchedMerchants = sources.map((s) => s.merchantName).join(', ');
-      const matchedSum = sources.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+      const matchedMerchants = sources.map((s: any) => s.merchantName).join(', ');
+      const matchedSum = sources.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0);
       answer = `Based on your documents (${matchedMerchants}), the relevant items indicate a combined total of $${matchedSum.toFixed(2)}. ${sources[0]?.snippet ? `Specifically from ${sources[0].merchantName}: "${sources[0].snippet}"` : ''}`;
     }
 

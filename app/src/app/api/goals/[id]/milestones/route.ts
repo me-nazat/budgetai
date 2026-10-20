@@ -15,6 +15,7 @@ import { withAuth } from '@/lib/middleware/with-auth';
 import { db } from '@/db/client';
 import { savingsGoals, goalMilestones } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { GoalService } from '@/services/goal.service';
 
 export const GET = apiHandler(
   withAuth<{ params: Promise<{ id: string }> }>(async (_request: NextRequest, { userId }, routeContext) => {
@@ -47,6 +48,11 @@ export const GET = apiHandler(
       Math.floor(((goal.savedAmount || 0) / goal.targetAmount) * 100)
     );
 
+    const calculatedMilestones = GoalService.calculateMilestones(
+      goal.targetAmount,
+      goal.savedAmount || 0
+    );
+
     return NextResponse.json({
       goalId: goal.id,
       goalName: goal.name,
@@ -54,6 +60,7 @@ export const GET = apiHandler(
       savedAmount: goal.savedAmount,
       targetAmount: goal.targetAmount,
       milestones,
+      calculatedMilestones,
       streakAfterCompletion: goal.streakAfterCompletion || 0,
     });
   })

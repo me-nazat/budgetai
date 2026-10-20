@@ -18,6 +18,7 @@ import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { transactions } from './transactions';
 import { households } from './household';
+import { accounts } from './accounts';
 
 /* ═══════════════════════════════════════════════════════════════
    RE-EXPORTS — Core tables defined in their own modules
@@ -79,6 +80,12 @@ export {
   tourChecklistItems,
   type TourChecklistItem,
   type NewTourChecklistItem,
+  tourSpendings,
+  type TourSpending,
+  type NewTourSpending,
+  billSplits,
+  type BillSplit,
+  type NewBillSplit,
 } from './bill-splits';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -161,6 +168,12 @@ export const budgets = sqliteTable(
 
     /** Four-digit year (e.g., 2026). */
     year: integer('year').notNull(),
+
+    /** Whether unspent funds roll over into next month's envelope. 1 = enabled, 0 = disabled. */
+    rolloverEnabled: integer('rollover_enabled').default(0),
+
+    /** Accumulated unspent funds carried over from previous months. */
+    rolloverBalance: real('rollover_balance').default(0),
 
     createdAt: text('created_at').default(sql`(datetime('now'))`),
   },
@@ -356,6 +369,43 @@ export const recurringTransactions = sqliteTable(
 
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
 export type NewRecurringTransaction = typeof recurringTransactions.$inferInsert;
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBSCRIPTIONS INTELLIGENCE
+   ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Subscriptions table — active recurring subscriptions with renewal tracking and price-hike intelligence.
+ */
+export const subscriptions = sqliteTable(
+  'subscriptions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    amount: real('amount').notNull(),
+    currency: text('currency').default('BDT'),
+    billingCycle: text('billing_cycle', { enum: ['weekly', 'monthly', 'yearly'] }).notNull(),
+    nextRenewalDate: text('next_renewal_date').notNull(),
+    category: text('category').notNull().default('Other'),
+    logoUrl: text('logo_url'),
+    isActive: integer('is_active').default(1),
+    trialEndsAt: text('trial_ends_at'),
+    previousAmount: real('previous_amount'),
+    accountId: integer('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+    cancelReminderDays: integer('cancel_reminder_days').default(3),
+    createdAt: text('created_at').default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_subscriptions_user').on(table.userId),
+    index('idx_subscriptions_renewal').on(table.userId, table.nextRenewalDate),
+  ]
+);
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
 
 /* ═══════════════════════════════════════════════════════════════
    CUSTOM CATEGORIES

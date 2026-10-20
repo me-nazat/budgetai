@@ -22,7 +22,7 @@ export default function PrivacyToggle() {
           ? 'bg-accent-amber/10 text-accent-amber'
           : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-hover'
       }`}
-      title={`${isPrivacyMode ? 'Disable' : 'Enable'} Privacy Mode (⌘⇧P)`}
+      title={`${isPrivacyMode ? 'Disable' : 'Enable'} Privacy Mode (Alt+P / ⌘⇧P)`}
       aria-label={isPrivacyMode ? 'Disable privacy mode' : 'Enable privacy mode'}
     >
       <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isPrivacyMode ? "'FILL' 1" : "'FILL' 0" }}>

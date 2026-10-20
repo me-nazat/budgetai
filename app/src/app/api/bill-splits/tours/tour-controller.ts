@@ -4,6 +4,18 @@ import { CreateTourSchema, TourIdParamSchema, TourTransactionSchema } from '@/li
 import { randomBytes } from 'crypto';
 import { z } from 'zod';
 import { TransactionRepository } from '@/repositories/transaction.repository';
+import {
+  calculateTourKitty,
+  syncTourSpendingToPersonalLedger,
+  deleteTourSpendingPersonalLedger,
+  recordTourSettlementTransfer,
+  broadcastTourUpdate,
+} from '@/lib/tour-sync';
+import {
+  allocatePennyShares,
+  calculateMinSettlements,
+  type BalanceNode,
+} from '@/lib/algorithms/minSettlement';
 
 type RouteContextWithId = {
   params?: Promise<{ id: string }> | { id: string };
@@ -21,6 +33,7 @@ export interface TourParticipantResponse {
 export interface TourTransactionResponse {
   id: number;
   amount: number;
+  baseAmount?: number;
   category: string;
   description: string;
   date: string;
@@ -28,9 +41,18 @@ export interface TourTransactionResponse {
   paidBy: number;
   paidByParticipantId: number;
   paidByName: string | null;
+  recipientMemberId?: number | null;
+  recipientName?: string | null;
+  entryType?: 'expense' | 'deposit' | 'settlement';
+  fundingSource?: 'member_direct' | 'tour_pool';
+  currency?: string;
+  exchangeRateToTourBase?: number;
+  linkedAccountId?: number | null;
+  linkedTransactionId?: number | null;
+  splitBreakdown?: any[];
   createdById?: number | null;
   createdByName?: string | null;
-  splitType: 'equal' | 'percentage' | 'exact';
+  splitType: 'equal' | 'percentage' | 'exact' | 'shares';
   createdAt: string | null;
 }
 interface TourParticipantWithBalance extends TourParticipantResponse {
@@ -47,6 +69,13 @@ interface TourMetrics {
 interface TourResponse {
   id: number;
   name: string;
+  destination?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  baseCurrency?: string;
+  totalBudget?: number;
+  inviteCode?: string | null;
+  status?: string;
   createdAt: string | null;
   createdBy: number;
   participants: TourParticipantResponse[] | TourParticipantWithBalance[];
@@ -69,6 +98,16 @@ function toNullableNumber(value: unknown): number | null {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
+function parseSplitBreakdown(json: unknown): any[] {
+  if (typeof json !== 'string' || !json.trim()) return [];
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function normalizeParticipant(row: DbRow): TourParticipantResponse {
   return {
     id: toNumber(row.id),
@@ -80,10 +119,13 @@ function normalizeParticipant(row: DbRow): TourParticipantResponse {
 
 function normalizeTransaction(row: DbRow): TourTransactionResponse {
   const paidBy = toNumber(row.paidBy ?? row.paid_by_participant_id ?? row.paid_by);
+  const amount = toNumber(row.amount);
+  const rate = toNumber(row.exchange_rate_to_tour_base ?? row.exchangeRateToTourBase, 1.0);
 
   return {
     id: toNumber(row.id),
-    amount: toNumber(row.amount),
+    amount,
+    baseAmount: Math.round(amount * rate * 100) / 100,
     category: String(row.category ?? 'Travel'),
     description: String(row.description ?? ''),
     date: String(row.date ?? ''),
@@ -91,6 +133,15 @@ function normalizeTransaction(row: DbRow): TourTransactionResponse {
     paidBy,
     paidByParticipantId: paidBy,
     paidByName: row.paid_by_name ? String(row.paid_by_name) : null,
+    recipientMemberId: toNullableNumber(row.recipient_member_id ?? row.recipientMemberId),
+    recipientName: row.recipient_name ? String(row.recipient_name) : null,
+    entryType: (row.entry_type ?? row.entryType ?? 'expense') as TourTransactionResponse['entryType'],
+    fundingSource: (row.funding_source ?? row.fundingSource ?? 'member_direct') as TourTransactionResponse['fundingSource'],
+    currency: String(row.currency ?? 'BDT'),
+    exchangeRateToTourBase: rate,
+    linkedAccountId: toNullableNumber(row.linked_account_id ?? row.linkedAccountId),
+    linkedTransactionId: toNullableNumber(row.linked_transaction_id ?? row.linkedTransactionId),
+    splitBreakdown: parseSplitBreakdown(row.split_breakdown_json ?? row.splitBreakdownJson),
     createdById: toNullableNumber(row.created_by_user_id),
     createdByName: row.created_by_name ? String(row.created_by_name) : null,
     splitType: (row.split_type ?? row.splitType ?? 'equal') as TourTransactionResponse['splitType'],
@@ -110,6 +161,13 @@ function normalizeTour(
   return {
     id: toNumber(row.id),
     name: String(row.name ?? ''),
+    destination: row.destination ? String(row.destination) : null,
+    startDate: row.start_date ? String(row.start_date) : null,
+    endDate: row.end_date ? String(row.end_date) : null,
+    baseCurrency: row.base_currency ? String(row.base_currency) : 'BDT',
+    totalBudget: toNumber(row.total_budget),
+    inviteCode: row.invite_code ? String(row.invite_code) : null,
+    status: row.status ? String(row.status) : 'active',
     createdAt: row.created_at ? String(row.created_at) : null,
     createdBy: toNumber(row.created_by ?? row.user_id),
     participants,
@@ -211,7 +269,7 @@ async function getTourPayload(
 ): Promise<TourResponse | null> {
   // Allow access if user is the creator OR a bound participant
   const tour = await queryOne<DbRow>(
-    `SELECT DISTINCT t.id, t.created_by, t.name, t.created_at, t.invite_code
+    `SELECT DISTINCT t.id, t.created_by, t.name, t.destination, t.start_date, t.end_date, t.base_currency, t.total_budget, t.status, t.created_at, t.invite_code
      FROM tours t
      LEFT JOIN tour_participants tp ON tp.tour_id = t.id
      WHERE t.id = ?
@@ -235,7 +293,7 @@ async function getTourPayload(
 export async function listTours(_request: NextRequest, userId: number) {
   // Show tours where user is creator OR a bound participant
   const tours = await queryAll<DbRow>(
-    `SELECT DISTINCT t.id, t.created_by, t.name, t.created_at
+    `SELECT DISTINCT t.id, t.created_by, t.name, t.destination, t.start_date, t.end_date, t.base_currency, t.total_budget, t.status, t.created_at, t.invite_code
      FROM tours t
      LEFT JOIN tour_participants tp ON tp.tour_id = t.id
      WHERE t.created_by = ? OR tp.user_id = ?
@@ -267,8 +325,18 @@ export async function createTour(request: NextRequest, userId: number) {
 
   try {
     const result = await run(
-      'INSERT INTO tours (created_by, name) VALUES (?, ?)',
-      [userId, data.name]
+      `INSERT INTO tours (
+         created_by, name, destination, start_date, end_date, base_currency, total_budget
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        data.name,
+        data.destination || null,
+        data.startDate || null,
+        data.endDate || null,
+        data.baseCurrency || 'BDT',
+        data.totalBudget || 0,
+      ]
     );
     tourId = result.lastInsertRowid;
 
@@ -299,34 +367,256 @@ export async function createTour(request: NextRequest, userId: number) {
   }
 }
 
+async function getTourWorkspace(userId: number, tourId: number) {
+  const tour = await queryOne<DbRow>(
+    `SELECT DISTINCT t.id, t.created_by, t.name, t.destination, t.start_date, t.end_date,
+            t.base_currency, t.total_budget, t.invite_code, t.status, t.created_at
+     FROM tours t
+     LEFT JOIN tour_participants tp ON tp.tour_id = t.id
+     WHERE t.id = ?
+       AND (t.created_by = ? OR tp.user_id = ?)`,
+    [tourId, userId, userId]
+  );
+
+  if (!tour) return null;
+
+  const [participants, metrics, rawSpendings, kittySummary] = await Promise.all([
+    getParticipants(tourId),
+    getTourMetrics(tourId),
+    queryAll<DbRow>(
+      `SELECT s.*, p.name AS paid_by_name, r.name AS recipient_name, u.name AS created_by_name
+       FROM tour_spendings s
+       LEFT JOIN tour_participants p ON p.id = s.paid_by_participant_id
+       LEFT JOIN tour_participants r ON r.id = s.recipient_member_id
+       LEFT JOIN users u ON u.id = s.created_by_user_id
+       WHERE s.tour_id = ?
+       ORDER BY s.date DESC, s.created_at DESC, s.id DESC`,
+      [tourId]
+    ),
+    calculateTourKitty(tourId),
+  ]);
+
+  const pMap = new Map(participants.map((p) => [p.id, p]));
+
+  const memberStats = new Map<number, {
+    totalPaidOutOfPocket: number;
+    totalDepositedToKitty: number;
+    totalConsumedShare: number;
+    totalSettledPaid: number;
+    totalSettledReceived: number;
+  }>();
+
+  for (const p of participants) {
+    memberStats.set(p.id, {
+      totalPaidOutOfPocket: 0,
+      totalDepositedToKitty: 0,
+      totalConsumedShare: 0,
+      totalSettledPaid: 0,
+      totalSettledReceived: 0,
+    });
+  }
+
+  const detailedSpendings = rawSpendings.map((row) => {
+    const amount = toNumber(row.amount);
+    const rate = toNumber(row.exchange_rate_to_tour_base, 1.0);
+    const baseAmount = Math.round(amount * rate * 100) / 100;
+    const payerId = toNumber(row.paid_by_participant_id);
+    const recipientId = toNullableNumber(row.recipient_member_id);
+    const entryType = (row.entry_type || 'expense') as 'expense' | 'deposit' | 'settlement';
+    const fundingSource = (row.funding_source || 'member_direct') as 'member_direct' | 'tour_pool';
+    const splitBreakdown = parseSplitBreakdown(row.split_breakdown_json);
+
+    const payerStats = memberStats.get(payerId);
+    if (payerStats) {
+      if (entryType === 'deposit') {
+        payerStats.totalDepositedToKitty += baseAmount;
+      } else if (entryType === 'settlement') {
+        payerStats.totalSettledPaid += baseAmount;
+      } else if (entryType === 'expense' && fundingSource === 'member_direct') {
+        payerStats.totalPaidOutOfPocket += baseAmount;
+      }
+    }
+
+    if (entryType === 'settlement' && recipientId) {
+      const recipientStats = memberStats.get(recipientId);
+      if (recipientStats) {
+        recipientStats.totalSettledReceived += baseAmount;
+      }
+    }
+
+    if (entryType === 'expense') {
+      if (splitBreakdown.length > 0) {
+        for (const item of splitBreakdown) {
+          const mId = toNumber(item.memberId ?? item.id);
+          const mStats = memberStats.get(mId);
+          if (mStats) {
+            const share = (toNumber(item.shareAmount) || 0) * rate;
+            mStats.totalConsumedShare += share;
+          }
+        }
+      } else {
+        const perPerson = participants.length > 0 ? baseAmount / participants.length : 0;
+        for (const p of participants) {
+          const mStats = memberStats.get(p.id);
+          if (mStats) mStats.totalConsumedShare += perPerson;
+        }
+      }
+    }
+
+    return {
+      id: toNumber(row.id),
+      amount,
+      baseAmount,
+      category: String(row.category || 'Travel'),
+      description: String(row.description || ''),
+      date: String(row.date || ''),
+      tourId,
+      paidBy: payerId,
+      paidByParticipantId: payerId,
+      paidByName: row.paid_by_name ? String(row.paid_by_name) : pMap.get(payerId)?.name || null,
+      recipientMemberId: recipientId,
+      recipientName: row.recipient_name ? String(row.recipient_name) : recipientId ? pMap.get(recipientId)?.name || null : null,
+      entryType,
+      fundingSource,
+      splitType: (row.split_type || 'equal') as 'equal' | 'percentage' | 'exact' | 'shares',
+      currency: String(row.currency || tour.base_currency || 'BDT'),
+      exchangeRateToTourBase: rate,
+      linkedAccountId: toNullableNumber(row.linked_account_id),
+      linkedTransactionId: toNullableNumber(row.linked_transaction_id),
+      splitBreakdown,
+      createdById: toNullableNumber(row.created_by_user_id),
+      createdByName: row.created_by_name ? String(row.created_by_name) : null,
+      createdAt: row.created_at ? String(row.created_at) : null,
+    };
+  });
+
+  const detailedMembers = participants.map((p) => {
+    const stats = memberStats.get(p.id) || {
+      totalPaidOutOfPocket: 0,
+      totalDepositedToKitty: 0,
+      totalConsumedShare: 0,
+      totalSettledPaid: 0,
+      totalSettledReceived: 0,
+    };
+
+    const netBalance = Math.round(
+      ((stats.totalPaidOutOfPocket + stats.totalDepositedToKitty + stats.totalSettledPaid) -
+        (stats.totalConsumedShare + stats.totalSettledReceived)) * 100
+    ) / 100;
+
+    const initials = p.name
+      .split(' ')
+      .map((w: string) => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'TM';
+
+    return {
+      id: p.id,
+      tourId: p.tourId,
+      name: p.name,
+      userId: p.userId,
+      avatar: initials,
+      totalPaidOutOfPocket: Math.round(stats.totalPaidOutOfPocket * 100) / 100,
+      totalDepositedToKitty: Math.round(stats.totalDepositedToKitty * 100) / 100,
+      totalConsumedShare: Math.round(stats.totalConsumedShare * 100) / 100,
+      netBalance,
+    };
+  });
+
+  const balanceNodes: BalanceNode[] = detailedMembers.map((m) => ({
+    userId: m.id,
+    userName: m.name,
+    netBalance: m.netBalance,
+  }));
+
+  const settlementTransfers = calculateMinSettlements(
+    balanceNodes,
+    [],
+    0,
+    String(tour.base_currency || 'BDT')
+  );
+
+  const standardCategories = ['Accommodation', 'Transport', 'Food & Dining', 'Activities', 'Shopping', 'Miscellaneous'];
+  const categorySpentMap = new Map<string, number>();
+  for (const cat of standardCategories) categorySpentMap.set(cat, 0);
+
+  let totalExpenseSpend = 0;
+  for (const s of detailedSpendings) {
+    if (s.entryType === 'expense') {
+      totalExpenseSpend += s.baseAmount;
+      const existing = categorySpentMap.get(s.category) || 0;
+      categorySpentMap.set(s.category, existing + s.baseAmount);
+    }
+  }
+
+  const categoryBreakdown = standardCategories.map((cat) => {
+    const spent = Math.round((categorySpentMap.get(cat) || 0) * 100) / 100;
+    const percentage = totalExpenseSpend > 0 ? Math.round((spent / totalExpenseSpend) * 1000) / 10 : 0;
+    return {
+      category: cat,
+      spent,
+      budget: 0,
+      percentage,
+    };
+  });
+
+  return {
+    success: true,
+    tour: {
+      id: toNumber(tour.id),
+      name: String(tour.name || ''),
+      destination: tour.destination ? String(tour.destination) : null,
+      startDate: tour.start_date ? String(tour.start_date) : null,
+      endDate: tour.end_date ? String(tour.end_date) : null,
+      baseCurrency: String(tour.base_currency || 'BDT'),
+      totalBudget: toNumber(tour.total_budget, 0),
+      inviteCode: tour.invite_code ? String(tour.invite_code) : null,
+      status: String(tour.status || 'active'),
+      createdAt: tour.created_at ? String(tour.created_at) : null,
+      createdBy: toNumber(tour.created_by),
+    },
+    members: detailedMembers,
+    kittySummary,
+    spendings: detailedSpendings,
+    settlementPlan: {
+      simplifiedTransfers: settlementTransfers.simplifiedTransfers,
+      transfersSavedCount: settlementTransfers.transfersSavedCount,
+      rawTransactionsCount: settlementTransfers.rawTransactionsCount,
+    },
+    categoryBreakdown,
+    participants: detailedMembers.map((m) => ({ id: m.id, tourId: m.tourId, name: m.name, userId: m.userId })),
+    transactions: detailedSpendings,
+    totalSpent: Math.round(totalExpenseSpend * 100) / 100,
+    perPerson: detailedMembers.length > 0 ? Math.round((totalExpenseSpend / detailedMembers.length) * 100) / 100 : 0,
+    averageCost: detailedSpendings.filter((s) => s.entryType === 'expense').length > 0
+      ? Math.round((totalExpenseSpend / detailedSpendings.filter((s) => s.entryType === 'expense').length) * 100) / 100
+      : 0,
+    transactionCount: detailedSpendings.length,
+    balances: detailedMembers.map((m) => ({
+      id: m.id,
+      tourId: m.tourId,
+      name: m.name,
+      userId: m.userId,
+      paid: m.totalPaidOutOfPocket,
+      balance: m.netBalance,
+    })),
+  };
+}
+
 export async function getTour(
   _request: NextRequest,
   userId: number,
   routeContext?: RouteContextWithId
 ) {
   const tourId = await resolveTourId(routeContext);
-  const tour = await getTourPayload(userId, tourId, true);
+  const workspace = await getTourWorkspace(userId, tourId);
 
-  if (!tour) {
+  if (!workspace) {
     return NextResponse.json({ success: false, error: 'Tour not found' }, { status: 404 });
   }
 
-  return NextResponse.json({
-    success: true,
-    tour: {
-      id: tour.id,
-      name: tour.name,
-      createdAt: tour.createdAt,
-      createdBy: tour.createdBy,
-    },
-    participants: tour.participants,
-    transactions: tour.transactions ?? [],
-    totalSpent: tour.totalSpent,
-    perPerson: tour.perPerson,
-    averageCost: tour.averageCost,
-    transactionCount: tour.transactionCount,
-    balances: tour.balances ?? [],
-  });
+  return NextResponse.json(workspace);
 }
 
 const UpdateTourSchema = z.object({
@@ -455,28 +745,78 @@ export async function addTourSpending(
     return NextResponse.json({ success: false, error: 'Tour not found' }, { status: 404 });
   }
 
-  const participant = await queryOne<{ id: number }>(
-    'SELECT id FROM tour_participants WHERE id = ? AND tour_id = ?',
-    [data.paidBy, tourId]
-  );
+  const participants = await getParticipants(tourId);
+  const pMap = new Map(participants.map((p) => [p.id, p]));
 
+  const participant = pMap.get(data.paidBy);
   if (!participant) {
     return NextResponse.json({ success: false, error: 'Paid by must be one of this tour\'s participants' }, { status: 400 });
   }
 
-  let linkedTransactionId: number | null = null;
-  
-  if (data.includeInMainLedger) {
-    const mainTxResult = await TransactionRepository.create({
-      userId,
-      type: 'expense',
-      amount: data.amount,
-      category: data.category,
-      description: data.description,
-      date: data.date,
-    });
-    linkedTransactionId = mainTxResult.id;
+  const entryType = data.entryType || 'expense';
+  const fundingSource = data.fundingSource || 'member_direct';
+  const splitType = data.splitType || 'equal';
+  const currency = data.currency || 'BDT';
+  const rate = data.exchangeRateToTourBase || 1.0;
+
+  let splitBreakdown: Array<{
+    memberId: number;
+    memberName: string;
+    shareAmount: number;
+    sharePercentage: number;
+    shareWeight: number;
+    isSettled: boolean;
+  }> = [];
+
+  if (entryType === 'expense') {
+    let participantInputs: { id: number; name: string; weight: number }[] = [];
+    if (data.customSplits && data.customSplits.length > 0) {
+      participantInputs = data.customSplits.map((cs) => {
+        let weight = 1.0;
+        if (splitType === 'shares') weight = cs.shareWeight ?? 1.0;
+        else if (splitType === 'percentage') weight = cs.sharePercentage ?? 0;
+        else if (splitType === 'exact') weight = cs.shareAmount ?? 0;
+        return {
+          id: cs.memberId,
+          name: pMap.get(cs.memberId)?.name || `Member #${cs.memberId}`,
+          weight,
+        };
+      });
+    } else {
+      participantInputs = participants.map((p) => ({
+        id: p.id,
+        name: p.name,
+        weight: 1.0,
+      }));
+    }
+
+    const allocated = allocatePennyShares(data.amount, participantInputs);
+    splitBreakdown = allocated.map((a, idx) => ({
+      memberId: toNumber(a.id),
+      memberName: a.name || pMap.get(toNumber(a.id))?.name || `Member #${a.id}`,
+      shareAmount: a.shareAmount,
+      sharePercentage: a.sharePercentage,
+      shareWeight: participantInputs[idx]?.weight ?? 1,
+      isSettled: false,
+    }));
+  } else if (entryType === 'settlement' && data.recipientMemberId) {
+    const recipient = pMap.get(data.recipientMemberId);
+    if (!recipient) {
+      return NextResponse.json({ success: false, error: 'Recipient must be one of this tour\'s participants' }, { status: 400 });
+    }
+    splitBreakdown = [
+      {
+        memberId: data.recipientMemberId,
+        memberName: recipient.name,
+        shareAmount: data.amount,
+        sharePercentage: 100,
+        shareWeight: 1,
+        isSettled: true,
+      },
+    ];
   }
+
+  const splitBreakdownJson = JSON.stringify(splitBreakdown);
 
   const result = await run(
     `INSERT INTO tour_spendings (
@@ -486,10 +826,17 @@ export async function addTourSpending(
        description,
        date,
        paid_by_participant_id,
+       payer_member_id,
+       recipient_member_id,
+       entry_type,
+       funding_source,
        split_type,
-       linked_transaction_id,
+       currency,
+       exchange_rate_to_tour_base,
+       linked_account_id,
+       split_breakdown_json,
        created_by_user_id
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       tourId,
       data.amount,
@@ -497,11 +844,72 @@ export async function addTourSpending(
       data.description,
       data.date,
       data.paidBy,
-      data.splitType,
-      linkedTransactionId,
-      userId
+      data.paidBy,
+      data.recipientMemberId || null,
+      entryType,
+      fundingSource,
+      splitType,
+      currency,
+      rate,
+      data.linkedAccountId || null,
+      splitBreakdownJson,
+      userId,
     ]
   );
+
+  const spendingId = result.lastInsertRowid;
+  let linkedTransactionId: number | null = null;
+
+  if (entryType === 'settlement' && data.linkedAccountId) {
+    const userPart = participants.find((p) => p.userId === userId);
+    const isPayer = userPart ? userPart.id === data.paidBy : true;
+    const counterpartId = isPayer ? data.recipientMemberId : data.paidBy;
+    const counterpartName = counterpartId ? pMap.get(counterpartId)?.name : 'Member';
+
+    linkedTransactionId = (await recordTourSettlementTransfer({
+      tourId,
+      spendingId,
+      userId,
+      amount: data.amount,
+      isPayer,
+      linkedAccountId: data.linkedAccountId,
+      counterpartName,
+      date: data.date,
+    })) ?? null;
+
+    if (linkedTransactionId) {
+      await run('UPDATE tour_spendings SET linked_transaction_id = ? WHERE id = ?', [
+        linkedTransactionId,
+        spendingId,
+      ]);
+    }
+  } else if (data.linkedAccountId || data.includeInMainLedger) {
+    const syncRes = await syncTourSpendingToPersonalLedger({
+      tourId,
+      spendingId,
+      totalAmount: data.amount,
+      category: data.category,
+      description: data.description,
+      date: data.date,
+      payerParticipantId: data.paidBy,
+      linkedAccountId: data.linkedAccountId,
+      splitType,
+      splitBreakdownJson,
+      currentUserId: userId,
+    });
+    linkedTransactionId = syncRes.linkedTransactionId ?? null;
+    if (linkedTransactionId) {
+      await run('UPDATE tour_spendings SET linked_transaction_id = ? WHERE id = ?', [
+        linkedTransactionId,
+        spendingId,
+      ]);
+    }
+  }
+
+  broadcastTourUpdate(tourId, {
+    type: 'spending_created',
+    data: { spendingId, entryType, amount: data.amount },
+  });
 
   const transactionRows = await queryAll<DbRow>(
     `SELECT
@@ -514,35 +922,48 @@ export async function addTourSpending(
        t.paid_by_participant_id AS paidBy,
        t.paid_by_participant_id,
        t.paid_by_participant_id AS paid_by,
+       t.payer_member_id,
+       t.recipient_member_id,
+       t.entry_type,
+       t.funding_source,
        t.split_type,
+       t.currency,
+       t.exchange_rate_to_tour_base,
+       t.linked_account_id,
+       t.linked_transaction_id,
+       t.split_breakdown_json,
        t.created_at,
        t.created_by_user_id,
        p.name AS paid_by_name,
+       r.name AS recipient_name,
        u.name AS created_by_name
      FROM tour_spendings t
-     LEFT JOIN tour_participants p
-       ON p.id = t.paid_by_participant_id
-     LEFT JOIN users u
-       ON u.id = t.created_by_user_id
+     LEFT JOIN tour_participants p ON p.id = t.paid_by_participant_id
+     LEFT JOIN tour_participants r ON r.id = t.recipient_member_id
+     LEFT JOIN users u ON u.id = t.created_by_user_id
      WHERE t.id = ?
      LIMIT 1`,
-    [result.lastInsertRowid]
+    [spendingId]
   );
 
-  return NextResponse.json({
-    success: true,
-    transaction: normalizeTransaction(transactionRows[0] ?? {
-      id: result.lastInsertRowid,
-      amount: data.amount,
-      category: data.category,
-      description: data.description,
-      date: data.date,
-      tour_id: tourId,
-      paidBy: data.paidBy,
-      split_type: data.splitType,
-    }),
-  }, { status: 201 });
+  return NextResponse.json(
+    {
+      success: true,
+      transaction: normalizeTransaction(transactionRows[0] ?? {
+        id: spendingId,
+        amount: data.amount,
+        category: data.category,
+        description: data.description,
+        date: data.date,
+        tour_id: tourId,
+        paidBy: data.paidBy,
+        split_type: data.splitType,
+      }),
+    },
+    { status: 201 }
+  );
 }
+
 export async function updateTourSpending(
   request: NextRequest,
   userId: number,
@@ -564,8 +985,12 @@ export async function updateTourSpending(
     return NextResponse.json({ success: false, error: 'Tour not found' }, { status: 404 });
   }
 
-  const existingTx = await queryOne<{ id: number; linked_transaction_id: number | null }>(
-    'SELECT id, linked_transaction_id FROM tour_spendings WHERE id = ? AND tour_id = ?',
+  const existingTx = await queryOne<{
+    id: number;
+    linked_transaction_id: number | null;
+    linked_account_id: number | null;
+  }>(
+    'SELECT id, linked_transaction_id, linked_account_id FROM tour_spendings WHERE id = ? AND tour_id = ?',
     [txId, tourId]
   );
 
@@ -573,14 +998,63 @@ export async function updateTourSpending(
     return NextResponse.json({ success: false, error: 'Transaction not found' }, { status: 404 });
   }
 
-  const participant = await queryOne<{ id: number }>(
-    'SELECT id FROM tour_participants WHERE id = ? AND tour_id = ?',
-    [data.paidBy, tourId]
-  );
+  const participants = await getParticipants(tourId);
+  const pMap = new Map(participants.map((p) => [p.id, p]));
 
+  const participant = pMap.get(data.paidBy);
   if (!participant) {
     return NextResponse.json({ success: false, error: 'Paid by must be one of this tour\'s participants' }, { status: 400 });
   }
+
+  const entryType = data.entryType || 'expense';
+  const fundingSource = data.fundingSource || 'member_direct';
+  const splitType = data.splitType || 'equal';
+  const currency = data.currency || 'BDT';
+  const rate = data.exchangeRateToTourBase || 1.0;
+
+  let splitBreakdown: Array<{
+    memberId: number;
+    memberName: string;
+    shareAmount: number;
+    sharePercentage: number;
+    shareWeight: number;
+    isSettled: boolean;
+  }> = [];
+
+  if (entryType === 'expense') {
+    let participantInputs: { id: number; name: string; weight: number }[] = [];
+    if (data.customSplits && data.customSplits.length > 0) {
+      participantInputs = data.customSplits.map((cs) => {
+        let weight = 1.0;
+        if (splitType === 'shares') weight = cs.shareWeight ?? 1.0;
+        else if (splitType === 'percentage') weight = cs.sharePercentage ?? 0;
+        else if (splitType === 'exact') weight = cs.shareAmount ?? 0;
+        return {
+          id: cs.memberId,
+          name: pMap.get(cs.memberId)?.name || `Member #${cs.memberId}`,
+          weight,
+        };
+      });
+    } else {
+      participantInputs = participants.map((p) => ({
+        id: p.id,
+        name: p.name,
+        weight: 1.0,
+      }));
+    }
+
+    const allocated = allocatePennyShares(data.amount, participantInputs);
+    splitBreakdown = allocated.map((a, idx) => ({
+      memberId: toNumber(a.id),
+      memberName: a.name || pMap.get(toNumber(a.id))?.name || `Member #${a.id}`,
+      shareAmount: a.shareAmount,
+      sharePercentage: a.sharePercentage,
+      shareWeight: participantInputs[idx]?.weight ?? 1,
+      isSettled: false,
+    }));
+  }
+
+  const splitBreakdownJson = JSON.stringify(splitBreakdown);
 
   await run(
     `UPDATE tour_spendings SET
@@ -589,7 +1063,15 @@ export async function updateTourSpending(
        description = ?,
        date = ?,
        paid_by_participant_id = ?,
-       split_type = ?
+       payer_member_id = ?,
+       recipient_member_id = ?,
+       entry_type = ?,
+       funding_source = ?,
+       split_type = ?,
+       currency = ?,
+       exchange_rate_to_tour_base = ?,
+       linked_account_id = ?,
+       split_breakdown_json = ?
      WHERE id = ? AND tour_id = ?`,
     [
       data.amount,
@@ -597,25 +1079,47 @@ export async function updateTourSpending(
       data.description,
       data.date,
       data.paidBy,
-      data.splitType,
+      data.paidBy,
+      data.recipientMemberId || null,
+      entryType,
+      fundingSource,
+      splitType,
+      currency,
+      rate,
+      data.linkedAccountId ?? existingTx.linked_account_id ?? null,
+      splitBreakdownJson,
       txId,
-      tourId
+      tourId,
     ]
   );
 
-  if (existingTx.linked_transaction_id) {
-    await TransactionRepository.update(
-      userId,
-      existingTx.linked_transaction_id,
-      {
-        type: 'expense',
-        amount: data.amount,
-        category: data.category,
-        description: data.description,
-        date: data.date,
-      }
-    );
+  const effectiveAccountId = data.linkedAccountId ?? existingTx.linked_account_id;
+  if (effectiveAccountId || existingTx.linked_transaction_id) {
+    const syncRes = await syncTourSpendingToPersonalLedger({
+      tourId,
+      spendingId: txId,
+      totalAmount: data.amount,
+      category: data.category,
+      description: data.description,
+      date: data.date,
+      payerParticipantId: data.paidBy,
+      linkedAccountId: effectiveAccountId,
+      splitType,
+      splitBreakdownJson,
+      currentUserId: userId,
+    });
+    if (syncRes.linkedTransactionId && syncRes.linkedTransactionId !== existingTx.linked_transaction_id) {
+      await run('UPDATE tour_spendings SET linked_transaction_id = ? WHERE id = ?', [
+        syncRes.linkedTransactionId,
+        txId,
+      ]);
+    }
   }
+
+  broadcastTourUpdate(tourId, {
+    type: 'spending_updated',
+    data: { spendingId: txId },
+  });
 
   const transactionRows = await queryAll<DbRow>(
     `SELECT
@@ -628,16 +1132,25 @@ export async function updateTourSpending(
        t.paid_by_participant_id AS paidBy,
        t.paid_by_participant_id,
        t.paid_by_participant_id AS paid_by,
+       t.payer_member_id,
+       t.recipient_member_id,
+       t.entry_type,
+       t.funding_source,
        t.split_type,
+       t.currency,
+       t.exchange_rate_to_tour_base,
+       t.linked_account_id,
+       t.linked_transaction_id,
+       t.split_breakdown_json,
        t.created_at,
        t.created_by_user_id,
        p.name AS paid_by_name,
+       r.name AS recipient_name,
        u.name AS created_by_name
      FROM tour_spendings t
-     LEFT JOIN tour_participants p
-       ON p.id = t.paid_by_participant_id
-     LEFT JOIN users u
-       ON u.id = t.created_by_user_id
+     LEFT JOIN tour_participants p ON p.id = t.paid_by_participant_id
+     LEFT JOIN tour_participants r ON r.id = t.recipient_member_id
+     LEFT JOIN users u ON u.id = t.created_by_user_id
      WHERE t.id = ?
      LIMIT 1`,
     [txId]
@@ -654,7 +1167,7 @@ export async function updateTourSpending(
       tour_id: tourId,
       paidBy: data.paidBy,
       split_type: data.splitType,
-    })
+    }),
   });
 }
 
@@ -685,11 +1198,14 @@ export async function deleteTourSpending(
     return NextResponse.json({ success: false, error: 'Transaction not found' }, { status: 404 });
   }
 
+  await deleteTourSpendingPersonalLedger(tourId, txId, userId);
+
   await run('DELETE FROM tour_spendings WHERE id = ? AND tour_id = ?', [txId, tourId]);
 
-  if (existingTx.linked_transaction_id) {
-    await run('DELETE FROM transactions WHERE id = ? AND user_id = ?', [existingTx.linked_transaction_id, userId]);
-  }
+  broadcastTourUpdate(tourId, {
+    type: 'spending_deleted',
+    data: { spendingId: txId },
+  });
 
   return NextResponse.json({ success: true });
 }

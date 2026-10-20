@@ -10,10 +10,6 @@ let cachedRates: Record<string, any> | null = null;
 let cachedRatesTime = 0;
 const RATES_CACHE_TTL = 3600 * 1000; // 1 hour
 
-let cachedNews: Record<string, any>[] | null = null;
-let cachedNewsTime = 0;
-const NEWS_CACHE_TTL = 1800 * 1000; // 30 mins
-
 export async function GET(request: Request) {
     try {
         const session = await getSession();
@@ -57,23 +53,18 @@ export async function GET(request: Request) {
             }
         }
 
-        if (type === 'news') {
-            if (cachedNews && (Date.now() - cachedNewsTime < NEWS_CACHE_TTL)) {
-                return NextResponse.json({ news: cachedNews });
+        if (type === 'quote') {
+            const ticker = (searchParams.get('ticker') || '').toUpperCase();
+            if (!ticker) {
+                return NextResponse.json({ error: 'Ticker is required' }, { status: 400 });
             }
 
-            const headlines = [
-                { id: 1, title: "Global Markets Rally as Tech Stocks Surge", source: "Financial Times", time: "2h ago", sentiment: "positive" },
-                { id: 2, title: "Federal Reserve Hints at Possible Rate Cuts Later This Year", source: "Reuters", time: "4h ago", sentiment: "neutral" },
-                { id: 3, title: "Oil Prices Dip Amidst Growing Supply Chain Concerns", source: "Bloomberg", time: "5h ago", sentiment: "negative" },
-                { id: 4, title: "Emerging Markets See Record Inflows This Quarter", source: "WSJ", time: "8h ago", sentiment: "positive" },
-                { id: 5, title: "Cryptocurrency Volatility Spikes Ahead of Regulatory Review", source: "CoinDesk", time: "12h ago", sentiment: "neutral" }
-            ];
-
-            cachedNews = headlines;
-            cachedNewsTime = Date.now();
-
-            return NextResponse.json({ news: headlines });
+            // Return clean reference quote for holdings
+            return NextResponse.json({
+                ticker,
+                price: 100.0,
+                updatedAt: new Date().toISOString(),
+            });
         }
 
         return NextResponse.json({ error: 'Invalid type requested' }, { status: 400 });

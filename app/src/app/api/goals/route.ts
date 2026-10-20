@@ -58,45 +58,83 @@ export async function PUT(request: Request) {
 
         const body = await request.json();
         const id = body.id;
-        const contribution = typeof body.contribution === 'string' ? parseFloat(body.contribution) : body.contribution;
 
         if (!id || typeof id !== 'number') {
             return NextResponse.json({ error: 'Valid goal ID is required' }, { status: 400 });
         }
-        if (!isValidAmount(contribution)) {
-            return NextResponse.json({ error: 'Valid contribution amount required (positive number)' }, { status: 400 });
-        }
 
-        // Fetch current goal to check milestones
-        const goals = await queryAll('SELECT name, target_amount, saved_amount FROM savings_goals WHERE id = ? AND user_id = ?', [id, session.userId]);
-        const goal = goals[0] as any;
-        
-        await run(
-            'UPDATE savings_goals SET saved_amount = saved_amount + ? WHERE id = ? AND user_id = ?',
-            [contribution, id, session.userId]
-        );
+        // Direct field updates (name, target_amount, deadline, linked_account)
+        if (body.name !== undefined || body.target_amount !== undefined || body.deadline !== undefined || body.linked_account !== undefined) {
+            const updates: string[] = [];
+            const params: any[] = [];
 
-        if (goal) {
-            const oldSaved = goal.saved_amount;
-            const newSaved = oldSaved + contribution;
-            const target = goal.target_amount;
-            
-            const oldPct = oldSaved / target;
-            const newPct = newSaved / target;
-
-            // Trigger notification if crossing 50% or 100%
-            let alertMsg = '';
-            if (oldPct < 0.5 && newPct >= 0.5 && newPct < 1.0) {
-                alertMsg = `You are halfway there! 50% reached for goal: ${goal.name}.`;
-            } else if (oldPct < 1.0 && newPct >= 1.0) {
-                alertMsg = `Congratulations! You have fully funded your goal: ${goal.name}!`;
+            if (body.name !== undefined) {
+                const sName = sanitizeName(body.name);
+                if (sName) {
+                    updates.push('name = ?');
+                    params.push(sName);
+                }
+            }
+            if (body.target_amount !== undefined) {
+                const tAmt = typeof body.target_amount === 'string' ? parseFloat(body.target_amount) : body.target_amount;
+                if (isValidAmount(tAmt)) {
+                    updates.push('target_amount = ?');
+                    params.push(tAmt);
+                }
+            }
+            if (body.deadline !== undefined) {
+                updates.push('deadline = ?');
+                params.push(body.deadline || null);
+            }
+            if (body.linked_account !== undefined) {
+                updates.push('linked_account = ?');
+                params.push(body.linked_account || '');
             }
 
-            if (alertMsg) {
-                await run(
-                    'INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
-                    [session.userId, 'success', 'Goal Milestone Reached', alertMsg]
-                );
+            if (updates.length > 0) {
+                params.push(id, session.userId);
+                await run(`UPDATE savings_goals SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`, params);
+            }
+        }
+
+        // Contribution handling
+        if (body.contribution !== undefined) {
+            const contribution = typeof body.contribution === 'string' ? parseFloat(body.contribution) : body.contribution;
+            if (!isValidAmount(contribution)) {
+                return NextResponse.json({ error: 'Valid contribution amount required (positive number)' }, { status: 400 });
+            }
+
+            // Fetch current goal to check milestones
+            const goals = await queryAll('SELECT name, target_amount, saved_amount FROM savings_goals WHERE id = ? AND user_id = ?', [id, session.userId]);
+            const goal = goals[0] as any;
+            
+            await run(
+                'UPDATE savings_goals SET saved_amount = saved_amount + ? WHERE id = ? AND user_id = ?',
+                [contribution, id, session.userId]
+            );
+
+            if (goal) {
+                const oldSaved = goal.saved_amount;
+                const newSaved = oldSaved + contribution;
+                const target = goal.target_amount;
+                
+                const oldPct = oldSaved / target;
+                const newPct = newSaved / target;
+
+                // Trigger notification if crossing 50% or 100%
+                let alertMsg = '';
+                if (oldPct < 0.5 && newPct >= 0.5 && newPct < 1.0) {
+                    alertMsg = `You are halfway there! 50% reached for goal: ${goal.name}.`;
+                } else if (oldPct < 1.0 && newPct >= 1.0) {
+                    alertMsg = `Congratulations! You have fully funded your goal: ${goal.name}!`;
+                }
+
+                if (alertMsg) {
+                    await run(
+                        'INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
+                        [session.userId, 'success', 'Goal Milestone Reached', alertMsg]
+                    );
+                }
             }
         }
 

@@ -202,13 +202,42 @@ export class DocumentRepository {
   }
 
   /**
-   * Search documents using true in-process cosine similarity with substring fallback.
+   * Delete a document by ID and verify user ownership.
+   */
+  static async deleteDocument(id: string, userId: number) {
+    const [existing] = await db
+      .select({ id: documentMetadata.id })
+      .from(documentMetadata)
+      .where(and(eq(documentMetadata.id, id), eq(documentMetadata.userId, userId)))
+      .limit(1);
+
+    if (!existing) return false;
+
+    // Delete associated line items first
+    await db.delete(documentLineItems).where(eq(documentLineItems.documentId, id));
+    // Delete document
+    await db.delete(documentMetadata).where(eq(documentMetadata.id, id));
+    return true;
+  }
+
+  /**
+   * Search documents using fast deterministic multi-field matching
+   * (merchant, fileName, OCR raw text, exact/range amounts, line items, document date)
+   * blended with in-process cosine similarity fallback.
    */
   static async searchDocuments(userId: number, query: string) {
     const userDocs = await this.getDocuments(userId);
     if (userDocs.length === 0) return [];
 
-    const queryClean = query.trim().toLowerCase();
+    const queryRaw = query.trim();
+    const queryClean = queryRaw.toLowerCase();
+    if (!queryClean) return userDocs.map((d) => ({ ...d, relevanceScore: 1.0, matchSnippet: d.merchantName || d.fileName }));
+
+    // Extract potential currency or numerical query (e.g. "$45.00" -> 45, "120" -> 120)
+    const numMatch = queryClean.replace(/[^0-9.]/g, '');
+    const queryAmount = numMatch ? parseFloat(numMatch) : null;
+    const isAmountQuery = queryAmount !== null && !isNaN(queryAmount);
+
     let queryVector: number[] = [];
     let embeddingSuccess = true;
 
@@ -218,69 +247,108 @@ export class DocumentRepository {
       embeddingSuccess = false;
     }
 
-    const scored = userDocs.map((doc) => {
-      let cosineScore = 0;
-      let matchedViaEmbedding = false;
+    const queryTerms = queryClean
+      .split(/\s+/)
+      .map((t) => t.replace(/[^a-z0-9]/g, ''))
+      .filter((t) => t.length >= 2);
 
+    const scored = userDocs.map((doc) => {
+      let deterministicScore = 0;
+      let matchSnippet = '';
+
+      const merchant = (doc.merchantName || '').toLowerCase();
+      const fileName = (doc.fileName || '').toLowerCase();
+      const docDate = (doc.documentDate || '').toLowerCase();
+      const ocrText = (doc.ocrRawText || '').toLowerCase();
+      const lineItemTexts = (doc.lineItems || []).map((l) => `${l.description} ${l.totalPrice}`.toLowerCase());
+      const fullSearchable = `${merchant} ${fileName} ${docDate} ${ocrText} ${lineItemTexts.join(' ')}`;
+
+      // 1. Exact merchant or filename match
+      if (merchant && merchant === queryClean) {
+        deterministicScore = Math.max(deterministicScore, 1.0);
+        matchSnippet = `Exact merchant: ${doc.merchantName}`;
+      } else if (fileName && (fileName === queryClean || fileName.includes(queryClean))) {
+        deterministicScore = Math.max(deterministicScore, 0.95);
+        matchSnippet = `File match: ${doc.fileName}`;
+      } else if (merchant && merchant.includes(queryClean)) {
+        deterministicScore = Math.max(deterministicScore, 0.92);
+        matchSnippet = `Merchant: ${doc.merchantName}`;
+      }
+
+      // 2. Amount match
+      if (isAmountQuery && doc.totalAmount !== null && doc.totalAmount !== undefined) {
+        const diff = Math.abs(doc.totalAmount - queryAmount);
+        if (diff < 0.01) {
+          deterministicScore = Math.max(deterministicScore, 0.96);
+          matchSnippet = matchSnippet || `Exact amount: $${doc.totalAmount.toFixed(2)}`;
+        } else if (diff <= doc.totalAmount * 0.05) {
+          deterministicScore = Math.max(deterministicScore, 0.85);
+          matchSnippet = matchSnippet || `Approx. amount: $${doc.totalAmount.toFixed(2)}`;
+        }
+      }
+
+      // 3. Line item exact / partial matches
+      const matchedLine = (doc.lineItems || []).find((li) => {
+        const descLower = li.description.toLowerCase();
+        if (descLower.includes(queryClean)) return true;
+        if (isAmountQuery && Math.abs(li.totalPrice - queryAmount) < 0.01) return true;
+        return queryTerms.length > 0 && queryTerms.some((t) => descLower.includes(t));
+      });
+
+      if (matchedLine) {
+        deterministicScore = Math.max(deterministicScore, 0.90);
+        matchSnippet = matchSnippet || `Line item: ${matchedLine.description} ($${matchedLine.totalPrice.toFixed(2)})`;
+      }
+
+      // 4. Multi-token OCR text matching
+      if (queryTerms.length > 0) {
+        let matchedTerms = 0;
+        for (const term of queryTerms) {
+          if (fullSearchable.includes(term)) {
+            matchedTerms++;
+          }
+        }
+        const termRatio = matchedTerms / queryTerms.length;
+        if (termRatio > 0) {
+          const textScore = 0.5 + termRatio * 0.4;
+          deterministicScore = Math.max(deterministicScore, textScore);
+        }
+      }
+
+      // 5. OCR text phrase match
+      if (ocrText && ocrText.includes(queryClean)) {
+        deterministicScore = Math.max(deterministicScore, 0.88);
+        const idx = ocrText.indexOf(queryClean);
+        const start = Math.max(0, idx - 40);
+        const end = Math.min(doc.ocrRawText!.length, idx + 100);
+        matchSnippet = matchSnippet || (start > 0 ? '...' : '') + doc.ocrRawText!.slice(start, end) + '...';
+      }
+
+      // 6. Vector Cosine Similarity Fallback / Blend
+      let cosineScore = 0;
       if (embeddingSuccess && doc.embedding) {
         try {
           const docVec: number[] = JSON.parse(doc.embedding);
           cosineScore = cosineSimilarity(queryVector, docVec);
-          matchedViaEmbedding = true;
         } catch {
           cosineScore = 0;
         }
       }
 
-      // Keyword & line-item overlap fallback / boost
-      const searchableText = [
-        doc.fileName,
-        doc.merchantName || '',
-        doc.ocrRawText || '',
-        ...(doc.lineItems || []).map((l) => l.description),
-      ]
-        .join(' ')
-        .toLowerCase();
-
-      let keywordMatch = 0;
-      const terms = queryClean.split(/\s+/).filter((t) => t.length > 2);
-      let matchedTermsCount = 0;
-
-      for (const term of terms) {
-        if (searchableText.includes(term)) {
-          matchedTermsCount++;
-        }
+      // Prioritize strong deterministic match; otherwise blend with vector similarity
+      let finalScore = deterministicScore;
+      if (deterministicScore < 0.7 && cosineScore > 0) {
+        finalScore = Math.max(deterministicScore, cosineScore);
+      } else if (deterministicScore >= 0.7 && cosineScore > 0) {
+        finalScore = Math.min(1.0, deterministicScore * 0.85 + cosineScore * 0.15);
       }
 
-      if (terms.length > 0 && matchedTermsCount > 0) {
-        keywordMatch = matchedTermsCount / terms.length;
-      }
-
-      // Final hybrid score: if embedding succeeded, blend cosine + keyword; otherwise pure keyword
-      const finalScore = matchedViaEmbedding
-        ? Math.min(1.0, Math.max(0, cosineScore * 0.7 + keywordMatch * 0.3))
-        : keywordMatch;
-
-      // Extract best matching line item or OCR snippet
-      let matchSnippet = '';
-      const matchedLine = (doc.lineItems || []).find((li) =>
-        li.description.toLowerCase().includes(queryClean) ||
-        terms.some((t) => li.description.toLowerCase().includes(t))
-      );
-
-      if (matchedLine) {
-        matchSnippet = `Line match: ${matchedLine.description} (${matchedLine.totalPrice})`;
-      } else if (doc.ocrRawText) {
-        const idx = doc.ocrRawText.toLowerCase().indexOf(queryClean);
-        if (idx !== -1) {
-          const start = Math.max(0, idx - 40);
-          const end = Math.min(doc.ocrRawText.length, idx + 100);
-          matchSnippet = (start > 0 ? '...' : '') + doc.ocrRawText.slice(start, end) + '...';
+      if (!matchSnippet) {
+        if (doc.ocrRawText) {
+          matchSnippet = doc.ocrRawText.slice(0, 120).trim() + '...';
         } else {
-          matchSnippet = doc.ocrRawText.slice(0, 120) + '...';
+          matchSnippet = `Matched: ${doc.merchantName || doc.fileName}`;
         }
-      } else {
-        matchSnippet = `Matched: ${doc.merchantName || doc.fileName}`;
       }
 
       return {

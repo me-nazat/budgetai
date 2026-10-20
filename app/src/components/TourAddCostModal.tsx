@@ -12,10 +12,11 @@ import {
   getColorStyle,
   getIconCandidates,
   resolveIcon,
-  resolveColor
+  resolveColor,
 } from '@/lib/categoryUtils';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useAccounts } from '@/hooks/useApi';
 import { CURRENCIES } from '@/lib/currency';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { mutate } from 'swr';
@@ -26,6 +27,10 @@ interface Participant {
   userId?: number | null;
 }
 
+export type EntryType = 'expense' | 'deposit' | 'settlement';
+export type SplitType = 'equal' | 'exact' | 'percentage' | 'shares';
+export type FundingSource = 'member_direct' | 'tour_pool';
+
 interface TourAddCostModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -34,10 +39,25 @@ interface TourAddCostModalProps {
   onSaveSuccess: () => void;
   currentUserId?: number;
   isCreator?: boolean;
+  initialMode?: EntryType;
+  initialPrefill?: {
+    fromParticipantId?: number;
+    toParticipantId?: number;
+    amount?: number;
+    description?: string;
+    category?: string;
+  } | null;
+  kittyBalance?: number;
 }
 
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
-type SplitType = 'equal' | 'percentage' | 'exact';
+
+interface CustomSplitRow {
+  memberId: number;
+  shareAmount?: number;
+  sharePercentage?: number;
+  shareWeight?: number;
+}
 
 export default function TourAddCostModal({
   isOpen,
@@ -47,21 +67,33 @@ export default function TourAddCostModal({
   onSaveSuccess,
   currentUserId,
   isCreator = false,
+  initialMode = 'expense',
+  initialPrefill,
+  kittyBalance = 0,
 }: TourAddCostModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [entryType, setEntryType] = useState<EntryType>(initialMode);
+  const [fundingSource, setFundingSource] = useState<FundingSource>('member_direct');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Travel');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recipientMemberId, setRecipientMemberId] = useState<number>(0);
+  const [selectedParticipants, setSelectedParticipants] = useState<Record<number, boolean>>({});
+
   const [paidBy, setPaidBy] = useState<number>(() => {
     if (currentUserId) {
-      const match = participants.find(p => p.userId === currentUserId);
+      const match = participants.find((p) => p.userId === currentUserId);
       if (match) return match.id;
     }
     return participants[0]?.id ?? 0;
   });
+
   const [splitType, setSplitType] = useState<SplitType>('equal');
-  const [includeInMainLedger, setIncludeInMainLedger] = useState(false);
+  const [customSplits, setCustomSplits] = useState<Record<number, number>>({});
+  const [includeInMainLedger, setIncludeInMainLedger] = useState(true);
+  const [linkedAccountId, setLinkedAccountId] = useState<number | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -69,8 +101,10 @@ export default function TourAddCostModal({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isSavingRef = useRef(false);
+
   const haptics = useHaptics();
-  const { currency } = useCurrency();
+  const { currency, fmt } = useCurrency();
+  const { accounts } = useAccounts();
   const { categories: customCategories } = useCustomCategories('expense');
 
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -82,29 +116,52 @@ export default function TourAddCostModal({
   const [customColor, setCustomColor] = useState(CUSTOM_COLORS[0]);
   const [generatedIcons, setGeneratedIcons] = useState(CUSTOM_CATEGORY_ICONS.slice(0, 40));
 
-  const isPaidByLocked = false; // Allow any participant to change the paid by field
-
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Initialize or reset form on open
   useEffect(() => {
     if (isOpen) {
-      setAmount('');
-      setDescription('');
-      setCategory('Travel');
-      setDate(new Date().toISOString().split('T')[0]);
-      const match = currentUserId ? participants.find(p => p.userId === currentUserId) : null;
-      setPaidBy(match ? match.id : (participants[0]?.id ?? 0));
+      const mode = initialMode || 'expense';
+      setEntryType(mode);
+      setFundingSource('member_direct');
       setSplitType('equal');
-      setIncludeInMainLedger(false);
+
+      // Initialize selected participants map
+      const pMap: Record<number, boolean> = {};
+      participants.forEach((p) => {
+        pMap[p.id] = true;
+      });
+      setSelectedParticipants(pMap);
+
+      if (initialPrefill) {
+        setAmount(initialPrefill.amount ? initialPrefill.amount.toString() : '');
+        setDescription(initialPrefill.description || '');
+        if (initialPrefill.category) setCategory(initialPrefill.category);
+        if (initialPrefill.fromParticipantId) setPaidBy(initialPrefill.fromParticipantId);
+        if (initialPrefill.toParticipantId) setRecipientMemberId(initialPrefill.toParticipantId);
+      } else {
+        setAmount('');
+        setDescription('');
+        setCategory(mode === 'deposit' ? 'Kitty Deposit' : mode === 'settlement' ? 'Settlement' : 'Travel');
+        const match = currentUserId ? participants.find((p) => p.userId === currentUserId) : null;
+        setPaidBy(match ? match.id : (participants[0]?.id ?? 0));
+        const otherP = participants.find((p) => p.id !== (match?.id ?? participants[0]?.id));
+        setRecipientMemberId(otherP?.id ?? (participants[1]?.id || 0));
+      }
+
+      setDate(new Date().toISOString().split('T')[0]);
+      setCustomSplits({});
+      setIncludeInMainLedger(true);
+      setLinkedAccountId(accounts && accounts.length > 0 ? accounts[0].id : null);
       setReceipt(null);
       setReceiptPreview(null);
       setIsCreatingCustom(false);
       setCustomName('');
       setError(null);
     }
-  }, [isOpen, participants, currentUserId]);
+  }, [isOpen, initialMode, initialPrefill, participants, currentUserId, accounts]);
 
   const allCategories = useMemo(() => {
     const base = [
@@ -112,135 +169,235 @@ export default function TourAddCostModal({
       { label: 'Food', icon: 'restaurant', color: 'orange' },
       { label: 'Hotel', icon: 'hotel', color: 'indigo' },
       { label: 'Transport', icon: 'directions_car', color: 'emerald' },
-      { label: 'Tickets', icon: 'local_activity', color: 'rose' }
+      { label: 'Tickets', icon: 'local_activity', color: 'rose' },
+      { label: 'Activities', icon: 'hiking', color: 'teal' },
+      { label: 'Shopping', icon: 'shopping_bag', color: 'amber' },
+      { label: 'Kitty Deposit', icon: 'savings', color: 'emerald' },
+      { label: 'Settlement', icon: 'handshake', color: 'emerald' },
     ];
-    const custom = customCategories.map(c => ({
+    const custom = customCategories.map((c) => ({
       label: c.name,
       icon: c.icon || 'label',
-      color: c.color || 'gray'
+      color: c.color || 'gray',
     }));
     return [...base, ...custom];
   }, [customCategories]);
 
-  // Smart auto-resolve custom category icons & colors
-  useEffect(() => {
-    if (customName.trim()) {
-      const suggestedIcon = resolveIcon(customName);
-      const suggestedColor = resolveColor(customName);
-      setCustomIcon(suggestedIcon);
-      setCustomColor(suggestedColor);
-      setGeneratedIcons(getIconCandidates(customName));
-    }
-  }, [customName]);
-
+  // Amount parsing
   const amountNumber = useMemo(() => Number.parseFloat(amount), [amount]);
-  const canSubmit = Number.isFinite(amountNumber) && amountNumber > 0 && description.trim().length > 0 && paidBy > 0 && !isSubmitting;
 
-  useEffect(() => {
-    if (!participants.length) return;
-    setPaidBy((current) => {
-      if (current && participants.some((p) => p.id === current)) return current;
-      if (currentUserId) {
-        const match = participants.find((p) => p.userId === currentUserId);
-        if (match) return match.id;
+  // Active participants list
+  const activeParticipants = useMemo(() => {
+    return participants.filter((p) => selectedParticipants[p.id]);
+  }, [participants, selectedParticipants]);
+
+  // Live split validation calculation
+  const customSplitSum = useMemo(() => {
+    return activeParticipants.reduce((sum, p) => sum + (Number(customSplits[p.id]) || 0), 0);
+  }, [activeParticipants, customSplits]);
+
+  const splitRemainder = useMemo(() => {
+    const total = amountNumber || 0;
+    if (splitType === 'exact') {
+      return Math.round((total - customSplitSum) * 100) / 100;
+    }
+    if (splitType === 'percentage') {
+      return Math.round((100 - customSplitSum) * 100) / 100;
+    }
+    return 0;
+  }, [splitType, amountNumber, customSplitSum]);
+
+  const isSplitValid = useMemo(() => {
+    if (entryType === 'deposit' || entryType === 'settlement') return true;
+    if (activeParticipants.length === 0) return false;
+    if (splitType === 'equal') return true;
+    if (splitType === 'exact') {
+      return Math.abs(splitRemainder) < 0.02;
+    }
+    if (splitType === 'percentage') {
+      return Math.abs(splitRemainder) < 0.05;
+    }
+    if (splitType === 'shares') {
+      return customSplitSum > 0;
+    }
+    return true;
+  }, [entryType, activeParticipants.length, splitType, splitRemainder, customSplitSum]);
+
+  const canSubmit =
+    Number.isFinite(amountNumber) &&
+    amountNumber > 0 &&
+    (entryType === 'settlement' || description.trim().length > 0) &&
+    (fundingSource === 'tour_pool' || paidBy > 0) &&
+    (entryType !== 'settlement' || (recipientMemberId > 0 && recipientMemberId !== paidBy)) &&
+    isSplitValid &&
+    !isSubmitting;
+
+  // Live accounting impact preview pill computation
+  const accountingImpact = useMemo(() => {
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0) return null;
+
+    const myParticipant = currentUserId ? participants.find((p) => p.userId === currentUserId) : null;
+    const isPayerMe = fundingSource === 'member_direct' && myParticipant && paidBy === myParticipant.id;
+
+    if (entryType === 'settlement') {
+      const isRecipientMe = myParticipant && recipientMemberId === myParticipant.id;
+      if (isPayerMe) {
+        return {
+          accountImpact: -amountNumber,
+          personalBudgetShare: 0,
+          netPosition: amountNumber, // paid back debt
+          label: `Account impact: -${fmt(amountNumber)} | Personal budget share: 0 | Debt settled: ${fmt(amountNumber)}`,
+        };
       }
-      return participants[0].id;
-    });
-  }, [participants, currentUserId]);
+      if (isRecipientMe) {
+        return {
+          accountImpact: +amountNumber,
+          personalBudgetShare: 0,
+          netPosition: -amountNumber,
+          label: `Account impact: +${fmt(amountNumber)} | Personal budget share: 0 | Settlement received: +${fmt(amountNumber)}`,
+        };
+      }
+      return null;
+    }
 
+    if (entryType === 'deposit') {
+      if (isPayerMe) {
+        return {
+          accountImpact: -amountNumber,
+          personalBudgetShare: 0,
+          netPosition: amountNumber,
+          label: `Account impact: -${fmt(amountNumber)} | Pool credit: +${fmt(amountNumber)} | Kitty funded`,
+        };
+      }
+      return null;
+    }
+
+    // Expense mode:
+    let myShare = 0;
+    if (myParticipant && selectedParticipants[myParticipant.id]) {
+      if (splitType === 'equal') {
+        myShare = (amountNumber || 0) / (activeParticipants.length || 1);
+      } else if (splitType === 'exact') {
+        myShare = customSplits[myParticipant.id] || 0;
+      } else if (splitType === 'percentage') {
+        const pct = customSplits[myParticipant.id] || 0;
+        myShare = ((amountNumber || 0) * pct) / 100;
+      } else if (splitType === 'shares') {
+        const myWeight = customSplits[myParticipant.id] || 0;
+        const totalWeight = customSplitSum || 1;
+        myShare = ((amountNumber || 0) * myWeight) / totalWeight;
+      }
+    }
+
+    const accountOutflow = isPayerMe ? -amountNumber : 0;
+    const lentToOthers = isPayerMe ? amountNumber - myShare : 0;
+    const owedToPayer = !isPayerMe && fundingSource === 'member_direct' ? myShare : 0;
+
+    return {
+      accountImpact: accountOutflow,
+      personalBudgetShare: myShare,
+      lentToOthers,
+      owedToPayer,
+      label: isPayerMe
+        ? `Account impact: -${fmt(amountNumber)} | Your budget share: -${fmt(myShare)} | Owed back to you: +${fmt(lentToOthers)}`
+        : fundingSource === 'tour_pool'
+        ? `Paid from Kitty: ${fmt(amountNumber)} | Your budget share: -${fmt(myShare)} | Out-of-pocket: 0`
+        : `Paid by Member | Your budget share: -${fmt(myShare)} | You owe payer: -${fmt(owedToPayer)}`,
+    };
+  }, [
+    amountNumber,
+    entryType,
+    fundingSource,
+    paidBy,
+    recipientMemberId,
+    participants,
+    currentUserId,
+    selectedParticipants,
+    splitType,
+    activeParticipants.length,
+    customSplits,
+    customSplitSum,
+    fmt,
+  ]);
+
+  // Receipt Preview
   useEffect(() => {
     if (!receipt) {
       setReceiptPreview(null);
       return undefined;
     }
-
     const url = URL.createObjectURL(receipt);
     setReceiptPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [receipt]);
-
-  const reset = useCallback(() => {
-    setAmount('');
-    setDescription('');
-    setCategory('Travel');
-    setDate(new Date().toISOString().split('T')[0]);
-    const match = currentUserId ? participants.find(p => p.userId === currentUserId) : null;
-    setPaidBy(match ? match.id : (participants[0]?.id ?? 0));
-    setSplitType('equal');
-    setIncludeInMainLedger(false);
-    setReceipt(null);
-    setError(null);
-    setIsCreatingCustom(false);
-    setCustomName('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [participants, currentUserId]);
 
   const closeModal = useCallback(() => {
     haptics.tap();
     onClose();
   }, [haptics, onClose]);
 
-  const chooseReceipt = useCallback((file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Receipt proof must be an image file.');
-      haptics.error();
-      return;
-    }
-
-    setReceipt(file);
-    setError(null);
+  // Distribute remainder helper
+  const handleDistributeRemainder = () => {
+    if (activeParticipants.length === 0) return;
     haptics.tap();
-  }, [haptics]);
+
+    if (splitType === 'exact') {
+      const currentSum = activeParticipants.reduce((acc, p) => acc + (customSplits[p.id] || 0), 0);
+      const remaining = Math.max(0, (amountNumber || 0) - currentSum);
+      const perPerson = Math.round((remaining / activeParticipants.length) * 100) / 100;
+
+      setCustomSplits((prev) => {
+        const next = { ...prev };
+        activeParticipants.forEach((p) => {
+          next[p.id] = Math.round(((next[p.id] || 0) + perPerson) * 100) / 100;
+        });
+        return next;
+      });
+    } else if (splitType === 'percentage') {
+      const currentSum = activeParticipants.reduce((acc, p) => acc + (customSplits[p.id] || 0), 0);
+      const remaining = Math.max(0, 100 - currentSum);
+      const perPerson = Math.floor(remaining / activeParticipants.length);
+
+      setCustomSplits((prev) => {
+        const next = { ...prev };
+        activeParticipants.forEach((p) => {
+          next[p.id] = (next[p.id] || 0) + perPerson;
+        });
+        return next;
+      });
+    }
+  };
+
+  // Toggle all participants
+  const handleToggleAllParticipants = () => {
+    haptics.tap();
+    const allSelected = activeParticipants.length === participants.length;
+    const nextMap: Record<number, boolean> = {};
+    participants.forEach((p) => {
+      nextMap[p.id] = !allSelected;
+    });
+    setSelectedParticipants(nextMap);
+  };
+
+  const handleCustomSplitChange = (memberId: number, valueStr: string) => {
+    const num = parseFloat(valueStr) || 0;
+    setCustomSplits((prev) => ({
+      ...prev,
+      [memberId]: num,
+    }));
+  };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    chooseReceipt(event.target.files?.[0]);
-  };
-
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(false);
-    chooseReceipt(event.dataTransfer.files?.[0]);
-  };
-
-  const handleSaveCustomCategory = async () => {
-    const trimmedName = customName.trim().replace(/\s+/g, ' ');
-    if (!trimmedName || isSavingRef.current) return;
-    isSavingRef.current = true;
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: trimmedName,
-          type: 'expense',
-          icon: customIcon,
-          color: customColor
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        await mutate((key) => typeof key === 'string' && key.startsWith('/api/categories'));
-        setCategory(data.name || trimmedName);
-        setIsCreatingCustom(false);
-        setCustomName('');
-      } else if (data.error === 'Category already exists') {
-        await fetch('/api/categories', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: trimmedName, type: 'expense', icon: customIcon, color: customColor })
-        });
-        await mutate((key) => typeof key === 'string' && key.startsWith('/api/categories'));
-        setCategory(trimmedName);
-        setIsCreatingCustom(false);
-        setCustomName('');
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        setError('Attachment must be an image or PDF file.');
+        haptics.error();
+        return;
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      isSavingRef.current = false;
-      setIsSubmitting(false);
+      setReceipt(file);
+      setError(null);
+      haptics.tap();
     }
   };
 
@@ -252,8 +409,30 @@ export default function TourAddCostModal({
     setIsSubmitting(true);
     setError(null);
 
-    const amountNum = amountNumber;
     const swrKey = `/api/bill-splits/tours/${tourId}`;
+
+    // Format custom splits
+    let formattedCustomSplits: CustomSplitRow[] | undefined = undefined;
+    if (entryType === 'expense' && splitType !== 'equal') {
+      formattedCustomSplits = activeParticipants.map((p) => {
+        const val = customSplits[p.id] || 0;
+        return {
+          memberId: p.id,
+          shareAmount: splitType === 'exact' ? val : undefined,
+          sharePercentage: splitType === 'percentage' ? val : undefined,
+          shareWeight: splitType === 'shares' ? val : undefined,
+        };
+      });
+    }
+
+    const payerMember = participants.find((p) => p.id === paidBy);
+    const recipientMember = participants.find((p) => p.id === recipientMemberId);
+    const finalDescription =
+      entryType === 'settlement'
+        ? description.trim() || `Settlement: ${payerMember?.name || 'Member'} to ${recipientMember?.name || 'Member'}`
+        : entryType === 'deposit'
+        ? description.trim() || `Shared Kitty deposit by ${payerMember?.name || 'Member'}`
+        : description.trim();
 
     try {
       const url = `/api/bill-splits/tours/${tourId}/spendings`;
@@ -261,23 +440,30 @@ export default function TourAddCostModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: amountNum,
-          description: description.trim(),
-          category: category.trim() || 'Travel',
+          amount: amountNumber,
+          description: finalDescription,
+          category:
+            entryType === 'deposit' ? 'Kitty Deposit' : entryType === 'settlement' ? 'Settlement' : category.trim(),
           date,
-          paidBy,
-          paidByParticipantId: paidBy,
-          splitType,
+          paidBy: fundingSource === 'tour_pool' ? (participants[0]?.id ?? 0) : paidBy,
+          paidByParticipantId: fundingSource === 'tour_pool' ? (participants[0]?.id ?? 0) : paidBy,
+          recipientMemberId: entryType === 'settlement' ? recipientMemberId : null,
+          entryType,
+          fundingSource: entryType === 'expense' ? fundingSource : 'member_direct',
+          splitType: entryType === 'expense' ? splitType : 'equal',
+          customSplits: formattedCustomSplits,
           includeInMainLedger,
+          linkedAccountId: includeInMainLedger ? linkedAccountId : null,
         }),
       });
+
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.success) {
-        throw new Error(getApiErrorMessage(data, 'Failed to save this tour cost.'));
+        throw new Error(getApiErrorMessage(data, 'Failed to save tour record.'));
       }
 
-      // Upload receipt if one was selected
+      // Upload receipt if attached
       if (data.transaction?.id && receipt) {
         const formData = new FormData();
         formData.append('attachments', receipt);
@@ -287,18 +473,17 @@ export default function TourAddCostModal({
         });
       }
 
-      // Trigger a full revalidation of the tour endpoint so balances and metrics refresh
-      mutate(swrKey);
-      mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
+      await mutate(swrKey);
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/accounts'));
 
       haptics.success();
-      reset();
       onSaveSuccess();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add this tour cost.');
+      setError(err instanceof Error ? err.message : 'Failed to save tour entry.');
       haptics.error();
-      mutate(swrKey);
+      await mutate(swrKey);
     } finally {
       isSavingRef.current = false;
       setIsSubmitting(false);
@@ -312,366 +497,531 @@ export default function TourAddCostModal({
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeModal}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-lg z-40"
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40"
           />
 
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="tour-add-cost-title"
             initial={{ opacity: 0, y: 30, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
             transition={spring}
-            className="relative z-50 max-h-[85dvh] sm:max-h-[92dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-[2rem] border border-white/10 bg-background/95 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] ring-1 ring-white/10"
+            className="relative z-50 max-h-[92dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[2rem] border border-white/10 bg-[#0f172a] shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
           >
-            <div className="p-5 sm:p-6">
-              <div className="mb-6 flex items-center justify-between gap-4">
+            <div className="p-5 sm:p-6 space-y-5">
+              {/* Top Modal Header */}
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-                    {isCreatingCustom ? 'Custom Category' : 'Tour Ledger'}
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">
+                    Tour Collaborative Ledger
                   </p>
-                  <h2 id="tour-add-cost-title" className="mt-1 text-2xl font-black tracking-tight text-white">
-                    {isCreatingCustom ? 'Create New Category' : 'Add Cost'}
+                  <h2 className="text-xl sm:text-2xl font-black text-white">
+                    {entryType === 'expense'
+                      ? 'Add Group Expense'
+                      : entryType === 'deposit'
+                      ? 'Deposit to Shared Kitty'
+                      : 'Record Debt Settlement'}
                   </h2>
                 </div>
-                <motion.button
+                <button
                   type="button"
-                  onClick={() => isCreatingCustom ? setIsCreatingCustom(false) : closeModal()}
-                  whileTap={{ scale: 0.92 }}
-                  transition={spring}
-                  aria-label={isCreatingCustom ? 'Back' : 'Close'}
-                  className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white"
+                  onClick={closeModal}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {isCreatingCustom ? 'arrow_back' : 'close'}
-                  </span>
-                </motion.button>
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
               </div>
 
-              {isCreatingCustom ? (
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category Name</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={customName}
-                        onChange={e => setCustomName(e.target.value)}
-                        placeholder="e.g. Coffee, Gym, Pets"
-                        className="w-full pl-12 pr-4 py-4 text-base font-bold text-white bg-white/[0.04] border border-white/10 rounded-2xl outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-                        autoFocus
-                      />
-                      <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${customName.trim() ? getColorStyle(customColor).bg : 'bg-white/[0.08]'}`}>
-                        <span className="material-symbols-outlined text-white text-[16px]">
-                          {customName.trim() ? customIcon : 'edit'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+              {/* 1. Entry Type Segmented Control */}
+              <div className="grid grid-cols-3 gap-1.5 p-1 bg-white/[0.03] border border-white/10 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryType('expense');
+                    setCategory('Travel');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                    entryType === 'expense' ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[17px]">receipt_long</span>
+                  Expense
+                </button>
 
-                  <div className="space-y-2">
-                    <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Color</label>
-                    <div className="flex flex-wrap gap-2.5">
-                      {CUSTOM_COLORS.map(color => (
-                        <button
-                          key={color}
-                          type="button"
-                          onClick={() => setCustomColor(color)}
-                          className={`w-8 h-8 rounded-full ${getColorStyle(color).bg} flex items-center justify-center transition-all ${
-                            customColor === color ? 'ring-2 ring-offset-2 ring-offset-black ring-white scale-110' : 'hover:scale-110'
-                          }`}
-                        >
-                          {customColor === color && <span className="material-symbols-outlined text-white text-[16px]">check</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryType('deposit');
+                    setFundingSource('member_direct');
+                    setCategory('Kitty Deposit');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                    entryType === 'deposit' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[17px]">savings</span>
+                  Kitty Deposit
+                </button>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Icon</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const candidates = getIconCandidates(customName || 'Travel');
-                          setGeneratedIcons(candidates);
-                          setCustomIcon(candidates[0]);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
-                        Generate icon
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-6 gap-2.5 max-h-40 overflow-y-auto p-1 custom-scrollbar">
-                      {generatedIcons.map(icon => (
-                        <button
-                          key={icon}
-                          type="button"
-                          onClick={() => setCustomIcon(icon)}
-                          className={`aspect-square rounded-xl flex items-center justify-center text-xl transition-all ${
-                            customIcon === icon 
-                              ? `${getColorStyle(customColor).bg} text-white shadow-md scale-110`
-                              : 'bg-white/[0.04] text-gray-400 hover:bg-white/[0.08]'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined">{icon}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryType('settlement');
+                    setFundingSource('member_direct');
+                    setCategory('Settlement');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                    entryType === 'settlement' ? 'bg-sky-500 text-white shadow-md' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[17px]">handshake</span>
+                  Settle Debt
+                </button>
+              </div>
 
-                  <motion.button
-                    type="button"
-                    onClick={handleSaveCustomCategory}
-                    disabled={isSubmitting || !customName.trim()}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                  >
-                    {isSubmitting ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      'Create Category'
-                    )}
-                  </motion.button>
+              {error && (
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs font-bold text-rose-300">
+                  {error}
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.2fr_0.8fr]">
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* SETTLEMENT FLOW SELECTOR */}
+                {entryType === 'settlement' ? (
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                     <div>
-                      <label htmlFor="tour-cost-amount" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Cost</label>
-                      <div className="relative mt-1">
-                        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-500">{symbol}</span>
-                        <input
-                          id="tour-cost-amount"
-                          type="number"
-                          inputMode="decimal"
-                          min="0"
-                          step="0.01"
-                          value={amount}
-                          onChange={(event) => setAmount(event.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-4 pr-4 font-mono text-2xl font-black tabular-nums text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                          style={{ paddingLeft: `${symbol.length * 0.75 + 1.5}rem` }}
-                          placeholder="0.00"
-                          required
-                        />
-                      </div>
+                      <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                        Payer (Who Paid)
+                      </label>
+                      <select
+                        value={paidBy}
+                        onChange={(e) => setPaidBy(Number(e.target.value))}
+                        className="w-full rounded-xl border border-white/10 bg-[#1e293b] px-3 py-2 text-xs font-bold text-white outline-none focus:border-sky-500"
+                      >
+                        {participants.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-center pt-5 text-sky-400">
+                      <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                     </div>
 
                     <div>
-                      <label htmlFor="tour-cost-date" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Date</label>
+                      <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                        Recipient (Paid To)
+                      </label>
+                      <select
+                        value={recipientMemberId}
+                        onChange={(e) => setRecipientMemberId(Number(e.target.value))}
+                        className="w-full rounded-xl border border-white/10 bg-[#1e293b] px-3 py-2 text-xs font-bold text-white outline-none focus:border-sky-500"
+                      >
+                        {participants.map((p) => (
+                          <option key={p.id} value={p.id} disabled={p.id === paidBy}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  /* 2. FUNDING SOURCE TOGGLE (Expense mode) */
+                  entryType === 'expense' && (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-2">
+                        Funding Source
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFundingSource('member_direct')}
+                          className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
+                            fundingSource === 'member_direct'
+                              ? 'border-primary bg-primary/10 text-white'
+                              : 'border-white/5 bg-white/[0.02] text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[18px] text-primary">person</span>
+                          <div>
+                            <p className="text-xs font-bold">Individual Member</p>
+                            <p className="text-[10px] text-gray-400">Paid out of personal pocket</p>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setFundingSource('tour_pool')}
+                          className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
+                            fundingSource === 'tour_pool'
+                              ? 'border-emerald-500 bg-emerald-500/10 text-white'
+                              : 'border-white/5 bg-white/[0.02] text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[18px] text-emerald-400">savings</span>
+                          <div>
+                            <p className="text-xs font-bold">Shared Tour Kitty</p>
+                            <p className="text-[10px] text-emerald-400 font-mono">
+                              Pool Available: {fmt(kittyBalance)}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* Amount and Date */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.2fr_0.8fr]">
+                  <div>
+                    <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-400">Amount</label>
+                    <div className="relative mt-1">
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-400">
+                        {symbol}
+                      </span>
                       <input
-                        id="tour-cost-date"
-                        type="date"
-                        value={date}
-                        onChange={(event) => setDate(event.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-primary focus:ring-4 focus:ring-primary/10"
+                        type="number"
+                        inputMode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3.5 pr-4 font-mono text-2xl font-black tabular-nums text-white outline-none focus:border-primary"
+                        style={{ paddingLeft: `${symbol.length * 0.75 + 1.5}rem` }}
+                        placeholder="0.00"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="tour-cost-description" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Description</label>
-                    <textarea
-                      id="tour-cost-description"
-                      value={description}
-                      onChange={(event) => setDescription(event.target.value)}
-                      className="mt-1 min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                      placeholder="Dinner at the restaurant, ferry tickets, hotel deposit..."
+                    <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-400">Date</label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-primary"
                       required
                     />
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div>
-                      <label htmlFor="tour-cost-category" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Category</label>
-                      <div className="relative">
-                        <input
-                          id="tour-cost-category"
-                          value={category}
-                          onChange={(event) => setCategory(event.target.value)}
-                          onFocus={() => setShowCategoryDropdown(true)}
-                          onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
-                          className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                          placeholder="Travel"
-                          autoComplete="off"
-                        />
-                        {showCategoryDropdown && (
-                          <div className="absolute z-[110] mt-2 max-h-56 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#111827] shadow-2xl p-1 flex flex-col gap-0.5 custom-scrollbar">
-                             {allCategories.map((c) => (
-                                <button
-                                  key={c.label}
-                                  type="button"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => { setCategory(c.label); setShowCategoryDropdown(false); }}
-                                  className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-white/5 rounded-lg text-left transition-colors"
-                                >
-                                  <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: getCategoryHex(c.label, customCategories) }} />
-                                  <span className="text-sm font-semibold text-gray-200 truncate">{c.label}</span>
-                                </button>
-                             ))}
-                             <div className="h-px bg-white/10 my-1" />
-                             <button
-                               type="button"
-                               onMouseDown={(e) => e.preventDefault()}
-                               onClick={() => { setIsCreatingCustom(true); setShowCategoryDropdown(false); }}
-                               className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-primary/20 text-primary rounded-lg text-left transition-colors font-bold"
-                             >
-                               <span className="material-symbols-outlined text-[18px]">add</span>
-                               <span className="text-sm">Custom...</span>
-                             </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                {/* Description */}
+                <div>
+                  <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                    Description
+                  </label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-gray-600 focus:border-primary"
+                    placeholder={
+                      entryType === 'deposit'
+                        ? 'e.g. Initial kitty pool deposit'
+                        : entryType === 'settlement'
+                        ? 'e.g. Paid debt for hotel share'
+                        : 'Dinner at harbor, speed boat rent, park tickets...'
+                    }
+                    required={entryType !== 'settlement'}
+                  />
+                </div>
 
+                {/* Category & Payer in Expense Mode */}
+                {entryType === 'expense' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="tour-cost-paid-by" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Paid By</label>
+                      <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                        Category
+                      </label>
                       <select
-                        id="tour-cost-paid-by"
-                        value={paidBy}
-                        onChange={(event) => setPaidBy(Number(event.target.value))}
-                        disabled={isPaidByLocked}
-                        className="mt-1 w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-60"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-[#1e293b] px-4 py-3 text-xs font-bold text-white outline-none focus:border-primary"
                       >
-                        {participants.map((participant) => (
-                          <option key={participant.id} value={participant.id}>{participant.name}</option>
+                        {allCategories.map((c) => (
+                          <option key={c.label} value={c.label}>
+                            {c.label}
+                          </option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label htmlFor="tour-cost-split" className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-500">Split</label>
-                      <select
-                        id="tour-cost-split"
-                        value={splitType}
-                        onChange={(event) => setSplitType(event.target.value as SplitType)}
-                        className="mt-1 w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-                      >
-                        <option value="equal">Equal</option>
-                        <option value="percentage">Percentage</option>
-                        <option value="exact">Exact</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05] transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={includeInMainLedger}
-                        onChange={(e) => setIncludeInMainLedger(e.target.checked)}
-                        className="size-5 rounded-md border border-white/20 bg-[#111827] text-primary accent-primary outline-none focus:ring-2 focus:ring-primary/50"
-                      />
-                      <div>
-                        <p className="text-sm font-bold text-white">Add to main transactions</p>
-                        <p className="mt-0.5 text-xs text-gray-400 font-medium">Link this cost to your global dashboard & transactions</p>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 ml-1 block text-xs font-black uppercase tracking-[0.16em] text-gray-500">Receipt Proof</label>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        setIsDragging(true);
-                      }}
-                      onDragLeave={() => setIsDragging(false)}
-                      onDrop={handleDrop}
-                      className={`w-full rounded-2xl border border-dashed p-4 text-left transition-colors ${
-                        isDragging
-                          ? 'border-primary/70 bg-primary/10'
-                          : 'border-white/10 bg-white/[0.03] hover:border-primary/35 hover:bg-white/[0.05]'
-                      }`}
-                    >
-                      {receipt ? (
-                        <div className="flex items-center gap-3">
-                          {receiptPreview ? (
-                            <Image
-                              src={receiptPreview}
-                              alt="Receipt preview"
-                              width={56}
-                              height={56}
-                              unoptimized
-                              className="size-14 shrink-0 rounded-2xl border border-white/10 object-cover"
-                            />
-                          ) : (
-                            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                              <span className="material-symbols-outlined text-emerald-400">image</span>
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-black text-white">{receipt.name}</p>
-                            <p className="mt-1 text-xs font-semibold text-gray-500">Receipt proof attached locally</p>
-                          </div>
-                          <span className="material-symbols-outlined text-emerald-400">check_circle</span>
+                      <label className="ml-1 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                        {fundingSource === 'tour_pool' ? 'Payer Source' : 'Paid By'}
+                      </label>
+                      {fundingSource === 'tour_pool' ? (
+                        <div className="mt-1 flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-400">
+                          <span className="material-symbols-outlined text-[18px]">savings</span>
+                          Shared Tour Kitty
                         </div>
                       ) : (
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-gray-400">
-                            <span className="material-symbols-outlined">cloud_upload</span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-gray-200">Drop receipt image or browse</p>
-                            <p className="mt-1 text-xs font-semibold text-gray-500">JPG, PNG, or WebP proof for this cost</p>
-                          </div>
-                        </div>
+                        <select
+                          value={paidBy}
+                          onChange={(e) => setPaidBy(Number(e.target.value))}
+                          className="mt-1 w-full rounded-2xl border border-white/10 bg-[#1e293b] px-4 py-3 text-xs font-bold text-white outline-none focus:border-primary"
+                        >
+                          {participants.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
                       )}
-                    </button>
+                    </div>
                   </div>
+                )}
 
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={spring}
-                        className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-300"
+                {/* 3. INTERACTIVE 4-MODE SPLIT SELECTOR (Expense Mode Only) */}
+                {entryType === 'expense' && (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                        Split Among Travellers
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleToggleAllParticipants}
+                        className="text-[11px] font-bold text-gray-400 hover:text-white transition-colors"
                       >
-                        {error}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        {activeParticipants.length === participants.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </div>
 
-                  <motion.button
-                    type="submit"
-                    disabled={!canSubmit}
-                    whileTap={canSubmit ? { scale: 0.97 } : undefined}
-                    transition={spring}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-black text-white shadow-[0_18px_38px_rgba(19,109,236,0.25)] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+                    {/* 4 Tabs Split Mode */}
+                    <div className="grid grid-cols-4 gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
+                      {[
+                        { id: 'equal', label: 'Equal' },
+                        { id: 'exact', label: 'Exact ($)' },
+                        { id: 'percentage', label: 'Percent (%)' },
+                        { id: 'shares', label: 'Shares (x:y)' },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => {
+                            setSplitType(tab.id as SplitType);
+                            if (tab.id === 'percentage') {
+                              const pct = Math.floor(100 / (activeParticipants.length || 1));
+                              const map: Record<number, number> = {};
+                              activeParticipants.forEach((p) => {
+                                map[p.id] = pct;
+                              });
+                              setCustomSplits(map);
+                            } else if (tab.id === 'exact') {
+                              const share =
+                                Math.round(((amountNumber || 0) / (activeParticipants.length || 1)) * 100) / 100;
+                              const map: Record<number, number> = {};
+                              activeParticipants.forEach((p) => {
+                                map[p.id] = share;
+                              });
+                              setCustomSplits(map);
+                            } else if (tab.id === 'shares') {
+                              const map: Record<number, number> = {};
+                              activeParticipants.forEach((p) => {
+                                map[p.id] = 1;
+                              });
+                              setCustomSplits(map);
+                            }
+                          }}
+                          className={`py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                            splitType === tab.id ? 'bg-emerald-500 text-white font-black' : 'text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Live Validation Bar for Exact and Percentage */}
+                    {(splitType === 'exact' || splitType === 'percentage') && (
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-black/30 text-xs">
+                        <span className="font-mono text-gray-400">
+                          {splitType === 'exact'
+                            ? `Assigned: ${fmt(customSplitSum)} of ${fmt(amountNumber || 0)}`
+                            : `Assigned: ${customSplitSum.toFixed(1)}% of 100%`}
+                          <span
+                            className={`ml-2 font-bold ${
+                              Math.abs(splitRemainder) < 0.02 ? 'text-emerald-400' : 'text-amber-400'
+                            }`}
+                          >
+                            (Remaining: {splitType === 'exact' ? fmt(splitRemainder) : `${splitRemainder}%`})
+                          </span>
+                        </span>
+
+                        {Math.abs(splitRemainder) >= 0.02 && (
+                          <button
+                            type="button"
+                            onClick={handleDistributeRemainder}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-[10px] hover:bg-emerald-500/30 transition-colors"
+                          >
+                            Distribute remainder equally
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Participants List */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                      {participants.map((p) => {
+                        const isSelected = selectedParticipants[p.id];
+                        return (
+                          <div
+                            key={p.id}
+                            className={`flex items-center justify-between gap-2 p-2 rounded-xl border transition-all ${
+                              isSelected
+                                ? 'bg-[#1e293b] border-white/10'
+                                : 'bg-black/20 border-white/5 opacity-50'
+                            }`}
+                          >
+                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={!!isSelected}
+                                onChange={(e) =>
+                                  setSelectedParticipants((prev) => ({
+                                    ...prev,
+                                    [p.id]: e.target.checked,
+                                  }))
+                                }
+                                className="size-4 rounded border-white/20 bg-slate-900 text-emerald-500 accent-emerald-500"
+                              />
+                              <span className="text-xs font-bold text-white truncate">{p.name}</span>
+                            </label>
+
+                            {/* Split input if custom mode */}
+                            {isSelected && splitType !== 'equal' && (
+                              <div className="relative w-24 shrink-0">
+                                <input
+                                  type="number"
+                                  step={splitType === 'exact' ? '0.01' : splitType === 'percentage' ? '1' : '0.1'}
+                                  min="0"
+                                  value={customSplits[p.id] ?? ''}
+                                  onChange={(e) => handleCustomSplitChange(p.id, e.target.value)}
+                                  placeholder="0"
+                                  className="w-full text-right pr-5 py-1 px-2 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-mono font-bold text-white outline-none focus:border-emerald-500"
+                                />
+                                <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">
+                                  {splitType === 'exact' ? symbol : splitType === 'percentage' ? '%' : 'x'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* PERSONAL BANK ACCOUNT LINKING (If user paid or settlement) */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px]">account_balance</span>
+                      Deduct from My Account
+                    </label>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">
+                      Double-Entry Bridge
+                    </span>
+                  </div>
+                  <select
+                    value={linkedAccountId ?? ''}
+                    onChange={(e) => setLinkedAccountId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full rounded-xl border border-white/10 bg-[#1e293b] px-3.5 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500"
                   >
-                    {isSubmitting ? (
+                    <option value="">Do not link to personal account</option>
+                    {accounts.map((acc: any) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({fmt(acc.currentBalance ?? acc.balance ?? 0)}) • {acc.type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Receipt Upload */}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-left hover:bg-white/[0.04] transition-colors flex items-center gap-3"
+                  >
+                    {receipt ? (
                       <>
-                        <span className="size-5 rounded-full border-2 border-white/35 border-t-white animate-spin" />
-                        Saving...
+                        <span className="material-symbols-outlined text-emerald-400 text-xl">description</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{receipt.name}</p>
+                          <p className="text-[10px] text-gray-400">Proof attached</p>
+                        </div>
+                        <span className="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
                       </>
                     ) : (
                       <>
-                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">add_card</span>
-                        Add Cost
+                        <span className="material-symbols-outlined text-gray-400 text-xl">cloud_upload</span>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-gray-300">Attach Receipt / Ticket</p>
+                          <p className="text-[10px] text-gray-500">Image or PDF proof</p>
+                        </div>
                       </>
                     )}
-                  </motion.button>
-                </form>
-              )}
+                  </button>
+                </div>
+
+                {/* 4. LIVE ACCOUNTING PREVIEW PILL */}
+                {accountingImpact && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-2.5"
+                  >
+                    <span className="material-symbols-outlined text-emerald-400 text-[18px] shrink-0">
+                      account_balance_wallet
+                    </span>
+                    <p className="text-xs font-mono font-bold text-emerald-300 truncate">
+                      {accountingImpact.label}
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* Submit Button */}
+                <motion.button
+                  type="submit"
+                  disabled={!canSubmit || isSubmitting}
+                  whileTap={canSubmit ? { scale: 0.98 } : undefined}
+                  className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-sm font-black text-white shadow-lg shadow-emerald-500/25 transition-all disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {isSubmitting ? (
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">
+                        {entryType === 'deposit' ? 'savings' : entryType === 'settlement' ? 'handshake' : 'add_card'}
+                      </span>
+                      {entryType === 'deposit'
+                        ? 'Confirm Kitty Deposit'
+                        : entryType === 'settlement'
+                        ? 'Confirm Debt Settlement'
+                        : 'Save Expense to Tour'}
+                    </>
+                  )}
+                </motion.button>
+              </form>
             </div>
           </motion.div>
         </div>

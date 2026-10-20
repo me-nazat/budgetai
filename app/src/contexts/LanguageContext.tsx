@@ -27,7 +27,7 @@ const dictionaries: Record<Locale, Record<string, any>> = {
   bn,
 };
 
-const LanguageContext = createContext<LanguageContextValue>({
+export const LanguageContext = createContext<LanguageContextValue>({
   locale: 'en',
   setLocale: () => {},
   toggleLanguage: () => {},
@@ -57,6 +57,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = locale;
+    }
+  }, [locale]);
 
   const persistLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);

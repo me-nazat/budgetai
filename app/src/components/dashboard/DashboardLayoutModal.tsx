@@ -4,20 +4,31 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DESKTOP_WIDGET_CATALOG: Record<string, { label: string; icon: string; desc: string }> = {
-    net_worth: { label: 'Balance & Key Stats', icon: 'account_balance', desc: 'KPI cards with period comparisons' },
+    statCards: { label: 'Safe-to-Spend & Key Stats', icon: 'account_balance', desc: 'Free cashflow allowance, net worth & velocity pacing' },
+    net_worth: { label: 'Safe-to-Spend & Key Stats', icon: 'account_balance', desc: 'Free cashflow allowance, net worth & velocity pacing' },
+    cashflowChart: { label: 'Cashflow Trends & Predictive', icon: 'bar_chart', desc: 'Income vs expense cashflow and 30-day AI forecast' },
     spending_trends: { label: 'Spending Trends', icon: 'bar_chart', desc: 'Income vs Expense cashflow bar chart' },
     predictive: { label: 'Predictive Cashflow', icon: 'trending_up', desc: 'AI-driven 30-day cash balance forecast' },
-    top_categories: { label: 'Top Categories', icon: 'pie_chart', desc: 'Category breakdown doughnut chart' },
+    monthPacing: { label: 'Monthly Burn Rate & Pacing', icon: 'speed', desc: 'Month elapsed vs budget consumed & category envelopes' },
+    accountsLiquidity: { label: 'Accounts & Liquidity Ledger', icon: 'wallet', desc: 'Asset vs liability breakdown and direct account links' },
+    healthScore: { label: 'Financial Health Score', icon: 'health_and_safety', desc: '4 transparent weighted pillars with point recovery actions' },
+    heatmap: { label: 'Spending Heatmap Calendar', icon: 'calendar_month', desc: 'Daily activity density and high-spend day clusters' },
+    upcomingBills: { label: 'Upcoming Bills & Subscriptions', icon: 'schedule', desc: 'Committed recurring expenses due before month-end' },
     recent_activity: { label: 'Recent Transactions', icon: 'receipt_long', desc: 'Detailed table of recent transactions' },
+    top_categories: { label: 'Top Categories', icon: 'pie_chart', desc: 'Category breakdown doughnut chart' },
     budget_alerts: { label: 'Budget Alerts', icon: 'warning', desc: 'Active category spending budget limits' },
     intel_hub: { label: 'Intelligence Hub', icon: 'insights', desc: 'Live exchange rates & financial news' },
-    peer_benchmarks: { label: 'Peer Benchmarks', icon: 'leaderboard', desc: 'Anonymous demographic percentile comparison' },
 };
 
 const MOBILE_WIDGET_CATALOG: Record<string, { label: string; icon: string; desc: string }> = {
+    statCards: { label: 'Safe-to-Spend & Key Stats', icon: 'credit_card', desc: 'KPI cards with daily allowance' },
     net_worth: { label: 'Hero Net Worth Card', icon: 'credit_card', desc: 'Vibrant balance card with income/expense pills' },
     quick_stats: { label: 'Quick Stats Pills', icon: 'view_carousel', desc: 'Horizontal scroll of savings rate & burn rate' },
-    peer_benchmarks: { label: 'Peer Benchmarks', icon: 'leaderboard', desc: 'Percentile bar vs demographic cohort' },
+    monthPacing: { label: 'Month Pacing & Envelopes', icon: 'speed', desc: 'Burn rate against calendar days' },
+    cashflowChart: { label: 'Cashflow Trends', icon: 'bar_chart', desc: 'Monthly income vs expenses' },
+    accountsLiquidity: { label: 'Accounts & Liquidity', icon: 'wallet', desc: 'Account balances and liquid ratio' },
+    healthScore: { label: 'Health Score Widget', icon: 'health_and_safety', desc: 'Composite score & action recommendation' },
+    upcomingBills: { label: 'Upcoming Bills', icon: 'schedule', desc: 'Scheduled recurring payments' },
     ai_insight: { label: 'AI Smart Insight', icon: 'auto_awesome', desc: 'Contextual AI financial advice callout' },
     recent_activity: { label: 'Recent Transactions', icon: 'receipt_long', desc: 'Compact transaction cards' },
     budget_alerts: { label: 'Budget Alerts', icon: 'warning', desc: 'Active budget progress bars' },

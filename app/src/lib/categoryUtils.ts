@@ -217,6 +217,23 @@ export const CATEGORIES_INCOME = [
   { label: 'Other', icon: 'category' },
 ];
 
+export const QUICK_CATEGORIES: string[] = [
+  'Food',
+  'Transport',
+  'Housing',
+  'Utilities',
+  'Entertainment',
+  'Shopping',
+  'Health',
+  'Education',
+  'Business',
+  'Savings',
+  'Salary',
+  'Freelance',
+  'Investment',
+  'Other',
+];
+
 export const STANDARD_CATEGORY_ICONS: Record<string, string> = {
   Food: 'restaurant', Transport: 'directions_car', Housing: 'home', Utilities: 'bolt',
   Entertainment: 'theater_comedy', Shopping: 'checkroom', Health: 'health_and_safety',
@@ -253,8 +270,8 @@ export const CATEGORY_HEX_COLORS: Record<string, string> = {
 export const COLOR_NAME_TO_HEX: Record<string, string> = {
   rose: '#f43f5e', orange: '#f97316', amber: '#f59e0b', emerald: '#10b981',
   teal: '#14b8a6', cyan: '#06b6d4', sky: '#0ea5e9', blue: '#3b82f6',
-  indigo: '#6366f1', violet: '#6366f1', fuchsia: '#d946ef', pink: '#ec4899',
-  gray: '#6b7280',
+  indigo: '#6366f1', fuchsia: '#d946ef', pink: '#ec4899',
+  gray: '#6b7280', slate: '#64748b',
 };
 
 export const CUSTOM_CATEGORY_ICONS = [
@@ -272,6 +289,152 @@ export const CUSTOM_CATEGORY_ICONS = [
 
 export function normalizeCategoryName(categoryName: string): string {
   return categoryName.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Normalizes merchant names by trimming, converting to lowercase, and stripping POS terminal noise.
+ */
+export function normalizeMerchant(desc?: string | null): string | null {
+  if (!desc || !desc.trim()) return null;
+  let normalized = desc.toLowerCase().trim();
+  normalized = normalized
+    .replace(/^pos\s+(pur|purchase|debit|trans|txn)?\s*/i, '')
+    .replace(/^visa\s+purchase\s*/i, '')
+    .replace(/^debit\s+card\s+purchase\s*/i, '')
+    .replace(/^purchase\s+authorized\s+on\s+\d{2}\/\d{2}\s*/i, '')
+    .replace(/#\d+/g, '')
+    .replace(/\b\d{4,}\b/g, '')
+    .replace(/\s+\d{1,2}\/\d{1,2}(\/\d{2,4})?$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return normalized || null;
+}
+
+export interface UnifiedCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  type: 'expense' | 'income' | 'transfer';
+  group?: 'Essentials' | 'Lifestyle' | 'Financial' | 'Income';
+}
+
+export const UNIFIED_DEFAULT_CATEGORIES: UnifiedCategory[] = [
+  // Essentials
+  { id: 'cat_food', name: 'Food', icon: 'restaurant', color: 'orange', type: 'expense', group: 'Essentials' },
+  { id: 'cat_housing', name: 'Housing', icon: 'home', color: 'blue', type: 'expense', group: 'Essentials' },
+  { id: 'cat_transport', name: 'Transport', icon: 'directions_car', color: 'indigo', type: 'expense', group: 'Essentials' },
+  { id: 'cat_bills', name: 'Bills', icon: 'receipt', color: 'rose', type: 'expense', group: 'Essentials' },
+  { id: 'cat_utilities', name: 'Utilities', icon: 'bolt', color: 'amber', type: 'expense', group: 'Essentials' },
+  { id: 'cat_health', name: 'Health', icon: 'health_and_safety', color: 'emerald', type: 'expense', group: 'Essentials' },
+
+  // Lifestyle
+  { id: 'cat_shopping', name: 'Shopping', icon: 'checkroom', color: 'fuchsia', type: 'expense', group: 'Lifestyle' },
+  { id: 'cat_entertainment', name: 'Entertainment', icon: 'theater_comedy', color: 'pink', type: 'expense', group: 'Lifestyle' },
+  { id: 'cat_education', name: 'Education', icon: 'school', color: 'cyan', type: 'expense', group: 'Lifestyle' },
+  { id: 'cat_gift', name: 'Gift', icon: 'redeem', color: 'rose', type: 'expense', group: 'Lifestyle' },
+  { id: 'cat_other_exp', name: 'Other', icon: 'category', color: 'gray', type: 'expense', group: 'Lifestyle' },
+
+  // Financial
+  { id: 'cat_savings', name: 'Savings', icon: 'savings', color: 'emerald', type: 'expense', group: 'Financial' },
+  { id: 'cat_investment_exp', name: 'Investment', icon: 'trending_up', color: 'emerald', type: 'expense', group: 'Financial' },
+  { id: 'cat_transfer', name: 'Transfer', icon: 'swap_horiz', color: 'slate', type: 'transfer', group: 'Financial' },
+
+  // Income
+  { id: 'cat_salary', name: 'Salary', icon: 'payments', color: 'teal', type: 'income', group: 'Income' },
+  { id: 'cat_freelance', name: 'Freelance', icon: 'work', color: 'teal', type: 'income', group: 'Income' },
+  { id: 'cat_business', name: 'Business', icon: 'business_center', color: 'sky', type: 'income', group: 'Income' },
+  { id: 'cat_investment_inc', name: 'Investment Income', icon: 'trending_up', color: 'emerald', type: 'income', group: 'Income' },
+  { id: 'cat_rental', name: 'Rental', icon: 'apartment', color: 'blue', type: 'income', group: 'Income' },
+  { id: 'cat_dividend', name: 'Dividend', icon: 'monitoring', color: 'emerald', type: 'income', group: 'Income' },
+  { id: 'cat_refund', name: 'Refund', icon: 'receipt_long', color: 'cyan', type: 'income', group: 'Income' },
+  { id: 'cat_side_hustle', name: 'Side Hustle', icon: 'rocket_launch', color: 'orange', type: 'income', group: 'Income' },
+  { id: 'cat_bonus', name: 'Bonus', icon: 'star', color: 'amber', type: 'income', group: 'Income' },
+  { id: 'cat_cashback', name: 'Cashback', icon: 'currency_exchange', color: 'teal', type: 'income', group: 'Income' },
+  { id: 'cat_other_inc', name: 'Other Income', icon: 'category', color: 'gray', type: 'income', group: 'Income' },
+];
+
+/**
+ * Deterministically infers category from merchant/description string,
+ * evaluating user automation rules first before falling back to built-in merchant dictionary.
+ */
+export function inferCategoryFromMerchant(
+  description: string,
+  userRules?: Array<{ triggerValue: string; actionValue: string }>
+): string {
+  if (!description || !description.trim()) return 'Other';
+  const text = description.toLowerCase().trim();
+
+  // 1. Check user automation rules first
+  if (userRules && Array.isArray(userRules)) {
+    for (const rule of userRules) {
+      if (rule.triggerValue && text.includes(rule.triggerValue.toLowerCase().trim())) {
+        return rule.actionValue;
+      }
+    }
+  }
+
+  // 2. Built-in Merchant Keywords
+  // Food & Grocery
+  if (/shwapno|agora|meena\s*bazar|unimart|chaldal|kacha\s*bazar|supermarket|grocery|groceries|kfc|mcdonald|burger\s*king|pizza\s*hut|domino|starbucks|cafe|restaurant|takeout|foodpanda/i.test(text)) {
+    return 'Food';
+  }
+
+  // Transport & Rides
+  if (/pathao|uber|shohoz|chalo|obhai|cng|petrol|octane|fuel|gas\s*station|parking|metro|train|airline|biman|fly\s*dubai|emirates|us-bangla/i.test(text)) {
+    return 'Transport';
+  }
+
+  // Shopping & E-Commerce
+  if (/daraz|amazon|aliexpress|aarong|yellow|bata|apex|sailor|richman|infinity|otobi|ikea|walmart|clothing|shoes|fashion/i.test(text)) {
+    return 'Shopping';
+  }
+
+  // Utilities & Bills
+  if (/desco|dpdc|wasa|titas|btcl|link3|carnival|amber\s*it|dot\s*internet|electricity|electric|utility|utilities|water\s*bill|gas\s*bill/i.test(text)) {
+    return 'Bills';
+  }
+
+  // Entertainment & Streaming
+  if (/netflix|spotify|chorki|hoichoi|star\s*cineplex|blockbuster|cinema|movie|steam|playstation|xbox|nintendo|youtube\s*premium/i.test(text)) {
+    return 'Entertainment';
+  }
+
+  // Financial & Mobile Wallets
+  if (/bkash|nagad|rocket|upay|cellfin|tap|atm\s*cash|bank\s*charge|card\s*fee/i.test(text)) {
+    return 'Bills';
+  }
+
+  // Health & Medical
+  if (/pharmacy|lazz\s*pharma|hospital|diagnostic|square\s*hospital|evercare|ibn\s*sina|popular|doctor|dental|clinic/i.test(text)) {
+    return 'Health';
+  }
+
+  // Education
+  if (/school|college|university|udemy|coursera|tuition|exam\s*fee|brac|north\s*south|iba|du/i.test(text)) {
+    return 'Education';
+  }
+
+  // Fallback keyword resolver
+  for (const [keywords] of ICON_RULES) {
+    for (const kw of keywords) {
+      if (text.includes(kw)) {
+        if (/coffee|cafe|restaurant|dining|food|meal|eat|snack|grocery|pizza|burger|bakery/.test(kw)) return 'Food';
+        if (/uber|lyft|taxi|car|gas|fuel|bus|train|flight|bike/.test(kw)) return 'Transport';
+        if (/rent|mortgage|house|apartment/.test(kw)) return 'Housing';
+        if (/electric|water|internet|phone|bill|utility|insurance|tax/.test(kw)) return 'Bills';
+        if (/clothes|clothing|fashion|shop|shopping|store/.test(kw)) return 'Shopping';
+        if (/gym|workout|doctor|medical|hospital|clinic|health|medicine/.test(kw)) return 'Health';
+        if (/school|college|university|book|course/.test(kw)) return 'Education';
+        if (/movie|cinema|netflix|music|game|gaming/.test(kw)) return 'Entertainment';
+        if (/crypto|invest|investment|stock|dividend/.test(kw)) return 'Investment';
+        if (/salary|paycheck|wage/.test(kw)) return 'Salary';
+        if (/freelance|consulting/.test(kw)) return 'Freelance';
+      }
+    }
+  }
+
+  return 'Other';
 }
 
 function toTitleCase(categoryName: string): string {
@@ -330,7 +493,6 @@ export const CUSTOM_COLOR_STYLES: Record<string, { bg: string; text: string; sel
   sky: { bg: 'bg-sky-500', text: 'text-sky-500', selected: 'bg-sky-500 text-white shadow-sm' },
   blue: { bg: 'bg-blue-500', text: 'text-blue-500', selected: 'bg-blue-500 text-white shadow-sm' },
   indigo: { bg: 'bg-indigo-500', text: 'text-indigo-500', selected: 'bg-indigo-500 text-white shadow-sm' },
-  violet: { bg: 'bg-violet-500', text: 'text-violet-500', selected: 'bg-violet-500 text-white shadow-sm' },
   fuchsia: { bg: 'bg-fuchsia-500', text: 'text-fuchsia-500', selected: 'bg-fuchsia-500 text-white shadow-sm' },
   pink: { bg: 'bg-pink-500', text: 'text-pink-500', selected: 'bg-pink-500 text-white shadow-sm' },
   gray: { bg: 'bg-gray-500', text: 'text-gray-500', selected: 'bg-gray-500 text-white shadow-sm' },

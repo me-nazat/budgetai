@@ -54,6 +54,16 @@ const nextConfig: NextConfig = {
     async redirects() {
         return [
             { source: '/coach', destination: '/chat', permanent: true },
+            { source: '/overview', destination: '/dashboard', permanent: true },
+            { source: '/my-month', destination: '/dashboard', permanent: true },
+            { source: '/history', destination: '/transactions', permanent: true },
+            { source: '/goals', destination: '/wealth-goals', permanent: true },
+            { source: '/fire', destination: '/wealth-goals', permanent: true },
+            { source: '/networth', destination: '/wealth-goals', permanent: true },
+            { source: '/reports', destination: '/insights', permanent: true },
+            { source: '/forecast', destination: '/insights', permanent: true },
+            { source: '/analytics', destination: '/insights', permanent: true },
+            { source: '/bill-split', destination: '/household', permanent: true },
         ];
     },
     async headers() {

@@ -1,27 +1,27 @@
 /**
- * @fileoverview Skeleton loading component with shimmer animation.
+ * @fileoverview Composable, geometry-accurate skeleton primitives.
  *
- * Provides layout-stable placeholder UI for async content.
- * Prevents Cumulative Layout Shift (CLS) during data loading.
+ * Provides zero-layout-shift (CLS) placeholders using institutional surface tokens
+ * (--bg-surface, --bg-elevated, --border-subtle) and hardware-accelerated opacity pulsing.
  *
  * @module components/ui/Skeleton
  */
 
 'use client';
 
-import { motion } from 'framer-motion';
+import React from 'react';
+import { cn } from '@/lib/utils';
 
-/**
- * Props for the Skeleton component.
- */
-interface SkeletonProps {
-  /** Width (CSS value or number for px). Default: '100%'. */
+export interface SkeletonProps {
+  /** Width (CSS string or number for px). Default: '100%'. */
   width?: string | number;
-  /** Height (CSS value or number for px). Default: '20px'. */
+  /** Height (CSS string or number for px). Default: '20px'. */
   height?: string | number;
-  /** Border radius (CSS value). Default: '8px'. */
+  /** Border radius class or style. Default: 'rounded-md'. */
+  rounded?: string;
+  /** Border radius alias for backwards compatibility. */
   borderRadius?: string;
-  /** Additional CSS class names. */
+  /** Additional CSS classes. */
   className?: string;
   /** Number of skeleton lines to render. Default: 1. */
   count?: number;
@@ -32,12 +32,14 @@ interface SkeletonProps {
 }
 
 /**
- * Skeleton — shimmer loading placeholder.
+ * Base skeleton primitive with hardware-accelerated opacity pulse.
+ * Uses institutional --bg-elevated surface token and respects prefers-reduced-motion.
  */
-export default function Skeleton({
+export function Skeleton({
   width = '100%',
   height = '20px',
-  borderRadius = '8px',
+  rounded = 'rounded-md',
+  borderRadius,
   className = '',
   count = 1,
   gap = '8px',
@@ -45,27 +47,28 @@ export default function Skeleton({
 }: SkeletonProps) {
   const w = typeof width === 'number' ? `${width}px` : width;
   const h = typeof height === 'number' ? `${height}px` : height;
-  const radius = circle ? '50%' : borderRadius;
+  const customRadius = circle ? '50%' : borderRadius;
 
-  const renderShimmerBlock = (itemWidth: string | number, key?: number) => (
+  const renderBlock = (itemWidth: string | number, key?: number) => (
     <div
       key={key}
-      className={`relative overflow-hidden bg-gray-200/50 dark:bg-white/5 ${className}`}
-      style={{ width: itemWidth, height: h, borderRadius: radius }}
+      className={cn(
+        'bg-[var(--bg-elevated,#161922)] animate-pulse motion-reduce:animate-none',
+        !borderRadius && (circle ? 'rounded-full' : rounded),
+        className
+      )}
+      style={{
+        width: itemWidth,
+        height: h,
+        borderRadius: customRadius,
+      }}
       aria-hidden="true"
       role="presentation"
-    >
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent"
-        initial={{ x: "-100%" }}
-        animate={{ x: "100%" }}
-        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-      />
-    </div>
+    />
   );
 
   if (count === 1) {
-    return renderShimmerBlock(w);
+    return renderBlock(w);
   }
 
   return (
@@ -74,27 +77,123 @@ export default function Skeleton({
       aria-hidden="true"
       role="presentation"
     >
-      {Array.from({ length: count }, (_, i) => (
-        renderShimmerBlock(i === count - 1 ? '70%' : w, i)
-      ))}
+      {Array.from({ length: count }, (_, i) =>
+        renderBlock(i === count - 1 ? '75%' : w, i)
+      )}
+    </div>
+  );
+}
+
+export default Skeleton;
+
+/**
+ * StatCardSkeleton — matches exact height (h-[116px]), padding, and internal layout of DashboardStatCards.tsx.
+ */
+export function StatCardSkeleton({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'h-[116px] p-5 lg:p-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col justify-between shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)]',
+        className
+      )}
+      aria-hidden="true"
+      role="presentation"
+    >
+      <div className="flex items-center justify-between">
+        <Skeleton width="40%" height="12px" rounded="rounded" />
+        <Skeleton width="20px" height="20px" rounded="rounded" />
+      </div>
+      <div>
+        <Skeleton width="60%" height="24px" rounded="rounded" className="mb-2" />
+        <div className="flex items-center gap-2">
+          <Skeleton width="28%" height="12px" rounded="rounded" />
+          <Skeleton width="35%" height="10px" rounded="rounded" />
+        </div>
+      </div>
     </div>
   );
 }
 
 /**
- * SkeletonCard — pre-built skeleton for card layouts.
+ * TableRowSkeleton — matches exact row height (h-[52px]), avatar circle, text bars, and right-aligned amount.
+ */
+export function TableRowSkeleton({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'h-[52px] px-4 flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]',
+        className
+      )}
+      aria-hidden="true"
+      role="presentation"
+    >
+      <div className="flex items-center gap-3">
+        <Skeleton width="28px" height="28px" circle />
+        <div>
+          <Skeleton width="120px" height="12px" rounded="rounded" className="mb-1" />
+          <Skeleton width="70px" height="10px" rounded="rounded" />
+        </div>
+      </div>
+      <div className="flex flex-col items-end">
+        <Skeleton width="80px" height="14px" rounded="rounded" className="mb-1" />
+        <Skeleton width="50px" height="10px" rounded="rounded" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ChartCardSkeleton — matches header and canvas dimensions (h-[320px]) of SpendingChart.tsx and PredictiveCashflow.tsx.
+ */
+export function ChartCardSkeleton({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'h-[320px] p-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col justify-between shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)]',
+        className
+      )}
+      aria-hidden="true"
+      role="presentation"
+    >
+      <div className="flex items-center justify-between pb-4 border-b border-[var(--border-subtle)]">
+        <div>
+          <Skeleton width="140px" height="14px" rounded="rounded" className="mb-1.5" />
+          <Skeleton width="90px" height="11px" rounded="rounded" />
+        </div>
+        <Skeleton width="80px" height="28px" rounded="rounded-lg" />
+      </div>
+      <div className="flex-1 mt-4 rounded-xl bg-[var(--bg-elevated)]/40 p-4 flex items-end gap-3">
+        <Skeleton width="10%" height="45%" rounded="rounded-t" />
+        <Skeleton width="10%" height="70%" rounded="rounded-t" />
+        <Skeleton width="10%" height="35%" rounded="rounded-t" />
+        <Skeleton width="10%" height="85%" rounded="rounded-t" />
+        <Skeleton width="10%" height="60%" rounded="rounded-t" />
+        <Skeleton width="10%" height="95%" rounded="rounded-t" />
+        <Skeleton width="10%" height="50%" rounded="rounded-t" />
+        <Skeleton width="10%" height="75%" rounded="rounded-t" />
+        <Skeleton width="10%" height="40%" rounded="rounded-t" />
+        <Skeleton width="10%" height="65%" rounded="rounded-t" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * SkeletonCard — pre-built surface card skeleton.
  */
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`glass-panel p-5 rounded-2xl ${className}`}
+      className={cn(
+        'p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)]',
+        className
+      )}
       aria-hidden="true"
+      role="presentation"
     >
-      <Skeleton width="60%" height="16px" />
-      <div style={{ height: '16px' }} />
-      <Skeleton width="40%" height="36px" />
-      <div style={{ height: '24px' }} />
-      <Skeleton count={2} height="12px" gap="12px" />
+      <Skeleton width="50%" height="14px" className="mb-4" />
+      <Skeleton width="75%" height="28px" className="mb-4" />
+      <Skeleton count={2} height="12px" gap="8px" />
     </div>
   );
 }
@@ -103,30 +202,32 @@ export function SkeletonCard({ className = '' }: { className?: string }) {
  * SkeletonChart — pre-built skeleton for chart areas.
  */
 export function SkeletonChart({
-  height = '200px',
+  height = '320px',
   className = '',
 }: {
   height?: string;
   className?: string;
 }) {
   return (
-    <div className={`w-full relative overflow-hidden rounded-2xl bg-gray-200/50 dark:bg-white/5 ${className}`} style={{ height }}>
-       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent"
-        initial={{ x: "-100%" }}
-        animate={{ x: "100%" }}
-        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-      />
+    <div
+      className={cn(
+        'w-full relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6',
+        className
+      )}
+      style={{ height }}
+      aria-hidden="true"
+      role="presentation"
+    >
+      <ChartCardSkeleton className="border-0 shadow-none p-0 h-full" />
     </div>
   );
 }
 
 /**
- * SkeletonTable — pre-built skeleton for table rows.
+ * SkeletonTable — pre-built skeleton for multi-row tables.
  */
 export function SkeletonTable({
   rows = 5,
-  columns = 4,
   className = '',
 }: {
   rows?: number;
@@ -134,26 +235,13 @@ export function SkeletonTable({
   className?: string;
 }) {
   return (
-    <div className={className} aria-hidden="true">
+    <div
+      className={cn('rounded-xl border border-[var(--border-subtle)] overflow-hidden', className)}
+      aria-hidden="true"
+      role="presentation"
+    >
       {Array.from({ length: rows }, (_, rowIdx) => (
-        <div
-          key={rowIdx}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${columns}, 1fr)`,
-            gap: '12px',
-            padding: '16px 0',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-          }}
-        >
-          {Array.from({ length: columns }, (_, colIdx) => (
-            <Skeleton
-              key={colIdx}
-              height="14px"
-              width={colIdx === 0 ? '80%' : '60%'}
-            />
-          ))}
-        </div>
+        <TableRowSkeleton key={rowIdx} />
       ))}
     </div>
   );

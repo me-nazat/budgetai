@@ -64,7 +64,15 @@ export default function AccountantReportViewPage() {
               <span className="text-white font-semibold">{data.jurisdiction}</span> • Views: {data.viewCount}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`/api/tax/export?year=${data.taxYear}&format=csv`}
+              download
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors border border-slate-700"
+            >
+              <span className="material-symbols-outlined text-[18px]">table_chart</span>
+              Download CSV Ledger
+            </a>
             <a
               href={`/api/tax/export?year=${data.taxYear}&format=pdf`}
               className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"

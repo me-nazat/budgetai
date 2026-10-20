@@ -9,20 +9,23 @@ import {
   bankImportReviewQueue,
   transactions,
   accounts,
+  automationRules,
 } from '@/db/schema';
 import {
   parseMultiPageStatementPDF,
-  calculateMatchConfidence,
+  parseStatementCSV,
+  reconcileWithLedger,
+  ParsedStatementResult,
 } from '@/lib/ai/statementParser';
 import { AccountRepository } from '@/repositories/account.repository';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 
 /**
  * POST /api/bank-import/parse
- * Module 16: AI-Powered Multi-Page Statement Parser + Duplicate-Reconciliation Queue
- * Accepts PDF up to 25MB, runs multi-page extraction via Gemini, populates
- * canonical statementImportBatches and bankImportReviewQueue with match confidence scoring.
+ * Module 16: Multi-Page Statement Parser + Duplicate-Reconciliation Queue
+ * Automatically distinguishes CSV/TSV files (zero LLM latency/cost) from PDF statements.
+ * Populates statementImportBatches and bankImportReviewQueue with match confidence scoring.
  *
  * Ephemeral by default: statement PDF buffer is discarded from memory after extraction
  * unless opt-in retention is requested (retainFile: true).
@@ -38,7 +41,7 @@ export const POST = apiHandler(
     const retainFile = formData.get('retainFile') === 'true';
 
     if (!file) {
-      return NextResponse.json({ error: 'Statement PDF or document file is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Statement file (CSV, TSV, or PDF) is required' }, { status: 400 });
     }
 
     // Resolve or auto-provision target account
@@ -64,10 +67,6 @@ export const POST = apiHandler(
       }
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-
     // Opt-in source file retention token
     let sourceFileToken: string | null = null;
     if (retainFile) {
@@ -75,28 +74,53 @@ export const POST = apiHandler(
     }
 
     try {
-      // 1. Multi-page chunked parser via Gemini
-      const parsedResult = await parseMultiPageStatementPDF(base64, file.name);
+      const fileNameLower = file.name.toLowerCase();
+      const isCSV =
+        fileNameLower.endsWith('.csv') ||
+        fileNameLower.endsWith('.tsv') ||
+        fileNameLower.endsWith('.txt') ||
+        file.type.includes('csv') ||
+        file.type.includes('tab') ||
+        file.type.includes('text');
 
-      // 2. Create canonical statementImportBatches record
-      const [batch] = await db
-        .insert(statementImportBatches)
-        .values({
-          userId,
-          bankName,
-          fileName: file.name,
-          totalRecords: parsedResult.mergedTransactions.length,
-          status: 'completed',
-          reconciliationStatus: 'UNRECONCILED',
-          openingBalance: parsedResult.openingBalance,
-          closingBalance: parsedResult.closingBalance,
-          periodStart: parsedResult.statementPeriod.start,
-          periodEnd: parsedResult.statementPeriod.end,
-          sourceFileToken,
+      let parsedResult: ParsedStatementResult;
+      let pageCount = 1;
+      let pagesCount = 1;
+
+      if (isCSV) {
+        // Fast deterministic CSV/TSV parsing without LLM invocation
+        const csvText = await file.text();
+        parsedResult = parseStatementCSV(csvText);
+        pageCount = 1;
+        pagesCount = 1;
+      } else {
+        // PDF parser via Gemini structured extraction (or fallback)
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const base64 = buffer.toString('base64');
+        const multiPage = await parseMultiPageStatementPDF(base64, file.name);
+
+        parsedResult = {
+          accountNumberLast4: multiPage.accountNumberLast4,
+          statementPeriod: multiPage.statementPeriod,
+          openingBalance: multiPage.openingBalance,
+          closingBalance: multiPage.closingBalance,
+          transactions: multiPage.mergedTransactions,
+        };
+        pageCount = multiPage.pageCount;
+        pagesCount = multiPage.pages.length;
+      }
+
+      // 1. Fetch user's active automation rules to auto-categorize
+      const userRules = await db
+        .select({
+          triggerValue: automationRules.triggerValue,
+          actionValue: automationRules.actionValue,
         })
-        .returning();
+        .from(automationRules)
+        .where(and(eq(automationRules.userId, userId), eq(automationRules.active, 1)));
 
-      // 3. Query user's existing ledger transactions to compute match confidence
+      // 2. Fetch existing transactions to detect duplicates
       const userTxns = await db
         .select({
           id: transactions.id,
@@ -109,29 +133,43 @@ export const POST = apiHandler(
         .from(transactions)
         .where(eq(transactions.userId, userId));
 
-      // 4. Populate bankImportReviewQueue with match scoring
+      // 3. Reconcile with ledger
+      const reconciledItems = reconcileWithLedger(
+        parsedResult.transactions,
+        userTxns,
+        userRules
+      );
+
+      // 4. Create canonical statementImportBatches record
+      const [batch] = await db
+        .insert(statementImportBatches)
+        .values({
+          userId,
+          bankName,
+          fileName: file.name,
+          totalRecords: reconciledItems.length,
+          status: 'completed',
+          reconciliationStatus: 'UNRECONCILED',
+          openingBalance: parsedResult.openingBalance,
+          closingBalance: parsedResult.closingBalance,
+          periodStart: parsedResult.statementPeriod.start,
+          periodEnd: parsedResult.statementPeriod.end,
+          sourceFileToken,
+        })
+        .returning();
+
+      // 5. Populate review queue
       const queueItems: any[] = [];
-      let highConfidenceDuplicatesCount = 0;
+      let exactMatchCount = 0;
+      let probableDuplicateCount = 0;
+      let newTransactionCount = 0;
 
-      for (const tx of parsedResult.mergedTransactions) {
-        let bestScore = 0;
-        let matchedTx: any = null;
+      for (const item of reconciledItems) {
+        if (item.status === 'exact_match') exactMatchCount++;
+        else if (item.status === 'probable_duplicate') probableDuplicateCount++;
+        else newTransactionCount++;
 
-        for (const existing of userTxns) {
-          const score = calculateMatchConfidence(
-            { date: tx.date, amount: tx.amount, description: tx.description },
-            { date: existing.date, amount: existing.amount, description: existing.description }
-          );
-
-          if (score > bestScore) {
-            bestScore = score;
-            matchedTx = existing;
-          }
-        }
-
-        const isHighConfidence = bestScore >= 0.92;
-        const isMediumConfidence = bestScore >= 0.7 && bestScore < 0.92;
-        if (isHighConfidence) highConfidenceDuplicatesCount++;
+        const isDuplicate = item.status === 'exact_match' || item.status === 'probable_duplicate';
 
         const [insertedItem] = await db
           .insert(bankImportReviewQueue)
@@ -139,30 +177,34 @@ export const POST = apiHandler(
             userId,
             importBatchId: batch.id,
             parsedRowData: JSON.stringify({
-              date: tx.date,
-              description: tx.description,
-              amount: tx.amount,
-              type: tx.type === 'earning' ? 'earning' : 'expense',
-              category: tx.suggestedCategory,
+              date: item.date,
+              description: item.description,
+              amount: item.amount,
+              type: item.type,
+              category: item.category,
+              accountId: targetAccountId,
+              status: item.status,
             }),
-            possibleMatchTransactionId: (isHighConfidence || isMediumConfidence) && matchedTx ? matchedTx.id : null,
-            matchConfidence: Math.round(bestScore * 100) / 100,
-            resolution: 'pending',
+            possibleMatchTransactionId: item.matchedExistingTransactionId,
+            matchConfidence: item.matchConfidence,
+            resolution: item.status === 'exact_match' ? 'merged' : 'pending',
           })
           .returning();
 
         queueItems.push({
           id: insertedItem.id,
-          date: tx.date,
-          description: tx.description,
-          amount: tx.amount,
-          category: tx.suggestedCategory,
-          type: tx.type === 'earning' ? 'earning' : 'expense',
-          matchConfidence: Math.round(bestScore * 100) / 100,
-          isDuplicate: isHighConfidence,
-          matchedExistingTransactionId: (isHighConfidence || isMediumConfidence) && matchedTx ? matchedTx.id : null,
-          matchedExistingTransaction: (isHighConfidence || isMediumConfidence) && matchedTx ? matchedTx : null,
-          resolution: 'pending',
+          date: item.date,
+          description: item.description,
+          amount: item.amount,
+          category: item.category,
+          type: item.type,
+          status: item.status,
+          matchConfidence: item.matchConfidence,
+          isDuplicate,
+          matchedExistingTransactionId: item.matchedExistingTransactionId,
+          matchedExistingTransaction: item.matchedExistingTransaction,
+          resolution: item.status === 'exact_match' ? 'merged' : 'pending',
+          action: item.status === 'exact_match' ? 'skip' : 'import',
         });
       }
 
@@ -170,11 +212,15 @@ export const POST = apiHandler(
         success: true,
         statementId: String(batch.id),
         batchId: batch.id,
+        targetAccountId,
         fileName: file.name,
-        pageCount: parsedResult.pageCount,
-        totalPagesParsed: parsedResult.pages.length,
-        totalTransactionsCount: parsedResult.mergedTransactions.length,
-        duplicateCount: highConfidenceDuplicatesCount,
+        pageCount,
+        totalPagesParsed: pagesCount,
+        totalTransactionsCount: reconciledItems.length,
+        exactMatchCount,
+        probableDuplicateCount,
+        newTransactionCount,
+        duplicateCount: exactMatchCount + probableDuplicateCount,
         statementPeriod: parsedResult.statementPeriod,
         openingBalance: parsedResult.openingBalance,
         closingBalance: parsedResult.closingBalance,

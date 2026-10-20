@@ -8,6 +8,13 @@ export const tours = sqliteTable('tours', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  destination: text('destination'),
+  startDate: text('start_date'),
+  endDate: text('end_date'),
+  baseCurrency: text('base_currency').default('BDT'),
+  totalBudget: real('total_budget').default(0),
+  inviteCode: text('invite_code'),
+  status: text('status', { enum: ['planning', 'active', 'completed', 'archived'] }).default('active'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
@@ -44,14 +51,39 @@ export const tourSpendings = sqliteTable('tour_spendings', {
   paidByParticipantId: integer('paid_by_participant_id')
     .notNull()
     .references(() => tourParticipants.id, { onDelete: 'cascade' }),
-  splitType: text('split_type', { enum: ['equal', 'percentage', 'exact'] }).default('equal'),
+  payerMemberId: integer('payer_member_id'),
+  recipientMemberId: integer('recipient_member_id'),
+  entryType: text('entry_type', { enum: ['expense', 'deposit', 'settlement'] }).default('expense'),
+  fundingSource: text('funding_source', { enum: ['member_direct', 'tour_pool'] }).default('member_direct'),
+  splitType: text('split_type', { enum: ['equal', 'exact', 'percentage', 'shares'] }).default('equal'),
+  currency: text('currency').default('BDT'),
+  exchangeRateToTourBase: real('exchange_rate_to_tour_base').default(1.0),
+  linkedAccountId: integer('linked_account_id'),
   linkedTransactionId: integer('linked_transaction_id'),
+  splitBreakdownJson: text('split_breakdown_json'),
   createdById: integer('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
 export type TourSpending = typeof tourSpendings.$inferSelect;
 export type NewTourSpending = typeof tourSpendings.$inferInsert;
+
+export const billSplits = sqliteTable('bill_splits', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  description: text('description').notNull(),
+  totalAmount: real('total_amount').notNull(),
+  date: text('date').notNull(),
+  splitMode: text('split_mode').notNull().default('equal'),
+  participantsJson: text('participants_json').notNull(),
+  linkedAccountId: integer('linked_account_id'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+export type BillSplit = typeof billSplits.$inferSelect;
+export type NewBillSplit = typeof billSplits.$inferInsert;
 
 export const tourItineraryItems = sqliteTable('tour_itinerary_items', {
   id: integer('id').primaryKey({ autoIncrement: true }),

@@ -1,86 +1,5 @@
 import { describe, it, expect } from 'vitest';
-
-// Mimics the simulation engine used in the UI
-function simulatePayoff(
-  debtsList: any[],
-  strategy: 'snowball' | 'avalanche' | 'baseline',
-  extraPayment: number
-) {
-  const list = debtsList.map(d => ({ ...d }));
-  let month = 0;
-  let totalInterest = 0;
-  const points: { month: number; balance: number }[] = [];
-
-  const startingTotal = list.reduce((sum, d) => sum + d.balance, 0);
-  points.push({ month: 0, balance: Math.round(startingTotal) });
-
-  while (month < 360) {
-    let activeDebts = list.filter(d => d.balance > 0);
-    if (activeDebts.length === 0) break;
-    month++;
-
-    // 1. Accrue Interest
-    let interestThisMonth = 0;
-    activeDebts.forEach(d => {
-      const monthlyRate = (d.interestRateApr / 100) / 12;
-      const interest = d.balance * monthlyRate;
-      d.balance += interest;
-      interestThisMonth += interest;
-    });
-    totalInterest += interestThisMonth;
-
-    activeDebts = list.filter(d => d.balance > 0);
-
-    // 2. Pay Minimums
-    const minPaymentsNeeded = activeDebts.reduce((sum, d) => {
-      return sum + Math.min(d.minimumPayment, d.balance);
-    }, 0);
-
-    const actualExtra = strategy === 'baseline' ? 0 : extraPayment;
-    let availablePool = minPaymentsNeeded + actualExtra;
-
-    activeDebts.forEach(d => {
-      const payment = Math.min(d.minimumPayment, d.balance);
-      d.balance -= payment;
-      availablePool -= payment;
-    });
-
-    list.forEach(d => {
-      if (d.balance < 0) {
-        availablePool += Math.abs(d.balance);
-        d.balance = 0;
-      }
-    });
-
-    // 3. Apply Surplus
-    const activeDebtsAfterMin = list.filter(d => d.balance > 0);
-    if (activeDebtsAfterMin.length > 0 && availablePool > 0) {
-      if (strategy === 'avalanche') {
-        activeDebtsAfterMin.sort((a, b) => b.interestRateApr - a.interestRateApr);
-      } else if (strategy === 'snowball') {
-        activeDebtsAfterMin.sort((a, b) => a.balance - b.balance);
-      }
-
-      for (const targetDebt of activeDebtsAfterMin) {
-        if (availablePool <= 0) break;
-        const payment = Math.min(availablePool, targetDebt.balance);
-        targetDebt.balance -= payment;
-        availablePool -= payment;
-      }
-    }
-
-    const currentTotal = list.reduce((sum, d) => sum + d.balance, 0);
-    points.push({ month, balance: Math.round(currentTotal) });
-
-    if (currentTotal <= 0) break;
-  }
-
-  return {
-    months: month,
-    interest: totalInterest,
-    points,
-  };
-}
+import { simulatePayoff } from '@/services/debt.service';
 
 describe('Debt Payoff Simulator Engine', () => {
   const sampleDebts = [
@@ -112,6 +31,8 @@ describe('Debt Payoff Simulator Engine', () => {
     expect(results.months).toBeGreaterThan(0);
     expect(results.interest).toBeGreaterThan(0);
     expect(results.points[results.points.length - 1].balance).toBe(0);
+    expect(results.debtFreeDate).toBeDefined();
+    expect(results.timeline.length).toBe(results.months + 1);
   });
 
   it('accelerates payoff and saves interest when adding extra payments', () => {
@@ -120,6 +41,8 @@ describe('Debt Payoff Simulator Engine', () => {
 
     expect(accelerated.months).toBeLessThan(baseline.months);
     expect(accelerated.interest).toBeLessThan(baseline.interest);
+    expect(accelerated.interestSaved).toBeGreaterThan(0);
+    expect(accelerated.monthsSaved).toBeGreaterThan(0);
   });
 
   it('Avalanche strategy saves more interest than Snowball strategy', () => {
@@ -128,13 +51,38 @@ describe('Debt Payoff Simulator Engine', () => {
 
     // Avalanche (highest APR first) mathematically must pay less or equal interest than Snowball
     expect(avalanche.interest).toBeLessThanOrEqual(snowball.interest);
+    expect(avalanche.interestSaved).toBeGreaterThanOrEqual(snowball.interestSaved);
   });
 
   it('Snowball strategy pays off the smallest balance first', () => {
     // With Snowball, Student Loan C (2000) should be fully paid off before Personal Loan B (15000)
     const list = sampleDebts.map(d => ({ ...d }));
-    // Let's run a test simulation step-by-step
     const snowball = simulatePayoff(list, 'snowball', 500);
     expect(snowball.months).toBeGreaterThan(0);
+    expect(snowball.milestones.length).toBe(3);
+    // First milestone should be Student Loan C (smallest balance 2000)
+    expect(snowball.milestones[0].debtName).toBe('Student Loan C');
+    expect(snowball.milestones[0].debtId).toBe(3);
+  });
+
+  it('Avalanche strategy pays off highest APR first', () => {
+    const list = sampleDebts.map(d => ({ ...d }));
+    const avalanche = simulatePayoff(list, 'avalanche', 500);
+    expect(avalanche.milestones.length).toBe(3);
+    // First milestone should be Credit Card A (highest APR 20%)
+    expect(avalanche.milestones[0].debtName).toBe('Credit Card A');
+    expect(avalanche.milestones[0].debtId).toBe(1);
+  });
+
+  it('handles edge cases gracefully (zero balance or empty debt list)', () => {
+    const emptyResult = simulatePayoff([], 'avalanche', 500);
+    expect(emptyResult.months).toBe(0);
+    expect(emptyResult.interest).toBe(0);
+    expect(emptyResult.points[0].balance).toBe(0);
+
+    const zeroBalanceDebts = [{ id: 10, name: 'Paid Loan', balance: 0, interestRateApr: 15, minimumPayment: 100 }];
+    const zeroResult = simulatePayoff(zeroBalanceDebts, 'snowball', 200);
+    expect(zeroResult.months).toBe(0);
+    expect(zeroResult.totalPrincipal).toBe(0);
   });
 });

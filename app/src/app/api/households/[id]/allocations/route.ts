@@ -149,6 +149,17 @@ export const GET = apiHandler(
         (memberSpending[exp.userId].byCategory[exp.category] || 0) + exp.amount;
     }
 
+    const members = await db
+      .select({
+        userId: householdMembers.userId,
+        role: householdMembers.role,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(householdMembers)
+      .innerJoin(users, eq(householdMembers.userId, users.id))
+      .where(eq(householdMembers.householdId, householdId));
+
     return NextResponse.json({
       cycle: cycle || {
         id: `cycle_${householdId}_${yearMonth}`,
@@ -160,6 +171,7 @@ export const GET = apiHandler(
       caps,
       allocations,
       memberSpending,
+      members,
     });
   })
 );

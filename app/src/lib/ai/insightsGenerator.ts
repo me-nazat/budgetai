@@ -15,7 +15,7 @@ import {
 import { eq, and, desc, gte } from 'drizzle-orm';
 
 export interface GeneratedInsight {
-  insightType: 'SPENDING_SPIKE' | 'SUBSCRIPTION_LEAK' | 'SAVINGS_OPPORTUNITY' | 'BUDGET_OVERRUN' | 'BENCHMARK_PERCENTILE' | 'GOAL_MILESTONE';
+  insightType: 'SPENDING_SPIKE' | 'SUBSCRIPTION_LEAK' | 'SAVINGS_OPPORTUNITY' | 'BUDGET_OVERRUN' | 'GOAL_MILESTONE';
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
   title: string;
   message: string;
@@ -165,20 +165,6 @@ export async function generateUserInsights(userId: number): Promise<GeneratedIns
           actionLink: `/wealth-goals`,
         });
       }
-    }
-  }
-
-  // ─── F. Module 11: Peer Benchmark Percentile Aggregation ───
-  if (recentTransactions.length > 0) {
-    const diningSpend = spendingByCategory['Dining'] || spendingByCategory['Food'] || 0;
-    if (diningSpend > 0) {
-      candidateInsights.push({
-        insightType: 'BENCHMARK_PERCENTILE',
-        severity: 'INFO',
-        title: `[Module 11: Peer Benchmark] Dining & Lifestyle Percentile`,
-        message: `Your recent food & dining outflow places you in the 46th percentile compared to anonymized peer cohorts. Explore regional comparisons on the Benchmarks board.`,
-        actionLink: `/benchmarks`,
-      });
     }
   }
 

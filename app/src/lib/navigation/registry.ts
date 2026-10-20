@@ -1,98 +1,163 @@
 /**
- * @fileoverview Centralized Typed Route Registry
+ * @fileoverview Centralized 7-Pillar Typed Route Registry
  *
- * Single source of truth for all application routes across Desktop Sidebar,
- * Mobile Drawer Menu, and Mobile Bottom Tab Bar.
- *
- * Enforces AUD-003 navigation parity and typing.
+ * Single source of truth for the institutional-grade 7-Pillar Navigation Architecture
+ * across Desktop Sidebar, Mobile Drawer Menu, Mobile Bottom Tab Bar, and Command Palette.
  */
+
+export interface NavSubItem {
+  id: string;
+  href: string;
+  label: string;
+  icon: string;
+  guestAllowed?: boolean;
+}
 
 export interface NavItem {
   id: string;
   href: string;
   label: string;
   icon: string;
-  category: 'core' | 'analytics' | 'tools' | 'smart' | 'system';
+  category: 'pillar' | 'system';
+  description?: string;
   filledIcon?: boolean;
   mobileTab?: boolean;
   guestAllowed?: boolean;
+  subItems?: NavSubItem[];
 }
 
-export const NAVIGATION_REGISTRY: NavItem[] = [
-  // Core Group
-  { id: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: 'dashboard', category: 'core', filledIcon: true, mobileTab: true },
-  { id: 'chat', href: '/chat', label: 'AI Chat', icon: 'smart_toy', category: 'core', mobileTab: true },
-  { id: 'transactions', href: '/transactions', label: 'Transactions', icon: 'receipt_long', category: 'core' },
-  { id: 'budget', href: '/budget', label: 'Budgets', icon: 'account_balance_wallet', category: 'core' },
-
-  // Analytics Group
-  { id: 'analytics', href: '/analytics', label: 'Analytics Hub', icon: 'donut_large', category: 'analytics' },
-  { id: 'my-month', href: '/my-month', label: 'My Month', icon: 'calendar_month', category: 'analytics' },
-  { id: 'reports', href: '/reports', label: 'Reports', icon: 'bar_chart', category: 'analytics' },
-  { id: 'overview', href: '/overview', label: 'Overview', icon: 'analytics', category: 'analytics', mobileTab: true },
-  { id: 'generative-art', href: '/generative-art', label: 'Generative Studio', icon: 'all_inclusive', category: 'analytics' },
-  { id: 'benchmarks', href: '/benchmarks', label: 'Benchmarks', icon: 'leaderboard', category: 'analytics' },
-  { id: 'insights', href: '/insights', label: 'Insights', icon: 'lightbulb', category: 'analytics' },
-
-  // Financial Tools Group
-  { id: 'accounts', href: '/accounts', label: 'Accounts', icon: 'account_balance', category: 'tools' },
-  { id: 'household', href: '/household', label: 'Household', icon: 'family_restroom', category: 'tools' },
-  { id: 'bill-split', href: '/bill-split', label: 'Bill Split', icon: 'call_split', category: 'tools' },
-  { id: 'tours', href: '/tours', label: 'Tour Manager', icon: 'flight_takeoff', category: 'tools', guestAllowed: true },
-  { id: 'wealth-goals', href: '/wealth-goals', label: 'Wealth & Goals', icon: 'flag_circle', category: 'tools' },
-  { id: 'debts', href: '/debts', label: 'Debt Planner', icon: 'credit_card', category: 'tools' },
-  { id: 'forecast', href: '/forecast', label: 'Cash Flow Forecast', icon: 'timeline', category: 'tools' },
-  { id: 'investments', href: '/investments', label: 'Investments', icon: 'trending_up', category: 'tools' },
-  { id: 'achievements', href: '/achievements', label: 'Achievements', icon: 'emoji_events', category: 'tools' },
-  { id: 'networth', href: '/networth', label: 'Net Worth', icon: 'account_balance', category: 'tools' },
-  { id: 'fire', href: '/fire', label: 'FIRE Simulator', icon: 'rocket_launch', category: 'tools' },
-
-  // Smart Tools Group
-  { id: 'tax-center', href: '/tax-center', label: 'Tax Center', icon: 'receipt', category: 'smart' },
-  { id: 'documents', href: '/documents', label: 'Documents', icon: 'folder_open', category: 'smart' },
-  { id: 'bank-import', href: '/bank-import', label: 'Bank Import', icon: 'upload_file', category: 'smart' },
-
-  // System Group
-  { id: 'recurring-subscriptions', href: '/recurring-subscriptions', label: 'Recurring & Subs', icon: 'repeat', category: 'system' },
-  { id: 'automation-rules', href: '/automation-rules', label: 'Automation Rules', icon: 'auto_awesome', category: 'system' },
-  { id: 'notifications', href: '/notifications', label: 'Alerts', icon: 'notifications', category: 'system' },
-  { id: 'settings', href: '/settings', label: 'Settings', icon: 'settings', category: 'system' },
+/**
+ * The 7 Canonical Primary Pillars
+ */
+export const SEVEN_PILLARS: NavItem[] = [
+  {
+    id: 'dashboard',
+    href: '/dashboard',
+    label: 'Command Center',
+    icon: 'dashboard',
+    category: 'pillar',
+    filledIcon: true,
+    mobileTab: true,
+    description: 'Unified cashflow runway, net worth ticker, and active financial pulse',
+  },
+  {
+    id: 'accounts',
+    href: '/accounts',
+    label: 'Accounts & Cards',
+    icon: 'account_balance_wallet',
+    category: 'pillar',
+    description: 'Multi-currency holdings, bank links, and credit utilization',
+  },
+  {
+    id: 'transactions',
+    href: '/transactions',
+    label: 'Transactions',
+    icon: 'receipt_long',
+    category: 'pillar',
+    mobileTab: true,
+    description: 'Unified high-speed ledger',
+  },
+  {
+    id: 'budget',
+    href: '/budget',
+    label: 'Budget & Subscriptions',
+    icon: 'donut_large',
+    category: 'pillar',
+    description: 'Rollover envelope budgeting, pacing gauges, and recurring billing',
+    subItems: [
+      { id: 'recurring', href: '/recurring-subscriptions', label: 'Recurring & Subs', icon: 'repeat' },
+    ],
+  },
+  {
+    id: 'household',
+    href: '/household',
+    label: 'Collaborative Wealth',
+    icon: 'groups',
+    category: 'pillar',
+    mobileTab: true,
+    description: 'Unified group expenses, split bills, and shared trip ledgers',
+    subItems: [
+      { id: 'tours', href: '/tours', label: 'Trip Ledgers & Tours', icon: 'flight_takeoff', guestAllowed: true },
+    ],
+  },
+  {
+    id: 'wealth-goals',
+    href: '/wealth-goals',
+    label: 'Goals & Net Worth',
+    icon: 'trending_up',
+    category: 'pillar',
+    description: 'Short-term savings goals, FIRE calculator, and debt payoff planner',
+    subItems: [
+      { id: 'debts', href: '/debts', label: 'Debt Planner', icon: 'credit_score' },
+      { id: 'networth', href: '/networth', label: 'Net Worth', icon: 'account_balance' },
+      { id: 'investments', href: '/investments', label: 'Investments', icon: 'show_chart' },
+    ],
+  },
+  {
+    id: 'insights',
+    href: '/insights',
+    label: 'Intelligence & Reports',
+    icon: 'auto_awesome',
+    category: 'pillar',
+    description: 'Cashflow intelligence, 90-day forecast, and financial statements & exports',
+    subItems: [
+      { id: 'tax-center', href: '/tax-center', label: 'Tax & Vault', icon: 'receipt' },
+      { id: 'chat', href: '/chat', label: 'AI Advisor Chat', icon: 'smart_toy' },
+      { id: 'bank-import', href: '/bank-import', label: 'Bank Import', icon: 'upload_file' },
+    ],
+  },
 ];
 
+export const SYSTEM_NAV_ITEMS: NavItem[] = [
+  {
+    id: 'automation-rules',
+    href: '/automation-rules',
+    label: 'Automation Rules',
+    icon: 'rule',
+    category: 'system',
+    description: 'Custom trigger-based automated financial rules',
+  },
+  {
+    id: 'notifications',
+    href: '/notifications',
+    label: 'Alerts',
+    icon: 'notifications',
+    category: 'system',
+    description: 'Real-time proactive notifications and anomaly alerts',
+  },
+  {
+    id: 'settings',
+    href: '/settings',
+    label: 'Settings',
+    icon: 'settings',
+    category: 'system',
+    description: 'Preferences, security passkeys, and account controls',
+  },
+];
+
+export const NAVIGATION_REGISTRY: NavItem[] = [...SEVEN_PILLARS, ...SYSTEM_NAV_ITEMS];
+
 export const NAV_GROUPS: { label: string | null; category: NavItem['category'] }[] = [
-  { label: null, category: 'core' },
-  { label: 'Analytics', category: 'analytics' },
-  { label: 'Financial Tools', category: 'tools' },
-  { label: 'Smart Tools', category: 'smart' },
+  { label: 'Primary Pillars', category: 'pillar' },
   { label: 'System', category: 'system' },
 ];
 
 export const NAV_TRANSLATION_MAP: Record<string, string> = {
-  'dashboard': 'dashboard',
-  'chat': 'chat',
+  'dashboard': 'commandCenter',
+  'accounts': 'accountsCards',
   'transactions': 'transactions',
-  'budget': 'budgets',
-  'my-month': 'myMonth',
-  'reports': 'reports',
-  'overview': 'overview',
-  'analytics': 'analytics',
-  'generative-art': 'generativeArt',
-  'benchmarks': 'benchmarks',
-  'insights': 'insights',
-  'accounts': 'accounts',
-  'household': 'household',
-  'bill-split': 'billSplit',
+  'budget': 'budgetSubscriptions',
+  'household': 'collaborativeWealth',
+  'wealth-goals': 'goalsNetWorth',
+  'insights': 'intelligenceVault',
   'tours': 'tourManager',
-  'wealth-goals': 'wealthGoals',
   'debts': 'debts',
-  'forecast': 'forecast',
   'investments': 'investments',
-  'achievements': 'achievements',
-  'networth': 'networth',
-  'fire': 'fireSimulator',
-  'tax-center': 'taxCenter',
+  'tax-center': 'taxVault',
   'documents': 'documents',
+  'chat': 'chat',
   'bank-import': 'bankImport',
+  'recurring': 'recurring',
   'recurring-subscriptions': 'recurring',
   'automation-rules': 'automationRules',
   'notifications': 'alerts',

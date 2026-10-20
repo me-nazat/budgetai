@@ -65,11 +65,36 @@ async function computeHouseholdBalances(householdId: number): Promise<{
     // Payer gets positive balance for the full amount
     netMap.set(exp.userId, (netMap.get(exp.userId) || 0) + exp.amount);
 
-    // If split between all equally:
-    const splitCount = members.length;
-    const equalShare = splitCount > 0 ? exp.amount / splitCount : 0;
-    for (const m of members) {
-      netMap.set(m.userId, (netMap.get(m.userId) || 0) - equalShare);
+    let hasCustom = false;
+    if (exp.splitBetween && exp.splitBetween !== 'all') {
+      try {
+        const parsed = JSON.parse(exp.splitBetween);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          hasCustom = true;
+          for (const item of parsed) {
+            const uId = Number(item.userId ?? item.id);
+            const share = Number(item.shareAmount ?? item.amount ?? 0);
+            netMap.set(uId, (netMap.get(uId) || 0) - share);
+          }
+        } else if (typeof parsed === 'object') {
+          hasCustom = true;
+          for (const [key, val] of Object.entries(parsed)) {
+            const uId = Number(key);
+            const share = (exp.amount * Number(val)) / 100;
+            netMap.set(uId, (netMap.get(uId) || 0) - share);
+          }
+        }
+      } catch {
+        hasCustom = false;
+      }
+    }
+
+    if (!hasCustom) {
+      const splitCount = members.length;
+      const equalShare = splitCount > 0 ? exp.amount / splitCount : 0;
+      for (const m of members) {
+        netMap.set(m.userId, (netMap.get(m.userId) || 0) - equalShare);
+      }
     }
   }
 
@@ -144,6 +169,9 @@ export const GET = apiHandler(
       balances: balanceNodes,
       minSettlements,
       upcomingSettlements: upcomingWithNames,
+      simplifiedTransfers: minSettlements.simplifiedTransfers,
+      transfersSavedCount: minSettlements.transfersSavedCount,
+      rawTransactionsCount: minSettlements.rawTransactionsCount,
     });
   })
 );

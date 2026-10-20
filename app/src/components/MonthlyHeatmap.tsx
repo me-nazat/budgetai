@@ -1,14 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
-import AsyncDayDetailPopup from './AsyncDayDetailPopup';
+import DayDetailPopup from './DayDetailPopup';
 
 interface DayData {
     date: string;
     earnings: number;
     expenses: number;
-    count: number;
+    count?: number;
 }
 
 function getIntensity(amount: number, thresholds: number[]): number {
@@ -19,14 +19,17 @@ function getIntensity(amount: number, thresholds: number[]): number {
     return 1;
 }
 
-function calculateThresholds(amounts: number[]) {
-    const nonZero = amounts.filter(a => a > 0).sort((a, b) => a - b);
-    if (nonZero.length === 0) return [0, 0, 0];
-    return [
-        nonZero[Math.floor(nonZero.length * 0.25)],
-        nonZero[Math.floor(nonZero.length * 0.50)],
-        nonZero[Math.floor(nonZero.length * 0.75)],
-    ];
+function calculateQuartiles(amounts: number[]) {
+    const nonZero = amounts.filter((a) => a > 0).sort((a, b) => a - b);
+    if (nonZero.length === 0) return { thresholds: [0, 0, 0], median: 0 };
+    const len = nonZero.length;
+    const q1 = nonZero[Math.floor(len * 0.25)];
+    const median = nonZero[Math.floor(len * 0.50)];
+    const q3 = nonZero[Math.floor(len * 0.75)];
+    return {
+        thresholds: [q1, median, q3],
+        median,
+    };
 }
 
 const GREEN_INTENSITY = [
@@ -60,27 +63,37 @@ export default function MonthlyHeatmap({
     const [mode, setMode] = useState<'earnings' | 'expenses'>('expenses');
     const [popupTarget, setPopupTarget] = useState<{ element: HTMLElement; date: string } | null>(null);
 
-    const { grid, thresholds } = useMemo(() => {
+    const { grid, zeroSpendDaysCount } = useMemo(() => {
         const spendMap = new Map<string, DayData>();
-        dailySpending.forEach(d => spendMap.set(d.date, d));
+        dailySpending.forEach((d) => spendMap.set(d.date, d));
 
-        const amounts = dailySpending.map(d => mode === 'earnings' ? d.earnings : d.expenses);
-        const calcThresholds = calculateThresholds(amounts);
+        const amounts = dailySpending.map((d) => (mode === 'earnings' ? d.earnings : d.expenses));
+        const { thresholds, median } = calculateQuartiles(amounts);
+        const outlierCutoff = median > 0 ? median * 2.5 : 0;
 
         const firstDay = new Date(year, month - 1, 1);
         const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // 0=Mon
         const daysInMonth = new Date(year, month, 0).getDate();
 
-        // Construct grid horizontally
-        const days = [];
-        
-        // Pad first week
-        for (let i = 0; i < startDay; i++) {
-            days.push({ date: '', amount: 0, count: 0, intensity: -1, isToday: false, dayNum: '' });
-        }
-
         const today = new Date();
         const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        const days = [];
+        let zeroSpendCount = 0;
+
+        // Pad first week offset
+        for (let i = 0; i < startDay; i++) {
+            days.push({
+                date: '',
+                amount: 0,
+                count: 0,
+                intensity: -1,
+                isToday: false,
+                isZeroSpend: false,
+                isOutlier: false,
+                dayNum: '',
+            });
+        }
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -88,101 +101,175 @@ export default function MonthlyHeatmap({
             const amount = dayData ? (mode === 'earnings' ? dayData.earnings : dayData.expenses) : 0;
             const count = dayData?.count || 0;
 
+            const isZeroSpend = amount === 0 && dateStr <= todayStr;
+            if (isZeroSpend && mode === 'expenses') {
+                zeroSpendCount++;
+            }
+
+            const isOutlier = mode === 'expenses' && outlierCutoff > 0 && amount > outlierCutoff;
+
             days.push({
                 date: dateStr,
                 amount,
                 count,
-                intensity: getIntensity(amount, calcThresholds),
+                intensity: getIntensity(amount, thresholds),
                 isToday: dateStr === todayStr,
-                dayNum: String(d)
+                isZeroSpend,
+                isOutlier,
+                dayNum: String(d),
             });
         }
 
-        return { grid: days, thresholds: calcThresholds };
+        return {
+            grid: days,
+            zeroSpendDaysCount: zeroSpendCount,
+        };
     }, [year, month, dailySpending, mode]);
 
     const colors = mode === 'earnings' ? GREEN_INTENSITY : RED_INTENSITY;
 
     return (
-        <div className="glass-panel rounded-3xl p-6 h-full border border-white/10 dark:border-white/5 bg-white/40 dark:bg-black/40 flex flex-col relative z-0 backdrop-blur-2xl">
-            <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
-                    Calendar View
-                </h3>
-                
-                {/* iOS Liquid Glass Toggle */}
-                <div className="relative flex items-center p-1 bg-gray-200/50 dark:bg-white/5 backdrop-blur-md rounded-full shadow-inner border border-gray-300/30 dark:border-white/10">
-                    <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-white dark:bg-[#21262d] shadow-md transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${mode === 'expenses' ? 'translate-x-full ml-1' : 'translate-x-0'}`} />
-                    <button onClick={() => setMode('earnings')} className={`relative z-10 px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold transition-colors duration-300 ${mode === 'earnings' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>Earnings</button>
-                    <button onClick={() => setMode('expenses')} className={`relative z-10 px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold transition-colors duration-300 ${mode === 'expenses' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>Expenses</button>
+        <div className="flex flex-col h-full w-full">
+            {/* Header with Title, Mode Switcher, and Zero-Spend Days Badge */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
+                        <span>Calendar Heatmap</span>
+                    </h3>
+
+                    {mode === 'expenses' && zeroSpendDaysCount > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm" />
+                            <span>{zeroSpendDaysCount} Zero-Spend Days</span>
+                        </span>
+                    )}
+                </div>
+
+                {/* Earnings vs Expenses Pill Switcher */}
+                <div className="relative flex items-center p-1 bg-gray-150/70 dark:bg-white/5 backdrop-blur-md rounded-xl border border-gray-200/80 dark:border-white/10 text-xs font-bold">
+                    <button
+                        type="button"
+                        onClick={() => setMode('expenses')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                            mode === 'expenses'
+                                ? 'bg-white dark:bg-surface-dark text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                    >
+                        Expenses
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMode('earnings')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                            mode === 'earnings'
+                                ? 'bg-white dark:bg-surface-dark text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                    >
+                        Income
+                    </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center items-center relative min-h-0 w-full">
-                <div className="w-full max-w-[500px]">
+            {/* Calendar Grid Container */}
+            <div className="flex-1 flex flex-col justify-center items-center w-full">
+                <div className="w-full max-w-[540px]">
                     {/* Days of Week Header */}
-                    <div className="grid grid-cols-7 gap-2 mb-3">
-                        {DAYS_OF_WEEK.map(d => (
-                            <div key={d} className="text-center text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">
+                    <div className="grid grid-cols-7 gap-2 mb-2">
+                        {DAYS_OF_WEEK.map((d) => (
+                            <div key={d} className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                                 {d}
                             </div>
                         ))}
                     </div>
 
-                    {/* Calendar Grid */}
+                    {/* Month Days Grid */}
                     <div className="grid grid-cols-7 gap-2">
-                        {grid.map((day, i) => (
-                            <div
-                                key={i}
-                                className={`aspect-square rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-300 shadow-sm border border-black/5 dark:border-white/5 group relative cursor-pointer z-0
-                                    ${day.intensity === -1 ? 'invisible' : colors[day.intensity]}
-                                    ${day.isToday ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#111114]' : ''}
-                                    hover:ring-2 hover:ring-primary/40 hover:scale-110 hover:shadow-xl hover:z-20`}
-                                style={{ animationDelay: `${i * 15}ms` }}
-                                onClick={(e) => {
-                                    if (day.date) {
-                                        setPopupTarget({ element: e.currentTarget, date: day.date });
-                                    }
-                                }}
-                            >
-                                {day.dayNum}
-                                
-                                {/* Pure CSS Tooltip (Zero lag) */}
-                                {day.date && (
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none z-50">
-                                        <p className="font-bold mb-1 text-center text-gray-300">
-                                            {new Date(day.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </p>
-                                        <div className="px-2 py-1 rounded-md bg-white/10 font-medium flex flex-col items-center">
-                                            <span className="text-white/70 text-[10px] uppercase tracking-wider">{mode === 'earnings' ? 'Total Income' : 'Total Expense'}</span>
-                                            <span className={`text-sm font-black ${mode === 'earnings' ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(day.amount)}</span>
-                                        </div>
-                                        {/* Tooltip triangle pointer */}
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900 dark:border-t-[#21262d]"></div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                        {grid.map((day, i) => {
+                            if (day.intensity === -1) {
+                                return <div key={i} className="aspect-square invisible" />;
+                            }
+
+                            return (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={(e) => {
+                                        if (day.date) {
+                                            setPopupTarget({ element: e.currentTarget, date: day.date });
+                                        }
+                                    }}
+                                    className={`aspect-square rounded-2xl flex flex-col items-center justify-center font-bold text-xs transition-all duration-200 relative group cursor-pointer border ${
+                                        colors[day.intensity]
+                                    } ${
+                                        day.isOutlier
+                                            ? 'border-2 border-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
+                                            : 'border-black/5 dark:border-white/5'
+                                    } ${
+                                        day.isToday ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#161b22]' : ''
+                                    } hover:scale-105 hover:z-20 hover:shadow-lg`}
+                                    title={day.isOutlier ? 'High spending outlier (>2.5x median)' : undefined}
+                                >
+                                    <span>{day.dayNum}</span>
+
+                                    {/* Subtle emerald dot for Zero-Spend Days */}
+                                    {day.isZeroSpend && mode === 'expenses' && (
+                                        <span
+                                            className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute bottom-1.5 shadow-[0_0_4px_#10b981]"
+                                            title="Zero-Spend Day"
+                                        />
+                                    )}
+
+                                    {/* Outlier indicator dot */}
+                                    {day.isOutlier && (
+                                        <span
+                                            className="w-1.5 h-1.5 rounded-full bg-rose-500 absolute top-1.5 right-1.5 shadow-[0_0_4px_#f43f5e]"
+                                            title="Spending Outlier"
+                                        />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
 
+            {/* Quartile Legend Footer */}
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-150 dark:border-white/5 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-[11px]">Zero-Spend Day</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold">Less</span>
+                    <div className="flex items-center gap-1">
+                        {colors.map((c, idx) => (
+                            <div
+                                key={idx}
+                                className={`w-3.5 h-3.5 rounded-md border border-black/5 dark:border-white/5 ${c.split(' ')[0]}`}
+                            />
+                        ))}
+                    </div>
+                    <span className="text-[11px] font-semibold">More</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-md border-2 border-rose-500" />
+                    <span className="text-[11px]">Outlier (&gt;2.5x)</span>
+                </div>
+            </div>
+
+            {/* Interactive Day Detail Drilldown Popup */}
             {popupTarget && (
-                <AsyncDayDetailPopup
+                <DayDetailPopup
                     date={popupTarget.date}
                     anchorEl={popupTarget.element}
                     onClose={() => setPopupTarget(null)}
                 />
             )}
-            
-            <div className="flex items-center justify-center gap-2 mt-8 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                <span>Less</span>
-                {colors.map((c, i) => (
-                    <div key={i} className={`w-[14px] h-[14px] rounded-[4px] transition-colors duration-300 shadow-sm border border-black/5 dark:border-white/5 ${c.split(' ')[0]} ${c.split(' ')[1]}`} />
-                ))}
-                <span>More</span>
-            </div>
         </div>
     );
 }

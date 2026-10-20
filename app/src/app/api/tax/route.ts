@@ -31,7 +31,7 @@ export const GET = apiHandler(
     const start = `${year}-01-01`;
     const end = `${year}-12-31`;
 
-    const transactions = await queryAll<{
+    const rawTransactions = await queryAll<{
       id: number;
       type: string;
       amount: number;
@@ -40,13 +40,32 @@ export const GET = apiHandler(
       date: string;
       tax_relevant: number;
       tax_category: string | null;
+      attachments: string | null;
+      receipt_document_id: number | null;
     }>(
-      `SELECT id, type, amount, category, description, date, tax_relevant, tax_category
-       FROM transactions
-       WHERE user_id = ? AND date >= ? AND date <= ? AND tax_relevant = 1
-       ORDER BY date DESC`,
+      `SELECT t.id, t.type, t.amount, t.category, t.description, t.date, t.tax_relevant, t.tax_category, t.attachments, td.receipt_document_id
+       FROM transactions t
+       LEFT JOIN tax_deductions td ON td.transaction_id = t.id
+       WHERE t.user_id = ? AND t.date >= ? AND t.date <= ? AND t.tax_relevant = 1
+       ORDER BY t.date DESC`,
       [userId, start, end]
     );
+
+    let withReceiptProof = 0;
+    const transactions = rawTransactions.map((t) => {
+      let hasReceiptProof = Boolean(t.receipt_document_id);
+      if (!hasReceiptProof && t.attachments) {
+        try {
+          const parsed = JSON.parse(t.attachments);
+          if (Array.isArray(parsed) && parsed.length > 0) hasReceiptProof = true;
+        } catch {}
+      }
+      if (hasReceiptProof) withReceiptProof++;
+      return {
+        ...t,
+        hasReceiptProof,
+      };
+    });
 
     // Group by tax category
     const grouped: Record<string, typeof transactions> = {};
@@ -61,6 +80,10 @@ export const GET = apiHandler(
       totals[cat] = txs.reduce((sum, t) => sum + t.amount, 0);
     });
 
+    const auditReadinessPercent = transactions.length > 0
+      ? Math.round((withReceiptProof / transactions.length) * 100)
+      : 100;
+
     return NextResponse.json({
       year,
       transactions,
@@ -68,6 +91,8 @@ export const GET = apiHandler(
       totals,
       grandTotal: transactions.reduce((sum, t) => sum + t.amount, 0),
       count: transactions.length,
+      auditReadinessPercent,
+      withReceiptProof,
     });
   })
 );

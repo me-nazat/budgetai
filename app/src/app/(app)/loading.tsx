@@ -1,29 +1,58 @@
 import React from 'react';
+import {
+  StatCardSkeleton,
+  ChartCardSkeleton,
+  TableRowSkeleton,
+  Skeleton,
+} from '@/components/ui/Skeleton';
 
 export default function Loading() {
-    return (
-        <div className="p-4 lg:p-8 max-w-[1600px] mx-auto min-h-[60vh] flex flex-col">
-            <div className="mb-8 flex items-center justify-between gap-4">
-                <div className="space-y-3">
-                    <div className="h-8 w-64 rounded-xl shimmer-skeleton bg-gray-200 dark:bg-white/5" />
-                    <div className="h-4 w-96 max-w-full rounded-xl shimmer-skeleton bg-gray-200 dark:bg-white/5" />
-                </div>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8 stagger-children">
-                {[0, 1, 2, 3].map(item => (
-                    <div key={item} className="p-6 rounded-3xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-surface-dark/50 shadow-sm glass-panel breathe">
-                        <div className="mb-6 h-12 w-12 rounded-2xl shimmer-skeleton bg-gray-200 dark:bg-white/5" />
-                        <div className="h-3 w-24 rounded-full shimmer-skeleton bg-gray-200 dark:bg-white/5 mb-3" />
-                        <div className="h-8 w-36 rounded-full shimmer-skeleton bg-gray-200 dark:bg-white/5" />
-                    </div>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 flex-1 stagger-children">
-                <div className="lg:col-span-2 rounded-3xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-surface-dark/50 p-6 min-h-[360px] shimmer-skeleton glass-panel breathe" style={{ animationDelay: '100ms' }} />
-                <div className="rounded-3xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-surface-dark/50 p-6 min-h-[360px] shimmer-skeleton glass-panel breathe" style={{ animationDelay: '200ms' }} />
-            </div>
+  return (
+    <div className="p-4 lg:p-8 max-w-[1600px] mx-auto min-h-[80vh] space-y-8">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[var(--border-subtle)]">
+        <div className="space-y-2">
+          <Skeleton width="220px" height="28px" rounded="rounded-lg" />
+          <Skeleton width="340px" height="14px" rounded="rounded" />
         </div>
-    );
+        <div className="flex items-center gap-3">
+          <Skeleton width="110px" height="36px" rounded="rounded-lg" />
+          <Skeleton width="110px" height="36px" rounded="rounded-lg" />
+        </div>
+      </div>
+
+      {/* 4-Card KPI Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+      </div>
+
+      {/* 2-Column Chart Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <ChartCardSkeleton />
+        <ChartCardSkeleton />
+      </div>
+
+      {/* 6-Row Transaction/Account List */}
+      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)]">
+        <div className="flex items-center justify-between pb-4 mb-2 border-b border-[var(--border-subtle)]">
+          <div>
+            <Skeleton width="160px" height="16px" rounded="rounded" className="mb-1.5" />
+            <Skeleton width="220px" height="12px" rounded="rounded" />
+          </div>
+          <Skeleton width="80px" height="28px" rounded="rounded-lg" />
+        </div>
+        <div className="divide-y divide-[var(--border-subtle)]">
+          <TableRowSkeleton />
+          <TableRowSkeleton />
+          <TableRowSkeleton />
+          <TableRowSkeleton />
+          <TableRowSkeleton />
+          <TableRowSkeleton />
+        </div>
+      </div>
+    </div>
+  );
 }

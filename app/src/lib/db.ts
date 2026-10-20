@@ -87,6 +87,8 @@ export async function ensureDbInitialized(): Promise<void> {
       monthly_limit REAL NOT NULL,
       month INTEGER NOT NULL,
       year INTEGER NOT NULL,
+      rollover_enabled INTEGER DEFAULT 0,
+      rollover_balance REAL DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE(user_id, category, month, year)
@@ -163,6 +165,10 @@ export async function ensureDbInitialized(): Promise<void> {
       category TEXT NOT NULL DEFAULT 'Other',
       logo_url TEXT,
       is_active INTEGER DEFAULT 1,
+      trial_ends_at TEXT DEFAULT NULL,
+      previous_amount REAL DEFAULT NULL,
+      account_id INTEGER DEFAULT NULL,
+      cancel_reminder_days INTEGER DEFAULT 3,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )`,
@@ -497,6 +503,202 @@ export async function ensureDbInitialized(): Promise<void> {
 
   try {
     await getClient().execute('CREATE INDEX IF NOT EXISTS idx_automation_rules_user ON automation_rules(user_id)');
+  } catch { /* Ignore */ }
+
+  // Batch 6: Budget rollover columns
+  try {
+    await getClient().execute('ALTER TABLE budgets ADD COLUMN rollover_enabled INTEGER DEFAULT 0');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE budgets ADD COLUMN rollover_balance REAL DEFAULT 0');
+  } catch { /* Ignore */ }
+
+  // Batch 6: Subscription intelligence columns
+  try {
+    await getClient().execute('ALTER TABLE subscriptions ADD COLUMN trial_ends_at TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE subscriptions ADD COLUMN previous_amount REAL DEFAULT NULL');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE subscriptions ADD COLUMN account_id INTEGER DEFAULT NULL');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE subscriptions ADD COLUMN cancel_reminder_days INTEGER DEFAULT 3');
+  } catch { /* Ignore */ }
+
+  // Batch 7 Collaborative Split-Ledger Accounting migrations
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN personal_share_amount REAL DEFAULT NULL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN reimbursement_status TEXT DEFAULT \'none\'');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN collaborative_source_type TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN collaborative_source_id TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN collaborative_expense_id TEXT DEFAULT NULL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN is_settlement_transfer INTEGER DEFAULT 0');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_collab_exp ON transactions(collaborative_expense_id)');
+  } catch { /* Ignore */ }
+
+  // Accounts & multi-wallet migrations
+  try {
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        currency TEXT DEFAULT 'BDT',
+        opening_balance REAL DEFAULT 0,
+        current_balance REAL DEFAULT 0,
+        color_tag TEXT DEFAULT '#136dec',
+        is_archived INTEGER DEFAULT 0,
+        display_masked INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id)');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE accounts ADD COLUMN credit_limit REAL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE accounts ADD COLUMN statement_closing_day INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE accounts ADD COLUMN payment_due_date INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE accounts ADD COLUMN apr REAL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN tax_deductible INTEGER DEFAULT 0');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN merchant_normalized TEXT');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN is_split INTEGER DEFAULT 0');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN split_items_json TEXT');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT \'cleared\'');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_date_desc ON transactions(user_id, date DESC)');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_cat_date ON transactions(user_id, category, date)');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('CREATE INDEX IF NOT EXISTS idx_transactions_merchant_norm ON transactions(user_id, merchant_normalized)');
+  } catch { /* Ignore */ }
+
+  // Tours & Tour Spendings
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN destination TEXT');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN start_date TEXT');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN end_date TEXT');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN base_currency TEXT DEFAULT \'BDT\'');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN total_budget REAL DEFAULT 0');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN invite_code TEXT');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tours ADD COLUMN status TEXT DEFAULT \'active\'');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN payer_member_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN recipient_member_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN entry_type TEXT DEFAULT \'expense\'');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN funding_source TEXT DEFAULT \'member_direct\'');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN currency TEXT DEFAULT \'BDT\'');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN exchange_rate_to_tour_base REAL DEFAULT 1.0');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN linked_account_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE tour_spendings ADD COLUMN split_breakdown_json TEXT');
+  } catch { /* Ignore */ }
+
+  // Household
+  try {
+    await getClient().execute('ALTER TABLE household_members ADD COLUMN income_weight REAL DEFAULT 1.0');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_members ADD COLUMN default_allocation_percentage REAL');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE household_expenses ADD COLUMN payer_user_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_expenses ADD COLUMN funding_account_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_expenses ADD COLUMN personal_share_amount REAL');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_expenses ADD COLUMN linked_transaction_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_expenses ADD COLUMN split_breakdown_json TEXT');
+  } catch { /* Ignore */ }
+
+  try {
+    await getClient().execute('ALTER TABLE household_settlements ADD COLUMN payer_account_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_settlements ADD COLUMN payee_account_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_settlements ADD COLUMN settlement_account_id INTEGER');
+  } catch { /* Ignore */ }
+  try {
+    await getClient().execute('ALTER TABLE household_settlements ADD COLUMN linked_transaction_id INTEGER');
   } catch { /* Ignore */ }
 
   initialized = true;

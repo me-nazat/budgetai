@@ -89,7 +89,7 @@ export default function CurrencySelector() {
                                 <span className="text-3xl">{cur.flag}</span>
                                 <div className="flex flex-col items-start">
                                     <span className="font-semibold text-gray-900 dark:text-white">{cur.name}</span>
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">{cur.symbol} ({cur.code})</span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400 tabular-nums" data-numeric="true">{cur.symbol} ({cur.code})</span>
                                 </div>
                                 <div className="ml-auto">
                                     {isSelected && saving ? (

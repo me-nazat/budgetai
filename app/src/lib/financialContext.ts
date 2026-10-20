@@ -2,6 +2,48 @@ import { buildBudgetContext, buildContext } from '@/lib/ai';
 import { CURRENCIES, CurrencyCode } from '@/lib/currency';
 import { queryAll, queryOne } from '@/lib/db';
 
+export interface FinancialSnapshot {
+    baseCurrency: string;
+    activeDate: string;
+    activeMonth: number;
+    activeYear: number;
+    liquidity: {
+        liquidCash: number;
+        safeToSpend: number;
+        dailyAllowance: number;
+        emergencyRunwayMonths: number;
+    };
+    currentMonthCashflow: {
+        income: number;
+        expenses: number;
+        netSavings: number;
+        savingsRatePercent: number;
+    };
+    accountsSummary: Array<{
+        id: number;
+        name: string;
+        type: string;
+        currency: string;
+        balance: number;
+    }>;
+    budgetAlerts: Array<{
+        category: string;
+        spent: number;
+        monthlyLimit: number;
+        percentUsed: number;
+        isOverspent: boolean;
+    }>;
+    upcomingBillsNext14Days: Array<{
+        title: string;
+        amount: number;
+        dueDate: string;
+    }>;
+    collaborativeBalances: {
+        totalOwedToUser: number;
+        totalUserOwes: number;
+    };
+}
+
 export interface FinancialContextBundle {
     context: string;
     budgetContext: string;
@@ -14,6 +56,7 @@ export interface FinancialContextBundle {
         locale?: string;
     };
     currencySymbol: string;
+    snapshot: FinancialSnapshot;
 }
 
 function monthBounds(date = new Date()) {
@@ -21,7 +64,8 @@ function monthBounds(date = new Date()) {
     const month = date.getMonth() + 1;
     const firstOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
     const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    return { year, month, firstOfMonth, nextMonth };
+    const daysInMonth = new Date(year, month, 0).getDate();
+    return { year, month, firstOfMonth, nextMonth, daysInMonth, dayOfMonth: date.getDate() };
 }
 
 function buildFinancialMemory(args: {
@@ -71,7 +115,13 @@ function buildFinancialMemory(args: {
 }
 
 export async function getFinancialContextBundle(userId: number, sessionId?: string): Promise<FinancialContextBundle> {
-    const { year, month, firstOfMonth, nextMonth } = monthBounds();
+    const todayDate = new Date();
+    const todayStr = todayDate.toISOString().split('T')[0];
+    const { year, month, firstOfMonth, nextMonth, daysInMonth, dayOfMonth } = monthBounds(todayDate);
+
+    // Compute 14 days ahead for upcoming bills
+    const future14 = new Date(todayDate.getTime() + 14 * 86400000);
+    const future14Str = future14.toISOString().split('T')[0];
 
     const [
         currentTransactions,
@@ -87,6 +137,9 @@ export async function getFinancialContextBundle(userId: number, sessionId?: stri
         customCategories,
         dailyRollup,
         categoryRollup,
+        userAccounts,
+        userBillSplits,
+        userDebts,
     ] = await Promise.all([
         queryAll<{ id: number; type: string; amount: number; category: string; description: string; date: string }>(
             'SELECT id, type, amount, category, description, date FROM transactions WHERE user_id = ? AND date >= ? AND date < ? ORDER BY date DESC LIMIT 120',
@@ -145,16 +198,148 @@ export async function getFinancialContextBundle(userId: number, sessionId?: stri
             "SELECT category, SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'expense' AND date >= ? AND date < ? GROUP BY category ORDER BY total DESC LIMIT 12",
             [userId, firstOfMonth, nextMonth]
         ),
+        queryAll<{ id: number; name: string; type: string; currency: string; current_balance: number }>(
+            'SELECT id, name, type, currency, current_balance FROM accounts WHERE user_id = ? AND is_archived = 0',
+            [userId]
+        ).catch(() => []),
+        queryAll<{ id: number; description: string; total_amount: number; participants_json: string }>(
+            'SELECT id, description, total_amount, participants_json FROM bill_splits WHERE user_id = ?',
+            [userId]
+        ).catch(() => []),
+        queryAll<{ id: number; name: string; balance: number }>(
+            'SELECT id, name, balance FROM debts WHERE user_id = ?',
+            [userId]
+        ).catch(() => []),
     ]);
 
+    const baseCurrency = userProfile?.currency || 'BDT';
     const currencyCode = userProfile?.currency as CurrencyCode | undefined;
     const currencySymbol = currencyCode && CURRENCIES[currencyCode] ? CURRENCIES[currencyCode].symbol : '$';
+
     const budgetWithSpending = budgets.map(b => {
         const spent = currentTransactions
             .filter(t => t.type === 'expense' && t.category.toLowerCase() === b.category.toLowerCase())
             .reduce((sum, t) => sum + t.amount, 0);
         return { ...b, spent };
     });
+
+    // ── Build Deterministic Pre-calculated Snapshot ──
+    const currentMonthExpenses = currentTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+    const currentMonthIncome = currentTransactions
+        .filter(t => t.type === 'earning')
+        .reduce((sum, t) => sum + t.amount, 0);
+    const netSavings = currentMonthIncome - currentMonthExpenses;
+    const savingsRatePercent = currentMonthIncome > 0
+        ? Math.round((netSavings / currentMonthIncome) * 100)
+        : 0;
+
+    // Accounts Summary
+    const accountsSummary = (userAccounts || []).map(a => ({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        currency: a.currency,
+        balance: Number(a.current_balance || 0),
+    }));
+
+    // Liquid Cash: Sum balances from cash, bank, and mobile_wallet accounts
+    const liquidTypes = new Set(['cash', 'bank', 'mobile_wallet']);
+    let liquidCash = accountsSummary
+        .filter(a => liquidTypes.has(a.type.toLowerCase()))
+        .reduce((sum, a) => sum + a.balance, 0);
+
+    // Fallback if no accounts configured
+    if (accountsSummary.length === 0) {
+        liquidCash = Math.max(0, netWorthEntry?.amount ?? (currentMonthIncome - currentMonthExpenses));
+    }
+
+    // Upcoming Bills next 14 days
+    const upcomingBillsNext14Days: Array<{ title: string; amount: number; dueDate: string }> = (recurringTx || [])
+        .filter(r => r.type === 'expense' && r.next_date >= todayStr && r.next_date <= future14Str)
+        .map(r => ({
+            title: r.name,
+            amount: Number(r.amount),
+            dueDate: r.next_date,
+        }));
+    const totalUpcomingBills = upcomingBillsNext14Days.reduce((sum, b) => sum + b.amount, 0);
+
+    // Budget Alerts: Categories currently above 80% utilization or overspent
+    const budgetAlerts = budgetWithSpending
+        .filter(b => b.monthly_limit > 0 && b.spent / b.monthly_limit >= 0.8)
+        .map(b => ({
+            category: b.category,
+            spent: b.spent,
+            monthlyLimit: b.monthly_limit,
+            percentUsed: Math.round((b.spent / b.monthly_limit) * 100),
+            isOverspent: b.spent > b.monthly_limit,
+        }));
+
+    // Collaborative Balances (Bill Splits & Debts)
+    let totalOwedToUser = 0;
+    let totalUserOwes = (userDebts || []).reduce((sum, d) => sum + Number(d.balance || 0), 0);
+
+    (userBillSplits || []).forEach(split => {
+        try {
+            const participants = JSON.parse(split.participants_json);
+            if (Array.isArray(participants)) {
+                participants.forEach(p => {
+                    const amt = Number(p.amount ?? p.share ?? 0);
+                    if (!p.settled && amt > 0) {
+                        if (p.isMe) {
+                            totalUserOwes += amt;
+                        } else {
+                            totalOwedToUser += amt;
+                        }
+                    }
+                });
+            }
+        } catch { /* ignore JSON parse error */ }
+    });
+
+    // Liquidity Calculations
+    const daysRemainingInMonth = Math.max(1, daysInMonth - dayOfMonth + 1);
+    const totalRemainingBudgetCapacity = budgetWithSpending.reduce((sum, b) => {
+        return sum + Math.max(0, b.monthly_limit - b.spent);
+    }, 0);
+
+    // Safe to spend: liquid cash reserved for upcoming bills and committed budget
+    const committedOutflows = totalUpcomingBills + Math.max(0, totalRemainingBudgetCapacity);
+    const safeToSpend = Math.max(0, liquidCash - totalUpcomingBills);
+    const dailyAllowance = Math.round((safeToSpend / daysRemainingInMonth) * 100) / 100;
+
+    // Emergency runway in months
+    const monthlyBurn = currentMonthExpenses > 0 ? currentMonthExpenses : (totalRemainingBudgetCapacity || 1);
+    const emergencyRunwayMonths = monthlyBurn > 0
+        ? Math.round((liquidCash / monthlyBurn) * 10) / 10
+        : (liquidCash > 0 ? 12 : 0);
+
+    const snapshot: FinancialSnapshot = {
+        baseCurrency,
+        activeDate: todayStr,
+        activeMonth: month,
+        activeYear: year,
+        liquidity: {
+            liquidCash: Math.round(liquidCash * 100) / 100,
+            safeToSpend: Math.round(safeToSpend * 100) / 100,
+            dailyAllowance,
+            emergencyRunwayMonths,
+        },
+        currentMonthCashflow: {
+            income: Math.round(currentMonthIncome * 100) / 100,
+            expenses: Math.round(currentMonthExpenses * 100) / 100,
+            netSavings: Math.round(netSavings * 100) / 100,
+            savingsRatePercent,
+        },
+        accountsSummary,
+        budgetAlerts,
+        upcomingBillsNext14Days,
+        collaborativeBalances: {
+            totalOwedToUser: Math.round(totalOwedToUser * 100) / 100,
+            totalUserOwes: Math.round(totalUserOwes * 100) / 100,
+        },
+    };
 
     const memory = buildFinancialMemory({
         transactions: currentTransactions,
@@ -166,7 +351,11 @@ export async function getFinancialContextBundle(userId: number, sessionId?: stri
         currencySymbol,
     });
 
-    let context = buildContext(
+    let context = `=== DETERMINISTIC FINANCIAL SNAPSHOT (AUTHORITATIVE LEDGER TRUTH) ===
+${JSON.stringify(snapshot, null, 2)}
+=== END DETERMINISTIC SNAPSHOT ===\n\n`;
+
+    context += buildContext(
         currentTransactions,
         netWorthEntry?.amount,
         allTransactions,
@@ -221,5 +410,6 @@ export async function getFinancialContextBundle(userId: number, sessionId?: stri
             locale: userProfile.locale || userProfile.preferred_locale || 'en',
         } : undefined,
         currencySymbol,
+        snapshot,
     };
 }

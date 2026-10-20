@@ -58,10 +58,25 @@ export const POST = apiHandler(
     const confirm = searchParams.get('confirm') === 'true';
     const body = await request.json() as ImportData;
 
-    // Validate structure
+    // Support both JSON backup export format and bank statement import payload
+    if ((body as any).items && Array.isArray((body as any).items)) {
+      const { items, accountId, batchId } = body as any;
+      const res = await fetch(new URL('/api/bank-import/commit', request.url).toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: request.headers.get('cookie') || '',
+        },
+        body: JSON.stringify({ items, accountId, batchId }),
+      });
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    // Validate structure for JSON backup
     if (!body.data || typeof body.data !== 'object') {
       return NextResponse.json(
-        { error: 'Invalid import file: missing "data" field' },
+        { error: 'Invalid import file: missing "data" field or "items" array' },
         { status: 400 }
       );
     }

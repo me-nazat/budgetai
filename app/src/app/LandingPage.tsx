@@ -29,13 +29,11 @@ function useThemeToggle() {
 export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
     const router = useRouter();
     const toggleTheme = useThemeToggle();
-    const { scrollYProgress } = useScroll();
-    const y = useTransform(scrollYProgress, [0, 1], [0, -100]);
 
     return (
         <div className="relative flex min-h-screen flex-col bg-white dark:bg-[#0A0E1B] text-gray-700 dark:text-slate-300 overflow-x-hidden selection:bg-primary dark:selection:bg-lp-cyan selection:text-white dark:selection:text-[#0A0E1B]">
-            {/* Ambient background glow */}
-            <motion.div style={{ y }} className="lp-ambient-glow" />
+            {/* Static ambient background glow */}
+            <div className="lp-ambient-glow pointer-events-none" />
 
             <Header onToggleTheme={toggleTheme} onNavigate={(path) => router.push(path)} isLoggedIn={isLoggedIn} />
 
