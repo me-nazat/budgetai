@@ -43,11 +43,55 @@ const securityHeaders = [
     },
 ];
 
-const isVercel = process.env.VERCEL === '1';
-
 const nextConfig: NextConfig = {
-    outputFileTracingRoot: path.resolve(__dirname),
-    serverExternalPackages: ['googleapis', 'exceljs', 'jspdf'],
+    // Scope NFT tracing to the app/ directory only.
+    outputFileTracingRoot: path.join(__dirname),
+
+    // Explicitly exclude heavy non-runtime paths from all NFT traces.
+    // This prevents drizzle migrations, scripts, test files, .env files,
+    // and binary artifacts from being bundled into any serverless Lambda.
+    outputFileTracingExcludes: {
+        '*': [
+            '**/drizzle/**',
+            '**/drizzle.config.*',
+            '**/scripts/**',
+            '**/__tests__/**',
+            '**/coverage/**',
+            '**/*.sqlite',
+            '**/*.db',
+            '**/*.log',
+            '**/*.zip',
+            '**/*.tar.gz',
+            '**/playwright-report/**',
+            '**/test-results/**',
+            '**/tsconfig.tsbuildinfo',
+            '**/vitest.config.*',
+            '**/.env*',
+            '**/*.md',
+        ],
+    },
+
+    // Externalize ALL heavy server-only packages so they are NOT bundled into
+    // each Lambda — resolved from node_modules at runtime instead.
+    // This is the primary fix for the "Deploying outputs..." stall:
+    // without this, each of the 129 API routes bundles googleapis (8MB+),
+    // exceljs, jspdf etc. into its own isolated copy → 129 × 50MB = timeout.
+    serverExternalPackages: [
+        'googleapis',
+        'exceljs',
+        'jspdf',
+        'jspdf-autotable',
+        '@libsql/client',
+        'drizzle-orm',
+        '@simplewebauthn/server',
+        'web-push',
+        'bcryptjs',
+        'otpauth',
+        '@google/generative-ai',
+        '@upstash/redis',
+        'dotenv',
+    ],
+
     poweredByHeader: false,
     productionBrowserSourceMaps: false,
     typescript: {

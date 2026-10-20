@@ -1,9 +1,29 @@
-# Ignore heavy archive and local AI workspace directories
+# Heavy archive files
 app.zip
+*.zip
+*.tar.gz
+
+# Local AI workspace directories
 .agents
 .agent
 .kilo
 scripts
+
+# Local databases and state
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.db
+*.db-shm
+*.db-wal
 *.log
+
+# Documentation (not needed for deployment)
+WEALTHAI_MASTER_SPECIFICATION.md
+*.md
+
+# Test artifacts
+app/src/__tests__
+app/coverage
+app/playwright-report
+app/test-results
