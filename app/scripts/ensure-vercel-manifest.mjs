@@ -175,22 +175,29 @@ if (isVercel) {
   // Ensure parent .next/node_modules has no dangling symlinks
   materializeSymlinks(join(parentNextDir, 'node_modules'));
 
-  // Copy essential runtime packages to parent node_modules so that any
-  // module trying to resolve from /var/task/node_modules succeeds
+  // Bridge parent node_modules and package.json so that any NFT
+  // relative references (e.g. ../../node_modules/next/...) can resolve
+  // if Vercel Root Directory is not set to 'app'.
   const parentNodeModules = join(cwd, '..', 'node_modules');
   try {
-    mkdirSync(parentNodeModules, { recursive: true });
-    const essentialPkgs = ['@libsql', 'drizzle-orm', 'bcryptjs', '@upstash', 'jose', 'zod', 'dotenv'];
-    for (const pkg of essentialPkgs) {
-      const src = join(cwd, 'node_modules', pkg);
-      const dest = join(parentNodeModules, pkg);
-      if (existsSync(src) && !existsSync(dest)) {
-        cpSync(src, dest, { recursive: true, dereference: true });
-        console.log(`[postbuild] Copied ${pkg} → parent node_modules`);
-      }
+    let exists = false;
+    try { exists = existsSync(parentNodeModules) || lstatSync(parentNodeModules).isSymbolicLink(); } catch {}
+    if (exists) {
+      try {
+        const isLink = lstatSync(parentNodeModules).isSymbolicLink();
+        if (!isLink) {
+          rmSync(parentNodeModules, { recursive: true, force: true });
+        }
+      } catch {}
+    }
+    let stillExists = false;
+    try { stillExists = existsSync(parentNodeModules) || lstatSync(parentNodeModules).isSymbolicLink(); } catch {}
+    if (!stillExists) {
+      symlinkSync(join(cwd, 'node_modules'), parentNodeModules, 'junction');
+      console.log('[postbuild] Linked app/node_modules → parent node_modules for NFT resolution');
     }
   } catch (err) {
-    console.warn('[postbuild] Warning: could not copy parent node_modules:', err.message);
+    console.warn('[postbuild] Warning: could not link parent node_modules:', err.message);
   }
 
   const parentPackageJson = join(cwd, '..', 'package.json');
