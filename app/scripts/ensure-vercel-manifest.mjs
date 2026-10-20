@@ -17,6 +17,7 @@
  */
 
 import {
+  copyFileSync,
   cpSync,
   existsSync,
   readdirSync,
@@ -99,23 +100,31 @@ function stripNftDir(dir) {
 
 stripNftDir(serverDir);
 
-// ── 2b. Mirror app/.next/ → parent .next/ for Vercel's deploy CLI ─────────
+// ── 2b. Ensure deterministic routes manifest exists ───────────────────────
+const routesManifest = join(appNextDir, 'routes-manifest.json');
+const deterministicManifest = join(appNextDir, 'routes-manifest-deterministic.json');
+if (existsSync(routesManifest) && !existsSync(deterministicManifest)) {
+  try {
+    copyFileSync(routesManifest, deterministicManifest);
+    console.log('[postbuild] Created app/.next/routes-manifest-deterministic.json');
+  } catch {}
+}
+
+// ── 2c. Mirror app/.next/ → parent .next/ for Vercel's deploy CLI ─────────
 //
 // Vercel's "Deploying outputs..." phase reads routing metadata, manifest
 // files, and server chunks from /vercel/path0/.next/ (repo root). Since
-// the build runs inside app/, we must copy the full directory so Vercel can
-// find every file it needs without ENOENT errors.
-//
-// Affected files (non-exhaustive — this is why we copy everything):
-//   routes-manifest.json, routes-manifest-deterministic.json,
-//   server/pages-manifest.json, server/app-paths-manifest.json,
-//   build-manifest.json, app-build-manifest.json,
-//   prerender-manifest.json, server/middleware-manifest.json, ...
+// the build runs inside app/, we copy the directory so Vercel can
+// find every file it needs (excluding cache to keep it fast).
 
 if (isVercel) {
   const parentNextDir = join(cwd, '..', '.next');
   try {
-    cpSync(appNextDir, parentNextDir, { recursive: true, force: true });
+    cpSync(appNextDir, parentNextDir, {
+      recursive: true,
+      force: true,
+      filter: (src) => !src.includes(join(appNextDir, 'cache')),
+    });
     console.log('[postbuild] Synced app/.next → parent .next for Vercel deploy CLI');
   } catch (err) {
     console.warn('[postbuild] Warning: could not sync parent .next:', err.message);
