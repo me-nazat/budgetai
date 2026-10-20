@@ -20,9 +20,12 @@ import {
   copyFileSync,
   cpSync,
   existsSync,
+  lstatSync,
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -48,7 +51,12 @@ if (isVercel) {
 
 for (const target of prebuildCleanTargets) {
   try {
-    if (existsSync(target)) {
+    let isLink = false;
+    try { isLink = lstatSync(target).isSymbolicLink(); } catch {}
+    if (isLink) {
+      unlinkSync(target);
+      console.log(`[prebuild] Unlinked: ${target}`);
+    } else if (existsSync(target)) {
       rmSync(target, { recursive: true, force: true });
       console.log(`[prebuild] Purged: ${target}`);
     }
@@ -129,4 +137,27 @@ if (isVercel) {
   } catch (err) {
     console.warn('[postbuild] Warning: could not sync parent .next:', err.message);
   }
+
+  // Bridge parent node_modules and package.json so that any NFT
+  // relative references (e.g. ../../node_modules/next/...) can resolve
+  // if Vercel Root Directory is not set to 'app'.
+  const parentNodeModules = join(cwd, '..', 'node_modules');
+  try {
+    let exists = false;
+    try { exists = existsSync(parentNodeModules) || lstatSync(parentNodeModules).isSymbolicLink(); } catch {}
+    if (!exists) {
+      symlinkSync(join(cwd, 'node_modules'), parentNodeModules, 'junction');
+      console.log('[postbuild] Linked app/node_modules → parent node_modules for NFT resolution');
+    }
+  } catch (err) {
+    console.warn('[postbuild] Warning: could not link parent node_modules:', err.message);
+  }
+
+  const parentPackageJson = join(cwd, '..', 'package.json');
+  try {
+    if (!existsSync(parentPackageJson)) {
+      copyFileSync(join(cwd, 'package.json'), parentPackageJson);
+      console.log('[postbuild] Copied app/package.json → parent package.json');
+    }
+  } catch {}
 }
