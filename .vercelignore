@@ -1,0 +1,9 @@
+# Ignore heavy archive and local AI workspace directories
+app.zip
+.agents
+.agent
+.kilo
+scripts
+*.sqlite
+*.db
+*.log

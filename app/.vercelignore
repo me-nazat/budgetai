@@ -1,0 +1,19 @@
+# Ignore test files from Vercel deployment bundle
+src/__tests__
+coverage
+playwright-report
+test-results
+
+# Ignore local databases and state
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+*.log
+database.sqlite
+
+# Ignore cache and archives
+*.zip
+*.tar.gz
