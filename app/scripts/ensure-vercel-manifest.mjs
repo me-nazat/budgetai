@@ -1,15 +1,31 @@
-import { copyFileSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
-const cwd = process.cwd();
+const cwd = process.cwd(); // /vercel/path0/app  (or local workspace/app)
+const isVercel = Boolean(process.env.VERCEL);
 
-// ── 1. Purge stale parent artifacts from restored Vercel build caches ──────
+// ── 1. PREBUILD: Purge stale parent artifacts from restored Vercel build caches
 const staleArtifacts = [
-  join(cwd, '..', '.next'),
   join(cwd, '..', 'node_modules'),
   join(cwd, '..', 'package.json'),
   join(cwd, '.next', 'cache', 'webpack'),
 ];
+
+// Only delete the parent .next if on Vercel; locally keep it for dev speed
+if (isVercel) {
+  // Clean only stale sub-paths inside parent .next — do NOT delete the entire
+  // directory so that Vercel's deployment tooling can still read from it.
+  const parentNextCache = join(cwd, '..', '.next', 'cache');
+  staleArtifacts.push(parentNextCache);
+}
 
 for (const stalePath of staleArtifacts) {
   try {
@@ -20,11 +36,10 @@ for (const stalePath of staleArtifacts) {
   } catch {}
 }
 
-// ── 2. Post-build: strip heavy paths from .nft.json traces ────────────────
-// Only runs when .next/server exists (i.e. after build, not before)
+// ── 2. POST-BUILD: strip heavy paths from .nft.json traces
+// Only runs when .next/server exists (i.e. after next build, not before)
 const serverDir = join(cwd, '.next', 'server');
 if (existsSync(serverDir)) {
-  // Patterns that must never appear in any Lambda's NFT trace
   const EXCLUDE_PATTERNS = [
     '/drizzle/',
     '/drizzle.config.',
@@ -75,12 +90,39 @@ if (existsSync(serverDir)) {
   processNftDir(serverDir);
 }
 
-// ── 3. Ensure deterministic routes manifest ───────────────────────────────
-const nextDir = join(cwd, '.next');
-const routesManifest = join(nextDir, 'routes-manifest.json');
-const deterministicRoutesManifest = join(nextDir, 'routes-manifest-deterministic.json');
+// ── 3. POST-BUILD: Ensure deterministic routes manifests exist ───────────────
+// Vercel's deploy tooling (during "Deploying outputs...") reads this file from
+// TWO locations:
+//   a) /vercel/path0/app/.next/   (the build directory)
+//   b) /vercel/path0/.next/       (the repo root — Vercel reads routing here)
+//
+// We must write it to BOTH to prevent ENOENT during "Deploying outputs...".
 
-if (existsSync(routesManifest) && !existsSync(deterministicRoutesManifest)) {
-  copyFileSync(routesManifest, deterministicRoutesManifest);
-  console.log('[postbuild] Created routes-manifest-deterministic.json');
+const appNextDir = join(cwd, '.next');
+const routesManifest = join(appNextDir, 'routes-manifest.json');
+
+if (existsSync(routesManifest)) {
+  // a) Write inside app/.next/ (existing behaviour)
+  const appDeterministic = join(appNextDir, 'routes-manifest-deterministic.json');
+  if (!existsSync(appDeterministic)) {
+    copyFileSync(routesManifest, appDeterministic);
+    console.log('[postbuild] Created app/.next/routes-manifest-deterministic.json');
+  }
+
+  // b) Write to PARENT .next/ so Vercel's deploy CLI can read it
+  const parentNextDir = join(cwd, '..', '.next');
+  try {
+    mkdirSync(parentNextDir, { recursive: true });
+    const parentDeterministic = join(parentNextDir, 'routes-manifest-deterministic.json');
+    copyFileSync(routesManifest, parentDeterministic);
+    console.log('[postbuild] Created parent .next/routes-manifest-deterministic.json');
+
+    // Also copy the full routes-manifest.json to the parent so Vercel can
+    // resolve all route patterns during the deploy phase.
+    const parentRoutesManifest = join(parentNextDir, 'routes-manifest.json');
+    copyFileSync(routesManifest, parentRoutesManifest);
+    console.log('[postbuild] Created parent .next/routes-manifest.json');
+  } catch (err) {
+    console.warn('[postbuild] Could not write parent .next manifests:', err.message);
+  }
 }
