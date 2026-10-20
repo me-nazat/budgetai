@@ -1,5 +1,19 @@
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+
+// Clean up any stale parent artifacts from restored Vercel build caches
+const parentNextDir = join(process.cwd(), '..', '.next');
+const parentNodeModules = join(process.cwd(), '..', 'node_modules');
+const parentPackageJson = join(process.cwd(), '..', 'package.json');
+
+for (const stalePath of [parentNextDir, parentNodeModules, parentPackageJson]) {
+  try {
+    if (existsSync(stalePath)) {
+      rmSync(stalePath, { recursive: true, force: true });
+      console.log(`[clean] Purged stale parent artifact: ${stalePath}`);
+    }
+  } catch {}
+}
 
 const nextDir = join(process.cwd(), '.next');
 const routesManifest = join(nextDir, 'routes-manifest.json');

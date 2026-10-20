@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const securityHeaders = [
     {
@@ -45,7 +46,8 @@ const securityHeaders = [
 const isVercel = process.env.VERCEL === '1';
 
 const nextConfig: NextConfig = {
-    outputFileTracingRoot: process.cwd(),
+    outputFileTracingRoot: path.resolve(__dirname),
+    serverExternalPackages: ['googleapis', 'exceljs', 'jspdf'],
     poweredByHeader: false,
     productionBrowserSourceMaps: false,
     typescript: {
