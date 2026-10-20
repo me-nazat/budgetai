@@ -3,9 +3,9 @@
   "version": "1.5.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev",
     "prebuild": "node scripts/ensure-vercel-manifest.mjs || true",
-    "build": "next build --webpack",
+    "build": "next build",
     "postbuild": "node scripts/ensure-vercel-manifest.mjs || true",
     "start": "next start",
     "lint": "eslint",

@@ -1,5 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { Readable } from 'node:stream';
 
 import { google, drive_v3 } from 'googleapis';
@@ -22,7 +20,6 @@ const APP_PROP_USER_ID = 'budgetAiUserId';
 const APP_PROP_TOUR_ID = 'budgetAiTourId';
 const USER_FOLDER_TYPE = 'user-folder';
 const TOUR_FOLDER_TYPE = 'tour-folder';
-const LOCAL_ENV_FILES = ['.env.local', '.env'];
 const FOLDER_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type DriveAppProperties = Record<string, string>;
@@ -85,37 +82,8 @@ function toFriendlyError(error: unknown) {
 
 // ────── Config Helpers ──────
 
-function readConfigValue(key: string) {
+function readConfigValue(key: string): string | undefined {
   return process.env[key]?.trim();
-}
-
-async function loadLocalEnvValues() {
-  const values: Record<string, string> = {};
-  for (const fileName of LOCAL_ENV_FILES) {
-    try {
-      const content = await readFile(path.join(process.cwd(), fileName), 'utf8');
-      for (const line of content.split(/\r?\n/)) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue;
-        const sep = trimmed.indexOf('=');
-        if (sep === -1) continue;
-        const key = trimmed.slice(0, sep).trim();
-        let val = trimmed.slice(sep + 1).trim();
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
-          val = val.slice(1, -1);
-        if (!key || key in values) continue;
-        values[key] = val;
-      }
-    } catch { continue; }
-  }
-  return values;
-}
-
-async function readConfigAsync(key: string) {
-  const v = process.env[key]?.trim();
-  if (v) return v;
-  const locals = await loadLocalEnvValues();
-  return locals[key]?.trim();
 }
 
 function getDriveRootFolderId() {
@@ -128,9 +96,9 @@ function getDriveRootFolderId() {
 // ────── Auth ──────
 
 async function getDriveClient() {
-  const oauthClientId = await readConfigAsync('GOOGLE_DRIVE_OAUTH_CLIENT_ID');
-  const oauthClientSecret = await readConfigAsync('GOOGLE_DRIVE_OAUTH_CLIENT_SECRET');
-  const oauthRefreshToken = await readConfigAsync('GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN');
+  const oauthClientId = readConfigValue('GOOGLE_DRIVE_OAUTH_CLIENT_ID');
+  const oauthClientSecret = readConfigValue('GOOGLE_DRIVE_OAUTH_CLIENT_SECRET');
+  const oauthRefreshToken = readConfigValue('GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN');
 
   if (oauthClientId && oauthClientSecret && oauthRefreshToken) {
     const auth = new google.auth.OAuth2(oauthClientId, oauthClientSecret);
@@ -139,27 +107,16 @@ async function getDriveClient() {
   }
 
   // Service Account fallback
-  const rawJson = await readConfigAsync('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON');
+  const rawJson = readConfigValue('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON');
   let credentials: { client_email?: string; private_key?: string; project_id?: string } = {};
 
   if (rawJson) {
     credentials = JSON.parse(rawJson);
   } else {
-    const saFile = await readConfigAsync('GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE');
-    if (saFile) {
-      try {
-        credentials = JSON.parse(await readFile(saFile, 'utf8'));
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code === 'ENOENT')
-          throw new Error(`Service account file not found: "${saFile}".`);
-        throw e;
-      }
-    } else {
-      credentials = {
-        client_email: await readConfigAsync('GOOGLE_DRIVE_CLIENT_EMAIL'),
-        private_key: (await readConfigAsync('GOOGLE_DRIVE_PRIVATE_KEY'))?.replace(/\\n/g, '\n'),
-      };
-    }
+    credentials = {
+      client_email: readConfigValue('GOOGLE_DRIVE_CLIENT_EMAIL'),
+      private_key: readConfigValue('GOOGLE_DRIVE_PRIVATE_KEY')?.replace(/\\n/g, '\n'),
+    };
   }
 
   if (credentials.private_key) credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
