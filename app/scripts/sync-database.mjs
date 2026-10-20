@@ -143,6 +143,31 @@ async function syncAll() {
     }
   }
 
+  // 4. Ensure critical columns across all schema definitions
+  const criticalColumns = [
+    { table: 'bill_splits', col: 'linked_account_id', def: 'INTEGER' },
+    { table: 'transactions', col: 'transfer_group_id', def: 'TEXT' },
+    { table: 'transactions', col: 'splits', def: 'TEXT' },
+    { table: 'transactions', col: 'client_mutation_id', def: 'TEXT' },
+    { table: 'transactions', col: 'attachments', def: 'TEXT' },
+    { table: 'household_category_caps', col: 'rollover_policy', def: "TEXT DEFAULT 'none'" },
+  ];
+
+  for (const { table, col, def } of criticalColumns) {
+    if (existingTables.has(table)) {
+      const cols = await getColumns(table);
+      if (!cols.has(col)) {
+        try {
+          await client.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${def};`);
+          totalAddedColumns++;
+          console.log(`  + Added critical column: ${table}.${col}`);
+        } catch (err) {
+          console.error(`  x Failed to add ${table}.${col}:`, err.message);
+        }
+      }
+    }
+  }
+
   console.log(`\n======================================================`);
   console.log(`[db:sync] Final Result:`);
   console.log(`  Tables created:  ${totalCreatedTables}`);

@@ -16,7 +16,6 @@ import { GoalRepository } from '@/repositories/goal.repository';
 import { NetWorthRepository } from '@/repositories/networth.repository';
 import { getTourReceivablesAndPayables } from '@/lib/tour-sync';
 import { getHouseholdReceivablesAndPayables } from '@/lib/household-sync';
-import { queryOne } from '@/lib/db';
 import type {
   DashboardResponseDTO,
   SafeToSpendDTO,
@@ -116,7 +115,7 @@ export class DashboardService {
       GoalRepository.findAll(userId),
       NetWorthRepository.findLatest(userId),
       TransactionRepository.getBalance(userId),
-      queryOne<{ count: number }>('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?', [userId]),
+      TransactionRepository.count(userId),
       getTourReceivablesAndPayables(userId).catch(() => ({ receivables: 0, payables: 0 })),
       getHouseholdReceivablesAndPayables(userId).catch(() => ({ receivables: 0, payables: 0 })),
     ]);
@@ -355,7 +354,7 @@ export class DashboardService {
       spendingPace,
       accountsSummary,
       healthScore,
-      totalTransactions: totalTxs?.count || 0,
+      totalTransactions: totalTxs || 0,
       netCollaborativeReceivables,
       netCollaborativePayables,
     };

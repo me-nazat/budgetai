@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useAccounts } from '@/hooks/useApi';
 import { Toaster, toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -19,8 +20,9 @@ interface Account {
 
 export default function AccountsPage() {
   const { fmt } = useCurrency();
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { accounts: swrAccounts, isLoading, mutate: mutateAccounts } = useAccounts();
+  const accounts: Account[] = (swrAccounts as Account[]) || [];
+  const loading = isLoading;
   const [isPending, startTransition] = useTransition();
 
   // Modal / Bottom sheet states
@@ -41,25 +43,6 @@ export default function AccountsPage() {
   const [transferAmount, setTransferAmount] = useState('');
   const [transferDesc, setTransferDesc] = useState('');
   const [transferDate, setTransferDate] = useState(() => new Date().toISOString().split('T')[0]);
-
-  const loadAccounts = async () => {
-    try {
-      const res = await fetch('/api/accounts');
-      const data = await res.json();
-      if (data.accounts) {
-        setAccounts(data.accounts);
-      }
-    } catch (err) {
-      console.error('Failed to load accounts:', err);
-      toast.error('Failed to load accounts');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadAccounts();
-  }, []);
 
   const openAddAccount = () => {
     setEditingAccount(null);
@@ -110,7 +93,7 @@ export default function AccountsPage() {
 
       toast.success(editingAccount ? 'Account updated' : 'Account created');
       setIsAccountModalOpen(false);
-      void loadAccounts();
+      void mutateAccounts();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -130,7 +113,7 @@ export default function AccountsPage() {
       });
       if (!res.ok) throw new Error('Failed to update account status');
       toast.success(acc.isArchived ? 'Account unarchived' : 'Account archived');
-      void loadAccounts();
+      void mutateAccounts();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -175,7 +158,7 @@ export default function AccountsPage() {
       setIsTransferModalOpen(false);
       setTransferAmount('');
       setTransferDesc('');
-      void loadAccounts();
+      void mutateAccounts();
     } catch (err: any) {
       toast.error(err.message);
     }

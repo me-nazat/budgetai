@@ -74,8 +74,8 @@ function validateEnv(): ValidatedServerEnv {
       'wealth-ai-secure-encryption-master-key-2026-development-only',
     GEMINI_API_KEY: process.env.GEMINI_API_KEY || 'AIzaSyAJx7KaRqx8ERhqK3pNRtqGo_w32k-hHjs',
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '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',
-    NODE_ENV: process.env.NODE_ENV || 'development',
     ...process.env,
+    NODE_ENV: process.env.NODE_ENV || 'development',
   };
 
   const result = serverEnvSchema.safeParse(rawEnv);

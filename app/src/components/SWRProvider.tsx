@@ -296,26 +296,17 @@ function setupAuthListener() {
   window.addEventListener('wealth-ai-authenticated', () => {
     warmCache();
   });
-
-  // Check on initial load if user is authenticated
-  const checkAuth = async () => {
-    try {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
-      if (res.ok) {
-        await warmCache();
-      }
-    } catch {
-      // Ignore
-    }
-  };
-
-  setTimeout(checkAuth, 100);
 }
 
 export default function SWRProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
-        // Run auto-sync for recurring transactions and subscriptions silently
-        fetch('/api/sync', { method: 'POST' }).catch(() => {});
+        // Run auto-sync for recurring transactions throttled to at most once per 15 minutes
+        const lastSync = sessionStorage.getItem('wealth-ai-last-sync');
+        const now = Date.now();
+        if (!lastSync || now - Number(lastSync) > 15 * 60 * 1000) {
+            sessionStorage.setItem('wealth-ai-last-sync', String(now));
+            fetch('/api/sync', { method: 'POST' }).catch(() => {});
+        }
 
         // Set up authentication listener for cache warming
         setupAuthListener();

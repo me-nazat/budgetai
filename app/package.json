@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/ensure-vercel-manifest.mjs || true",
+    "prebuild": "node scripts/sync-database.mjs && node scripts/ensure-vercel-manifest.mjs || true",
     "build": "next build",
     "postbuild": "node scripts/ensure-vercel-manifest.mjs || true",
     "start": "next start",

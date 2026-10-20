@@ -26,7 +26,7 @@ const PUBLIC_MARKETING_PATHS = ['/'];
 const API_PREFIX = '/api';
 
 function getJwtSecretForEdge(): Uint8Array {
-  const raw = process.env.JWT_SECRET || 'wealth-ai-default-secret-dev-only-not-for-production';
+  const raw = process.env.JWT_SECRET || 'budget-savings-ai-secret-key-change-in-production-2024';
   return new TextEncoder().encode(raw);
 }
 
@@ -108,8 +108,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Case B: Public marketing landing page -> Allow access
-  if (PUBLIC_MARKETING_PATHS.includes(pathname)) {
+  // Case B: Public marketing landing page & public shared links -> Allow access
+  if (
+    PUBLIC_MARKETING_PATHS.includes(pathname) ||
+    pathname.startsWith('/tax/view/') ||
+    pathname.startsWith('/tours/join/')
+  ) {
     return NextResponse.next();
   }
 

@@ -107,7 +107,7 @@ export default function DashboardPage() {
     const localCacheData = (() => {
         if (typeof window === 'undefined') return null;
         try {
-            const raw = localStorage.getItem('wealth-ai-swr-cache-v1');
+            const raw = localStorage.getItem('wealth-ai-swr-cache-v3') || localStorage.getItem('wealth-ai-swr-cache-v1');
             if (!raw) return null;
             const parsed = JSON.parse(raw);
             const entry = parsed[cacheKey];

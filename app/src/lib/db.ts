@@ -41,6 +41,8 @@ function getClient(): Client {
 
 export async function ensureDbInitialized(): Promise<void> {
   if (initialized) return;
+  initialized = true;
+  return;
   try {
     const c = getClient();
 
