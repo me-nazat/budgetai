@@ -112,20 +112,20 @@ export function TaxReviewQueueModal({ isOpen, onClose, onItemProcessed }: Props)
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="w-full sm:max-w-lg bg-surface-primary border border-border-subtle rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90vh] flex flex-col justify-between overflow-hidden"
+        className="w-full sm:max-w-lg bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90vh] flex flex-col justify-between overflow-hidden"
       >
         {/* Mobile drag handle */}
-        <div className="w-12 h-1 bg-border-strong rounded-full mx-auto sm:hidden" />
+        <div className="w-12 h-1 bg-gray-300 dark:bg-white/10 rounded-full mx-auto sm:hidden" />
 
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border-subtle shrink-0">
+        <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary dark:text-sky-400 flex items-center justify-center">
               <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-content-primary">AI Tax Review Queue</h3>
-              <p className="text-xs text-content-muted">Swipe right to claim deduction, left to skip</p>
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">AI Tax Review Queue</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Swipe right to claim deduction, left to skip</p>
             </div>
           </div>
           <button
@@ -133,7 +133,7 @@ export function TaxReviewQueueModal({ isOpen, onClose, onItemProcessed }: Props)
               mutate();
               onClose();
             }}
-            className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl bg-surface-secondary text-content-muted hover:text-content-primary transition-colors"
+            className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -227,13 +227,13 @@ export function TaxReviewQueueModal({ isOpen, onClose, onItemProcessed }: Props)
 
                 {/* Optional category override selector */}
                 <div>
-                  <label className="text-[10px] font-bold text-content-muted uppercase tracking-wider block mb-1">
+                  <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">
                     Override Category (Optional)
                   </label>
                   <select
                     value={selectedCatId || currentItem.suggestedTaxCategoryId}
                     onChange={(e) => setSelectedCatId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-primary border border-border-subtle text-xs text-content-primary font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-xs text-gray-900 dark:text-white font-medium focus:outline-none focus:border-primary"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -253,7 +253,7 @@ export function TaxReviewQueueModal({ isOpen, onClose, onItemProcessed }: Props)
             <button
               onClick={() => handleAction('reject')}
               disabled={isProcessing}
-              className="min-h-[48px] px-4 py-3 rounded-2xl bg-surface-secondary hover:bg-surface-tertiary border border-border-subtle text-content-muted hover:text-content-primary font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-50"
+              className="min-h-[48px] px-4 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 border border-gray-200/80 dark:border-white/10 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">close</span>
               <span>Reject / Skip (←)</span>
@@ -262,7 +262,7 @@ export function TaxReviewQueueModal({ isOpen, onClose, onItemProcessed }: Props)
             <button
               onClick={() => handleAction('verify')}
               disabled={isProcessing}
-              className="min-h-[48px] px-4 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 disabled:opacity-50"
+              className="min-h-[48px] px-4 py-3 rounded-2xl bg-primary hover:bg-primary-hover text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-primary/25 transition-all active:scale-98 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">check_circle</span>
               <span>Claim Write-Off (→)</span>

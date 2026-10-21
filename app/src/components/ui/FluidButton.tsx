@@ -40,13 +40,13 @@ export const FluidButton = React.forwardRef<HTMLButtonElement, FluidButtonProps>
       "relative inline-flex items-center justify-center font-medium rounded-lg select-none " +
       "transition-colors duration-150 ease-out " +
       "active:scale-[0.99] active:transition-transform active:duration-75 " +
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 " +
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 " +
       "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none";
 
     const variants = {
       primary:
-        "bg-[var(--accent-primary,#6366F1)] text-white hover:bg-[var(--accent-primary-hover,#4F46E5)] " +
-        "border border-transparent shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
+        "bg-[var(--accent-primary,#136dec)] text-white hover:bg-[var(--accent-primary-hover,#0f5ec8)] " +
+        "border border-transparent shadow-md shadow-primary/20",
       secondary:
         "bg-[var(--bg-elevated,#161922)] text-[var(--color-text-main,#FAFAFA)] " +
         "border border-[var(--border-subtle,rgba(255,255,255,0.07))] " +

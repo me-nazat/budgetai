@@ -33,7 +33,7 @@ export const AuroraBackground = ({
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 overflow-hidden"
         >
-          <div className="absolute -top-[20%] left-1/2 -translate-x-1/2 h-[500px] w-[1000px] max-w-full rounded-full bg-gradient-to-b from-indigo-500/[0.04] dark:from-indigo-500/[0.06] via-transparent to-transparent" />
+          <div className="absolute -top-[20%] left-1/2 -translate-x-1/2 h-[500px] w-[1000px] max-w-full rounded-full bg-gradient-to-b from-blue-500/[0.04] dark:from-blue-500/[0.06] via-transparent to-transparent" />
         </div>
       )}
       <div className="relative z-10 w-full h-full">{children}</div>

@@ -53,11 +53,11 @@ function CashflowTooltip({ active, payload, label, fmt, formatAmount }: TooltipP
     const isNegative = data.balance < 0;
 
     return (
-        <div className="rounded-2xl border border-gray-200/80 bg-white/95 dark:border-white/10 dark:bg-[#161b22]/95 backdrop-blur-xl p-3 shadow-2xl text-xs min-w-[190px]">
+        <div className="rounded-2xl border border-gray-200/80 bg-white/95 dark:border-white/10 dark:bg-surface-dark/95 backdrop-blur-xl p-3 shadow-2xl text-xs min-w-[190px]">
             <p className="font-bold text-gray-900 dark:text-white mb-1.5">{data.formattedDate} ({data.date})</p>
             <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-4">
-                    <span className="text-gray-500 dark:text-text-muted">Projected Cash:</span>
+                    <span className="text-gray-500 dark:text-gray-400">Projected Cash:</span>
                     <span className={`font-mono font-bold tabular-nums ${isNegative ? 'text-rose-500' : 'text-emerald-500'}`}>
                         {formatAmount(data.balance, fmt(data.balance))}
                     </span>
@@ -193,7 +193,7 @@ export default function PredictiveCashflow({
     const isDipDanger = shortfallDay !== null;
 
     return (
-        <div className="glass-panel p-6 rounded-3xl border border-gray-200 dark:border-white/5 bg-white dark:bg-surface-dark shadow-sm">
+        <div className="card-glass p-6 rounded-3xl shadow-xl">
             {/* Header & Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
@@ -201,7 +201,7 @@ export default function PredictiveCashflow({
                         <span className="material-symbols-outlined text-primary text-xl">trending_up</span>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">30-Day Liquidity Forecast</h3>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         Deterministic forward projection based on liquid reserves, recurring bills, and burn pace
                     </p>
                 </div>
@@ -292,26 +292,26 @@ export default function PredictiveCashflow({
             </div>
 
             {/* Projection Summary Metric Pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-150 dark:border-white/5">
-                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5">
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-text-muted uppercase tracking-wider mb-0.5">Starting Cash</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-white/10">
+                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10">
+                    <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Starting Cash</p>
                     <p className="text-sm font-bold text-gray-900 dark:text-white tabular-nums font-mono">
                         {formatAmount(startingCash, fmt(startingCash))}
                     </p>
                 </div>
-                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5">
+                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10">
                     <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-0.5">Scheduled Inflows</p>
                     <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
                         +{formatAmount(totals.inflows, fmt(totals.inflows))}
                     </p>
                 </div>
-                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5">
+                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10">
                     <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-0.5">Scheduled Outflows</p>
                     <p className="text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums font-mono">
                         −{formatAmount(totals.outflows, fmt(totals.outflows))}
                     </p>
                 </div>
-                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5">
+                <div className="p-3 rounded-2xl bg-gray-50/60 dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10">
                     <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">30-Day Ending Cash</p>
                     <p className={`text-sm font-bold tabular-nums font-mono ${totals.endingCash < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
                         {formatAmount(totals.endingCash, fmt(totals.endingCash))}

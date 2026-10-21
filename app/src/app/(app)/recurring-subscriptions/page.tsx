@@ -13,7 +13,7 @@ export default function RecurringSubscriptionsPage() {
     <div className="p-4 lg:p-8 max-w-[1400px] mx-auto page-enter">
       {/* Page Header */}
       <div className="mb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider mb-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-[#3b82f6] dark:text-[#60a5fa] text-xs font-bold uppercase tracking-wider mb-2">
           <span className="material-symbols-outlined text-[16px]">autorenew</span>
           {t('subscriptionsPage.title')}
         </div>
@@ -26,12 +26,12 @@ export default function RecurringSubscriptionsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-gray-100 dark:bg-surface-dark p-1 rounded-xl mb-8 w-fit border border-gray-200 dark:border-[#30363d]">
+      <div className="flex bg-gray-100 dark:bg-[#12182B] p-1 rounded-xl mb-8 w-fit border border-gray-200 dark:border-white/10">
         <button
           onClick={() => setActiveTab('subscriptions')}
           className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
             activeTab === 'subscriptions'
-              ? 'bg-white dark:bg-[#1a202c] text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200 dark:border-white/10'
+              ? 'bg-white dark:bg-[#1A2238] text-primary dark:text-[#38bdf8] shadow-sm border border-gray-200 dark:border-white/10'
               : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
@@ -42,7 +42,7 @@ export default function RecurringSubscriptionsPage() {
           onClick={() => setActiveTab('recurring')}
           className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
             activeTab === 'recurring'
-              ? 'bg-white dark:bg-[#1a202c] text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200 dark:border-white/10'
+              ? 'bg-white dark:bg-[#1A2238] text-primary dark:text-[#38bdf8] shadow-sm border border-gray-200 dark:border-white/10'
               : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >

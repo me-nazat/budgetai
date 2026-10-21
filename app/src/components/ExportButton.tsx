@@ -100,7 +100,7 @@ export default function ExportButton({ transactions: propTransactions, label, cl
                 type="button"
                 onClick={() => void handleExport('csv')}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-surface-hover disabled:opacity-50 transition-all active:scale-95 shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-white/10 bg-white/80 dark:bg-surface-dark text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-surface-hover hover:border-primary/40 disabled:opacity-50 transition-all active:scale-95 shadow-sm"
             >
                 <span className="material-symbols-outlined text-[16px]">table_view</span>
                 CSV
@@ -109,7 +109,7 @@ export default function ExportButton({ transactions: propTransactions, label, cl
                 type="button"
                 onClick={() => void handleExport('json')}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-surface-hover disabled:opacity-50 transition-all active:scale-95 shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-white/10 bg-white/80 dark:bg-surface-dark text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-surface-hover hover:border-primary/40 disabled:opacity-50 transition-all active:scale-95 shadow-sm"
             >
                 <span className="material-symbols-outlined text-[16px]">data_object</span>
                 JSON

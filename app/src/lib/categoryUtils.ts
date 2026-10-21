@@ -257,8 +257,8 @@ export const STANDARD_CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const CATEGORY_HEX_COLORS: Record<string, string> = {
-  Food: '#f97316', Transport: '#6366f1', Housing: '#3b82f6', Utilities: '#eab308',
-  Entertainment: '#ec4899', Shopping: '#6366f1', Health: '#10b981', Education: '#06b6d4',
+  Food: '#f97316', Transport: '#0284c7', Housing: '#3b82f6', Utilities: '#eab308',
+  Entertainment: '#ec4899', Shopping: '#136dec', Health: '#10b981', Education: '#06b6d4',
   Business: '#0ea5e9', Savings: '#22c55e', Salary: '#14b8a6', Other: '#6b7280',
   Rental: '#3b82f6', Dividend: '#10b981', Commission: '#f59e0b',
   Gift: '#f43f5e', Refund: '#06b6d4', 'Side Hustle': '#f97316',
@@ -270,7 +270,7 @@ export const CATEGORY_HEX_COLORS: Record<string, string> = {
 export const COLOR_NAME_TO_HEX: Record<string, string> = {
   rose: '#f43f5e', orange: '#f97316', amber: '#f59e0b', emerald: '#10b981',
   teal: '#14b8a6', cyan: '#06b6d4', sky: '#0ea5e9', blue: '#3b82f6',
-  indigo: '#6366f1', fuchsia: '#d946ef', pink: '#ec4899',
+  indigo: '#136dec', fuchsia: '#d946ef', pink: '#ec4899',
   gray: '#6b7280', slate: '#64748b',
 };
 
@@ -492,8 +492,8 @@ export const CUSTOM_COLOR_STYLES: Record<string, { bg: string; text: string; sel
   cyan: { bg: 'bg-cyan-500', text: 'text-cyan-500', selected: 'bg-cyan-500 text-white shadow-sm' },
   sky: { bg: 'bg-sky-500', text: 'text-sky-500', selected: 'bg-sky-500 text-white shadow-sm' },
   blue: { bg: 'bg-blue-500', text: 'text-blue-500', selected: 'bg-blue-500 text-white shadow-sm' },
-  indigo: { bg: 'bg-indigo-500', text: 'text-indigo-500', selected: 'bg-indigo-500 text-white shadow-sm' },
-  fuchsia: { bg: 'bg-fuchsia-500', text: 'text-fuchsia-500', selected: 'bg-fuchsia-500 text-white shadow-sm' },
+  indigo: { bg: 'bg-primary', text: 'text-primary', selected: 'bg-primary text-white shadow-sm' },
+  fuchsia: { bg: 'bg-rose-500', text: 'text-rose-500', selected: 'bg-rose-500 text-white shadow-sm' },
   pink: { bg: 'bg-pink-500', text: 'text-pink-500', selected: 'bg-pink-500 text-white shadow-sm' },
   gray: { bg: 'bg-gray-500', text: 'text-gray-500', selected: 'bg-gray-500 text-white shadow-sm' },
 };

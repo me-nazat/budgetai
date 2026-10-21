@@ -84,7 +84,7 @@ export function InlineTaxTagPill({
         className={`min-w-[44px] min-h-[44px] px-2.5 rounded-xl border flex items-center justify-center gap-1 text-xs font-bold transition-all ${
           taggedState
             ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
-            : 'bg-surface-secondary/50 border-border-subtle text-content-muted hover:text-content-primary'
+            : 'bg-white/60 dark:bg-white/5 border-gray-200/80 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
         }`}
       >
         <span className="material-symbols-outlined text-[16px]">
@@ -108,18 +108,18 @@ export function InlineTaxTagPill({
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="w-full sm:max-w-md bg-surface-primary border border-border-subtle rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto"
+              className="w-full sm:max-w-md bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-12 h-1 bg-border-strong rounded-full mx-auto sm:hidden" />
-              <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+              <div className="w-12 h-1 bg-gray-300 dark:bg-white/10 rounded-full mx-auto sm:hidden" />
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
                 <div>
-                  <h3 className="text-base font-bold text-content-primary">Tag as Tax Write-Off</h3>
-                  <p className="text-xs text-content-muted">Assign deduction category for ${amount.toFixed(2)}</p>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">Tag as Tax Write-Off</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Assign deduction category for ${amount.toFixed(2)}</p>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-surface-secondary text-content-muted"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-gray-900 dark:hover:text-white"
                 >
                   <span className="material-symbols-outlined text-[18px]">close</span>
                 </button>
@@ -131,13 +131,13 @@ export function InlineTaxTagPill({
                     key={cat.id}
                     disabled={isSubmitting}
                     onClick={() => handleSelectCategory(cat)}
-                    className="w-full min-h-[44px] p-3 text-left rounded-xl bg-surface-secondary hover:bg-emerald-500/10 hover:border-emerald-500/30 border border-border-subtle transition-all flex items-center justify-between"
+                    className="w-full min-h-[44px] p-3 text-left rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-primary/10 hover:border-primary/40 border border-gray-200/80 dark:border-white/10 transition-all flex items-center justify-between"
                   >
                     <div>
-                      <span className="text-xs font-bold text-content-primary block">{cat.name}</span>
-                      <span className="text-[11px] text-content-muted">{cat.description || cat.code}</span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white block">{cat.name}</span>
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400">{cat.description || cat.code}</span>
                     </div>
-                    <span className="text-xs font-bold text-emerald-400">
+                    <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400">
                       {Math.round(cat.deductiblePercentage * 100)}%
                     </span>
                   </button>

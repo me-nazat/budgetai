@@ -342,12 +342,12 @@ export function SubscriptionsContent() {
 
         <div className="flex items-center gap-3">
           {/* Monthly / Annual Cost Toggle */}
-          <div className="flex bg-gray-100 dark:bg-surface-dark p-1 rounded-xl border border-gray-200 dark:border-[#30363d]">
+          <div className="flex bg-gray-100 dark:bg-[#12182B] p-1 rounded-xl border border-gray-200 dark:border-white/10">
             <button
               onClick={() => setCostView('monthly')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 costView === 'monthly'
-                  ? 'bg-white dark:bg-[#1a202c] text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  ? 'bg-white dark:bg-[#1A2238] text-primary dark:text-[#38bdf8] shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
@@ -357,7 +357,7 @@ export function SubscriptionsContent() {
               onClick={() => setCostView('annual')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 costView === 'annual'
-                  ? 'bg-white dark:bg-[#1a202c] text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  ? 'bg-white dark:bg-[#1A2238] text-primary dark:text-[#38bdf8] shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
@@ -367,7 +367,7 @@ export function SubscriptionsContent() {
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-md shadow-indigo-600/20 text-sm transition-all"
+            className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl flex items-center gap-2 shadow-md shadow-primary/20 text-sm transition-all"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             Add Subscription
@@ -393,7 +393,7 @@ export function SubscriptionsContent() {
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
             {t('subscriptionsPage.upcomingCommitments')}
           </p>
-          <h3 className="text-3xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums font-mono">
+          <h3 className="text-3xl font-black text-primary dark:text-[#38bdf8] tabular-nums font-mono">
             {fmtRaw(thirtyDayOutflow)}
           </h3>
           <p className="text-xs text-gray-400 mt-1">Due within the upcoming 30 days</p>
@@ -429,7 +429,7 @@ export function SubscriptionsContent() {
       <div className="glass-panel rounded-2xl p-6 mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[22px]">
+            <span className="material-symbols-outlined text-primary dark:text-[#38bdf8] text-[22px]">
               calendar_month
             </span>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -454,18 +454,18 @@ export function SubscriptionsContent() {
                   onClick={() => setSelectedCalendarDate(isSelected ? null : day.dateStr)}
                   className={`p-3 rounded-2xl border text-center transition-all flex flex-col justify-between items-center min-h-[92px] ${
                     isSelected
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-500/10 shadow-sm'
+                      ? 'border-primary bg-primary/10 shadow-sm'
                       : hasBills
                       ? 'border-amber-500/40 bg-amber-500/5 hover:border-amber-500'
                       : day.isToday
-                      ? 'border-indigo-200 dark:border-white/10 bg-gray-50 dark:bg-white/5'
+                      ? 'border-blue-500/30 dark:border-white/10 bg-gray-50 dark:bg-white/5'
                       : 'border-gray-100 dark:border-white/5 bg-transparent hover:bg-gray-50 dark:hover:bg-white/5'
                   }`}
                 >
                   <span className="text-[10px] font-bold uppercase text-gray-400">
                     {day.dayOfWeek}
                   </span>
-                  <span className={`text-base font-black ${day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'}`}>
+                  <span className={`text-base font-black ${day.isToday ? 'text-primary dark:text-[#38bdf8]' : 'text-gray-900 dark:text-white'}`}>
                     {day.dayNum}
                   </span>
 
@@ -486,9 +486,9 @@ export function SubscriptionsContent() {
 
         {/* Selected Date Details Callout */}
         {selectedCalendarDate && (
-          <div className="mt-4 p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 flex flex-wrap items-center justify-between gap-4 animate-fade-in">
+          <div className="mt-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 flex flex-wrap items-center justify-between gap-4 animate-fade-in">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-indigo-600 text-[20px]">event</span>
+              <span className="material-symbols-outlined text-primary text-[20px]">event</span>
               <div>
                 <p className="text-xs font-bold text-gray-900 dark:text-white">
                   Renewals on {new Date(selectedCalendarDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -542,7 +542,7 @@ export function SubscriptionsContent() {
       {/* Subscriptions Grid */}
       {isLoading ? (
         <div className="flex justify-center p-16">
-          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : filteredSubs.length === 0 ? (
         <div className="text-center py-16 glass-panel rounded-2xl border border-gray-100 dark:border-white/5">
@@ -575,7 +575,7 @@ export function SubscriptionsContent() {
                   hasHike
                     ? 'border-amber-500/40 bg-amber-500/5 shadow-sm'
                     : sub.isActive
-                    ? 'border-gray-200 dark:border-white/10 hover:border-indigo-500/50'
+                    ? 'border-gray-200 dark:border-white/10 hover:border-primary/50'
                     : 'border-gray-100 dark:border-white/5 opacity-60'
                 }`}
               >
@@ -599,7 +599,7 @@ export function SubscriptionsContent() {
                     <button
                       onClick={() => toggleActive(sub)}
                       className={`w-10 h-5 rounded-full relative transition-colors ${
-                        sub.isActive ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-700'
+                        sub.isActive ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'
                       }`}
                       title={sub.isActive ? 'Active — click to pause' : 'Paused — click to resume'}
                     >
@@ -658,7 +658,7 @@ export function SubscriptionsContent() {
                           setAccountUpdateTarget(sub);
                           setSelectedAccountId(sub.accountId || null);
                         }}
-                        className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1"
+                        className="text-primary dark:text-[#38bdf8] font-bold hover:underline flex items-center gap-1"
                       >
                         <span className="material-symbols-outlined text-[14px]">account_balance_wallet</span>
                         {linkedAccount ? linkedAccount.name : 'Select Account'}
@@ -686,7 +686,7 @@ export function SubscriptionsContent() {
                         setReminderTarget(sub);
                         setReminderDaysInput(String(sub.cancelReminderDays ?? 3));
                       }}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-colors flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/10 text-primary dark:text-[#38bdf8] hover:bg-blue-500/20 transition-colors flex items-center gap-1"
                       title="Configure cancellation reminder"
                     >
                       <span className="material-symbols-outlined text-[15px]">notifications_active</span>
@@ -697,7 +697,7 @@ export function SubscriptionsContent() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => openEdit(sub)}
-                      className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                       title="Edit subscription"
                     >
                       <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -739,7 +739,7 @@ export function SubscriptionsContent() {
                   onClick={() => setSelectedAccountId(null)}
                   className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${
                     selectedAccountId === null
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-500/10 text-indigo-600'
+                      ? 'border-primary bg-primary/10 text-primary dark:text-[#38bdf8]'
                       : 'border-gray-200 dark:border-white/5 text-gray-600 dark:text-gray-300'
                   }`}
                 >
@@ -751,7 +751,7 @@ export function SubscriptionsContent() {
                     onClick={() => setSelectedAccountId(acc.id)}
                     className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all flex items-center justify-between ${
                       selectedAccountId === acc.id
-                        ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-500/10 text-indigo-600'
+                        ? 'border-primary bg-primary/10 text-primary dark:text-[#38bdf8]'
                         : 'border-gray-200 dark:border-white/5 text-gray-600 dark:text-gray-300'
                     }`}
                   >
@@ -770,7 +770,7 @@ export function SubscriptionsContent() {
                 </button>
                 <button
                   onClick={handleSaveAccountUpdate}
-                  className="flex-1 py-2.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white text-sm shadow-md shadow-indigo-600/20"
+                  className="flex-1 py-2.5 rounded-xl font-bold bg-primary hover:bg-primary-hover text-white text-sm shadow-md shadow-primary/20"
                 >
                   Save Account
                 </button>
@@ -809,7 +809,7 @@ export function SubscriptionsContent() {
                       onClick={() => setReminderDaysInput(d)}
                       className={`py-2 rounded-xl text-sm font-bold border transition-all ${
                         reminderDaysInput === d
-                          ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                          ? 'border-primary bg-primary/10 text-primary dark:text-[#38bdf8]'
                           : 'border-gray-200 dark:border-white/5 text-gray-600 dark:text-gray-300'
                       }`}
                     >
@@ -828,7 +828,7 @@ export function SubscriptionsContent() {
                 </button>
                 <button
                   onClick={handleSaveReminder}
-                  className="flex-1 py-2.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white text-sm shadow-md shadow-indigo-600/20"
+                  className="flex-1 py-2.5 rounded-xl font-bold bg-primary hover:bg-primary-hover text-white text-sm shadow-md shadow-primary/20"
                 >
                   Set Alert
                 </button>
@@ -866,7 +866,7 @@ export function SubscriptionsContent() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Netflix, Spotify, AWS, GitHub"
-                    className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white font-medium"
+                    className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white font-medium"
                   />
                 </div>
 
@@ -881,7 +881,7 @@ export function SubscriptionsContent() {
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="15.00"
-                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white font-mono font-bold"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white font-mono font-bold"
                     />
                   </div>
                   <div>
@@ -889,7 +889,7 @@ export function SubscriptionsContent() {
                     <select
                       value={subCurrency}
                       onChange={(e) => setSubCurrency(e.target.value as any)}
-                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white"
                     >
                       <option value="BDT">BDT (৳)</option>
                       <option value="USD">USD ($)</option>
@@ -906,7 +906,7 @@ export function SubscriptionsContent() {
                     <select
                       value={billingCycle}
                       onChange={(e) => setBillingCycle(e.target.value as any)}
-                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white"
                     >
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>
@@ -920,7 +920,7 @@ export function SubscriptionsContent() {
                       type="date"
                       value={nextRenewal}
                       onChange={(e) => setNextRenewal(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -931,7 +931,7 @@ export function SubscriptionsContent() {
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white"
                     >
                       <option value="Entertainment">Entertainment</option>
                       <option value="Software">Software & SaaS</option>
@@ -947,7 +947,7 @@ export function SubscriptionsContent() {
                       type="date"
                       value={trialEndsAt}
                       onChange={(e) => setTrialEndsAt(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -957,7 +957,7 @@ export function SubscriptionsContent() {
                   <select
                     value={formAccountId || ''}
                     onChange={(e) => setFormAccountId(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-600 text-gray-900 dark:text-white"
+                    className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white"
                   >
                     <option value="">Unlinked (None)</option>
                     {accounts.map((acc) => (
@@ -978,7 +978,7 @@ export function SubscriptionsContent() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3 px-4 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-lg shadow-indigo-600/20 text-sm"
+                    className="flex-1 py-3 px-4 rounded-xl font-bold bg-primary hover:bg-primary-hover text-white transition-colors shadow-lg shadow-primary/20 text-sm"
                   >
                     Save Subscription
                   </button>

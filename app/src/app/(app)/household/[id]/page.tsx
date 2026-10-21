@@ -347,13 +347,13 @@ export default function HouseholdWorkspacePage() {
               </button>
             )}
 
-            <span className="inline-flex items-center gap-1 rounded-full bg-surface-secondary border border-border-subtle px-2.5 py-1 text-xs font-bold text-content-muted">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 px-2.5 py-1 text-xs font-bold text-gray-500 dark:text-gray-400">
               <span className="material-symbols-outlined text-[14px]">group</span>
               {members.length} member{members.length === 1 ? '' : 's'}
             </span>
           </div>
 
-          <p className="text-xs sm:text-sm text-content-muted">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
             Automated expense splitting, visual category spending caps & minimal debt cash-flow settlements
           </p>
         </div>
@@ -363,7 +363,7 @@ export default function HouseholdWorkspacePage() {
           <button
             type="button"
             onClick={handleOpenExpenseModal}
-            className="min-h-[44px] px-5 py-2.5 text-xs font-bold rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white transition-colors flex items-center gap-2 shadow-sm"
+            className="min-h-[44px] px-5 py-2.5 text-xs font-bold rounded-2xl bg-primary hover:bg-primary-hover text-white transition-all flex items-center gap-2 shadow-md shadow-primary/25"
           >
             <span className="material-symbols-outlined text-[18px]">receipt_long</span>
             Log Shared Expense
@@ -462,7 +462,7 @@ export default function HouseholdWorkspacePage() {
       </div>
 
       {/* 4 Premium Navigation Tabs */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-surface-primary border border-border-subtle max-w-xl overflow-x-auto hide-scrollbar">
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl card-glass border border-gray-200/80 dark:border-white/10 max-w-xl overflow-x-auto hide-scrollbar">
         {(
           [
             { id: 'allocations', label: 'Allocations', icon: 'pie_chart' },
@@ -476,8 +476,8 @@ export default function HouseholdWorkspacePage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 shrink-0 min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === tab.id
-                ? 'bg-emerald-500 text-white shadow-xs'
-                : 'text-content-muted hover:text-content-primary'
+                ? 'bg-primary text-white shadow-md shadow-primary/25'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
@@ -515,15 +515,15 @@ export default function HouseholdWorkspacePage() {
           {activeTab === 'caps' && (
             <div className="space-y-6">
               {/* Category Caps Header */}
-              <div className="p-5 rounded-2xl bg-surface-primary border border-border-subtle flex flex-wrap items-center justify-between gap-4">
+              <div className="p-5 rounded-2xl card-glass border border-gray-200/80 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-content-primary">Category Spending Caps & Split Overrides</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Category Spending Caps & Split Overrides</h3>
                     <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
                       {caps.length} configured
                     </span>
                   </div>
-                  <p className="text-xs text-content-muted mt-0.5">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
                     Live visual threshold bars: &lt;80% green, 80-99% amber, &ge;100% rose alert with auto-enforcement
                   </p>
                 </div>
@@ -534,7 +534,7 @@ export default function HouseholdWorkspacePage() {
                     setCapAmount('500');
                     setShowCapModal(true);
                   }}
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-primary/25"
                 >
                   <span className="material-symbols-outlined text-[16px]">add</span>
                   Set Category Cap
@@ -585,8 +585,8 @@ export default function HouseholdWorkspacePage() {
                     return (
                       <div
                         key={cap.id}
-                        className={`glass-panel p-5 rounded-2xl relative overflow-hidden transition-all border ${
-                          isExceeded ? 'border-rose-500/40' : 'border-border-subtle'
+                        className={`card-glass p-5 rounded-2xl relative overflow-hidden transition-all border ${
+                          isExceeded ? 'border-rose-500/40' : 'border-gray-200/80 dark:border-white/10'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
@@ -652,12 +652,12 @@ export default function HouseholdWorkspacePage() {
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="w-full max-w-lg rounded-3xl bg-slate-900 border border-border-subtle p-6 shadow-2xl space-y-5"
+            className="w-full max-w-lg rounded-3xl bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 p-6 shadow-2xl space-y-5"
           >
-            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+            <div className="flex items-center justify-between border-b border-gray-200/80 dark:border-white/10 pb-3">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-emerald-400 text-xl">receipt_long</span>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-xl">receipt_long</span>
                   Log Shared Household Expense
                 </h3>
                 <p className="text-xs text-gray-400">Recorded with double-entry personal account sync</p>
@@ -877,11 +877,11 @@ export default function HouseholdWorkspacePage() {
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="w-full max-w-sm rounded-3xl bg-slate-900 border border-border-subtle p-6 shadow-2xl space-y-4"
+            className="w-full max-w-sm rounded-3xl bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 p-6 shadow-2xl space-y-4"
           >
-            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-emerald-400 text-lg">shield</span>
+            <div className="flex items-center justify-between border-b border-gray-200/80 dark:border-white/10 pb-3">
+              <h3 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-lg">shield</span>
                 Set Monthly Spending Cap
               </h3>
               <button

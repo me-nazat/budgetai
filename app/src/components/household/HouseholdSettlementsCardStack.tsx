@@ -140,24 +140,24 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
   return (
     <div className="space-y-6">
       {/* Debt Minimization Header */}
-      <div className="p-5 rounded-2xl bg-surface-primary border border-border-subtle flex flex-wrap items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl card-glass border border-gray-200/80 dark:border-white/10 shadow-lg flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-bold text-content-primary">Debt Minimization & Settlements</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Debt Minimization & Settlements</h3>
             {graphMetrics && graphMetrics.transfersSavedCount > 0 && (
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
                 {graphMetrics.transfersSavedCount} transfers saved
               </span>
             )}
           </div>
-          <p className="text-xs text-content-muted mt-0.5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
             Hamilton penny distribution & cash-flow graph reduction minimizes total payments
           </p>
         </div>
         <button
           onClick={handleSettleAll}
           disabled={isGenerating || minSettlements.length === 0}
-          className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+          className="min-h-[44px] px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all flex items-center gap-2 shadow-md shadow-primary/25 disabled:opacity-50"
         >
           <span className="material-symbols-outlined text-[18px]">currency_exchange</span>
           {isGenerating ? 'Scheduling...' : 'Settle All with Min Payments'}
@@ -172,17 +172,17 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
           return (
             <div
               key={b.userId}
-              className="p-4 rounded-xl bg-surface-secondary border border-border-subtle flex items-center justify-between"
+              className="p-4 rounded-xl bg-white/70 dark:bg-surface-elevated/80 border border-gray-200/80 dark:border-white/10 backdrop-blur-md flex items-center justify-between"
             >
               <div>
-                <span className="text-xs font-bold text-content-primary block">{b.userName}</span>
-                <span className="text-[11px] text-content-muted">
+                <span className="text-xs font-bold text-gray-900 dark:text-white block">{b.userName}</span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">
                   {isOwed ? 'Is owed' : owes ? 'Owes' : 'Settled up'}
                 </span>
               </div>
               <div
                 className={`text-sm font-black ${
-                  isOwed ? 'text-emerald-400' : owes ? 'text-rose-400' : 'text-content-muted'
+                  isOwed ? 'text-emerald-500 dark:text-emerald-400' : owes ? 'text-rose-500 dark:text-rose-400' : 'text-gray-400'
                 }`}
               >
                 {b.netBalance >= 0 ? '+' : ''}
@@ -196,9 +196,9 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
 
       {/* Suggested Minimal Settlement Plan */}
       {minSettlements.length > 0 && (
-        <div className="p-5 rounded-2xl bg-surface-primary border border-border-subtle space-y-3">
+        <div className="p-5 rounded-2xl card-glass border border-gray-200/80 dark:border-white/10 shadow-lg space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-content-muted">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Recommended Minimal Transfers ({minSettlements.length})
             </h4>
             {graphMetrics && (
@@ -211,14 +211,14 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
             {minSettlements.map((plan, idx) => (
               <div
                 key={idx}
-                className="p-3.5 rounded-xl bg-surface-secondary border border-border-subtle flex items-center justify-between gap-3 text-xs"
+                className="p-3.5 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 flex items-center justify-between gap-3 text-xs"
               >
                 <div className="flex items-center gap-2 flex-1">
-                  <span className="font-bold text-content-primary">{plan.fromUserName}</span>
-                  <span className="material-symbols-outlined text-content-muted text-[16px]">arrow_forward</span>
-                  <span className="font-bold text-content-primary">{plan.toUserName}</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{plan.fromUserName}</span>
+                  <span className="material-symbols-outlined text-gray-400 text-[16px]">arrow_forward</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{plan.toUserName}</span>
                 </div>
-                <div className="text-sm font-black text-emerald-400">
+                <div className="text-sm font-black text-emerald-500 dark:text-emerald-400">
                   {currencySymbol}{plan.amount.toFixed(2)}
                 </div>
               </div>
@@ -234,7 +234,7 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
         </h4>
 
         {upcoming.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-surface-primary border border-dashed border-border-subtle text-center text-xs text-content-muted">
+          <div className="p-8 rounded-2xl card-glass border border-dashed border-gray-200/80 dark:border-white/10 text-center text-xs text-gray-500 dark:text-gray-400">
             No upcoming settlement cards. Click "Settle All with Min Payments" above to schedule.
           </div>
         ) : (
@@ -245,8 +245,8 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
                 layout
                 className={`p-4 rounded-2xl border transition-all flex flex-wrap items-center justify-between gap-4 ${
                   item.status === 'paid'
-                    ? 'bg-surface-secondary/50 border-border-subtle opacity-75'
-                    : 'bg-surface-primary border-border-subtle shadow-xs'
+                    ? 'bg-gray-100/60 dark:bg-white/5 border-gray-200/60 dark:border-white/5 opacity-75'
+                    : 'card-glass border-gray-200/80 dark:border-white/10 shadow-md'
                 }`}
               >
                 <div className="space-y-1">

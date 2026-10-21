@@ -39,15 +39,15 @@ export function CollaborativeNavSwitcher({ className = '' }: Props) {
   ];
 
   return (
-    <div className={`flex items-center gap-1.5 p-1 rounded-2xl bg-surface-primary/70 backdrop-blur-xl border border-border-subtle max-w-fit overflow-x-auto ${className}`}>
+    <div className={`flex items-center gap-1.5 p-1 rounded-2xl bg-white/70 dark:bg-surface-dark/90 backdrop-blur-xl border border-gray-200/80 dark:border-white/10 max-w-fit overflow-x-auto shadow-sm ${className}`}>
       {tabs.map((tab) => (
         <Link
           key={tab.href}
           href={tab.href}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             tab.isActive
-              ? `${tab.activeBg} shadow-xs font-black`
-              : 'text-content-muted hover:text-content-primary hover:bg-surface-secondary/60'
+              ? `${tab.activeBg} shadow-sm font-black`
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.06]'
           }`}
         >
           <span className={`material-symbols-outlined text-[18px] ${tab.isActive ? 'text-inherit' : tab.color}`}>

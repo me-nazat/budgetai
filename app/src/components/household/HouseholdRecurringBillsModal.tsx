@@ -188,14 +188,14 @@ export function HouseholdRecurringBillsModal({ householdId, currencySymbol = '$'
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-primary border border-border-subtle">
+      <div className="flex items-center justify-between p-5 rounded-2xl card-glass border border-gray-200/80 dark:border-white/10 shadow-lg">
         <div>
-          <h3 className="text-base font-bold text-content-primary">Recurring Shared Bills</h3>
-          <p className="text-xs text-content-muted">Automated splits for rent, utilities, and subscriptions</p>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Recurring Shared Bills</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Automated splits for rent, utilities, and subscriptions</p>
         </div>
         <button
           onClick={() => setIsOpen(true)}
-          className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+          className="min-h-[44px] px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-primary/25"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
           New Bill
@@ -208,25 +208,25 @@ export function HouseholdRecurringBillsModal({ householdId, currencySymbol = '$'
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
         </div>
       ) : rules.length === 0 ? (
-        <div className="p-8 rounded-2xl bg-surface-primary border border-dashed border-border-subtle text-center space-y-2">
-          <span className="material-symbols-outlined text-[36px] text-content-muted">receipt_long</span>
-          <p className="text-sm font-semibold text-content-primary">No recurring bills scheduled</p>
-          <p className="text-xs text-content-muted">Add rent, internet, or cleaner to auto-split on schedule</p>
+        <div className="p-8 rounded-2xl card-glass border border-dashed border-gray-200/80 dark:border-white/10 text-center space-y-2">
+          <span className="material-symbols-outlined text-[36px] text-gray-400">receipt_long</span>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">No recurring bills scheduled</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Add rent, internet, or cleaner to auto-split on schedule</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {rules.map((rule) => (
-            <div key={rule.id} className="p-5 rounded-2xl bg-surface-primary border border-border-subtle space-y-4 flex flex-col justify-between">
+            <div key={rule.id} className="p-5 rounded-2xl card-glass border border-gray-200/80 dark:border-white/10 shadow-lg space-y-4 flex flex-col justify-between">
               <div>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h4 className="text-sm font-bold text-content-primary">{rule.name}</h4>
-                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-surface-secondary text-content-muted capitalize border border-border-subtle">
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">{rule.name}</h4>
+                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 capitalize border border-gray-200/80 dark:border-white/10">
                       {rule.frequency} • Day {rule.dayOfMonth}
                     </span>
                   </div>
                   <div className="text-right">
-                    <div className="text-base font-black text-content-primary">
+                    <div className="text-base font-black text-gray-900 dark:text-white">
                       {currencySymbol}{rule.amount.toFixed(2)}
                     </div>
                     <button
@@ -399,16 +399,16 @@ export function HouseholdRecurringBillsModal({ householdId, currencySymbol = '$'
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full sm:max-w-lg bg-surface-primary border border-border-subtle rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+              className="w-full sm:max-w-lg bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-12 h-1 bg-border-strong rounded-full mx-auto mb-4 sm:hidden" />
-              <div className="flex items-center justify-between pb-4 border-b border-border-subtle">
-                <h3 className="text-lg font-bold text-content-primary">Create Recurring Bill</h3>
+              <div className="w-12 h-1 bg-gray-300 dark:bg-white/10 rounded-full mx-auto mb-4 sm:hidden" />
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200/80 dark:border-white/10">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Create Recurring Bill</h3>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-surface-secondary text-content-muted hover:text-content-primary"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-gray-900 dark:hover:text-white"
                 >
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
@@ -524,10 +524,10 @@ export function HouseholdRecurringBillsModal({ householdId, currencySymbol = '$'
                             step={splitType === 'percentage' ? '1' : '0.01'}
                             value={customShares[String(m.userId)] ?? ''}
                             onChange={(e) => handleShareChange(m.userId, parseFloat(e.target.value) || 0)}
-                            className="w-full px-3 py-1.5 rounded-lg bg-surface-primary border border-border-subtle text-xs text-right pr-6 font-mono text-content-primary"
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-xs text-right pr-6 font-mono text-gray-900 dark:text-white outline-none focus:border-primary"
                             placeholder="0"
                           />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted font-bold">
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
                             {splitType === 'percentage' ? '%' : currencySymbol}
                           </span>
                         </div>
@@ -539,7 +539,7 @@ export function HouseholdRecurringBillsModal({ householdId, currencySymbol = '$'
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full min-h-[44px] py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 mt-4"
+                  className="w-full min-h-[44px] py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-primary/25 disabled:opacity-50 mt-4"
                 >
                   <span className="material-symbols-outlined text-[18px]">save</span>
                   {isSubmitting ? 'Saving...' : 'Save Recurring Bill'}

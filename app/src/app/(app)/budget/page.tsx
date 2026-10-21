@@ -52,14 +52,14 @@ const CATEGORY_COLOR_STYLES: Record<string, { icon: string; iconBg: string; text
   blue: { icon: 'text-blue-600 dark:text-blue-400', iconBg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-500', bar: 'bg-blue-500' },
   yellow: { icon: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-50 dark:bg-amber-500/10', text: 'text-amber-500', bar: 'bg-amber-500' },
   pink: { icon: 'text-rose-600 dark:text-rose-400', iconBg: 'bg-rose-50 dark:bg-rose-500/10', text: 'text-rose-500', bar: 'bg-rose-500' },
-  indigo: { icon: 'text-indigo-600 dark:text-indigo-400', iconBg: 'bg-indigo-50 dark:bg-indigo-500/10', text: 'text-indigo-500', bar: 'bg-indigo-500' },
+  indigo: { icon: 'text-primary dark:text-[#38bdf8]', iconBg: 'bg-primary/10', text: 'text-primary dark:text-[#38bdf8]', bar: 'bg-primary' },
   emerald: { icon: 'text-emerald-600 dark:text-emerald-400', iconBg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-500', bar: 'bg-emerald-500' },
   sky: { icon: 'text-sky-600 dark:text-sky-400', iconBg: 'bg-sky-50 dark:bg-sky-500/10', text: 'text-sky-500', bar: 'bg-sky-500' },
   rose: { icon: 'text-rose-600 dark:text-rose-400', iconBg: 'bg-rose-50 dark:bg-rose-500/10', text: 'text-rose-500', bar: 'bg-rose-500' },
   amber: { icon: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-50 dark:bg-amber-500/10', text: 'text-amber-500', bar: 'bg-amber-500' },
   teal: { icon: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-50 dark:bg-teal-500/10', text: 'text-teal-500', bar: 'bg-teal-500' },
   gray: { icon: 'text-gray-600 dark:text-gray-400', iconBg: 'bg-gray-50 dark:bg-gray-500/10', text: 'text-gray-500', bar: 'bg-gray-500' },
-  primary: { icon: 'text-indigo-600 dark:text-indigo-400', iconBg: 'bg-indigo-50 dark:bg-indigo-500/10', text: 'text-indigo-600', bar: 'bg-indigo-600' },
+  primary: { icon: 'text-primary dark:text-[#38bdf8]', iconBg: 'bg-primary/10', text: 'text-primary dark:text-[#38bdf8]', bar: 'bg-primary' },
 };
 
 const getColorStyles = (color: string) => CATEGORY_COLOR_STYLES[color] || CATEGORY_COLOR_STYLES.gray;
@@ -351,7 +351,7 @@ export default function BudgetPage() {
       {/* Month Navigation & Controls */}
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary dark:text-[#38bdf8] text-xs font-bold uppercase tracking-wider mb-2">
             <span className="material-symbols-outlined text-[16px]">mail</span>
             Zero-Based Envelope System
           </div>
@@ -375,7 +375,7 @@ export default function BudgetPage() {
             </button>
             <button
               onClick={handleCurrentMonth}
-              className="px-3 py-1 text-sm font-bold text-gray-900 dark:text-white hover:text-indigo-600 transition-colors"
+              className="px-3 py-1 text-sm font-bold text-gray-900 dark:text-white hover:text-primary transition-colors"
               title="Jump to current month"
             >
               {monthName}
@@ -407,7 +407,7 @@ export default function BudgetPage() {
               setRolloverEnabledInput(true);
               setShowAddModal(true);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 shadow-md shadow-indigo-600/20"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 shadow-md shadow-primary/25"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             {t('budgetsPage.createBudget')}
@@ -447,7 +447,7 @@ export default function BudgetPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
           <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-outlined text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 p-2.5 rounded-xl text-[20px]">
+            <span className="material-symbols-outlined text-primary bg-primary/10 p-2.5 rounded-xl text-[20px]">
               account_balance_wallet
             </span>
             <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider">
@@ -538,7 +538,7 @@ export default function BudgetPage() {
       {/* Envelope Cards Grid */}
       {loading ? (
         <div className="p-16 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
-          <div className="w-9 h-9 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-9 h-9 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm font-medium">Synchronizing envelope balances and burn pace...</p>
         </div>
       ) : filteredBudgets.length === 0 ? (
@@ -554,7 +554,7 @@ export default function BudgetPage() {
           </p>
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-600/20"
+            className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold shadow-md shadow-primary/25"
           >
             {t('budgetsPage.emptyAction')}
           </button>
@@ -578,7 +578,7 @@ export default function BudgetPage() {
             return (
               <div
                 key={b.id}
-                className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 hover:border-indigo-500/40 transition-all flex flex-col justify-between group shadow-sm hover:shadow-md"
+                className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 hover:border-primary/40 transition-all flex flex-col justify-between group shadow-sm hover:shadow-md"
               >
                 <div>
                   {/* Category Header */}
@@ -705,7 +705,7 @@ export default function BudgetPage() {
                         setRolloverEnabledInput(b.rolloverEnabled);
                         setShowAddModal(true);
                       }}
-                      className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                       title="Edit monthly allocation"
                     >
                       <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -922,7 +922,7 @@ export default function BudgetPage() {
             >
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                     <span className="material-symbols-outlined text-[22px]">category</span>
                   </div>
                   <div>
@@ -953,7 +953,7 @@ export default function BudgetPage() {
                       {editTarget.category}
                     </div>
                   ) : isAddingCustom ? (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-surface-dark focus-within:border-indigo-500">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-surface-dark focus-within:border-primary">
                       <input
                         type="text"
                         placeholder="Enter custom category name..."
@@ -985,7 +985,7 @@ export default function BudgetPage() {
                           setSelectedCategory(e.target.value);
                         }
                       }}
-                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-500 text-gray-900 dark:text-white"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white"
                     >
                       <option value="" disabled>Select category...</option>
                       <optgroup label="Standard Categories">
@@ -1000,7 +1000,7 @@ export default function BudgetPage() {
                           ))}
                         </optgroup>
                       )}
-                      <option value="___ADD_CUSTOM___" className="text-indigo-600 font-bold">
+                      <option value="___ADD_CUSTOM___" className="text-primary font-bold">
                         + Add Custom Category
                       </option>
                     </select>
@@ -1020,7 +1020,7 @@ export default function BudgetPage() {
                     onChange={(e) => setMonthlyLimitInput(e.target.value)}
                     placeholder="e.g. 500"
                     required
-                    className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-indigo-500 text-gray-900 dark:text-white tabular-nums font-mono font-bold"
+                    className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm outline-none focus:border-primary text-gray-900 dark:text-white tabular-nums font-mono font-bold"
                   />
                 </div>
 
@@ -1038,7 +1038,7 @@ export default function BudgetPage() {
                     type="checkbox"
                     checked={rolloverEnabledInput}
                     onChange={(e) => setRolloverEnabledInput(e.target.checked)}
-                    className="w-5 h-5 accent-indigo-600 rounded cursor-pointer"
+                    className="w-5 h-5 accent-primary rounded cursor-pointer"
                   />
                 </div>
 
@@ -1053,7 +1053,7 @@ export default function BudgetPage() {
                   <button
                     type="submit"
                     disabled={savingBudget || !monthlyLimitInput}
-                    className="flex-1 py-3 px-4 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                    className="flex-1 py-3 px-4 rounded-xl font-bold bg-primary hover:bg-primary-hover text-white transition-colors shadow-lg shadow-primary/25 disabled:opacity-50"
                   >
                     {savingBudget ? 'Saving...' : 'Save Envelope'}
                   </button>

@@ -349,7 +349,7 @@ export default function TransactionAttachmentsSection({
                     >
                       <div className="relative z-20 p-4 text-left">
                           <div className="flex items-start justify-between">
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isImage ? 'bg-indigo-50 text-indigo-500 dark:bg-indigo-500/10 dark:text-indigo-400' : 'bg-primary/10 text-primary'}`}>
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isImage ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'bg-primary/10 text-primary'}`}>
                                 <span className="material-symbols-outlined text-[20px]">{icon}</span>
                             </div>
                             <button

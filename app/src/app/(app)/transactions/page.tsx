@@ -1060,9 +1060,9 @@ export default function TransactionsPage() {
                             onClick={() => handleRowClick(tx)}
                             className={`group transition-colors duration-150 cursor-pointer h-[52px] ${
                               isSelected
-                                ? 'bg-indigo-50/70 dark:bg-indigo-950/25'
+                                ? 'bg-primary/10 dark:bg-primary/15'
                                 : isFocused
-                                ? 'bg-indigo-50/40 dark:bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/30'
+                                ? 'bg-primary/5 dark:bg-primary/10 ring-1 ring-inset ring-primary/30'
                                 : 'hover:bg-gray-50/80 dark:hover:bg-[#21262d]/40'
                             }`}
                           >
@@ -1090,7 +1090,7 @@ export default function TransactionsPage() {
                                       ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'
                                       : tx.type === 'earning'
                                       ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'
-                                      : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500'
+                                      : 'bg-primary/10 dark:bg-primary/10 text-primary dark:text-[#38bdf8]'
                                   }`}
                                 >
                                   <span className="material-symbols-outlined text-[17px]">
@@ -1233,9 +1233,9 @@ export default function TransactionsPage() {
                                       <button
                                         type="button"
                                         onClick={() => setSelectedDetailTx(tx)}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/50 hover:bg-indigo-100 transition-colors"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-primary/10 dark:bg-primary/15 text-primary dark:text-[#38bdf8] border border-primary/20 dark:border-primary/30 hover:bg-primary/20 transition-colors"
                                       >
-                                        <span className="material-symbols-outlined text-[14px] text-indigo-500">
+                                        <span className="material-symbols-outlined text-[14px] text-primary">
                                           call_split
                                         </span>
                                         <span>Split ({splitsArray.length})</span>
@@ -1503,7 +1503,7 @@ export default function TransactionsPage() {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 80, opacity: 0, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[95vw] bg-white/95 dark:bg-[#161b22]/95 border border-indigo-200 dark:border-[#30363d] rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex items-center gap-2 flex-wrap sm:flex-nowrap"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[95vw] bg-white/95 dark:bg-[#12182B]/95 border border-primary/20 dark:border-white/10 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex items-center gap-2 flex-wrap sm:flex-nowrap"
           >
             {/* Selected Count & Live Net Sum */}
             <div className="flex items-center gap-2 pl-2 pr-3 py-1 border-r border-gray-200 dark:border-white/10 shrink-0">

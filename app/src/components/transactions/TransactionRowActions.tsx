@@ -102,7 +102,7 @@ export const TransactionRowActions: React.FC<TransactionRowActionsProps> = ({
                         }}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10 transition-colors"
                     >
-                        <span className="material-symbols-outlined text-[16px] text-indigo-500">call_split</span>
+                        <span className="material-symbols-outlined text-[16px] text-primary">call_split</span>
                         <span>Split Transaction</span>
                     </button>
 

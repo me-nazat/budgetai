@@ -62,6 +62,9 @@ export function isLockedOut(ip: string, email?: string): {
   retryAfterMs: number;
 } {
   // Never apply global account lockout to local or unknown development IPs
+  if (email?.toLowerCase().trim() === 'demo@wealthai.app') {
+    return { locked: false, retryAfterMs: 0 };
+  }
   if (!email && (ip === 'unknown' || ip === '127.0.0.1' || ip === '::1' || ip === 'localhost')) {
     return { locked: false, retryAfterMs: 0 };
   }

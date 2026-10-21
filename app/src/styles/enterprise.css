@@ -32,30 +32,37 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   INSTITUTIONAL SURFACE CARDS (REPLACING HEAVY FROSTED GLASS)
+   INSTITUTIONAL SURFACE CARDS & TACTILE DEPTH
    ═══════════════════════════════════════════════════════════════ */
 
-/* Clean standard card surface with 1px hairline border */
+/* Clean standard card surface with subtle glow border */
 .glass-card {
-  background: var(--bg-surface, #11131A);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
+  background: var(--bg-surface, #12182B);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(19, 109, 236, 0.25);
+  box-shadow: 0 12px 32px -4px rgba(19, 109, 236, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Elevated card / modal surface */
 .glass-card-elevated {
-  background: var(--bg-elevated, #161922);
-  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.14));
-  border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
+  background: var(--bg-elevated, #1A2238);
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.12));
+  border-radius: 18px;
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Strictly constrained 12px blur for sticky headers and navigation bars */
 .glass-header,
 .glass-nav-blur {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -66,7 +73,7 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: var(--bg-canvas, #090A0F);
+  background: var(--bg-canvas, #0A0E1B);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -74,22 +81,22 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .hover-lift {
-  transition: transform 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .hover-lift:hover {
-  transform: translateY(-1px);
-  border-color: var(--border-strong, rgba(255, 255, 255, 0.14));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
+  transform: translateY(-2px);
+  border-color: rgba(19, 109, 236, 0.3);
+  box-shadow: 0 12px 28px -4px rgba(19, 109, 236, 0.18);
 }
 
 .hover-glow {
-  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .hover-glow:hover {
-  border-color: var(--border-strong, rgba(255, 255, 255, 0.14));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
+  border-color: rgba(19, 109, 236, 0.35);
+  box-shadow: 0 0 20px rgba(19, 109, 236, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -153,7 +160,7 @@ table th {
 
 /* Semantic text accents */
 .text-gradient-primary {
-  color: var(--accent-primary, #6366F1);
+  color: var(--accent-primary, #136dec);
 }
 
 .text-gradient-success {
@@ -161,7 +168,7 @@ table th {
 }
 
 .text-gradient-warning {
-  color: var(--finance-warning, #F59E0B);
+  color: var(--finance-warning, #FFB800);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -199,7 +206,7 @@ html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
    ═══════════════════════════════════════════════════════════════ */
 
 .focus-ring:focus-visible {
-  outline: 2px solid rgba(99, 102, 241, 0.6);
+  outline: 2px solid rgba(19, 109, 236, 0.6);
   outline-offset: 2px;
   border-radius: 8px;
 }
@@ -238,7 +245,7 @@ html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   width: 18px;
   height: 18px;
   border: 2px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-  border-top-color: var(--accent-primary, #6366F1);
+  border-top-color: var(--accent-primary, #136dec);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

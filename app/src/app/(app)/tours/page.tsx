@@ -179,7 +179,7 @@ export default function ToursPage() {
             onClick={() => setIsJoinModalOpen(true)}
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.97 }}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-surface-primary px-4 py-2.5 text-xs font-bold text-content-primary hover:bg-surface-secondary shadow-xs transition-colors"
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/70 dark:bg-surface-dark/90 px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.08] shadow-sm transition-all"
           >
             <span className="material-symbols-outlined text-[18px]">group_add</span>
             Join with Code
@@ -187,7 +187,7 @@ export default function ToursPage() {
           <motion.div whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}>
             <Link
               href="/tours/new"
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-600 px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-emerald-500/25 transition-all"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-primary/25 transition-all"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               New Tour
@@ -198,83 +198,83 @@ export default function ToursPage() {
 
       {/* Hero Header */}
       <div>
-        <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-400 mb-1">
-          Group Travel & Expeditions
+        <p className="text-xs font-black uppercase tracking-[0.24em] text-primary mb-1">
+          Shared Expenses & Travel
         </p>
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">
-          Tour Command Center
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-gray-950 dark:text-white">
+          Tour Budget Manager
         </h1>
-        <p className="mt-1.5 max-w-2xl text-xs sm:text-sm font-medium text-gray-400">
-          Zero-drift split accounting, shared kitty pools, day-by-day itineraries, and minimal-cashflow settlements.
+        <p className="mt-1.5 max-w-2xl text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">
+          Track group expenses, log shared trip costs, manage kitty pools, and settle balances with minimal cash transfers.
         </p>
       </div>
 
       {/* Top 4 KPI Summary Cards with tabular-nums */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-primary border border-border-subtle flex flex-col justify-between">
+        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Active Tours</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400">
-              <span className="material-symbols-outlined text-[18px]">flight_takeoff</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Active Tours</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+              <span className="material-symbols-outlined text-[19px]">flight_takeoff</span>
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-white tabular-nums">
+            <h3 className="text-2xl sm:text-3xl font-black text-gray-950 dark:text-white tabular-nums">
               {kpis.activeCount}
             </h3>
-            <p className="text-[10px] text-gray-400 mt-0.5">Ongoing group journeys</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Ongoing group journeys</p>
           </div>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-primary border border-border-subtle flex flex-col justify-between">
+        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Trip Spend (YTD)</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400">
-              <span className="material-symbols-outlined text-[18px]">payments</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Trip Spend (YTD)</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-500">
+              <span className="material-symbols-outlined text-[19px]">payments</span>
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-white tabular-nums">
+            <h3 className="text-2xl sm:text-3xl font-black text-gray-950 dark:text-white tabular-nums">
               {fmt(kpis.totalSpendYtd)}
             </h3>
-            <p className="text-[10px] text-gray-400 mt-0.5">Across all registered trips</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Across all registered trips</p>
           </div>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-primary border border-border-subtle flex flex-col justify-between">
+        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">You Are Owed</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-              <span className="material-symbols-outlined text-[18px]">trending_up</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">You Are Owed</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+              <span className="material-symbols-outlined text-[19px]">trending_up</span>
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-emerald-400 tabular-nums">
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
               +{fmt(kpis.totalOwed)}
             </h3>
-            <p className="text-[10px] text-gray-400 mt-0.5">Receivable from group members</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Receivable from group members</p>
           </div>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-primary border border-border-subtle flex flex-col justify-between">
+        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400">You Owe</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
-              <span className="material-symbols-outlined text-[18px]">trending_down</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">You Owe</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400">
+              <span className="material-symbols-outlined text-[19px]">trending_down</span>
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-rose-400 tabular-nums">
+            <h3 className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tabular-nums">
               -{fmt(kpis.totalOwe)}
             </h3>
-            <p className="text-[10px] text-gray-400 mt-0.5">Pending debt to settle</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Pending debt to settle</p>
           </div>
         </div>
       </div>
 
       {/* Search and Status Tabs Filter */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-surface-primary border border-border-subtle max-w-fit">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/70 dark:bg-surface-dark/90 backdrop-blur-xl border border-gray-200/80 dark:border-white/10 max-w-fit shadow-sm">
           {[
             { id: 'all', label: 'All Trips' },
             { id: 'active', label: 'Active / Ongoing' },
@@ -286,8 +286,8 @@ export default function ToursPage() {
               onClick={() => setActiveFilter(tab.id as FilterStatus)}
               className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 activeFilter === tab.id
-                  ? 'bg-emerald-500 text-white shadow-xs font-black'
-                  : 'text-content-muted hover:text-white'
+                  ? 'bg-primary text-white shadow-md shadow-primary/25 font-black'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.06]'
               }`}
             >
               {tab.label}
@@ -304,7 +304,7 @@ export default function ToursPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tours or destinations..."
-            className="w-full pl-10 pr-4 py-2 text-xs font-bold text-white bg-surface-primary border border-border-subtle rounded-xl outline-none focus:border-emerald-500"
+            className="w-full pl-10 pr-4 py-2 text-xs font-bold text-gray-900 dark:text-white bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border border-gray-200/80 dark:border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
           />
         </div>
       </div>
@@ -317,24 +317,24 @@ export default function ToursPage() {
           ))}
         </div>
       ) : error ? (
-        <div className="p-8 text-center rounded-3xl bg-surface-primary border border-border-subtle">
-          <span className="material-symbols-outlined text-4xl text-rose-400 mb-2">error</span>
-          <h3 className="text-base font-bold text-white">{error}</h3>
+        <div className="p-8 text-center rounded-3xl card-glass border border-rose-500/20">
+          <span className="material-symbols-outlined text-4xl text-rose-500 mb-2">error</span>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">{error}</h3>
         </div>
       ) : filteredTours.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl bg-surface-primary border border-dashed border-border-subtle space-y-3">
-          <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400">
+        <div className="p-12 text-center rounded-3xl card-glass border border-dashed border-gray-200 dark:border-white/10 space-y-3">
+          <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <span className="material-symbols-outlined text-3xl">flight_takeoff</span>
           </div>
-          <h3 className="text-lg font-bold text-white">No tours found</h3>
-          <p className="text-xs text-gray-400 max-w-sm mx-auto">
+          <h3 className="text-lg font-bold text-gray-950 dark:text-white">No tours found</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
             {searchQuery
               ? 'Try modifying your search or filter keywords.'
               : 'Start a collaborative group budget for your next vacation, road trip, or family event.'}
           </p>
           <Link
             href="/tours/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs shadow-md shadow-primary/25 transition-all"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
             Create First Tour
@@ -357,28 +357,28 @@ export default function ToursPage() {
                 whileHover={{ y: -4 }}
                 transition={{ ...spring, delay: index * 0.04 }}
                 onClick={() => router.push(`/tours/${tour.id}`)}
-                className="group relative cursor-pointer overflow-hidden rounded-[2rem] border border-border-subtle bg-surface-primary p-6 shadow-xl transition-all duration-300 hover:border-emerald-500/40"
+                className="group relative cursor-pointer overflow-hidden rounded-[2rem] border border-gray-200/80 dark:border-white/10 bg-white/90 dark:bg-surface-dark/90 p-6 shadow-xl transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10"
               >
                 {/* Background ambient gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-40 group-hover:opacity-75 transition-opacity duration-500`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-30 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none`} />
 
                 <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
                   {/* Top Bar: Icon, Destination, Date & Delete Action */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 border border-white/10 text-white backdrop-blur-md">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/10 border border-gray-200/60 dark:border-white/10 text-gray-900 dark:text-white backdrop-blur-md">
                         <span className="material-symbols-outlined text-[20px]">
                           {TOUR_ICONS[index % TOUR_ICONS.length]}
                         </span>
                       </div>
                       <div>
                         {tour.destination && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-sky-400">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-primary">
                             <span className="material-symbols-outlined text-[14px]">pin_drop</span>
                             {tour.destination}
                           </span>
                         )}
-                        <h2 className="text-lg font-black text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
+                        <h2 className="text-lg font-black text-gray-950 dark:text-white group-hover:text-primary transition-colors line-clamp-1">
                           {tour.name}
                         </h2>
                       </div>
@@ -388,10 +388,10 @@ export default function ToursPage() {
                       <span
                         className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
                           status === 'active'
-                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                            ? 'bg-primary/15 border-primary/30 text-primary'
                             : status === 'upcoming'
-                            ? 'bg-sky-500/15 border-sky-500/30 text-sky-400'
-                            : 'bg-surface-secondary border-border-subtle text-gray-400'
+                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-gray-100 dark:bg-surface-secondary border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400'
                         }`}
                       >
                         {status}
@@ -400,7 +400,7 @@ export default function ToursPage() {
                         <button
                           onClick={(e) => deleteTour(e, tour.id)}
                           disabled={isDeleting === tour.id}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 disabled:opacity-50"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 disabled:opacity-50 transition-colors"
                         >
                           <span className="material-symbols-outlined text-[15px]">
                             {isDeleting === tour.id ? 'hourglass_empty' : 'delete'}
@@ -411,7 +411,7 @@ export default function ToursPage() {
                   </div>
 
                   {/* Dates & Members Avatars */}
-                  <div className="flex items-center justify-between text-xs text-gray-400">
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                     <div className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[15px]">calendar_today</span>
                       <span>
@@ -428,13 +428,13 @@ export default function ToursPage() {
                         <div
                           key={p.id || pIdx}
                           title={p.name}
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 border-2 border-slate-950 text-[9px] font-black uppercase text-white shrink-0"
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 border-2 border-white dark:border-slate-950 text-[9px] font-black uppercase text-white shrink-0"
                         >
                           {p.name.slice(0, 2).toUpperCase()}
                         </div>
                       ))}
                       {tour.participants.length > 4 && (
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 border-2 border-slate-950 text-[9px] font-black text-gray-300">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 border-2 border-white dark:border-slate-950 text-[9px] font-black text-gray-300">
                           +{tour.participants.length - 4}
                         </div>
                       )}
@@ -445,15 +445,15 @@ export default function ToursPage() {
                   {budgetRatio !== null && (
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-bold">
-                        <span className="text-gray-400">Budget Spent</span>
-                        <span className="text-white font-mono">
+                        <span className="text-gray-500 dark:text-gray-400">Budget Spent</span>
+                        <span className="text-gray-950 dark:text-white font-mono">
                           {fmt(spent)} / {fmt(totalBudget)} ({budgetRatio}%)
                         </span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
-                            budgetRatio > 95 ? 'bg-rose-500' : budgetRatio > 75 ? 'bg-amber-400' : 'bg-emerald-400'
+                            budgetRatio > 95 ? 'bg-rose-500' : budgetRatio > 75 ? 'bg-amber-400' : 'bg-primary'
                           }`}
                           style={{ width: `${budgetRatio}%` }}
                         />
@@ -462,26 +462,26 @@ export default function ToursPage() {
                   )}
 
                   {/* Bottom Strip: Total Spent & Personal Net Position Badge */}
-                  <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                  <div className="pt-3 border-t border-gray-200/60 dark:border-white/10 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Group Spend</p>
-                      <p className="text-base font-black text-white tabular-nums">{fmt(spent)}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Group Spend</p>
+                      <p className="text-base font-black text-gray-950 dark:text-white tabular-nums">{fmt(spent)}</p>
                     </div>
 
                     {/* Personal Net Position Badge */}
                     <div>
                       {userBal > 0.01 ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-black">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black">
                           <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
                           You are owed +{fmt(userBal)}
                         </span>
                       ) : userBal < -0.01 ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-black">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-black">
                           <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
                           You owe -{fmt(Math.abs(userBal))}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 text-xs font-bold">
                           All settled
                         </span>
                       )}

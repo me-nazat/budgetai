@@ -26,7 +26,7 @@ export default function FloatingActionButton() {
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={handleClick}
       aria-label="Quick Add Transaction"
-      className="fixed bottom-24 right-5 lg:bottom-8 lg:right-8 z-40 w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 flex items-center justify-center transition-colors border border-emerald-400/40 cursor-pointer"
+      className="fixed bottom-24 right-5 lg:bottom-8 lg:right-8 z-40 w-12 h-12 rounded-full bg-primary hover:bg-primary-hover text-white shadow-xl shadow-primary/30 flex items-center justify-center transition-all border border-primary/40 hover:scale-105 active:scale-95 cursor-pointer"
     >
       <span className="material-symbols-outlined text-2xl font-bold">add</span>
     </motion.button>

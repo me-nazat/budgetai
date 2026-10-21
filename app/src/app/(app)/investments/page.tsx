@@ -53,7 +53,7 @@ const ASSET_CLASSES = [
   { value: 'stock', label: 'Equities / Stocks', icon: 'trending_up', color: '#10b981' },
   { value: 'bond', label: 'Fixed / Bonds / Sanchayapatra', icon: 'account_balance', color: '#0ea5e9' },
   { value: 'real_estate', label: 'Real Estate / Gold', icon: 'domain', color: '#f59e0b' },
-  { value: 'crypto', label: 'Crypto', icon: 'currency_bitcoin', color: '#6366f1' },
+  { value: 'crypto', label: 'Crypto', icon: 'currency_bitcoin', color: '#0284c7' },
   { value: 'cash', label: 'Cash & Cash-Equivalents', icon: 'payments', color: '#64748b' },
   { value: 'etf', label: 'ETFs & Mutual Funds', icon: 'pie_chart', color: '#38bdf8' },
   { value: 'other', label: 'Alternative Assets', icon: 'category', color: '#94a3b8' },

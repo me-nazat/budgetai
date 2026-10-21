@@ -162,7 +162,7 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         {/* Headline */}
                         <motion.h1 variants={fadeInUp} className="text-5xl font-medium tracking-tight text-gray-900 dark:text-white sm:text-6xl md:text-7xl lg:text-6xl xl:text-7xl leading-[1.1]" style={{ fontFamily: 'var(--font-playfair), serif' }}>
                             Master your<br />wealth with<br />
-                            <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-indigo-400 dark:from-lp-cyan dark:via-cyan-200 dark:to-white lp-glow-text">
+                            <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-cyan-400 dark:from-lp-cyan dark:via-cyan-200 dark:to-white lp-glow-text">
                                 precision.
                             </span>
                         </motion.h1>
@@ -196,7 +196,7 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         <motion.div variants={fadeInUp} className="pt-2 flex items-center gap-6 border-t border-gray-200 dark:border-white/5">
                             <div className="flex -space-x-3 pt-4">
                                 {[
-                                    'bg-gradient-to-br from-blue-400 to-indigo-500',
+                                    'bg-gradient-to-br from-blue-400 to-cyan-500',
                                     'bg-gradient-to-br from-emerald-400 to-teal-500',
                                     'bg-gradient-to-br from-amber-400 to-orange-500'
                                 ].map((bg, i) => (
@@ -879,7 +879,7 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
                 <motion.div 
                     variants={fadeInUp}
                     whileHover={{ scale: 1.01 }}
-                    className="relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-indigo-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0E1B] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5"
+                    className="relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-cyan-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0E1B] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5"
                 >
                     <div className="absolute top-0 left-1/4 h-48 w-48 rounded-full bg-white/10 dark:bg-lp-cyan/10 blur-[80px]" />
                     <div className="absolute bottom-0 right-1/4 h-48 w-48 rounded-full bg-blue-400/10 dark:bg-blue-600/10 blur-[80px]" />

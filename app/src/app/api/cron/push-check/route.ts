@@ -272,7 +272,7 @@ export async function GET(request: NextRequest) {
           title: payload.title || 'WealthAI Scheduled Alert',
           body: payload.body || 'You have an upcoming financial obligation.',
           tag: payload.tag || 'calendar-reminder',
-          url: payload.url || '/recurring',
+          url: payload.url || '/recurring-subscriptions',
         });
 
         await db

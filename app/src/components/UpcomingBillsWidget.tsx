@@ -130,7 +130,7 @@ export default function UpcomingBillsWidget() {
             )}
           </div>
           <Link
-            href="/recurring"
+            href="/recurring-subscriptions"
             className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
           >
             <span>Manage</span>
@@ -203,7 +203,7 @@ export default function UpcomingBillsWidget() {
       {upcomingBills.length > 4 && (
         <div className="pt-3 mt-3 border-t border-gray-150 dark:border-white/5 text-center">
           <Link
-            href="/recurring"
+            href="/recurring-subscriptions"
             className="text-[11px] font-semibold text-primary hover:underline"
           >
             +{upcomingBills.length - 4} more bills scheduled →

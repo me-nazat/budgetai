@@ -151,39 +151,39 @@ export default function NewTourPage() {
         onClick={() => router.back()}
         whileTap={{ scale: 0.97 }}
         transition={spring}
-        className="inline-flex items-center gap-2 rounded-2xl border border-border-subtle bg-surface-primary px-4 py-2 text-xs font-bold text-gray-400 hover:text-white transition-colors"
+        className="inline-flex items-center gap-2 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/70 dark:bg-surface-dark/90 px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white shadow-sm transition-all"
       >
         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
         Back to Tours
       </motion.button>
 
       <header>
-        <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-400 mb-1">Trip Creator</p>
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+        <p className="text-xs font-black uppercase tracking-[0.24em] text-primary mb-1">Trip Creator</p>
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-950 dark:text-white">
           Create New Group Tour
         </h1>
-        <p className="mt-1 text-xs sm:text-sm text-gray-400">
+        <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           Set trip details, target budgets, shared kitty pool, and initial travellers.
         </p>
       </header>
 
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-300">
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-500 dark:text-rose-300">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Tour Details */}
-        <div className="p-6 rounded-3xl bg-surface-primary border border-border-subtle space-y-4 shadow-xl">
-          <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-emerald-400 text-[18px]">flight_takeoff</span>
+        <div className="p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+          <h2 className="text-sm font-black uppercase tracking-wider text-gray-950 dark:text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-[18px]">flight_takeoff</span>
             1. Trip Essentials
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
                 Tour Name *
               </label>
               <input
@@ -191,13 +191,13 @@ export default function NewTourPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Cox's Bazar Road Trip, Bali Vacation 2026"
-                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none focus:border-emerald-500"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-sm font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
                 Destination (Optional)
               </label>
               <input
@@ -205,21 +205,21 @@ export default function NewTourPage() {
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
                 placeholder="e.g. Cox's Bazar, Bali, Rome"
-                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none focus:border-emerald-500"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-sm font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
                 Base Currency
               </label>
               <select
                 value={baseCurrency}
                 onChange={(e) => setBaseCurrency(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none focus:border-emerald-500"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-sm font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
               >
                 {POPULAR_CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>
+                  <option key={c.code} value={c.code} className="bg-white dark:bg-slate-900 text-gray-950 dark:text-white">
                     {c.label}
                   </option>
                 ))}
@@ -227,40 +227,40 @@ export default function NewTourPage() {
             </div>
 
             <div>
-              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
                 Start Date
               </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-emerald-500"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-sm font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
                 End Date
               </label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-sm font-bold text-white outline-none [color-scheme:dark] focus:border-emerald-500"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-sm font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
               />
             </div>
           </div>
         </div>
 
         {/* Target Budget & Kitty Pool Toggle */}
-        <div className="p-6 rounded-3xl bg-surface-primary border border-border-subtle space-y-4 shadow-xl">
-          <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-sky-400 text-[18px]">payments</span>
+        <div className="p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+          <h2 className="text-sm font-black uppercase tracking-wider text-gray-950 dark:text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
             2. Budget & Kitty Pool
           </h2>
 
           <div>
-            <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+            <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
               Total Target Budget (Optional)
             </label>
             <div className="relative">
@@ -271,24 +271,24 @@ export default function NewTourPage() {
                 value={totalBudget}
                 onChange={(e) => setTotalBudget(e.target.value)}
                 placeholder="e.g. 50000"
-                className="w-full px-4 py-3.5 rounded-2xl bg-[#0f172a] border border-border-subtle text-base font-mono font-bold text-white outline-none focus:border-sky-500"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-base font-mono font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 dark:text-gray-400">
                 {baseCurrency}
               </span>
             </div>
           </div>
 
           {/* Shared Tour Kitty Pool Switch */}
-          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4">
+          <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10 flex items-center justify-between gap-4">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-emerald-400 text-[20px]">savings</span>
-                <span className="text-xs font-black text-white uppercase tracking-wider">
+                <span className="material-symbols-outlined text-emerald-500 dark:text-emerald-400 text-[20px]">savings</span>
+                <span className="text-xs font-black text-gray-950 dark:text-white uppercase tracking-wider">
                   Enable Shared Tour Kitty / Pool
                 </span>
               </div>
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
                 Allows group members to deposit cash up front into a shared pool to pay for fuel, tolls, and group meals.
               </p>
             </div>
@@ -299,35 +299,35 @@ export default function NewTourPage() {
                 onChange={(e) => setEnableKittyPool(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
             </label>
           </div>
         </div>
 
         {/* Travellers Section */}
-        <div className="p-6 rounded-3xl bg-surface-primary border border-border-subtle space-y-4 shadow-xl">
+        <div className="p-6 rounded-3xl card-glass space-y-4 shadow-xl">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-amber-400 text-[18px]">group</span>
+            <h2 className="text-sm font-black uppercase tracking-wider text-gray-950 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-500 text-[18px]">group</span>
               3. Travellers & Members ({validParticipants.length})
             </h2>
             <button
               type="button"
               onClick={handleAddParticipant}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-secondary border border-border-subtle text-xs font-bold text-emerald-400 hover:bg-surface-tertiary transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">person_add</span>
               Add Traveller
             </button>
           </div>
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
             Add friends, family, or offline guests. Registered users can claim their spot later with the invite link.
           </p>
 
           <div className="space-y-2.5">
             {participants.map((p, idx) => (
               <div key={p.id} className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 border border-white/10 text-xs font-bold text-gray-400 shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
                   #{idx + 1}
                 </div>
                 <input
@@ -335,14 +335,14 @@ export default function NewTourPage() {
                   value={p.name}
                   onChange={(e) => handleParticipantChange(p.id, e.target.value)}
                   placeholder={`Traveller ${idx + 1} name`}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#0f172a] border border-border-subtle text-xs font-bold text-white outline-none focus:border-amber-400"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-xs font-bold text-gray-950 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
                   required
                 />
                 {participants.length > 2 && (
                   <button
                     type="button"
                     onClick={() => handleRemoveParticipant(p.id)}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 shrink-0 transition-colors"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 shrink-0 transition-colors"
                   >
                     <span className="material-symbols-outlined text-[18px]">remove</span>
                   </button>
@@ -358,7 +358,7 @@ export default function NewTourPage() {
           disabled={!canSubmit || isSubmitting}
           whileHover={{ scale: canSubmit ? 1.01 : 1 }}
           whileTap={{ scale: canSubmit ? 0.98 : 1 }}
-          className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-600 font-black text-sm text-white shadow-xl shadow-emerald-500/25 transition-all disabled:opacity-50 disabled:pointer-events-none"
+          className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-primary hover:bg-primary-hover font-black text-sm text-white shadow-xl shadow-primary/25 transition-all disabled:opacity-50 disabled:pointer-events-none"
         >
           {isSubmitting ? (
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

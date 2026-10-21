@@ -15,6 +15,13 @@
   --color-border-subtle: var(--border-subtle);
   --color-border-strong: var(--border-strong);
 
+  /* Component Utility Tokens (Resolving custom component classes) */
+  --color-surface-primary: var(--bg-surface);
+  --color-surface-secondary: var(--bg-elevated);
+  --color-content-primary: var(--text-main);
+  --color-content-muted: var(--text-muted);
+  --color-content-secondary: var(--text-secondary);
+
   /* Semantic Financial Colors */
   --color-accent-primary: var(--accent-primary);
   --color-accent-primary-hover: var(--accent-primary-hover);
@@ -27,20 +34,20 @@
   --color-finance-neutral: var(--finance-neutral);
   --color-finance-neutral-bg: var(--finance-neutral-bg);
 
-  /* Extreme Dark Mode (OLED) */
-  --color-bg-dark: #090A0F;
-  --color-surface-dark: #11131A;
-  --color-surface-dark-2: #161922;
-  --color-surface-hover: rgba(255, 255, 255, 0.035);
-  --color-surface-border: rgba(255, 255, 255, 0.07);
+  /* Extreme Dark Mode (OLED / Midnight Navy) */
+  --color-bg-dark: #0A0E1B;
+  --color-surface-dark: #12182B;
+  --color-surface-dark-2: #1A2238;
+  --color-surface-hover: #1E293B;
+  --color-surface-border: rgba(255, 255, 255, 0.08);
   
-  /* Wealth AI Accents */
-  --color-primary: #6366F1;
-  --color-primary-hover: #4F46E5;
-  --color-primary-light: rgba(99, 102, 241, 0.1);
+  /* Wealth AI Signature Accents (Electric Sapphire - No Purple) */
+  --color-primary: #136dec;
+  --color-primary-hover: #0f5ec8;
+  --color-primary-light: rgba(19, 109, 236, 0.1);
   --color-accent-emerald: #10B981;
-  --color-accent-amber: #F59E0B;
-  --color-accent-rose: #F43F5E;
+  --color-accent-amber: #FFB800;
+  --color-accent-rose: #FF2A5F;
   
   /* Text */
   --color-text-main: var(--text-main);
@@ -51,17 +58,17 @@
   --color-bg-light: #F8FAFC;
   --color-surface-light: #FFFFFF;
   
-  /* Landing page colors */
-  --color-lp-cyan: #6366F1;
-  --color-lp-cyan-dark: #4F46E5;
-  --color-lp-bg-dark: #090A0F;
-  --color-lp-card-dark: #11131A;
-  --color-lp-navy: #161922;
-  --color-lp-navy-light: #F1F5F9;
+  /* Landing page & brand colors */
+  --color-lp-cyan: #5b8ff9;
+  --color-lp-cyan-dark: #136dec;
+  --color-lp-bg-dark: #0A0E1B;
+  --color-lp-card-dark: #12182B;
+  --color-lp-navy: #1A2238;
+  --color-lp-navy-light: #F0F2F8;
 
   /* Premium gradient palette */
-  --color-gradient-start: #6366F1;
-  --color-gradient-mid: #4F46E5;
+  --color-gradient-start: #136dec;
+  --color-gradient-mid: #1e3a8a;
   --color-gradient-end: #10B981;
 }
 
@@ -83,19 +90,19 @@
     --bg-canvas: #F8FAFC;
     --bg-surface: #FFFFFF;
     --bg-elevated: #F1F5F9;
-    --bg-hover: rgba(15, 23, 42, 0.03);
+    --bg-hover: rgba(15, 23, 42, 0.04);
     --border-subtle: rgba(15, 23, 42, 0.08);
     --border-strong: rgba(15, 23, 42, 0.16);
 
     /* Semantic financial color tokens */
-    --accent-primary: #6366F1;
-    --accent-primary-hover: #4F46E5;
+    --accent-primary: #136dec;
+    --accent-primary-hover: #0f5ec8;
     --finance-positive: #10B981;
     --finance-positive-bg: rgba(16, 185, 129, 0.12);
-    --finance-negative: #F43F5E;
-    --finance-negative-bg: rgba(244, 63, 94, 0.12);
-    --finance-warning: #F59E0B;
-    --finance-warning-bg: rgba(245, 158, 11, 0.12);
+    --finance-negative: #FF2A5F;
+    --finance-negative-bg: rgba(255, 42, 95, 0.12);
+    --finance-warning: #FFB800;
+    --finance-warning-bg: rgba(255, 184, 0, 0.12);
     --finance-neutral: #64748B;
     --finance-neutral-bg: rgba(100, 116, 139, 0.12);
 
@@ -105,12 +112,12 @@
     --color-text-main: #0F172A;
     --color-text-muted: #64748B;
     --color-text-secondary: #475569;
-    --color-chart-line: #6366F1;
+    --color-chart-line: #136dec;
     --graph-canvas-bg: #FFFFFF;
     --graph-grid-color: rgba(107, 114, 128, 0.18);
     --graph-axis-text: rgba(107, 114, 128, 0.72);
     --graph-gradient-start: #10B981;
-    --graph-gradient-end: #6366F1;
+    --graph-gradient-end: #136dec;
     --checklist-text: #1A1A1A;
     --checklist-text-muted: #4B5563;
     --checklist-badge-bg: #F3F4F6;
@@ -119,41 +126,41 @@
 
   html.dark, :where(.dark) {
     color-scheme: dark;
-    /* Surface and border token hierarchy — Dark Mode */
-    --bg-canvas: #090A0F;
-    --bg-surface: #11131A;
-    --bg-elevated: #161922;
-    --bg-hover: rgba(255, 255, 255, 0.035);
-    --border-subtle: rgba(255, 255, 255, 0.07);
-    --border-strong: rgba(255, 255, 255, 0.14);
+    /* Surface and border token hierarchy — Dark Mode (Midnight Navy & Electric Sapphire) */
+    --bg-canvas: #0A0E1B;
+    --bg-surface: #12182B;
+    --bg-elevated: #1A2238;
+    --bg-hover: #1E293B;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
 
     /* Semantic financial color tokens */
-    --accent-primary: #6366F1;
-    --accent-primary-hover: #4F46E5;
+    --accent-primary: #136dec;
+    --accent-primary-hover: #0f5ec8;
     --finance-positive: #10B981;
-    --finance-positive-bg: rgba(16, 185, 129, 0.12);
-    --finance-negative: #F43F5E;
-    --finance-negative-bg: rgba(244, 63, 94, 0.12);
-    --finance-warning: #F59E0B;
-    --finance-warning-bg: rgba(245, 158, 11, 0.12);
-    --finance-neutral: #64748B;
-    --finance-neutral-bg: rgba(100, 116, 139, 0.12);
+    --finance-positive-bg: rgba(16, 185, 129, 0.14);
+    --finance-negative: #FF2A5F;
+    --finance-negative-bg: rgba(255, 42, 95, 0.14);
+    --finance-warning: #FFB800;
+    --finance-warning-bg: rgba(255, 184, 0, 0.14);
+    --finance-neutral: #94A3B8;
+    --finance-neutral-bg: rgba(148, 163, 184, 0.14);
 
     --text-main: #FAFAFA;
-    --text-muted: #8E8E93;
-    --text-secondary: #A1A1A6;
+    --text-muted: #94A3B8;
+    --text-secondary: #CBD5E1;
     --color-text-main: #FAFAFA;
-    --color-text-muted: #8E8E93;
-    --color-text-secondary: #A1A1A6;
-    --color-chart-line: #6366F1;
-    --graph-canvas-bg: #090A0F;
+    --color-text-muted: #94A3B8;
+    --color-text-secondary: #CBD5E1;
+    --color-chart-line: #5b8ff9;
+    --graph-canvas-bg: #0A0E1B;
     --graph-grid-color: rgba(255, 255, 255, 0.08);
     --graph-axis-text: rgba(203, 213, 225, 0.75);
     --graph-gradient-start: #34D399;
-    --graph-gradient-end: #818CF8;
+    --graph-gradient-end: #5b8ff9;
     --checklist-text: #FFFFFF;
     --checklist-text-muted: #9CA3AF;
-    --checklist-badge-bg: rgba(255, 255, 255, 0.05);
+    --checklist-badge-bg: rgba(255, 255, 255, 0.06);
     --checklist-badge-text: #9CA3AF;
   }
 
@@ -1337,35 +1344,34 @@ html:not(.dark) .lp-section-divider {
 /* ============================================ */
 @layer utilities {
   .card-glass {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
-    transition: transform 150ms ease-out,
-      box-shadow 150ms ease-out,
-      border-color 150ms ease-out;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.22s ease,
+      border-color 0.22s ease;
   }
 
   :where(.dark) .card-glass {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    background: rgba(18, 24, 43, 0.78);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .card-glass:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
-    border-color: var(--border-strong);
-  }
-
-  :where(.dark) .card-glass:hover {
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
-    border-color: var(--border-strong);
-  }
-
-  :where(.dark) .card-glass:hover {
-    box-shadow: 0 12px 40px rgba(19, 109, 236, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -4px rgba(19, 109, 236, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
     border-color: rgba(19, 109, 236, 0.25);
+  }
+
+  :where(.dark) .card-glass:hover {
+    box-shadow: 0 14px 38px -4px rgba(19, 109, 236, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: rgba(19, 109, 236, 0.35);
   }
 
   /* Hover scale for interactive cards */
@@ -1675,46 +1681,64 @@ html:not(.dark) .auth-mesh-bg {
      PREMIUM V2 DESIGN SYSTEM
      ══════════════════════════════════════════════ */
 
-  /* Card with clean surface — institutional design */
+  /* Card with tactile surface and hairline glow border */
   .card-premium-v2 {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 18px;
+    box-shadow:
+      0 1px 3px rgba(15, 23, 42, 0.03),
+      0 14px 28px -6px rgba(15, 23, 42, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
     transition-property: border-color, box-shadow, background-color, transform;
-    transition-duration: 150ms;
+    transition-duration: 220ms;
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   :where(.dark) .card-premium-v2 {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    background: rgba(18, 24, 43, 0.85);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.25),
+      0 16px 36px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
   .card-premium-v2:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
-    border-color: var(--border-strong);
+    transform: translateY(-2px);
+    box-shadow:
+      0 16px 36px -6px rgba(19, 109, 236, 0.16),
+      0 4px 12px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border-color: rgba(19, 109, 236, 0.28);
   }
 
   :where(.dark) .card-premium-v2:hover {
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
-    border-color: var(--border-strong);
+    box-shadow:
+      0 18px 42px -6px rgba(19, 109, 236, 0.22),
+      0 6px 16px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: rgba(19, 109, 236, 0.38);
   }
 
   /* Elevated surface */
   .glass-premium {
     background: var(--bg-elevated);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--border-subtle);
-    border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   :where(.dark) .glass-premium {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    background: rgba(26, 34, 56, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
   /* Premium text gradient with animated sweep */

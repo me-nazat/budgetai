@@ -68,7 +68,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Entertainment': '#0ea5e9',
   'Transportation': '#06b6d4',
   'Cleaner & Domestic': '#14b8a6',
-  'Broadband & Internet': '#6366f1',
+  'Broadband & Internet': '#136dec',
   'Other': '#6b7280',
 };
 
@@ -380,24 +380,24 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
   return (
     <div className="space-y-6">
       {/* Header controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-surface-primary border border-border-subtle">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl card-glass border border-gray-200/80 dark:border-white/10 shadow-lg">
         <div>
-          <h3 className="text-base font-bold text-content-primary">Household Allocation Hub</h3>
-          <p className="text-xs text-content-muted">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Household Allocation Hub</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
             Monthly Cap: {currencySymbol}{totalCap.toLocaleString()} • Spent: {currencySymbol}{totalSpent.toLocaleString()}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Wheel View Mode Toggle */}
-          <div className="flex p-0.5 rounded-xl bg-surface-secondary border border-border-subtle">
+          <div className="flex p-1 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200/80 dark:border-white/10">
             <button
               type="button"
               onClick={() => setViewMode('categories')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 viewMode === 'categories'
-                  ? 'bg-emerald-500 text-white shadow-xs'
-                  : 'text-content-muted hover:text-content-primary'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               Categories
@@ -407,8 +407,8 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
               onClick={() => setViewMode('members')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 viewMode === 'members'
-                  ? 'bg-emerald-500 text-white shadow-xs'
-                  : 'text-content-muted hover:text-content-primary'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               Members
@@ -420,14 +420,14 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
             type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-surface-secondary border border-border-subtle text-content-primary focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:border-primary"
           />
 
           <button
             type="button"
             onClick={handleRebalance}
             disabled={isRebalancing || caps.length === 0}
-            className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all flex items-center gap-1"
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-primary/10 hover:bg-primary/20 text-primary dark:text-sky-400 border border-primary/25 transition-all flex items-center gap-1.5 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[16px]">balance</span>
             {isRebalancing ? 'Rebalancing...' : 'Rebalance Caps'}
@@ -438,7 +438,7 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
       {/* Main Wheel View & Strategy Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* SVG Circular Wheel */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 rounded-3xl bg-surface-primary border border-border-subtle relative min-h-[340px]">
+        <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 rounded-3xl card-glass border border-gray-200/80 dark:border-white/10 shadow-xl relative min-h-[340px]">
           <svg viewBox="0 0 300 300" className="w-[260px] h-[260px] filter drop-shadow-md">
             {wheelSlices.map((slice, i) => (
               <path
@@ -476,24 +476,24 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
         </div>
 
         {/* Member Split Strategy Configuration */}
-        <div className="lg:col-span-7 p-6 rounded-3xl bg-surface-primary border border-border-subtle space-y-5">
+        <div className="lg:col-span-7 p-6 rounded-3xl card-glass border border-gray-200/80 dark:border-white/10 shadow-xl space-y-5">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-black text-content-primary">Member Allocation Strategy</h4>
-              <span className="text-xs font-mono font-bold text-emerald-400">
+              <h4 className="text-sm font-black text-gray-900 dark:text-white">Member Allocation Strategy</h4>
+              <span className="text-xs font-mono font-bold text-emerald-500 dark:text-emerald-400">
                 Sum: {Object.values(computedMemberPercentages).reduce((a, b) => a + b, 0).toFixed(1)}%
               </span>
             </div>
 
             {/* 3-Way Strategy Segmented Toggle */}
-            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-surface-secondary border border-border-subtle">
+            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200/80 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setSplitStrategy('equal')}
                 className={`py-2 text-xs font-bold rounded-lg transition-all ${
                   splitStrategy === 'equal'
-                    ? 'bg-emerald-500 text-white shadow-xs'
-                    : 'text-content-muted hover:text-content-primary'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 1. Equal Split
@@ -504,8 +504,8 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
                 onClick={() => setSplitStrategy('income')}
                 className={`py-2 text-xs font-bold rounded-lg transition-all ${
                   splitStrategy === 'income'
-                    ? 'bg-emerald-500 text-white shadow-xs'
-                    : 'text-content-muted hover:text-content-primary'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 2. Income-Proportional
@@ -516,8 +516,8 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
                 onClick={() => setSplitStrategy('manual')}
                 className={`py-2 text-xs font-bold rounded-lg transition-all ${
                   splitStrategy === 'manual'
-                    ? 'bg-emerald-500 text-white shadow-xs'
-                    : 'text-content-muted hover:text-content-primary'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 3. Manual Sliders
@@ -526,7 +526,7 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
           </div>
 
           {/* Explanation banner */}
-          <div className="p-3 rounded-xl bg-surface-secondary border border-border-subtle text-xs text-content-muted">
+          <div className="p-3.5 rounded-xl bg-blue-500/5 dark:bg-primary/10 border border-blue-500/20 text-xs text-gray-600 dark:text-gray-300 font-medium">
             {splitStrategy === 'equal' && 'Each member contributes an equal percentage (100% / N).'}
             {splitStrategy === 'income' && 'Shares automatically scale according to each member’s monthly net income.'}
             {splitStrategy === 'manual' && 'Adjust individual sliders with lock toggles; unlocked members rebalance to 100% automatically.'}
@@ -598,7 +598,7 @@ export function HouseholdAllocationWheel({ householdId, currencySymbol = '$', cu
                               [m.userId]: parseFloat(e.target.value) || 0,
                             }))
                           }
-                          className="w-full pl-6 pr-3 py-1.5 rounded-xl bg-surface-primary border border-border-subtle text-xs font-mono font-bold text-content-primary outline-none focus:border-emerald-500"
+                          className="w-full pl-6 pr-3 py-1.5 rounded-xl bg-white/80 dark:bg-[#0A0E1B] border border-gray-200/80 dark:border-white/10 text-xs font-mono font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                         />
                       </div>
                     </div>

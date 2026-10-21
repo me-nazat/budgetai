@@ -384,7 +384,7 @@ export default function AccountsPage() {
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Color Tag</label>
                   <div className="flex gap-3">
-                    {['#136dec', '#10b981', '#FFB800', '#FF2A5F', '#8e44ad', '#34495e'].map((c) => (
+                    {['#136dec', '#10b981', '#FFB800', '#FF2A5F', '#06b6d4', '#34495e'].map((c) => (
                       <button
                         key={c}
                         type="button"

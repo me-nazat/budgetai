@@ -78,7 +78,7 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
             {/* ── CARD 1: Safe-to-Spend & Daily Allowance ── */}
             <TiltCard
-                className="p-5 lg:p-6 rounded-2xl relative overflow-visible border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)] flex flex-col justify-between"
+                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-visible flex flex-col justify-between hover:border-primary/30"
             >
                 <div>
                     <div className="flex items-center justify-between mb-1">
@@ -96,20 +96,20 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
                                 <span className="material-symbols-outlined text-[14px]">info</span>
                             </button>
                         </div>
-                        <span className="material-symbols-outlined text-[20px] text-emerald-500 opacity-90">
-                            verified_user
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
+                            <span className="material-symbols-outlined text-[19px]">verified_user</span>
                         </span>
                     </div>
 
                     <h3
-                        className="text-[var(--color-text-main)] text-2xl lg:text-[1.875rem] font-semibold tracking-tight tabular-nums font-mono my-1"
+                        className="text-gray-950 dark:text-white text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1"
                         data-numeric="true"
                     >
                         {formatAmount(safeToSpend.safeToSpendTotal, fmt(safeToSpend.safeToSpendTotal))}
                     </h3>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-[var(--border-subtle)]">
+                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-1.5">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
                             {formatAmount(safeToSpend.dailySafeAllowance, fmt(safeToSpend.dailySafeAllowance))}/day
@@ -124,9 +124,9 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
                 {showFormulaPopover && (
                     <div
                         ref={popoverRef}
-                        className="absolute top-[calc(100%+6px)] left-0 w-72 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] shadow-2xl z-40 text-xs space-y-2.5 backdrop-blur-md"
+                        className="absolute top-[calc(100%+6px)] left-0 w-72 p-4 rounded-xl border border-gray-200 dark:border-white/10 bg-white/95 dark:bg-surface-dark/95 shadow-2xl z-40 text-xs space-y-2.5 backdrop-blur-xl"
                     >
-                        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
+                        <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-2">
                             <span className="font-semibold text-[var(--color-text-main)]">Safe-to-Spend Formula</span>
                             <button
                                 type="button"
@@ -153,7 +153,7 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
                                 <span className="text-[var(--color-text-muted)] font-sans">Card Balances:</span>
                                 <span>-{formatAmount(safeToSpend.creditCardCurrentBalance, fmt(safeToSpend.creditCardCurrentBalance))}</span>
                             </div>
-                            <div className="border-t border-[var(--border-subtle)] pt-1.5 flex justify-between font-bold text-[var(--color-text-main)]">
+                            <div className="border-t border-gray-100 dark:border-white/10 pt-1.5 flex justify-between font-bold text-[var(--color-text-main)]">
                                 <span className="font-sans">Free Cashflow:</span>
                                 <span>{formatAmount(safeToSpend.safeToSpendTotal, fmt(safeToSpend.safeToSpendTotal))}</span>
                             </div>
@@ -164,27 +164,27 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
 
             {/* ── CARD 2: Net Worth & Liquid Ratio ── */}
             <TiltCard
-                className="p-5 lg:p-6 rounded-2xl relative overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)] flex flex-col justify-between"
+                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:border-primary/30"
             >
                 <div>
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-[var(--color-text-muted)] text-xs font-semibold tracking-wider uppercase">
                             Net Worth
                         </span>
-                        <span className="material-symbols-outlined text-[20px] text-blue-500 opacity-90">
-                            account_balance
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                            <span className="material-symbols-outlined text-[19px]">account_balance</span>
                         </span>
                     </div>
 
                     <h3
-                        className="text-[var(--color-text-main)] text-2xl lg:text-[1.875rem] font-semibold tracking-tight tabular-nums font-mono my-1"
+                        className="text-gray-950 dark:text-white text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1"
                         data-numeric="true"
                     >
                         {formatAmount(totalNetWorth, fmt(totalNetWorth))}
                     </h3>
                 </div>
 
-                <div className="flex items-center justify-between gap-1.5 mt-2 pt-2 border-t border-[var(--border-subtle)]">
+                <div className="flex items-center justify-between gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
                     <span
                         className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-0.5 tabular-nums font-mono ${
                             netSavingsDelta >= 0
@@ -206,27 +206,27 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
 
             {/* ── CARD 3: Monthly Spending & Pacing Velocity ── */}
             <TiltCard
-                className="p-5 lg:p-6 rounded-2xl relative overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)] flex flex-col justify-between"
+                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:border-primary/30"
             >
                 <div>
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-[var(--color-text-muted)] text-xs font-semibold tracking-wider uppercase">
                             Monthly Spending
                         </span>
-                        <span className="material-symbols-outlined text-[20px] text-amber-500 opacity-90">
-                            shopping_bag
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                            <span className="material-symbols-outlined text-[19px]">shopping_bag</span>
                         </span>
                     </div>
 
                     <h3
-                        className="text-[var(--color-text-main)] text-2xl lg:text-[1.875rem] font-semibold tracking-tight tabular-nums font-mono my-1"
+                        className="text-gray-950 dark:text-white text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1"
                         data-numeric="true"
                     >
                         {formatAmount(monthlyExpenses, fmt(monthlyExpenses))}
                     </h3>
                 </div>
 
-                <div className="flex items-center justify-between gap-1.5 mt-2 pt-2 border-t border-[var(--border-subtle)]">
+                <div className="flex items-center justify-between gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
                     <span
                         className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-0.5 tabular-nums font-mono ${
                             isPaceFavorable
@@ -248,21 +248,21 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
 
             {/* ── CARD 4: Net Cashflow & Savings Rate ── */}
             <TiltCard
-                className="p-5 lg:p-6 rounded-2xl relative overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.25),0_0_0_1px_var(--border-subtle)] flex flex-col justify-between"
+                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:border-primary/30"
             >
                 <div>
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-[var(--color-text-muted)] text-xs font-semibold tracking-wider uppercase">
                             Net Cashflow
                         </span>
-                        <span className="material-symbols-outlined text-[20px] text-teal-500 opacity-90">
-                            savings
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-500">
+                            <span className="material-symbols-outlined text-[19px]">savings</span>
                         </span>
                     </div>
 
                     <h3
-                        className={`text-2xl lg:text-[1.875rem] font-semibold tracking-tight tabular-nums font-mono my-1 ${
-                            netCashflow >= 0 ? 'text-[var(--color-text-main)]' : 'text-rose-600 dark:text-rose-400'
+                        className={`text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1 ${
+                            netCashflow >= 0 ? 'text-gray-950 dark:text-white' : 'text-rose-600 dark:text-rose-400'
                         }`}
                         data-numeric="true"
                     >
@@ -270,7 +270,7 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
                     </h3>
                 </div>
 
-                <div className="space-y-1.5 mt-2 pt-2 border-t border-[var(--border-subtle)]">
+                <div className="space-y-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-600 dark:text-teal-400 tabular-nums font-mono">
                             {savingsRate.toFixed(1)}% saved
@@ -280,10 +280,10 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
                         </span>
                     </div>
                     {/* Micro Benchmark Progress Bar */}
-                    <div className="w-full h-1 bg-[var(--border-subtle)] rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
                         <div
                             className={`h-full transition-all duration-300 rounded-full ${
-                                savingsRate >= 20 ? 'bg-emerald-500' : 'bg-teal-500'
+                                savingsRate >= 20 ? 'bg-emerald-500' : 'bg-primary'
                             }`}
                             style={{ width: `${savingsProgressPct}%` }}
                         />

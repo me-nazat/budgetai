@@ -387,7 +387,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
         <div>
           <h1 className="text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
             <span>Ledger & Transactions</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
+            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-primary/10 text-primary dark:text-[#38bdf8] border border-primary/20">
               60fps Real-Time
             </span>
           </h1>
@@ -400,7 +400,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
           <button
             type="button"
             onClick={() => setIsScannerOpen(true)}
-            className="px-3.5 py-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-xl font-semibold text-xs sm:text-sm transition-all flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-500/20 active:scale-95 shadow-sm"
+            className="px-3.5 py-2 bg-primary/10 text-primary dark:text-[#38bdf8] hover:bg-primary/20 rounded-xl font-semibold text-xs sm:text-sm transition-all flex items-center gap-1.5 border border-primary/20 active:scale-95 shadow-sm"
             title="Scan Receipts with OCR"
           >
             <span className="material-symbols-outlined text-[18px]">document_scanner</span>
@@ -410,7 +410,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
           <button
             type="button"
             onClick={() => setShowQuickAdd(!showQuickAdd)}
-            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 active:scale-95 shadow-sm shadow-indigo-500/20"
+            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 active:scale-95 shadow-sm shadow-primary/20"
           >
             <span className="material-symbols-outlined text-[18px]">
               {showQuickAdd ? 'close' : 'add'}
@@ -565,7 +565,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
               onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
               className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
                 selectedCategories.length > 0
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/15 dark:border-indigo-500/30 dark:text-indigo-400'
+                  ? 'bg-primary/10 border-primary/25 text-primary dark:text-[#38bdf8]'
                   : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-[#21262d] dark:border-[#30363d] dark:text-gray-300'
               }`}
             >
@@ -631,7 +631,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
               onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
               className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
                 selectedAccounts.length > 0
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/15 dark:border-indigo-500/30 dark:text-indigo-400'
+                  ? 'bg-primary/10 border-primary/25 text-primary dark:text-[#38bdf8]'
                   : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-[#21262d] dark:border-[#30363d] dark:text-gray-300'
               }`}
             >
@@ -692,7 +692,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
               onClick={() => setAmountPopoverOpen(!amountPopoverOpen)}
               className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
                 minAmount || maxAmount
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/15 dark:border-indigo-500/30 dark:text-indigo-400'
+                  ? 'bg-primary/10 border-primary/25 text-primary dark:text-[#38bdf8]'
                   : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-[#21262d] dark:border-[#30363d] dark:text-gray-300'
               }`}
             >
@@ -782,7 +782,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {/* Total Filtered Count */}
         <div className="rounded-2xl border border-gray-200/80 bg-white/80 p-3.5 shadow-sm dark:border-[#30363d] dark:bg-[#161b22]/80 backdrop-blur-md flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary dark:text-[#38bdf8] flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">receipt_long</span>
           </div>
           <div>
@@ -830,7 +830,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
               (filterSummary?.netCashflow || 0) >= 0
-                ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
+                ? 'bg-primary/10 text-primary dark:text-[#38bdf8]'
                 : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
             }`}
           >
@@ -843,7 +843,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
             <p
               className={`text-base sm:text-lg font-black font-mono tabular-nums ${
                 (filterSummary?.netCashflow || 0) >= 0
-                  ? 'text-indigo-600 dark:text-indigo-400'
+                  ? 'text-primary dark:text-[#38bdf8]'
                   : 'text-rose-600 dark:text-rose-400'
               }`}
             >

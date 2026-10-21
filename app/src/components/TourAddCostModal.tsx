@@ -167,7 +167,7 @@ export default function TourAddCostModal({
     const base = [
       { label: 'Travel', icon: 'flight_takeoff', color: 'blue' },
       { label: 'Food', icon: 'restaurant', color: 'orange' },
-      { label: 'Hotel', icon: 'hotel', color: 'indigo' },
+      { label: 'Hotel', icon: 'hotel', color: 'cyan' },
       { label: 'Transport', icon: 'directions_car', color: 'emerald' },
       { label: 'Tickets', icon: 'local_activity', color: 'rose' },
       { label: 'Activities', icon: 'hiking', color: 'teal' },

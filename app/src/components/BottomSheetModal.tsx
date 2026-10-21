@@ -122,7 +122,7 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--bg-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--bg-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]/60"
                   aria-label="Close dialog"
                 >
                   <span className="material-symbols-outlined text-[18px]">close</span>
