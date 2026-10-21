@@ -290,65 +290,64 @@ export function HouseholdRecurringBillsModal({ householdId, currencySymbol = '$'
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative z-50 w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f172a] p-6 shadow-2xl"
+              className="relative z-50 w-full max-w-md rounded-3xl card-glass-elevated overflow-hidden border border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl p-6 shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="flex items-center justify-between mb-4 border-b border-gray-200/80 dark:border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                    <span className="material-symbols-outlined text-[22px]">receipt_long</span>
-                  </div>
+                  <span className="material-symbols-outlined text-[24px] text-emerald-500 dark:text-emerald-400">receipt_long</span>
                   <div>
-                    <h3 className="text-base font-black text-white">Pay & Split Recurring Bill</h3>
-                    <p className="text-[11px] text-gray-400">Record bill payment and queue member shares</p>
+                    <h3 className="text-base font-black text-gray-950 dark:text-white">Pay & Split Recurring Bill</h3>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Record bill payment and queue member shares</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setPayingBill(null)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">close</span>
                 </button>
               </div>
 
               <div className="space-y-4 py-2">
-                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+                <div className="p-3.5 rounded-2xl bg-black/20 border border-white/10 space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-400">Bill:</span>
-                    <span className="font-bold text-white">{payingBill.name}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{payingBill.name}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-400">Total Outflow:</span>
-                    <span className="font-black text-emerald-400 font-mono">
+                    <span className="font-black text-emerald-500 dark:text-emerald-400 font-mono">
                       {currencySymbol}{payingBill.amount.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-400">Category:</span>
-                    <span className="font-bold text-gray-300">{payingBill.category}</span>
+                    <span className="font-bold text-gray-700 dark:text-gray-300">{payingBill.category}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-black uppercase tracking-wider text-emerald-400 block mb-1.5 flex items-center gap-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-emerald-500 dark:text-emerald-400 block mb-1.5 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[16px]">account_balance</span>
                     Deduct from My Account
                   </label>
                   <select
                     value={selectedAccountId ?? ''}
                     onChange={(e) => setSelectedAccountId(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#1e293b] border border-white/10 text-xs font-bold text-white outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-primary transition-all"
                   >
-                    <option value="">Do not link personal account</option>
+                    <option value="" className="bg-[#12182B] text-white">Do not link personal account</option>
                     {accounts.map((acc: any) => (
-                      <option key={acc.id} value={acc.id}>
+                      <option key={acc.id} value={acc.id} className="bg-[#12182B] text-white">
                         {acc.name} ({currencySymbol}{Number(acc.currentBalance ?? acc.balance ?? 0).toLocaleString()}) • {acc.type}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-300 space-y-1">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-600 dark:text-emerald-300 space-y-1">
                   <p>• Deducts {currencySymbol}{payingBill.amount.toFixed(2)} cash from selected account</p>
                   <p>• Only your allocated share counts against your personal budget</p>
                   <p>• Roommates&apos; portions queued into upcoming settlements</p>
@@ -399,9 +398,10 @@ export function HouseholdRecurringBillsModal({ householdId, currencySymbol = '$'
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full sm:max-w-lg bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+              className="relative overflow-hidden w-full sm:max-w-lg bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
               <div className="w-12 h-1 bg-gray-300 dark:bg-white/10 rounded-full mx-auto mb-4 sm:hidden" />
               <div className="flex items-center justify-between pb-4 border-b border-gray-200/80 dark:border-white/10">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Create Recurring Bill</h3>

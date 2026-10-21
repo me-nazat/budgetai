@@ -214,7 +214,7 @@ export default function TransactionAttachmentsSection({
       </div>
 
       {/* Card */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#30363d] dark:bg-[#161b22] sm:p-5">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#12182B]/95 sm:p-5">
         <div className="flex flex-col gap-3">
           {/* Constraints + Button */}
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -251,7 +251,7 @@ export default function TransactionAttachmentsSection({
             className={`relative overflow-hidden rounded-xl border border-dashed px-4 py-4 transition-all ${
               isDragging
                 ? 'border-primary/40 bg-primary/5 shadow-inner'
-                : 'border-gray-300 bg-gray-50/50 dark:border-[#30363d] dark:bg-[#0A0E1A]/30'
+                : 'border-gray-300 bg-gray-50/50 dark:border-white/10 dark:bg-black/20'
             }`}
           >
             {/* Radial gradient overlay */}
@@ -273,7 +273,7 @@ export default function TransactionAttachmentsSection({
                 className={`flex items-center justify-center rounded-xl px-4 py-2 text-xs font-bold transition-all active:scale-95 ${
                   isUploading || remainingSlots === 0
                     ? 'cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600'
-                    : 'bg-white text-primary shadow-sm hover:bg-primary/5 dark:bg-[#21262d] dark:hover:bg-[#30363d]'
+                    : 'bg-white text-primary shadow-sm hover:bg-primary/5 dark:bg-white/5 dark:text-white dark:border dark:border-white/10 dark:hover:bg-white/10'
                 }`}
               >
                 {remainingSlots === 0 ? 'Limit Reached' : 'Browse Files'}
@@ -345,7 +345,7 @@ export default function TransactionAttachmentsSection({
                       type="button"
                       key={file.id}
                       onClick={() => setPreviewFile(file)}
-                      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-[#30363d] dark:bg-[#161b22]"
+                      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-[#12182B]/95"
                     >
                       <div className="relative z-20 p-4 text-left">
                           <div className="flex items-start justify-between">
@@ -355,7 +355,7 @@ export default function TransactionAttachmentsSection({
                             <button
                               type="button"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFile(file.id, file.name); }}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:opacity-100 dark:bg-[#21262d] dark:hover:bg-rose-500/20"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:opacity-100 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-rose-500/20"
                               title="Delete file"
                             >
                               <span className="material-symbols-outlined text-[16px]">delete</span>

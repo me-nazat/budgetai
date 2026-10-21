@@ -359,7 +359,7 @@ export class RoundUpRepository {
               userId,
               insightType: 'SAVINGS_OPPORTUNITY',
               severity: 'INFO',
-              title: `🎉 Goal Milestone Reached: ${t}%!`,
+              title: `Goal Milestone Reached: ${t}%`,
               message: `Congratulations! Your micro-savings round-ups just helped you hit ${t}% of your goal "${goal.name}".`,
               actionLink: '/wealth-goals',
               isDismissed: 0,

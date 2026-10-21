@@ -1948,8 +1948,8 @@ export default function TourDashboard() {
   }, [itinerary, transactions]);
 
   const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-  const tickColor = isDark ? '#8b949e' : '#6b7280';
-  const gridColor = isDark ? '#21262d' : '#e5e7eb';
+  const tickColor = isDark ? '#94a3b8' : '#6b7280';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : '#e5e7eb';
 
   const barData = useMemo(() => {
     if (transactions.length === 0) {
@@ -2360,7 +2360,8 @@ export default function TourDashboard() {
         {/* Top 4 Executive KPI Cards */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5 sm:mb-8">
           {/* Card 1: Total Group Spend */}
-          <TiltCard className="glass-panel stat-gradient-blue rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
+          <TiltCard className="card-glass stat-gradient-blue rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             <div className="flex flex-col gap-1 relative z-10">
               <div className="flex items-center justify-between">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Total Group Spend</p>
@@ -2393,7 +2394,8 @@ export default function TourDashboard() {
           </TiltCard>
 
           {/* Card 2: My True Trip Cost */}
-          <TiltCard className="glass-panel stat-gradient-orange rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
+          <TiltCard className="card-glass stat-gradient-orange rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             <div className="flex flex-col gap-1 relative z-10">
               <div className="flex items-center justify-between">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">My True Trip Cost</p>
@@ -2411,7 +2413,8 @@ export default function TourDashboard() {
           </TiltCard>
 
           {/* Card 3: My Net Balance */}
-          <TiltCard className={`glass-panel ${myBalance > 0 ? 'stat-gradient-emerald' : myBalance < 0 ? 'stat-gradient-rose' : 'stat-gradient-blue'} rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6`} style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
+          <TiltCard className={`card-glass ${myBalance > 0 ? 'stat-gradient-emerald' : myBalance < 0 ? 'stat-gradient-rose' : 'stat-gradient-blue'} rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]`} style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             <div className="flex flex-col gap-1 relative z-10">
               <div className="flex items-center justify-between">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">My Net Position</p>
@@ -2429,7 +2432,8 @@ export default function TourDashboard() {
           </TiltCard>
 
           {/* Card 4: Shared Kitty Pool */}
-          <TiltCard className={`glass-panel ${(kittySummary?.remainingKittyBalance ?? 0) < 0 ? 'stat-gradient-rose' : 'stat-gradient-emerald'} rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
+          <TiltCard className={`card-glass ${(kittySummary?.remainingKittyBalance ?? 0) < 0 ? 'stat-gradient-rose' : 'stat-gradient-emerald'} rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             <div className="flex flex-col gap-1 relative z-10">
               <div className="flex items-center justify-between">
                 <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Shared Kitty Pool</p>
@@ -2702,13 +2706,13 @@ export default function TourDashboard() {
                       onChange={(e) => setItinFilterType(e.target.value)}
                       className="rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-[#111827] px-3 py-2 text-xs font-bold text-gray-800 dark:text-white outline-none focus:border-primary"
                     >
-                      <option value="All">All Types 🌐</option>
-                      <option value="activity">Activities 🎯</option>
-                      <option value="flight">Flights ✈️</option>
-                      <option value="hotel">Hotels 🏨</option>
-                      <option value="food">Food 🍽️</option>
-                      <option value="transport">Transport 🚗</option>
-                      <option value="other">Other 📦</option>
+                      <option value="All">All Types</option>
+                      <option value="activity">Activities</option>
+                      <option value="flight">Flights</option>
+                      <option value="hotel">Hotels</option>
+                      <option value="food">Dining</option>
+                      <option value="transport">Transportation</option>
+                      <option value="other">Other</option>
                     </select>
                   </div>
                 </div>
@@ -2810,12 +2814,12 @@ export default function TourDashboard() {
                               onChange={e => setItinType(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="activity">Activity 🎯</option>
-                              <option value="flight">Flight ✈️</option>
-                              <option value="hotel">Hotel 🏨</option>
-                              <option value="food">Food 🍽️</option>
-                              <option value="transport">Transport 🚗</option>
-                              <option value="other">Other 📦</option>
+                              <option value="activity">Activity</option>
+                              <option value="flight">Flight</option>
+                              <option value="hotel">Hotel</option>
+                              <option value="food">Dining</option>
+                              <option value="transport">Transportation</option>
+                              <option value="other">Other</option>
                             </select>
                           </div>
                         </div>
@@ -2858,9 +2862,9 @@ export default function TourDashboard() {
                               onChange={e => setItinStatus(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="Planned">Planned 🗓️</option>
-                              <option value="Booked">Booked ✅</option>
-                              <option value="Completed">Completed 🎉</option>
+                              <option value="Planned">Planned</option>
+                              <option value="Booked">Booked</option>
+                              <option value="Completed">Completed</option>
                             </select>
                           </div>
                         </div>
@@ -3317,12 +3321,12 @@ export default function TourDashboard() {
                               onChange={e => setEditItinType(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="activity">Activity 🎯</option>
-                              <option value="flight">Flight ✈️</option>
-                              <option value="hotel">Hotel 🏨</option>
-                              <option value="food">Food 🍽️</option>
-                              <option value="transport">Transport 🚗</option>
-                              <option value="other">Other 📦</option>
+                              <option value="activity">Activity</option>
+                              <option value="flight">Flight</option>
+                              <option value="hotel">Hotel</option>
+                              <option value="food">Dining</option>
+                              <option value="transport">Transportation</option>
+                              <option value="other">Other</option>
                             </select>
                           </div>
                         </div>
@@ -3364,9 +3368,9 @@ export default function TourDashboard() {
                               onChange={e => setEditItinStatus(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="Planned">Planned 🗓️</option>
-                              <option value="Booked">Booked ✅</option>
-                              <option value="Completed">Completed 🎉</option>
+                              <option value="Planned">Planned</option>
+                              <option value="Booked">Booked</option>
+                              <option value="Completed">Completed</option>
                             </select>
                           </div>
                         </div>
@@ -3520,11 +3524,11 @@ export default function TourDashboard() {
                             onChange={e => setEditCheckCategory(e.target.value)}
                             className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           >
-                            <option value="Documents">Documents 📄</option>
-                            <option value="Clothing">Clothing 👕</option>
-                            <option value="Electronics">Electronics 🔌</option>
-                            <option value="Toiletries">Toiletries 🧴</option>
-                            <option value="Other">Other 📦</option>
+                            <option value="Documents">Documents</option>
+                            <option value="Clothing">Clothing</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Toiletries">Toiletries</option>
+                            <option value="Other">Other</option>
                             {customCategoriesList.map(cat => (
                               <option key={cat.id} value={cat.name}>{cat.name}</option>
                             ))}
@@ -3576,9 +3580,9 @@ export default function TourDashboard() {
                               onChange={e => setEditCheckPriority(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="High">High 🔴</option>
-                              <option value="Medium">Medium 🟡</option>
-                              <option value="Low">Low 🟢</option>
+                              <option value="High">High Priority</option>
+                              <option value="Medium">Medium Priority</option>
+                              <option value="Low">Low Priority</option>
                             </select>
                           </div>
                           <div>
@@ -3876,11 +3880,11 @@ export default function TourDashboard() {
                                 onChange={e => setCheckCategory(e.target.value)}
                                 className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                               >
-                                <option value="Documents">Documents 📄</option>
-                                <option value="Clothing">Clothing 👕</option>
-                                <option value="Electronics">Electronics 🔌</option>
-                                <option value="Toiletries">Toiletries 🧴</option>
-                                <option value="Other">Other 📦</option>
+                                <option value="Documents">Documents</option>
+                                <option value="Clothing">Clothing</option>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Toiletries">Toiletries</option>
+                                <option value="Other">Other</option>
                                 {customCategoriesList.map(cat => (
                                   <option key={cat.id} value={cat.name}>{cat.name}</option>
                                 ))}
@@ -3932,9 +3936,9 @@ export default function TourDashboard() {
                               onChange={e => setCheckPriority(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                             >
-                              <option value="High">🔴 High Priority</option>
-                              <option value="Medium">🟡 Medium Priority</option>
-                              <option value="Low">🟢 Low Priority</option>
+                              <option value="High">High Priority</option>
+                              <option value="Medium">Medium Priority</option>
+                              <option value="Low">Low Priority</option>
                             </select>
                           </div>
                           <div>
@@ -4071,7 +4075,13 @@ export default function TourDashboard() {
                                 : 'text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-white/5'
                             }`}
                           >
-                            {prio === 'High' ? '🔴 High' : prio === 'Medium' ? '🟡 Medium' : prio === 'Low' ? '🟢 Low' : 'All'}
+                            {prio === 'High' ? (
+                              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-rose-500" />High</span>
+                            ) : prio === 'Medium' ? (
+                              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-amber-500" />Medium</span>
+                            ) : prio === 'Low' ? (
+                              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-emerald-500" />Low</span>
+                            ) : 'All'}
                           </button>
                         ))}
                       </div>
@@ -4390,7 +4400,7 @@ export default function TourDashboard() {
                         animation: { duration: 800, easing: 'easeOutQuart' },
                         plugins: {
                           legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 11 } } },
-                          tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8, callbacks: { label: (c) => `Paid: ${fmt(Number(c.raw))}` } },
+                          tooltip: { backgroundColor: isDark ? '#12182B' : '#fff', titleColor: isDark ? '#FAFAFA' : '#1f2937', bodyColor: isDark ? '#CBD5E1' : '#6b7280', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8, callbacks: { label: (c) => `Paid: ${fmt(Number(c.raw))}` } },
                         },
                         cutout: '68%',
                       }} />
@@ -4486,7 +4496,7 @@ export default function TourDashboard() {
                       responsive: true, maintainAspectRatio: false,
                       plugins: {
                         legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
-                        tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8 },
+                        tooltip: { backgroundColor: isDark ? '#12182B' : '#fff', titleColor: isDark ? '#FAFAFA' : '#1f2937', bodyColor: isDark ? '#CBD5E1' : '#6b7280', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8 },
                       },
                       scales: {
                         x: { stacked: true, grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
@@ -4504,7 +4514,7 @@ export default function TourDashboard() {
                       animation: { duration: 800, easing: 'easeOutQuart' },
                       plugins: {
                         legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
-                        tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
+                        tooltip: { backgroundColor: isDark ? '#12182B' : '#fff', titleColor: isDark ? '#FAFAFA' : '#1f2937', bodyColor: isDark ? '#CBD5E1' : '#6b7280', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
                       },
                       cutout: '68%',
                     }} />

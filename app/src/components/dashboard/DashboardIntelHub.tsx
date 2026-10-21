@@ -47,8 +47,9 @@ export const DashboardIntelHub: React.FC<DashboardIntelHubProps> = ({
     setCalcRate,
 }) => {
     return (
-        <div className="glass-panel rounded-3xl flex flex-col overflow-hidden ambient-glow border border-gray-100 dark:border-white/5">
-            <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-blue-500/10 to-transparent flex items-center justify-between">
+        <div className="card-glass relative rounded-3xl flex flex-col overflow-hidden border border-white/[0.08] shadow-sm">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+            <div className="p-5 border-b border-gray-200/80 dark:border-white/10 bg-gradient-to-r from-blue-500/10 to-transparent flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <span className="material-symbols-outlined text-blue-500 text-[22px]">insights</span>
                     Intelligence Hub
@@ -59,7 +60,7 @@ export const DashboardIntelHub: React.FC<DashboardIntelHubProps> = ({
             </div>
 
             {/* Tabs */}
-            <div className="flex bg-gray-50/70 dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] text-sm">
+            <div className="flex bg-gray-50/70 dark:bg-black/20 border-b border-gray-200/80 dark:border-white/10 text-sm">
                 <button
                     onClick={() => setActiveTab('currency')}
                     className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${
@@ -153,7 +154,7 @@ export const DashboardIntelHub: React.FC<DashboardIntelHubProps> = ({
                                                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
                                                             : news.sentiment === 'negative'
                                                             ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
-                                                            : 'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
+                                                            : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                                                     }`}
                                                 >
                                                     {news.sentiment}

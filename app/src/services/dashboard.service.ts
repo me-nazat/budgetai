@@ -136,7 +136,7 @@ export class DashboardService {
         return ['cash', 'bank', 'mobile_wallet', 'wallet', 'checking', 'savings'].includes(type) || type !== 'other';
       })
       .reduce((sum, a) => sum + Math.max(0, a.currentBalance), 0);
-    const liquidCash = accounts.length > 0 ? accountsLiquidCash : Math.max(0, balance);
+    const liquidCash = (accounts.length > 0 && accountsLiquidCash > 0) ? accountsLiquidCash : Math.max(0, balance);
 
     // 1.2 Credit Card Current Balances Due
     const creditCardCurrentBalance = accounts
@@ -236,7 +236,7 @@ export class DashboardService {
       .filter((a) => !a.isArchived && a.type !== 'card')
       .reduce((sum, a) => sum + Math.max(0, a.currentBalance), 0);
     const totalAssets = Math.round(
-      ((accounts.length > 0 ? accountsAssets : Math.max(0, balance)) + netCollaborativeReceivables) * 100
+      (((accounts.length > 0 && accountsAssets > 0) ? accountsAssets : Math.max(0, balance)) + netCollaborativeReceivables) * 100
     ) / 100;
 
     const totalDebtAmount = debtsList.reduce((sum, d) => sum + (d.balance || 0), 0);

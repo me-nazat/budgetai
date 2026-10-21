@@ -247,7 +247,7 @@ export default function DayDetailPopup({
                     exit={{ opacity: 0, scale: 0.95, y: 8 }}
                     transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                     onClick={(e) => e.stopPropagation()}
-                    className={`fixed z-[75] flex flex-col rounded-3xl bg-white dark:bg-[#161b22] border border-gray-200/90 dark:border-white/10 shadow-2xl overflow-hidden ${
+                    className={`fixed z-[75] flex flex-col rounded-3xl bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200/90 dark:border-white/10 shadow-2xl overflow-hidden ${
                         compact ? 'w-[360px] max-h-[440px]' : 'w-[390px] max-h-[480px]'
                     }`}
                     style={{ top: position.top, left: position.left }}
@@ -273,7 +273,7 @@ export default function DayDetailPopup({
                     </div>
 
                     {/* Financial Summary KPI Strip */}
-                    <div className="px-5 py-3 grid grid-cols-3 gap-2 border-b border-gray-150 dark:border-white/5 bg-white dark:bg-[#161b22]">
+                    <div className="px-5 py-3 grid grid-cols-3 gap-2 border-b border-gray-150 dark:border-white/5 bg-white/50 dark:bg-black/10">
                         <div className="rounded-xl p-2 bg-emerald-500/10 border border-emerald-500/20 text-center">
                             <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 block">Income</span>
                             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums font-mono block mt-0.5 truncate">

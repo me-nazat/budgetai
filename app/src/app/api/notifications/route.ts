@@ -65,7 +65,7 @@ async function autoGenerateAlerts(userId: number) {
 
     for (const g of goals) {
         if (g.saved_amount >= g.target_amount && g.target_amount > 0) {
-            const title = `Goal Reached: ${g.name} 🎉`;
+            const title = `Goal Reached: ${g.name}`;
             const message = `Congratulations! You have reached your savings goal of ${g.target_amount} for ${g.name}.`;
             const type = 'success';
             

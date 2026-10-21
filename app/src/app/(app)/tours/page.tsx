@@ -47,6 +47,8 @@ const TOUR_GRADIENTS = [
   'from-[#0F140F] via-[#1B3A1B] to-[#020A02]', // Deep Pine Green
   'from-[#1F1403] via-[#3D2606] to-[#0C0801]', // Dark Amber/Bronze
   'from-[#051F20] via-[#0B2527] to-[#010B0C]', // Deep Cyan-Gray
+  'from-[#0C1E1A] via-[#15352F] to-[#030E0C]', // Rich Sage Green
+  'from-[#1A0C00] via-[#2E1600] to-[#0A0500]', // Deep Chocolate/Burnt Orange
 ];
 
 const TOUR_ICONS = [
@@ -209,65 +211,69 @@ export default function ToursPage() {
         </p>
       </div>
 
-      {/* Top 4 KPI Summary Cards with tabular-nums */}
+      {/* Top 4 KPI Summary Cards with tabular-nums & Hairline Glass Highlights */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
+        <div className="card-glass relative overflow-hidden p-5 sm:p-6 rounded-2xl flex flex-col justify-between hover-lift group">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Active Tours</span>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
-              <span className="material-symbols-outlined text-[19px]">flight_takeoff</span>
+            <span className="material-symbols-outlined text-[20px] text-gray-400 dark:text-gray-500 group-hover:text-primary transition-colors">
+              flight_takeoff
             </span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-gray-950 dark:text-white tabular-nums">
+          <div className="mt-4">
+            <h3 className="text-2xl sm:text-3xl font-black text-gray-950 dark:text-white tabular-nums tracking-tight">
               {kpis.activeCount}
             </h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Ongoing group journeys</p>
+            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">Ongoing group journeys</p>
           </div>
         </div>
 
-        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
+        <div className="card-glass relative overflow-hidden p-5 sm:p-6 rounded-2xl flex flex-col justify-between hover-lift group">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Trip Spend (YTD)</span>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-500">
-              <span className="material-symbols-outlined text-[19px]">payments</span>
+            <span className="material-symbols-outlined text-[20px] text-gray-400 dark:text-gray-500 group-hover:text-primary transition-colors">
+              payments
             </span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-gray-950 dark:text-white tabular-nums">
+          <div className="mt-4">
+            <h3 className="text-2xl sm:text-3xl font-black text-gray-950 dark:text-white tabular-nums tracking-tight">
               {fmt(kpis.totalSpendYtd)}
             </h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Across all registered trips</p>
+            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">Across all registered trips</p>
           </div>
         </div>
 
-        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
+        <div className="card-glass relative overflow-hidden p-5 sm:p-6 rounded-2xl flex flex-col justify-between hover-lift group">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">You Are Owed</span>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-              <span className="material-symbols-outlined text-[19px]">trending_up</span>
+            <span className="material-symbols-outlined text-[20px] text-emerald-500/70 group-hover:text-emerald-400 transition-colors">
+              trending_up
             </span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+          <div className="mt-4">
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
               +{fmt(kpis.totalOwed)}
             </h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Receivable from group members</p>
+            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">Receivable from group members</p>
           </div>
         </div>
 
-        <div className="card-glass p-4 sm:p-5 flex flex-col justify-between">
+        <div className="card-glass relative overflow-hidden p-5 sm:p-6 rounded-2xl flex flex-col justify-between hover-lift group">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">You Owe</span>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400">
-              <span className="material-symbols-outlined text-[19px]">trending_down</span>
+            <span className="material-symbols-outlined text-[20px] text-rose-500/70 group-hover:text-rose-400 transition-colors">
+              trending_down
             </span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tabular-nums">
+          <div className="mt-4">
+            <h3 className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tabular-nums tracking-tight">
               -{fmt(kpis.totalOwe)}
             </h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Pending debt to settle</p>
+            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">Pending debt to settle</p>
           </div>
         </div>
       </div>
@@ -354,20 +360,24 @@ export default function ToursPage() {
                 key={tour.id}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4 }}
+                whileHover={{ y: -4, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 transition={{ ...spring, delay: index * 0.04 }}
                 onClick={() => router.push(`/tours/${tour.id}`)}
-                className="group relative cursor-pointer overflow-hidden rounded-[2rem] border border-gray-200/80 dark:border-white/10 bg-white/90 dark:bg-surface-dark/90 p-6 shadow-xl transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10"
+                className="group relative cursor-pointer overflow-hidden rounded-[2rem] border border-gray-200/80 dark:border-white/10 bg-white/80 dark:bg-[#0d1117]/75 p-6 shadow-xl backdrop-blur-2xl transition-all duration-500 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/20 hover:saturate-125 hover:brightness-110"
               >
                 {/* Background ambient gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-30 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${TOUR_GRADIENTS[index % TOUR_GRADIENTS.length]} opacity-60 dark:opacity-45 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none`} />
 
-                <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                {/* Hairline top-edge light reflection */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/25" />
+
+                <div className="relative z-10 flex flex-col justify-between h-full space-y-5">
                   {/* Top Bar: Icon, Destination, Date & Delete Action */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/10 border border-gray-200/60 dark:border-white/10 text-gray-900 dark:text-white backdrop-blur-md">
-                        <span className="material-symbols-outlined text-[20px]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/70 dark:bg-white/10 border border-white/60 dark:border-white/10 text-gray-900 dark:text-white backdrop-blur-md shadow-sm">
+                        <span className="material-symbols-outlined text-[22px]">
                           {TOUR_ICONS[index % TOUR_ICONS.length]}
                         </span>
                       </div>
@@ -378,7 +388,7 @@ export default function ToursPage() {
                             {tour.destination}
                           </span>
                         )}
-                        <h2 className="text-lg font-black text-gray-950 dark:text-white group-hover:text-primary transition-colors line-clamp-1">
+                        <h2 className="text-xl font-black text-gray-950 dark:text-white group-hover:text-primary transition-colors line-clamp-1">
                           {tour.name}
                         </h2>
                       </div>
@@ -386,12 +396,12 @@ export default function ToursPage() {
 
                     <div className="flex items-center gap-1.5">
                       <span
-                        className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                        className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border shadow-sm backdrop-blur-md ${
                           status === 'active'
-                            ? 'bg-primary/15 border-primary/30 text-primary'
+                            ? 'bg-primary/20 border-primary/35 text-primary'
                             : status === 'upcoming'
-                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-gray-100 dark:bg-surface-secondary border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400'
+                            ? 'bg-emerald-500/20 border-emerald-500/35 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-gray-100/80 dark:bg-surface-secondary/80 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400'
                         }`}
                       >
                         {status}
@@ -400,9 +410,9 @@ export default function ToursPage() {
                         <button
                           onClick={(e) => deleteTour(e, tour.id)}
                           disabled={isDeleting === tour.id}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 disabled:opacity-50 transition-colors"
+                          className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 disabled:opacity-50 transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[15px]">
+                          <span className="material-symbols-outlined text-[16px]">
                             {isDeleting === tour.id ? 'hourglass_empty' : 'delete'}
                           </span>
                         </button>
@@ -412,8 +422,8 @@ export default function ToursPage() {
 
                   {/* Dates & Members Avatars */}
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[15px]">calendar_today</span>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                       <span>
                         {tour.startDate
                           ? `${new Date(tour.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
@@ -428,13 +438,13 @@ export default function ToursPage() {
                         <div
                           key={p.id || pIdx}
                           title={p.name}
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 border-2 border-white dark:border-slate-950 text-[9px] font-black uppercase text-white shrink-0"
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 border-2 border-white dark:border-slate-950 text-[10px] font-black uppercase text-white shrink-0 shadow-sm"
                         >
                           {p.name.slice(0, 2).toUpperCase()}
                         </div>
                       ))}
                       {tour.participants.length > 4 && (
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 border-2 border-white dark:border-slate-950 text-[9px] font-black text-gray-300">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 border-2 border-white dark:border-slate-950 text-[10px] font-black text-gray-300 shadow-sm">
                           +{tour.participants.length - 4}
                         </div>
                       )}
@@ -443,16 +453,16 @@ export default function ToursPage() {
 
                   {/* Budget Utilization Progress Bar */}
                   {budgetRatio !== null && (
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex justify-between text-[11px] font-bold">
                         <span className="text-gray-500 dark:text-gray-400">Budget Spent</span>
-                        <span className="text-gray-950 dark:text-white font-mono">
+                        <span className="text-gray-950 dark:text-white font-mono tabular-nums">
                           {fmt(spent)} / {fmt(totalBudget)} ({budgetRatio}%)
                         </span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                      <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${
+                          className={`h-full rounded-full transition-all duration-500 ${
                             budgetRatio > 95 ? 'bg-rose-500' : budgetRatio > 75 ? 'bg-amber-400' : 'bg-primary'
                           }`}
                           style={{ width: `${budgetRatio}%` }}
@@ -462,26 +472,26 @@ export default function ToursPage() {
                   )}
 
                   {/* Bottom Strip: Total Spent & Personal Net Position Badge */}
-                  <div className="pt-3 border-t border-gray-200/60 dark:border-white/10 flex items-center justify-between">
+                  <div className="pt-3.5 border-t border-gray-200/70 dark:border-white/10 flex items-center justify-between">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Group Spend</p>
-                      <p className="text-base font-black text-gray-950 dark:text-white tabular-nums">{fmt(spent)}</p>
+                      <p className="text-base font-black text-gray-950 dark:text-white tabular-nums font-mono">{fmt(spent)}</p>
                     </div>
 
                     {/* Personal Net Position Badge */}
                     <div>
                       {userBal > 0.01 ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black">
-                          <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black shadow-sm">
+                          <span className="material-symbols-outlined text-[15px]">arrow_upward</span>
                           You are owed +{fmt(userBal)}
                         </span>
                       ) : userBal < -0.01 ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-black">
-                          <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-black shadow-sm">
+                          <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
                           You owe -{fmt(Math.abs(userBal))}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 text-xs font-bold">
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 text-xs font-bold">
                           All settled
                         </span>
                       )}

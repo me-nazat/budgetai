@@ -108,9 +108,10 @@ export function InlineTaxTagPill({
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="w-full sm:max-w-md bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto"
+              className="w-full sm:max-w-md bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
               <div className="w-12 h-1 bg-gray-300 dark:bg-white/10 rounded-full mx-auto sm:hidden" />
               <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
                 <div>

@@ -198,19 +198,19 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl bg-white dark:bg-[#161b22] rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[#30363d] flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-2xl bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border border-gray-200/80 dark:border-white/10 flex flex-col max-h-[90vh]"
       >
-        <div className="p-5 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center bg-gray-50/60 dark:bg-white/5">
+        <div className="p-5 border-b border-gray-200/80 dark:border-white/10 flex justify-between items-center bg-gray-50/60 dark:bg-white/5">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <span className="material-symbols-outlined text-[20px]">document_scanner</span>
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900 dark:text-white">Smart Receipt Scanner</h2>
-              <p className="text-xs text-gray-500">AI-powered OCR extraction with split category support</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">AI-powered OCR extraction with split category support</p>
             </div>
           </div>
-          <button onClick={closeModal} className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+          <button onClick={closeModal} className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer">
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
@@ -220,23 +220,23 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-gray-300 dark:border-[#30363d] rounded-2xl p-10 flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
+              className="border-2 border-dashed border-gray-300 dark:border-white/10 rounded-2xl p-10 flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="w-16 h-16 bg-gray-100 dark:bg-[#21262d] rounded-2xl flex items-center justify-center text-gray-400">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-2xl flex items-center justify-center text-gray-400">
                 <span className="material-symbols-outlined text-3xl">upload_file</span>
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
                   Drag and drop receipt image or PDF
                 </p>
-                <p className="text-xs text-gray-500">PNG, JPG, WebP, or PDF up to 10MB</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, WebP, or PDF up to 10MB</p>
               </div>
               <div className="flex gap-3 w-full max-w-xs mt-2" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-[#21262d] text-gray-900 dark:text-white font-semibold text-xs hover:bg-gray-200 dark:hover:bg-[#30363d] transition-colors flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-semibold text-xs hover:bg-gray-200 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[16px]">folder</span>
                   Browse File
@@ -273,7 +273,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
           ) : (
             <div className="space-y-6">
               {/* Receipt Preview Card */}
-              <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-[#30363d] bg-gray-100 dark:bg-black/40 h-48 flex items-center justify-center group">
+              <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-black/40 h-48 flex items-center justify-center group">
                 {rawFile?.type === 'application/pdf' ? (
                   <div className="flex flex-col items-center gap-2 text-gray-600 dark:text-gray-300">
                     <span className="material-symbols-outlined text-4xl text-rose-500">picture_as_pdf</span>
@@ -315,7 +315,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
                         type="text"
                         value={scannedData.description}
                         onChange={(e) => setScannedData({ ...scannedData, description: e.target.value })}
-                        className="w-full bg-gray-50 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white font-medium outline-none focus:border-primary"
+                        className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white font-medium outline-none focus:border-primary"
                       />
                     </div>
                     <div>
@@ -333,7 +333,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
                           onChange={(e) =>
                             setScannedData({ ...scannedData, amount: parseFloat(e.target.value) || 0 })
                           }
-                          className="w-full bg-gray-50 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] rounded-xl py-2.5 pl-12 pr-3 text-sm font-mono font-bold tabular-nums text-gray-900 dark:text-white outline-none focus:border-primary"
+                          className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 pl-12 pr-3 text-sm font-mono font-bold tabular-nums text-gray-900 dark:text-white outline-none focus:border-primary"
                         />
                       </div>
                     </div>
@@ -348,7 +348,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
                         type="date"
                         value={scannedData.date}
                         onChange={(e) => setScannedData({ ...scannedData, date: e.target.value })}
-                        className="w-full bg-gray-50 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white font-medium outline-none focus:border-primary"
+                        className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white font-medium outline-none focus:border-primary"
                       />
                     </div>
                     <div>
@@ -359,7 +359,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
                         disabled={splitsEnabled}
                         value={splitsEnabled ? 'Split Transaction' : scannedData.category}
                         onChange={(e) => setScannedData({ ...scannedData, category: e.target.value })}
-                        className="w-full bg-gray-50 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white font-medium outline-none focus:border-primary disabled:opacity-60"
+                        className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white font-medium outline-none focus:border-primary disabled:opacity-60"
                       >
                         {splitsEnabled && <option value="Split Transaction">Split Transaction</option>}
                         {CATEGORIES_EXPENSE.map((c) => (
@@ -373,7 +373,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
 
                   {/* Line Items & Split Converter */}
                   {scannedData.lineItems && scannedData.lineItems.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#0A0E1A] border border-gray-200 dark:border-[#30363d] space-y-3">
+                    <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-black/30 border border-gray-200 dark:border-white/10 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-primary text-[18px]">receipt_long</span>
@@ -419,7 +419,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onScanComplete }: Receipt
 
                       {/* Active Split Items Preview */}
                       {splitsEnabled && splits.length > 0 && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-[#30363d] space-y-1">
+                        <div className="pt-2 border-t border-gray-200 dark:border-white/10 space-y-1">
                           <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                             <span className="material-symbols-outlined text-[14px]">check_circle</span>
                             Ready to allocate as {splits.length} split categories

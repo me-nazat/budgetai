@@ -207,7 +207,7 @@ export default function NLInput() {
 
                     {/* Amount pill */}
                     {detectedTokens.amount !== null && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold tabular-nums bg-gray-100 text-gray-800 border border-gray-200 dark:bg-[#161b22] dark:text-white dark:border-[#30363d]">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold tabular-nums bg-gray-100 text-gray-800 border border-gray-200 dark:bg-white/5 dark:text-white dark:border-white/10">
                             <span className="text-gray-400 font-sans">Amt:</span>
                             {detectedTokens.amount.toLocaleString()}
                         </span>
@@ -231,7 +231,7 @@ export default function NLInput() {
                         </button>
 
                         {categoryPickerOpen && (
-                            <div className="absolute top-full mt-1 left-0 z-50 w-44 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-[#30363d] dark:bg-[#161b22] max-h-48 overflow-y-auto">
+                            <div className="absolute top-full mt-1 left-0 z-50 w-44 rounded-xl border border-gray-200 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#12182B]/95 max-h-48 overflow-y-auto">
                                 {QUICK_CATEGORIES.map((cat: string) => (
                                     <button
                                         key={cat}
@@ -240,7 +240,7 @@ export default function NLInput() {
                                             setOverrideCategory(cat);
                                             setCategoryPickerOpen(false);
                                         }}
-                                        className="w-full text-left px-2 py-1 rounded-md text-xs hover:bg-gray-100 dark:hover:bg-[#21262d] text-gray-800 dark:text-gray-200"
+                                        className="w-full text-left px-2 py-1 rounded-md text-xs hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200"
                                     >
                                         {cat}
                                     </button>
@@ -258,7 +258,7 @@ export default function NLInput() {
                                 setAccountPickerOpen(!accountPickerOpen);
                                 setCategoryPickerOpen(false);
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold bg-gray-100 text-gray-700 border border-gray-200 dark:bg-[#161b22] dark:text-gray-300 dark:border-[#30363d] hover:bg-gray-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold bg-gray-100 text-gray-700 border border-gray-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10 hover:bg-gray-200 transition-colors"
                             title="Click to change account"
                         >
                             <span className="material-symbols-outlined text-[13px]">account_balance_wallet</span>
@@ -267,7 +267,7 @@ export default function NLInput() {
                         </button>
 
                         {accountPickerOpen && accounts.length > 0 && (
-                            <div className="absolute top-full mt-1 left-0 z-50 w-48 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-[#30363d] dark:bg-[#161b22] max-h-48 overflow-y-auto">
+                            <div className="absolute top-full mt-1 left-0 z-50 w-48 rounded-xl border border-gray-200 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#12182B]/95 max-h-48 overflow-y-auto">
                                 {accounts.map((acc) => (
                                     <button
                                         key={acc.id}
@@ -276,7 +276,7 @@ export default function NLInput() {
                                             setOverrideAccountId(acc.id);
                                             setAccountPickerOpen(false);
                                         }}
-                                        className="w-full text-left px-2 py-1 rounded-md text-xs hover:bg-gray-100 dark:hover:bg-[#21262d] text-gray-800 dark:text-gray-200 flex justify-between"
+                                        className="w-full text-left px-2 py-1 rounded-md text-xs hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 flex justify-between"
                                     >
                                         <span className="truncate">{acc.name}</span>
                                         <span className="text-[10px] text-gray-400 capitalize">{acc.type}</span>

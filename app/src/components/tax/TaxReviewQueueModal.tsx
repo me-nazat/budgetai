@@ -87,9 +87,7 @@ export function TaxReviewQueueModal({ isOpen, onClose, onItemProcessed }: Props)
         const pct = cat?.deductiblePercentage ?? currentItem.deductiblePercentage;
         const ded = Math.round(currentItem.amount * pct * 100) / 100;
         setVerifiedTotal((prev) => prev + ded);
-        toast.success(`Verified ${fmtRaw(ded)} tax deduction!`, {
-          icon: '✅',
-        });
+        toast.success(`Verified ${fmtRaw(ded)} tax deduction!`);
       } else {
         toast.info('Transaction excluded from tax deductions');
       }

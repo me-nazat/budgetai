@@ -101,7 +101,7 @@ DATA CONTROL — You can ADD, EDIT, DELETE, & RESET user data:
 
 RESPONSE RULES:
 1. Use **bold** for amounts, categories, key terms.
-2. Confirm actions naturally: "Logged **$50** for **Food** 🛒" — not robotic.
+2. Confirm actions naturally: "Logged **$50** for **Food**" — professional, concise, not robotic.
 3. For reports/summaries: If the user asks for a report/summary WITHOUT specifying PDF or Excel format, ask them which format they prefer and set 'isReportRequest' to false. Only set 'isReportRequest' to true and 'reportFormat' to 'pdf', 'excel', or 'both' when they have requested a specific format.
 4. ALWAYS respond with valid JSON only. No backticks, no markdown wrapping.
 5. For edits/deletes, prefer 'id' filter when available from context.

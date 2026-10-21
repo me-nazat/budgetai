@@ -9,7 +9,7 @@
  * - Real-time acceleration metrics: Months Saved, Interest Saved, and Projected Debt Freedom
  * - Payoff order cards (#1 Priority, #2 Next, etc.) with Projected Payoff Month
  * - One-click "Record Payment" deducting directly from personal checking account
- * - Strict Purple Ban Compliant
+ * - Sovereign Sapphire Palette Compliant
  *
  * @module app/(app)/debts/page
  */
@@ -263,13 +263,13 @@ export default function DebtsPage() {
       {/* Header Strip */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-400 mb-1">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-500 mb-1">
             Institutional Debt Payoff Matrix
           </p>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-gray-950 dark:text-white tracking-tight">
             Debt Freedom Command Center
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Mathematical debt elimination via Avalanche & Snowball acceleration algorithms.
           </p>
         </div>
@@ -296,15 +296,16 @@ export default function DebtsPage() {
       {/* 3 Core KPIs Strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* KPI 1: Total Outstanding */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-rose-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-rose p-5 rounded-3xl border border-rose-500/20 relative overflow-hidden group hover:border-rose-500/40 shadow-sm transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/40 to-transparent dark:via-rose-400/25" />
+          <div className="flex items-center justify-between text-xs text-rose-600 dark:text-rose-400 font-bold mb-2">
             <span>Total Outstanding Debt</span>
-            <span className="material-symbols-outlined text-rose-400 text-[18px]">credit_score</span>
+            <span className="material-symbols-outlined text-rose-500 text-[20px]">credit_score</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-400 tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tabular-nums tracking-tight">
             {formatAmount(totalOutstanding, fmt(totalOutstanding))}
           </div>
-          <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1">
             <span>{activeDebts.length} Active Liabilit{activeDebts.length === 1 ? 'y' : 'ies'}</span>
             <span>•</span>
             <span>Min. Monthly: {fmt(totalMinPayment)}</span>
@@ -312,15 +313,16 @@ export default function DebtsPage() {
         </div>
 
         {/* KPI 2: Debt-Free Acceleration */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-emerald p-5 rounded-3xl border border-emerald-500/20 relative overflow-hidden group hover:border-emerald-500/40 shadow-sm transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent dark:via-emerald-400/25" />
+          <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-bold mb-2">
             <span>Accelerated Debt Freedom</span>
-            <span className="material-symbols-outlined text-emerald-400 text-[18px]">event_available</span>
+            <span className="material-symbols-outlined text-emerald-500 text-[20px]">event_available</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-400 tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
             {accelerated.debtFreeDate || 'Debt-Free!'}
           </div>
-          <p className="text-[11px] text-emerald-400/80 mt-1.5 flex items-center gap-1">
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400/80 mt-1.5 flex items-center gap-1">
             <span className="material-symbols-outlined text-[13px]">bolt</span>
             {accelerated.monthsSaved > 0
               ? `${accelerated.monthsSaved} months faster than minimums`
@@ -329,42 +331,44 @@ export default function DebtsPage() {
         </div>
 
         {/* KPI 3: Interest Saved */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-sky-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-blue p-5 rounded-3xl border border-primary/20 relative overflow-hidden group hover:border-primary/40 shadow-sm transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent dark:via-primary/25" />
+          <div className="flex items-center justify-between text-xs text-primary font-bold mb-2">
             <span>Estimated Interest Saved</span>
-            <span className="material-symbols-outlined text-sky-400 text-[18px]">savings</span>
+            <span className="material-symbols-outlined text-primary text-[20px]">savings</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-sky-400 tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-primary tabular-nums tracking-tight">
             +{fmt(accelerated.interestSaved || 0)}
           </div>
-          <p className="text-[11px] text-gray-400 mt-1.5">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
             Through extra principal pre-payments
           </p>
         </div>
       </div>
 
       {/* Integrated Extra Payment & Strategy Accelerator Box (Minimalist Simulator) */}
-      <div className="p-6 rounded-3xl bg-slate-900/70 backdrop-blur-xl border border-white/10 shadow-2xl space-y-5">
+      <div className="glass-panel p-6 rounded-3xl border border-gray-100 dark:border-white/10 shadow-xl space-y-5 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/20" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-black text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-400">tune</span>
+            <h2 className="text-base font-black text-gray-950 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-emerald-500">tune</span>
               Payoff Strategy Accelerator
             </h2>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Adjust your extra monthly contribution and payoff strategy to watch completion dates shrink in real time.
             </p>
           </div>
 
           {/* Strategy 2-Option Segmented Pill */}
-          <div className="inline-flex p-1 rounded-xl bg-slate-800 border border-white/10 self-start sm:self-auto">
+          <div className="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 self-start sm:self-auto">
             <button
               type="button"
               onClick={() => setStrategy('avalanche')}
               className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
                 strategy === 'avalanche'
                   ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
               }`}
             >
               Avalanche (Lowest Interest)
@@ -374,8 +378,8 @@ export default function DebtsPage() {
               onClick={() => setStrategy('snowball')}
               className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
                 strategy === 'snowball'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
               }`}
             >
               Snowball (Fastest Wins)
@@ -386,12 +390,12 @@ export default function DebtsPage() {
         {/* Clean Extra Payment Slider */}
         <div className="space-y-2">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-bold text-gray-300 uppercase tracking-wider">
+            <span className="font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
               Extra Monthly Payment Toward Principal
             </span>
-            <span className="font-mono font-black text-base text-emerald-400 tabular-nums">
+            <span className="font-mono font-black text-base text-emerald-600 dark:text-emerald-400 tabular-nums">
               +{fmt(extraPayment)}
-              <span className="text-xs text-gray-400 font-normal">/mo</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">/mo</span>
             </span>
           </div>
 
@@ -402,7 +406,7 @@ export default function DebtsPage() {
             step="500"
             value={extraPayment}
             onChange={(e) => setExtraPayment(parseFloat(e.target.value))}
-            className="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
+            className="w-full accent-emerald-500 cursor-pointer h-2 bg-gray-200 dark:bg-white/10 rounded-lg"
           />
 
           <div className="flex justify-between text-[10px] text-gray-400">
@@ -417,11 +421,11 @@ export default function DebtsPage() {
       {/* Zero-Friction Payoff Order Table & Liability Cards */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-black text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-rose-400">format_list_numbered</span>
+          <h2 className="text-base font-black text-gray-950 dark:text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-rose-500">format_list_numbered</span>
             Priority Payoff Queue ({strategy === 'avalanche' ? 'Avalanche Order' : 'Snowball Order'})
           </h2>
-          <span className="text-xs text-gray-400">{sortedDebts.length} Active Positions</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{sortedDebts.length} Active Positions</span>
         </div>
 
         {debtsLoading ? (
@@ -431,10 +435,10 @@ export default function DebtsPage() {
             ))}
           </div>
         ) : sortedDebts.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-slate-900/40 border border-white/5 space-y-3">
-            <span className="material-symbols-outlined text-4xl text-emerald-400">verified</span>
-            <p className="text-sm font-bold text-white">Zero Active Debts!</p>
-            <p className="text-xs text-gray-400 max-w-sm mx-auto">
+          <div className="p-12 text-center rounded-3xl glass-panel border border-dashed border-gray-200 dark:border-white/10 space-y-3">
+            <span className="material-symbols-outlined text-4xl text-emerald-500">verified</span>
+            <p className="text-sm font-bold text-gray-950 dark:text-white">Zero Active Debts!</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
               You are completely debt-free. All previous loans and cards have zero balances.
             </p>
           </div>
@@ -448,7 +452,7 @@ export default function DebtsPage() {
               return (
                 <div
                   key={d.id}
-                  className="p-5 rounded-2xl bg-slate-900/70 border border-white/5 hover:border-white/10 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                  className="p-5 rounded-2xl glass-panel border border-gray-100 dark:border-white/10 hover:border-rose-500/30 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group"
                 >
                   {/* Left: Priority Badge, Icon, Name */}
                   <div className="flex items-center gap-3.5 min-w-0">
@@ -456,21 +460,21 @@ export default function DebtsPage() {
                       <span
                         className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
                           priorityNum === 1
-                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                            : 'bg-slate-800 text-gray-400 border border-white/5'
+                            ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                            : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-white/5'
                         }`}
                       >
                         #{priorityNum} {priorityNum === 1 ? 'Priority' : 'Next'}
                       </span>
                     </div>
 
-                    <div className="size-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 text-rose-500 shrink-0">
                       <span className="material-symbols-outlined text-[20px]">{icon}</span>
                     </div>
 
                     <div className="min-w-0">
-                      <h3 className="text-sm font-black text-white truncate">{d.name}</h3>
-                      <p className="text-[11px] text-gray-400">
+                      <h3 className="text-sm font-black text-gray-950 dark:text-white truncate">{d.name}</h3>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
                         {d.interestRateApr}% APR • Min. {fmt(d.minimumPayment)}/mo
                       </p>
                     </div>
@@ -558,9 +562,10 @@ export default function DebtsPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-md bg-[#0f172a] border border-white/10 rounded-3xl p-6 shadow-2xl z-10 space-y-4"
+              className="relative w-full max-w-md card-glass-elevated overflow-hidden border border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl z-10 space-y-4"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-rose-400">payments</span>
                   <h3 className="text-base font-black text-white">Record Debt Payment</h3>
@@ -669,9 +674,10 @@ export default function DebtsPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-md bg-[#0f172a] border border-white/10 rounded-3xl p-6 shadow-2xl z-10 space-y-4"
+              className="relative w-full max-w-md card-glass-elevated overflow-hidden border border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl z-10 space-y-4"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
                 <h3 className="text-base font-black text-white">
                   {editingDebt ? 'Edit Liability' : 'Log New Liability'}
                 </h3>

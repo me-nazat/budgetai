@@ -22,7 +22,7 @@ export interface SpendingChartProps {
     variant?: 'area' | 'bar';
 }
 
-const PALETTE = ['#136dec', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#64748b'];
+const PALETTE = ['#136dec', '#10b981', '#f59e0b', '#06b6d4', '#0284c7', '#ec4899', '#64748b'];
 
 export default function SpendingChart({
     data = [],
@@ -224,7 +224,7 @@ export default function SpendingChart({
                                                 const diff = d.diff;
 
                                                 return (
-                                                    <div className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/95 dark:bg-[#161b22]/95 backdrop-blur-xl p-3.5 shadow-xl text-xs min-w-[200px]">
+                                                    <div className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-xl p-3.5 shadow-xl text-xs min-w-[200px]">
                                                         <p className="font-bold text-gray-900 dark:text-white mb-2">
                                                             Day {d.day} of month
                                                         </p>
@@ -343,7 +343,7 @@ export default function SpendingChart({
                                                         if (!active || !payload?.length) return null;
                                                         const c = payload[0]?.payload;
                                                         return (
-                                                            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white/95 dark:bg-[#161b22]/95 backdrop-blur-xl p-2.5 shadow-xl text-xs">
+                                                            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-xl p-2.5 shadow-xl text-xs">
                                                                 <p className="font-bold text-gray-900 dark:text-white">{c.category}</p>
                                                                 <p className="tabular-nums font-mono text-primary font-semibold mt-0.5">
                                                                     {formatAmount(c.amount, fmt(c.amount))} ({c.percentage}%)

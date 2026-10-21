@@ -80,7 +80,7 @@ export const TransactionRowActions: React.FC<TransactionRowActionsProps> = ({
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1 w-44 origin-top-right rounded-2xl border border-gray-200 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/95 animate-fade-in">
+                <div className="absolute right-0 top-full z-50 mt-1 w-44 origin-top-right rounded-2xl border border-gray-200 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#12182B]/95 animate-fade-in">
                     <button
                         type="button"
                         onClick={() => {

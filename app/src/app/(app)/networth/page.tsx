@@ -10,7 +10,7 @@
  * - Two-Column Master Institutional Balance Sheet:
  *     - Left Column (Total Assets): Liquid Cash & Bank Accounts, Investments & Holdings, Receivables Owed to You
  *     - Right Column (Total Liabilities): Credit Card Balances, Loans & Mortgages, Payables You Owe
- * - Strict Purple Ban Compliant
+ * - Sovereign Sapphire Palette Compliant
  *
  * @module app/(app)/networth/page
  */
@@ -138,13 +138,13 @@ export default function NetWorthPage() {
       {/* Header Strip */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400 mb-1">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-1">
             Master Balance Sheet
           </p>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-gray-950 dark:text-white tracking-tight">
             Institutional Capital Workspace
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
             Comprehensive audit of all global assets, debts, and collaborative receivables.
           </p>
         </div>
@@ -155,7 +155,7 @@ export default function NetWorthPage() {
             setSnapshotAmount(String(netWorthVal > 0 ? netWorthVal : ''));
             setIsSnapshotModalOpen(true);
           }}
-          className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-bold text-gray-200 border border-white/10 flex items-center gap-1.5 transition-all self-start sm:self-auto"
+          className="px-4 py-2.5 rounded-xl bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-200 border border-gray-200/80 dark:border-white/10 shadow-sm flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">camera</span>
           Record Snapshot
@@ -165,16 +165,17 @@ export default function NetWorthPage() {
       {/* 3 Master Balance Sheet KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* KPI 1: Net Worth */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-sky-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-blue p-5 rounded-3xl relative overflow-hidden group hover:border-sky-500/30 transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
+          <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 font-bold mb-2">
             <span>Net Worth (Equity)</span>
-            <span className="material-symbols-outlined text-sky-400 text-[18px]">account_balance</span>
+            <span className="material-symbols-outlined text-sky-500 dark:text-sky-400 text-[18px]">account_balance</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-950 to-gray-600 dark:from-white dark:to-gray-400 tabular-nums tracking-tight">
             {formatAmount(netWorthVal, fmt(netWorthVal))}
           </div>
-          <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1">
-            <span className={horizonDelta.amount >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+          <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-1.5 flex items-center gap-1">
+            <span className={horizonDelta.amount >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-600 dark:text-rose-400 font-bold'}>
               {horizonDelta.amount >= 0 ? '+' : ''}
               {fmt(horizonDelta.amount)} ({horizonDelta.percent.toFixed(1)}%)
             </span>
@@ -183,73 +184,75 @@ export default function NetWorthPage() {
         </div>
 
         {/* KPI 2: Total Assets */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-emerald p-5 rounded-3xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/30 to-transparent" />
+          <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 font-bold mb-2">
             <span>Total Capital Assets</span>
-            <span className="material-symbols-outlined text-emerald-400 text-[18px]">trending_up</span>
+            <span className="material-symbols-outlined text-emerald-500 dark:text-emerald-400 text-[18px]">trending_up</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-400 tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
             {formatAmount(totalAssets, fmt(totalAssets))}
           </div>
-          <p className="text-[11px] text-gray-400 mt-1.5">
+          <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-1.5">
             Cash, holdings & receivables
           </p>
         </div>
 
         {/* KPI 3: Total Liabilities */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-rose-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-rose p-5 rounded-3xl relative overflow-hidden group hover:border-rose-500/30 transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/30 to-transparent" />
+          <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 font-bold mb-2">
             <span>Total Liabilities</span>
-            <span className="material-symbols-outlined text-rose-400 text-[18px]">credit_card</span>
+            <span className="material-symbols-outlined text-rose-500 dark:text-rose-400 text-[18px]">credit_card</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-400 tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tabular-nums tracking-tight">
             {formatAmount(totalLiabilities, fmt(totalLiabilities))}
           </div>
-          <p className="text-[11px] text-gray-400 mt-1.5">
-            Debt-to-Asset Ratio: <span className="font-mono font-bold text-gray-300">{debtRatio.toFixed(1)}%</span>
+          <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-1.5">
+            Debt-to-Asset Ratio: <span className="font-mono font-bold text-gray-800 dark:text-gray-200">{debtRatio.toFixed(1)}%</span>
           </p>
         </div>
       </div>
 
       {/* Top Hero Chart: Tri-Color Area Chart (Assets in emerald, Liabilities in rose, Net Worth line in sky) */}
-      <div className="p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/10 space-y-4 shadow-2xl">
+      <div className="p-6 rounded-3xl glass-panel space-y-4 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-black text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-400">stacked_line_chart</span>
+            <h2 className="text-base font-black text-gray-950 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-emerald-500 dark:text-emerald-400">stacked_line_chart</span>
               Capital Trajectory Audit
             </h2>
-            <p className="text-xs text-gray-400">Historical asset accumulation vs. liability retirement.</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Historical asset accumulation vs. liability retirement.</p>
           </div>
 
           <div className="flex items-center gap-4">
             {/* Chart Legend */}
             <div className="hidden md:flex items-center gap-3 text-xs font-bold">
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <span className="size-2.5 rounded-full bg-emerald-400" />
+              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                <span className="size-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                 Assets
               </span>
-              <span className="flex items-center gap-1.5 text-rose-400">
-                <span className="size-2.5 rounded-full bg-rose-400" />
+              <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+                <span className="size-2.5 rounded-full bg-rose-500 dark:bg-rose-400" />
                 Liabilities
               </span>
-              <span className="flex items-center gap-1.5 text-sky-400">
-                <span className="size-2.5 rounded-full bg-sky-400" />
+              <span className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+                <span className="size-2.5 rounded-full bg-sky-500 dark:bg-sky-400" />
                 Net Worth
               </span>
             </div>
 
             {/* Period Pills: 3M | 6M | 1Y | All */}
-            <div className="inline-flex p-1 rounded-xl bg-slate-800 border border-white/10">
+            <div className="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-black/30 border border-gray-200/80 dark:border-white/10">
               {(['3M', '6M', '1Y', 'All'] as const).map((period) => (
                 <button
                   key={period}
                   type="button"
                   onClick={() => setTimeHorizon(period)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
                     timeHorizon === period
-                      ? 'bg-slate-700 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-white dark:bg-white/10 text-gray-950 dark:text-white shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
                   }`}
                 >
                   {period}
@@ -277,7 +280,7 @@ export default function NetWorthPage() {
                     <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.2} />
                 <XAxis dataKey="label" stroke="#64748b" tick={{ fontSize: 11 }} />
                 <YAxis
                   stroke="#64748b"
@@ -288,10 +291,12 @@ export default function NetWorthPage() {
                 />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: '#0f172a',
+                    backgroundColor: '#12182B',
                     borderColor: 'rgba(255,255,255,0.1)',
                     borderRadius: '1rem',
                     fontSize: '12px',
+                    color: '#ffffff',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
                   }}
                   formatter={(val: any, name: any) => [
                     fmt(Number(val)),
@@ -330,37 +335,38 @@ export default function NetWorthPage() {
       {/* Two-Column Master Institutional Balance Sheet */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Total Assets */}
-        <div className="p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/10 space-y-5 shadow-xl">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="p-6 rounded-3xl glass-panel space-y-5 shadow-xl relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent" />
+          <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-400">account_balance_wallet</span>
-              <h2 className="text-base font-black text-white">Assets (What You Own)</h2>
+              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400">account_balance_wallet</span>
+              <h2 className="text-base font-black text-gray-950 dark:text-white">Assets (What You Own)</h2>
             </div>
-            <span className="font-mono font-black text-lg text-emerald-400 tabular-nums">
+            <span className="font-mono font-black text-lg text-emerald-600 dark:text-emerald-400 tabular-nums">
               {formatAmount(totalAssets, fmt(totalAssets))}
             </span>
           </div>
 
           <div className="space-y-4">
             {/* Liquid Cash & Bank Accounts */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">payments</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Liquid Cash & Bank Accounts</h3>
-                  <p className="text-[11px] text-gray-400">Checking, savings & cash-in-hand</p>
+                  <h3 className="text-sm font-bold text-gray-950 dark:text-white">Liquid Cash & Bank Accounts</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Checking, savings & cash-in-hand</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="font-mono font-black text-sm text-white tabular-nums">
+                <span className="font-mono font-black text-sm text-gray-950 dark:text-white tabular-nums">
                   {fmt(liquidCash)}
                 </span>
                 <Link
                   href="/accounts"
-                  className="size-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                  className="size-7 rounded-lg bg-gray-200/60 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 text-gray-700 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white flex items-center justify-center transition-colors"
                   title="View Accounts"
                 >
                   <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -369,24 +375,24 @@ export default function NetWorthPage() {
             </div>
 
             {/* Investments & Portfolio */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">show_chart</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Investments & Market Holdings</h3>
-                  <p className="text-[11px] text-gray-400">Equities, bonds, mutual funds & crypto</p>
+                  <h3 className="text-sm font-bold text-gray-950 dark:text-white">Investments & Market Holdings</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Equities, bonds, mutual funds & crypto</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="font-mono font-black text-sm text-white tabular-nums">
+                <span className="font-mono font-black text-sm text-gray-950 dark:text-white tabular-nums">
                   {fmt(investments)}
                 </span>
                 <Link
                   href="/investments"
-                  className="size-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                  className="size-7 rounded-lg bg-gray-200/60 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 text-gray-700 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white flex items-center justify-center transition-colors"
                   title="View Investments"
                 >
                   <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -396,41 +402,41 @@ export default function NetWorthPage() {
 
             {/* Real Estate & Physical Holdings */}
             {realEstate > 0 && (
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="size-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <div className="size-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                     <span className="material-symbols-outlined text-[18px]">domain</span>
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white">Real Estate & Fixed Capital</h3>
-                    <p className="text-[11px] text-gray-400">Properties, bullion, land</p>
+                    <h3 className="text-sm font-bold text-gray-950 dark:text-white">Real Estate & Fixed Capital</h3>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Properties, bullion, land</p>
                   </div>
                 </div>
-                <span className="font-mono font-black text-sm text-white tabular-nums">
+                <span className="font-mono font-black text-sm text-gray-950 dark:text-white tabular-nums">
                   {fmt(realEstate)}
                 </span>
               </div>
             )}
 
             {/* Collaborative Receivables */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">group</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Receivables Owed to You</h3>
-                  <p className="text-[11px] text-gray-400">Trips, shared bills & roommate splits</p>
+                  <h3 className="text-sm font-bold text-gray-950 dark:text-white">Receivables Owed to You</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Trips, shared bills & roommate splits</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="font-mono font-black text-sm text-emerald-400 tabular-nums">
+                <span className="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">
                   +{fmt(collaborativeReceivables)}
                 </span>
                 <Link
                   href="/household"
-                  className="size-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                  className="size-7 rounded-lg bg-gray-200/60 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 text-gray-700 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white flex items-center justify-center transition-colors"
                   title="View Household"
                 >
                   <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -441,37 +447,38 @@ export default function NetWorthPage() {
         </div>
 
         {/* Right Column: Total Liabilities */}
-        <div className="p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/10 space-y-5 shadow-xl">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="p-6 rounded-3xl glass-panel space-y-5 shadow-xl relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/20 to-transparent" />
+          <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-rose-400">credit_card</span>
-              <h2 className="text-base font-black text-white">Liabilities (What You Owe)</h2>
+              <span className="material-symbols-outlined text-rose-600 dark:text-rose-400">credit_card</span>
+              <h2 className="text-base font-black text-gray-950 dark:text-white">Liabilities (What You Owe)</h2>
             </div>
-            <span className="font-mono font-black text-lg text-rose-400 tabular-nums">
+            <span className="font-mono font-black text-lg text-rose-600 dark:text-rose-400 tabular-nums">
               {formatAmount(totalLiabilities, fmt(totalLiabilities))}
             </span>
           </div>
 
           <div className="space-y-4">
             {/* Credit Card Balances */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-rose-500/30 transition-all flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 hover:border-rose-500/30 transition-all flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">credit_card</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Credit Card Balances</h3>
-                  <p className="text-[11px] text-gray-400">Revolving credit card limits drawn</p>
+                  <h3 className="text-sm font-bold text-gray-950 dark:text-white">Credit Card Balances</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Revolving credit card limits drawn</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="font-mono font-black text-sm text-rose-400 tabular-nums">
+                <span className="font-mono font-black text-sm text-rose-600 dark:text-rose-400 tabular-nums">
                   {fmt(creditCards)}
                 </span>
                 <Link
                   href="/accounts"
-                  className="size-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                  className="size-7 rounded-lg bg-gray-200/60 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 text-gray-700 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white flex items-center justify-center transition-colors"
                   title="View Cards"
                 >
                   <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -480,24 +487,24 @@ export default function NetWorthPage() {
             </div>
 
             {/* Loans & Mortgages */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-rose-500/30 transition-all flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 hover:border-rose-500/30 transition-all flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">account_balance</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Term Loans & Mortgages</h3>
-                  <p className="text-[11px] text-gray-400">Personal loans, auto loans, education</p>
+                  <h3 className="text-sm font-bold text-gray-950 dark:text-white">Term Loans & Mortgages</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Personal loans, auto loans, education</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="font-mono font-black text-sm text-rose-400 tabular-nums">
+                <span className="font-mono font-black text-sm text-rose-600 dark:text-rose-400 tabular-nums">
                   {fmt(loans + mortgages)}
                 </span>
                 <Link
                   href="/debts"
-                  className="size-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                  className="size-7 rounded-lg bg-gray-200/60 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 text-gray-700 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white flex items-center justify-center transition-colors"
                   title="View Debts"
                 >
                   <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -506,24 +513,24 @@ export default function NetWorthPage() {
             </div>
 
             {/* Payables You Owe */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-rose-500/30 transition-all flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 hover:border-rose-500/30 transition-all flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">group_remove</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Payables You Owe</h3>
-                  <p className="text-[11px] text-gray-400">Shared group debts & pending bill IOUs</p>
+                  <h3 className="text-sm font-bold text-gray-950 dark:text-white">Payables You Owe</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Shared group debts & pending bill IOUs</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="font-mono font-black text-sm text-amber-400 tabular-nums">
+                <span className="font-mono font-black text-sm text-amber-600 dark:text-amber-400 tabular-nums">
                   {fmt(collaborativePayables)}
                 </span>
                 <Link
                   href="/household"
-                  className="size-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                  className="size-7 rounded-lg bg-gray-200/60 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 text-gray-700 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white flex items-center justify-center transition-colors"
                   title="View Household"
                 >
                   <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -549,19 +556,29 @@ export default function NetWorthPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-sm bg-[#0f172a] border border-white/10 rounded-3xl p-6 shadow-2xl z-10 space-y-4"
+              className="relative w-full max-w-sm card-glass-elevated overflow-hidden border border-gray-200/80 dark:border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl z-10 space-y-4"
             >
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-emerald-400">camera</span>
-                Record Balance Sheet Snapshot
-              </h3>
-              <p className="text-xs text-gray-400">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
+                <h3 className="text-base font-black text-gray-950 dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400">camera</span>
+                  Record Balance Sheet Snapshot
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsSnapshotModalOpen(false)}
+                  className="size-8 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Freeze current net worth state to audit capital progression over time.
               </p>
 
               <form onSubmit={handleSaveSnapshot} className="space-y-4 text-xs">
                 <div>
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
                     Net Worth Amount
                   </label>
                   <input
@@ -570,12 +587,12 @@ export default function NetWorthPage() {
                     required
                     value={snapshotAmount}
                     onChange={(e) => setSnapshotAmount(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white font-mono font-bold text-sm outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-950 dark:text-white font-mono font-bold text-sm outline-none focus:border-primary transition-all tabular-nums"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
                     Audit Note (Optional)
                   </label>
                   <input
@@ -583,7 +600,7 @@ export default function NetWorthPage() {
                     placeholder="e.g. End of Q3 Rebalance, Bonus credited"
                     value={snapshotNote}
                     onChange={(e) => setSnapshotNote(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-white/10 text-white font-bold outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-950 dark:text-white text-xs outline-none focus:border-primary transition-all"
                   />
                 </div>
 
@@ -591,14 +608,14 @@ export default function NetWorthPage() {
                   <button
                     type="button"
                     onClick={() => setIsSnapshotModalOpen(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-gray-300 hover:bg-white/5"
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingSnapshot}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white shadow-lg"
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white shadow-lg cursor-pointer transition-colors"
                   >
                     {isSavingSnapshot ? 'Recording...' : 'Save Snapshot'}
                   </button>

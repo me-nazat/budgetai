@@ -430,7 +430,8 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
       </header>
 
       {/* ── Filter Bar Controls ── */}
-      <div className="rounded-2xl border border-gray-200/80 bg-white/90 dark:border-[#30363d] dark:bg-[#161b22]/90 p-3 shadow-sm backdrop-blur-md space-y-3">
+      <div className="card-glass relative overflow-hidden rounded-2xl border border-white/[0.08] dark:border-white/[0.08] p-4 shadow-xl backdrop-blur-2xl space-y-3">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         {/* Row 1: Search, Type Tabs, Sort By, Reset Filters */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
           {/* Debounced Search with / shortcut */}
@@ -444,7 +445,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
               placeholder="Search description, category, or amount... (Press / to focus)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-14 py-2 bg-gray-50 dark:bg-[#0A0E1A]/40 border border-gray-200 dark:border-[#30363d] rounded-xl text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-primary transition-colors"
+              className="w-full pl-9 pr-14 py-2 bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-primary transition-colors"
             />
             <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {search ? (
@@ -456,7 +457,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                   <span className="material-symbols-outlined text-[16px]">cancel</span>
                 </button>
               ) : (
-                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded border border-gray-200 dark:border-[#30363d] bg-white dark:bg-[#21262d] text-[10px] font-mono text-gray-400">
+                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-[10px] font-mono text-gray-400">
                   /
                 </kbd>
               )}
@@ -464,7 +465,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
           </div>
 
           {/* Type Filter Tabs */}
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#0A0E1A]/60 p-1 rounded-xl shrink-0 overflow-x-auto">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-black/30 p-1 rounded-xl shrink-0 overflow-x-auto border border-transparent dark:border-white/5">
             {(
               [
                 { id: 'all', label: 'All' },
@@ -477,9 +478,9 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                 key={t.id}
                 type="button"
                 onClick={() => setType(t.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                   type === t.id
-                    ? 'bg-white dark:bg-[#161b22] text-gray-900 dark:text-white shadow-sm'
+                    ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
@@ -489,7 +490,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
           </div>
 
           {/* Sort By Select */}
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0A0E1A]/40 text-xs font-semibold text-gray-700 dark:text-gray-300 shrink-0">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/30 text-xs font-semibold text-gray-700 dark:text-gray-300 shrink-0">
             <span className="material-symbols-outlined text-[16px] text-gray-400">sort</span>
             <select
               value={sortBy}
@@ -517,8 +518,8 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
         </div>
 
         {/* Row 2: Date Range Quick Pills & Custom Inputs */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-100 dark:border-[#21262d]">
-          <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1">
+        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-150 dark:border-white/10">
+          <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mr-1">
             Period:
           </span>
           {QUICK_DATE_PILLS.map((pill) => (
@@ -526,10 +527,10 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
               key={pill.id}
               type="button"
               onClick={() => handleDatePresetClick(pill.id)}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 datePreset === pill.id
                   ? 'bg-primary text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-[#21262d] dark:text-gray-300 dark:hover:bg-[#30363d]'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10'
               }`}
             >
               {pill.label}
@@ -543,14 +544,14 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="px-2.5 py-1 text-xs border border-gray-200 dark:border-[#30363d] rounded-lg bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none"
+                className="px-2.5 py-1 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/30 text-gray-900 dark:text-white outline-none"
               />
               <span className="text-gray-400 text-xs">to</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="px-2.5 py-1 text-xs border border-gray-200 dark:border-[#30363d] rounded-lg bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none"
+                className="px-2.5 py-1 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/30 text-gray-900 dark:text-white outline-none"
               />
             </div>
           )}
@@ -563,10 +564,10 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
             <button
               type="button"
               onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                 selectedCategories.length > 0
                   ? 'bg-primary/10 border-primary/25 text-primary dark:text-[#38bdf8]'
-                  : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-[#21262d] dark:border-[#30363d] dark:text-gray-300'
+                  : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-white/5 dark:border-white/10 dark:text-gray-300'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">category</span>
@@ -579,13 +580,13 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
             </button>
 
             {categoryDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 z-40 w-64 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-xl dark:border-[#30363d] dark:bg-[#161b22]">
+              <div className="absolute left-0 top-full mt-1.5 z-40 w-64 rounded-2xl border border-gray-200/80 bg-white/95 p-2.5 shadow-2xl dark:border-white/10 dark:bg-[#12182B]/95 backdrop-blur-xl">
                 <input
                   type="text"
                   placeholder="Filter categories..."
                   value={categorySearchQuery}
                   onChange={(e) => setCategorySearchQuery(e.target.value)}
-                  className="w-full mb-2 px-2.5 py-1 text-xs border border-gray-200 dark:border-[#30363d] rounded-lg bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none"
+                  className="w-full mb-2 px-2.5 py-1 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/30 text-gray-900 dark:text-white outline-none"
                 />
                 <div className="max-h-48 overflow-y-auto space-y-1">
                   {allCategoryList.map((cat) => {
@@ -593,7 +594,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                     return (
                       <label
                         key={cat}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#21262d] cursor-pointer text-xs"
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer text-xs"
                       >
                         <input
                           type="checkbox"
@@ -615,7 +616,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedCategories([])}
-                    className="mt-2 w-full text-center text-[11px] font-bold text-rose-500 hover:underline pt-1 border-t border-gray-100 dark:border-[#30363d]"
+                    className="mt-2 w-full text-center text-[11px] font-bold text-rose-500 hover:underline pt-1 border-t border-gray-100 dark:border-white/10 cursor-pointer"
                   >
                     Clear Category Selection
                   </button>
@@ -629,10 +630,10 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
             <button
               type="button"
               onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                 selectedAccounts.length > 0
                   ? 'bg-primary/10 border-primary/25 text-primary dark:text-[#38bdf8]'
-                  : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-[#21262d] dark:border-[#30363d] dark:text-gray-300'
+                  : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-white/5 dark:border-white/10 dark:text-gray-300'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
@@ -645,14 +646,14 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
             </button>
 
             {accountDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 z-40 w-64 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-xl dark:border-[#30363d] dark:bg-[#161b22]">
+              <div className="absolute left-0 top-full mt-1.5 z-40 w-64 rounded-2xl border border-gray-200/80 bg-white/95 p-2.5 shadow-2xl dark:border-white/10 dark:bg-[#12182B]/95 backdrop-blur-xl">
                 <div className="max-h-48 overflow-y-auto space-y-1">
                   {accounts.map((acc: any) => {
                     const isChecked = selectedAccounts.includes(acc.id);
                     return (
                       <label
                         key={acc.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#21262d] cursor-pointer text-xs"
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer text-xs"
                       >
                         <input
                           type="checkbox"
@@ -676,7 +677,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedAccounts([])}
-                    className="mt-2 w-full text-center text-[11px] font-bold text-rose-500 hover:underline pt-1 border-t border-gray-100 dark:border-[#30363d]"
+                    className="mt-2 w-full text-center text-[11px] font-bold text-rose-500 hover:underline pt-1 border-t border-gray-100 dark:border-white/10 cursor-pointer"
                   >
                     Clear Account Selection
                   </button>
@@ -690,10 +691,10 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
             <button
               type="button"
               onClick={() => setAmountPopoverOpen(!amountPopoverOpen)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                 minAmount || maxAmount
                   ? 'bg-primary/10 border-primary/25 text-primary dark:text-[#38bdf8]'
-                  : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-[#21262d] dark:border-[#30363d] dark:text-gray-300'
+                  : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-white/5 dark:border-white/10 dark:text-gray-300'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">paid</span>
@@ -706,8 +707,8 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
             </button>
 
             {amountPopoverOpen && (
-              <div className="absolute left-0 top-full mt-1.5 z-40 w-60 rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-[#30363d] dark:bg-[#161b22] space-y-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+              <div className="absolute left-0 top-full mt-1.5 z-40 w-60 rounded-2xl border border-gray-200/80 bg-white/95 p-3 shadow-2xl dark:border-white/10 dark:bg-[#12182B]/95 backdrop-blur-xl space-y-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Amount Bounds
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -718,7 +719,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                       placeholder="0"
                       value={minAmount}
                       onChange={(e) => setMinAmount(e.target.value)}
-                      className="w-full px-2 py-1 text-xs border border-gray-200 dark:border-[#30363d] rounded-lg bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none"
+                      className="w-full px-2 py-1 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/30 text-gray-900 dark:text-white outline-none"
                     />
                   </div>
                   <div>
@@ -728,7 +729,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                       placeholder="999999"
                       value={maxAmount}
                       onChange={(e) => setMaxAmount(e.target.value)}
-                      className="w-full px-2 py-1 text-xs border border-gray-200 dark:border-[#30363d] rounded-lg bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none"
+                      className="w-full px-2 py-1 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/30 text-gray-900 dark:text-white outline-none"
                     />
                   </div>
                 </div>
@@ -739,7 +740,7 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
                       setMinAmount('');
                       setMaxAmount('');
                     }}
-                    className="w-full text-center text-[11px] font-bold text-rose-500 hover:underline pt-1 border-t border-gray-100 dark:border-[#30363d]"
+                    className="w-full text-center text-[11px] font-bold text-rose-500 hover:underline pt-1 border-t border-gray-100 dark:border-white/10 cursor-pointer"
                   >
                     Reset Range
                   </button>
@@ -781,8 +782,9 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
       {/* ── Live Filtered Summary Strip ── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {/* Total Filtered Count */}
-        <div className="rounded-2xl border border-gray-200/80 bg-white/80 p-3.5 shadow-sm dark:border-[#30363d] dark:bg-[#161b22]/80 backdrop-blur-md flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary dark:text-[#38bdf8] flex items-center justify-center shrink-0">
+        <div className="card-glass relative overflow-hidden rounded-2xl border border-white/[0.08] dark:border-white/[0.08] p-3.5 shadow-lg backdrop-blur-2xl flex items-center gap-3 hover-lift group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary dark:text-[#38bdf8] flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">receipt_long</span>
           </div>
           <div>
@@ -796,12 +798,13 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
         </div>
 
         {/* Total Inflows */}
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3.5 shadow-sm dark:border-emerald-500/20 dark:bg-emerald-950/20 backdrop-blur-md flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 flex items-center justify-center shrink-0">
+        <div className="card-glass relative overflow-hidden rounded-2xl border border-white/[0.08] dark:border-white/[0.08] p-3.5 shadow-lg backdrop-blur-2xl flex items-center gap-3 hover-lift group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">arrow_downward</span>
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               Inflows
             </p>
             <p className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">
@@ -811,12 +814,13 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
         </div>
 
         {/* Total Outflows */}
-        <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-3.5 shadow-sm dark:border-rose-500/20 dark:bg-rose-950/20 backdrop-blur-md flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 flex items-center justify-center shrink-0">
+        <div className="card-glass relative overflow-hidden rounded-2xl border border-white/[0.08] dark:border-white/[0.08] p-3.5 shadow-lg backdrop-blur-2xl flex items-center gap-3 hover-lift group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
               Outflows
             </p>
             <p className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 font-mono tabular-nums">
@@ -826,12 +830,13 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
         </div>
 
         {/* Net Cashflow */}
-        <div className="rounded-2xl border border-gray-200/80 bg-white/80 p-3.5 shadow-sm dark:border-[#30363d] dark:bg-[#161b22]/80 backdrop-blur-md flex items-center gap-3">
+        <div className="card-glass relative overflow-hidden rounded-2xl border border-white/[0.08] dark:border-white/[0.08] p-3.5 shadow-lg backdrop-blur-2xl flex items-center gap-3 hover-lift group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
               (filterSummary?.netCashflow || 0) >= 0
-                ? 'bg-primary/10 text-primary dark:text-[#38bdf8]'
-                : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
+                ? 'bg-primary/10 border-primary/20 text-primary dark:text-[#38bdf8]'
+                : 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
             }`}
           >
             <span className="material-symbols-outlined text-[20px]">account_balance</span>
@@ -857,8 +862,9 @@ export const TransactionFiltersBar: React.FC<TransactionFiltersBarProps> = ({
         </div>
 
         {/* Average Transaction Amount */}
-        <div className="col-span-2 md:col-span-1 rounded-2xl border border-gray-200/80 bg-white/80 p-3.5 shadow-sm dark:border-[#30363d] dark:bg-[#161b22]/80 backdrop-blur-md flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 dark:bg-[#21262d] dark:text-gray-300 flex items-center justify-center shrink-0">
+        <div className="col-span-2 md:col-span-1 card-glass relative overflow-hidden rounded-2xl border border-white/[0.08] dark:border-white/[0.08] p-3.5 shadow-lg backdrop-blur-2xl flex items-center gap-3 hover-lift group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">equalizer</span>
           </div>
           <div>

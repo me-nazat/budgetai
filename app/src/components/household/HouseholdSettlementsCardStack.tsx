@@ -303,37 +303,36 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative z-50 w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f172a] p-6 shadow-2xl"
+              className="relative z-50 w-full max-w-md rounded-3xl card-glass-elevated overflow-hidden border border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl p-6 shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="flex items-center justify-between mb-4 border-b border-gray-200/80 dark:border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                    <span className="material-symbols-outlined text-[22px]">payments</span>
-                  </div>
+                  <span className="material-symbols-outlined text-[24px] text-emerald-500 dark:text-emerald-400">payments</span>
                   <div>
-                    <h3 className="text-base font-black text-white">Confirm Household Settlement</h3>
-                    <p className="text-[11px] text-gray-400">Record settlement & update personal bank balance</p>
+                    <h3 className="text-base font-black text-gray-950 dark:text-white">Confirm Household Settlement</h3>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Record settlement & update personal bank balance</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveSettlementModal(null)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-gray-400 hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">close</span>
                 </button>
               </div>
 
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2 mb-4">
+              <div className="p-4 rounded-2xl bg-black/20 border border-white/10 space-y-2 mb-4">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-400 font-bold">Transfer:</span>
-                  <span className="text-white font-black">
+                  <span className="text-gray-950 dark:text-white font-black">
                     {activeSettlementModal.fromUserName} → {activeSettlementModal.toUserName}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-400 font-bold">Settlement Amount:</span>
-                  <span className="text-emerald-400 font-mono font-black text-base">
+                  <span className="text-emerald-500 dark:text-emerald-400 font-mono font-black text-base">
                     {currencySymbol}{activeSettlementModal.amount.toFixed(2)}
                   </span>
                 </div>
@@ -341,21 +340,21 @@ export function HouseholdSettlementsCardStack({ householdId, currencySymbol = '$
 
               {/* Personal Bank Account Selector */}
               <div className="space-y-2 mb-5">
-                <label className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <label className="text-xs font-black uppercase tracking-wider text-emerald-500 dark:text-emerald-400 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[16px]">account_balance</span>
                   Personal Bank Account
                 </label>
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
                   Select your personal account to log a non-spending settlement transfer:
                 </p>
                 <select
                   value={selectedAccountId ?? ''}
                   onChange={(e) => setSelectedAccountId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full rounded-xl border border-white/10 bg-[#1e293b] px-3.5 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500"
+                  className="w-full rounded-xl border border-white/10 bg-black/20 dark:bg-black/30 px-3.5 py-2.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-primary transition-all"
                 >
-                  <option value="">Do not sync to personal bank account</option>
+                  <option value="" className="bg-[#12182B] text-white">Do not sync to personal bank account</option>
                   {accounts.map((acc: any) => (
-                    <option key={acc.id} value={acc.id}>
+                    <option key={acc.id} value={acc.id} className="bg-[#12182B] text-white">
                       {acc.name} ({currencySymbol}{acc.currentBalance ?? acc.balance ?? 0}) • {acc.type}
                     </option>
                   ))}

@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 @theme inline {
   /* Font Family Definitions */
@@ -41,7 +41,7 @@
   --color-surface-hover: #1E293B;
   --color-surface-border: rgba(255, 255, 255, 0.08);
   
-  /* Wealth AI Signature Accents (Electric Sapphire - No Purple) */
+  /* Wealth AI Signature Accents (Electric Sapphire - Sovereign Navy) */
   --color-primary: #136dec;
   --color-primary-hover: #0f5ec8;
   --color-primary-light: rgba(19, 109, 236, 0.1);
@@ -173,12 +173,14 @@
     text-rendering: optimizeLegibility;
   }
 
+  .dark body,
   :where(.dark) body {
     background: var(--bg-canvas, #0A0E1B);
-    color: var(--color-text-main);
+    color: var(--color-text-main, #FAFAFA);
   }
 
   /* Institutional Enterprise Dark Mode Contrast Assurance */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
   :where(.dark) h1,
   :where(.dark) h2,
   :where(.dark) h3,
@@ -188,24 +190,51 @@
     color: var(--color-text-main, #FAFAFA);
   }
 
+  .dark .text-black,
+  .dark .text-gray-950,
+  .dark .text-gray-900,
+  .dark .text-slate-950,
+  .dark .text-slate-900,
+  :where(.dark) .text-black,
+  :where(.dark) .text-gray-950,
   :where(.dark) .text-gray-900,
-  :where(.dark) .text-gray-950 {
+  :where(.dark) .text-slate-950,
+  :where(.dark) .text-slate-900 {
     color: #FAFAFA;
   }
 
+  .dark .text-gray-800,
+  .dark .text-gray-700,
+  .dark .text-slate-800,
+  .dark .text-slate-700,
   :where(.dark) .text-gray-800,
-  :where(.dark) .text-gray-700 {
+  :where(.dark) .text-gray-700,
+  :where(.dark) .text-slate-800,
+  :where(.dark) .text-slate-700 {
     color: #CBD5E1;
   }
 
+  .dark .text-gray-600,
+  .dark .text-gray-500,
+  .dark .text-slate-600,
+  .dark .text-slate-500,
   :where(.dark) .text-gray-600,
-  :where(.dark) .text-gray-500 {
+  :where(.dark) .text-gray-500,
+  :where(.dark) .text-slate-600,
+  :where(.dark) .text-slate-500 {
     color: #94A3B8;
   }
 
+  .dark .border-gray-200,
+  .dark .border-gray-150,
+  .dark .border-gray-100,
+  .dark .border-slate-200,
+  .dark .border-slate-100,
   :where(.dark) .border-gray-200,
   :where(.dark) .border-gray-150,
-  :where(.dark) .border-gray-100 {
+  :where(.dark) .border-gray-100,
+  :where(.dark) .border-slate-200,
+  :where(.dark) .border-slate-100 {
     border-color: rgba(255, 255, 255, 0.08);
   }
 
@@ -271,21 +300,22 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #30363d;
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #484f58;
+    background: rgba(255, 255, 255, 0.28);
   }
 
   /* Custom scrollbar — Light */
   html:not(.dark) ::-webkit-scrollbar-thumb {
-    background: #c1c8d0;
+    background: rgba(0, 0, 0, 0.16);
+    border-radius: 9999px;
   }
 
   html:not(.dark) ::-webkit-scrollbar-thumb:hover {
-    background: #a0a8b4;
+    background: rgba(0, 0, 0, 0.28);
   }
 
   /* Smooth transitions on interactive elements without animating layout-heavy properties. */
@@ -369,31 +399,41 @@
   }
 
   .glass-panel {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    backdrop-filter: blur(24px) saturate(1.2);
+    -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   }
 
+  .dark .glass-panel,
   :where(.dark) .glass-panel {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    background: rgba(18, 24, 43, 0.76);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 32px rgba(0, 0, 0, 0.45);
   }
 
-  /* PREMIUM CARD — Clean institutional surface */
+  /* PREMIUM CARD — Signature Wealth AI tactile surface */
   .card-premium {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9);
     transition-property: border-color, box-shadow, background-color, transform;
-    transition-duration: 150ms;
+    transition-duration: 220ms;
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .dark .card-premium,
   :where(.dark) .card-premium {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-subtle);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    background: rgba(18, 24, 43, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 32px rgba(0, 0, 0, 0.5);
   }
 
   /* Capability Card */
@@ -543,8 +583,27 @@
     background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.02) 100%);
   }
 
+  .dark .stat-gradient-orange,
   :where(.dark) .stat-gradient-orange {
     background: linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0.03) 100%);
+  }
+
+  .stat-gradient-amber {
+    background: linear-gradient(135deg, rgba(255, 184, 0, 0.08) 0%, rgba(255, 184, 0, 0.02) 100%);
+  }
+
+  .dark .stat-gradient-amber,
+  :where(.dark) .stat-gradient-amber {
+    background: linear-gradient(135deg, rgba(255, 184, 0, 0.12) 0%, rgba(255, 184, 0, 0.03) 100%);
+  }
+
+  .stat-gradient-rose {
+    background: linear-gradient(135deg, rgba(255, 42, 95, 0.08) 0%, rgba(255, 42, 95, 0.02) 100%);
+  }
+
+  .dark .stat-gradient-rose,
+  :where(.dark) .stat-gradient-rose {
+    background: linear-gradient(135deg, rgba(255, 42, 95, 0.12) 0%, rgba(255, 42, 95, 0.03) 100%);
   }
 
 
@@ -1386,6 +1445,7 @@ html:not(.dark) .lp-section-divider {
       border-color 0.22s ease;
   }
 
+  .dark .card-glass,
   :where(.dark) .card-glass {
     background: rgba(18, 24, 43, 0.78);
     backdrop-filter: blur(24px) saturate(1.4);
@@ -1400,6 +1460,7 @@ html:not(.dark) .lp-section-divider {
     border-color: rgba(19, 109, 236, 0.25);
   }
 
+  .dark .card-glass:hover,
   :where(.dark) .card-glass:hover {
     box-shadow: 0 14px 38px -4px rgba(19, 109, 236, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     border-color: rgba(19, 109, 236, 0.35);

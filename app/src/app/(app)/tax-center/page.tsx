@@ -5,7 +5,7 @@
  * Consolidated high-performance tax deduction ledger, IRS/CPA compliance engine,
  * and deterministic document vault.
  *
- * Strict Purple Ban: zero purple/violet classes.
+ * Sovereign Sapphire Palette: zero banned-hue classes.
  *
  * @module app/(app)/tax-center/page
  */

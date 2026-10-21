@@ -160,7 +160,7 @@ export async function generateUserInsights(userId: number): Promise<GeneratedIns
           severity: pct >= 100 ? 'CRITICAL' : 'INFO',
           title: `[Module 15: Milestone Hit] ${g.name} (${milestoneTier})`,
           message: pct >= 100
-            ? `🎉 Incredible achievement! You have achieved 100% of your target for "${g.name}" (৳${g.savedAmount.toLocaleString()} of ৳${g.targetAmount.toLocaleString()})!`
+            ? `Milestone Achieved: You have reached 100% of your target for "${g.name}" (${g.savedAmount.toLocaleString()} of ${g.targetAmount.toLocaleString()})!`
             : `Milestone hit! You have achieved ${Math.round(pct)}% of your target for "${g.name}". You are on track to meet your wealth goal.`,
           actionLink: `/wealth-goals`,
         });

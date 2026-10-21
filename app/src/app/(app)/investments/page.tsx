@@ -8,7 +8,7 @@
  * - 3 Core KPIs with tabular-nums: Total Portfolio Value, Total Cost Basis, All-Time Unrealized Return
  * - Horizontal Asset Class Allocation Bar (Equities, Fixed/Bonds, Real Estate/Gold, Crypto, Cash)
  * - Scannable Holdings Table with inline Update Value / Log Buy-Sell
- * - Strict Purple Ban Compliant
+ * - Sovereign Sapphire Palette Compliant
  *
  * @module app/(app)/investments/page
  */
@@ -133,13 +133,13 @@ export default function InvestmentsPage() {
       {/* Header Strip */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400 mb-1">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-500 mb-1">
             Institutional Capital Workspace
           </p>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-gray-950 dark:text-white tracking-tight">
             Investment Portfolio
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Real asset allocation, cost basis tracking, and true all-time unrealized gains.
           </p>
         </div>
@@ -160,15 +160,16 @@ export default function InvestmentsPage() {
       {/* 3 Core KPIs (tabular-nums) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* KPI 1: Total Portfolio Value */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-emerald p-5 rounded-3xl border border-emerald-500/20 relative overflow-hidden group hover:border-emerald-500/40 shadow-sm transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent dark:via-emerald-400/25" />
+          <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-bold mb-2">
             <span>Total Portfolio Value</span>
-            <span className="material-symbols-outlined text-emerald-400 text-[18px]">account_balance_wallet</span>
+            <span className="material-symbols-outlined text-emerald-500 text-[20px]">account_balance_wallet</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-950 to-gray-600 dark:from-white dark:to-gray-400 tabular-nums font-mono tracking-tight">
             {fmt(summary.totalCurrentValue || summary.totalInvested)}
           </div>
-          <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1">
             <span>{summary.holdingCount} Active Assets</span>
             <span>•</span>
             <span>Live Valuations</span>
@@ -176,35 +177,37 @@ export default function InvestmentsPage() {
         </div>
 
         {/* KPI 2: Total Cost Basis */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-sky-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-blue p-5 rounded-3xl border border-primary/20 relative overflow-hidden group hover:border-primary/40 shadow-sm transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent dark:via-primary/25" />
+          <div className="flex items-center justify-between text-xs text-primary font-bold mb-2">
             <span>Total Cost Basis</span>
-            <span className="material-symbols-outlined text-sky-400 text-[18px]">savings</span>
+            <span className="material-symbols-outlined text-primary text-[20px]">savings</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-950 to-gray-600 dark:from-white dark:to-gray-400 tabular-nums font-mono tracking-tight">
             {fmt(summary.totalInvested)}
           </div>
-          <p className="text-[11px] text-sky-400/80 mt-1.5 flex items-center gap-1">
+          <p className="text-[11px] text-primary/80 mt-1.5 flex items-center gap-1">
             <span className="material-symbols-outlined text-[13px]">paid</span>
             Cumulative capital deployed
           </p>
         </div>
 
         {/* KPI 3: All-Time Unrealized Return ($ and %) */}
-        <div className="p-5 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/5 relative overflow-hidden group hover:border-amber-500/30 transition-all">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2">
+        <div className="glass-panel stat-gradient-amber p-5 rounded-3xl border border-amber-500/20 relative overflow-hidden group hover:border-amber-500/40 shadow-sm transition-all">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent dark:via-amber-400/25" />
+          <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-bold mb-2">
             <span>All-Time Unrealized Return</span>
             <span
-              className={`material-symbols-outlined text-[18px] ${
-                summary.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              className={`material-symbols-outlined text-[20px] ${
+                summary.totalGainLoss >= 0 ? 'text-emerald-500' : 'text-rose-500'
               }`}
             >
               {summary.totalGainLoss >= 0 ? 'trending_up' : 'trending_down'}
             </span>
           </div>
           <div
-            className={`text-2xl sm:text-3xl font-black tabular-nums tracking-tight flex items-baseline gap-2 ${
-              summary.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            className={`text-2xl sm:text-3xl font-black tabular-nums font-mono tracking-tight flex items-baseline gap-2 ${
+              summary.totalGainLoss >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
             }`}
           >
             <span>
@@ -216,30 +219,31 @@ export default function InvestmentsPage() {
               {summary.totalGainLossPercent.toFixed(2)}%)
             </span>
           </div>
-          <p className="text-[11px] text-gray-400 mt-1.5">Net capital appreciation</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">Net capital appreciation</p>
         </div>
       </div>
 
       {/* Asset Class Allocation Bar */}
-      <div className="p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/10 space-y-4">
+      <div className="glass-panel p-6 rounded-3xl border border-gray-100 dark:border-white/10 shadow-xl space-y-4 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/20" />
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-black text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-400">pie_chart</span>
+            <h2 className="text-base font-black text-gray-950 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-emerald-500">pie_chart</span>
               Asset Class Allocation Weight
             </h2>
-            <p className="text-xs text-gray-400">Institutional exposure distribution across asset classes.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Institutional exposure distribution across asset classes.</p>
           </div>
         </div>
 
         {allocationBreakdown.length === 0 ? (
-          <div className="h-6 w-full bg-slate-800 rounded-full flex items-center justify-center text-[10px] text-gray-500">
+          <div className="h-6 w-full bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center text-[10px] text-gray-400">
             No holdings logged yet
           </div>
         ) : (
           <div className="space-y-3">
             {/* Horizontal Stacked Bar */}
-            <div className="h-4 w-full rounded-full bg-slate-800 overflow-hidden flex">
+            <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden flex">
               {allocationBreakdown.map((ac) => (
                 <div
                   key={ac.value}
@@ -258,12 +262,12 @@ export default function InvestmentsPage() {
               {allocationBreakdown.map((ac) => (
                 <div
                   key={ac.value}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs"
                 >
-                  <span className="size-2.5 rounded-full" style={{ backgroundColor: ac.color }} />
-                  <span className="font-bold text-gray-300">{ac.label}</span>
-                  <span className="font-mono font-black text-white tabular-nums">{ac.percentage}%</span>
-                  <span className="text-[11px] text-gray-500">({fmt(ac.value)})</span>
+                  <span className="size-2 rounded-full" style={{ backgroundColor: ac.color }} />
+                  <span className="font-semibold text-gray-600 dark:text-gray-300">{ac.label}</span>
+                  <span className="font-mono font-bold text-gray-950 dark:text-white tabular-nums">{ac.percentage}%</span>
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500">({fmt(ac.value)})</span>
                 </div>
               ))}
             </div>
@@ -272,13 +276,13 @@ export default function InvestmentsPage() {
       </div>
 
       {/* Clean Holdings Table */}
-      <div className="rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-white/10 overflow-hidden shadow-2xl">
-        <div className="p-5 border-b border-white/5 flex items-center justify-between">
-          <h2 className="text-base font-black text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-sky-400">list_alt</span>
+      <div className="glass-panel rounded-3xl border border-gray-100 dark:border-white/10 overflow-hidden shadow-xl">
+        <div className="p-5 border-b border-gray-150 dark:border-white/5 flex items-center justify-between">
+          <h2 className="text-base font-black text-gray-950 dark:text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">list_alt</span>
             Holdings & Position Ledger
           </h2>
-          <span className="text-xs font-bold text-gray-400">{holdings.length} Assets</span>
+          <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{holdings.length} Assets</span>
         </div>
 
         {isLoading ? (
@@ -496,9 +500,10 @@ function HoldingModal({ holding, onClose }: { holding: Holding | null; onClose: 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-md bg-[#0f172a] border border-white/10 rounded-3xl p-6 shadow-2xl z-10 space-y-4"
+        className="relative w-full max-w-md card-glass-elevated overflow-hidden border border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl z-10 space-y-4"
       >
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
           <h3 className="text-base font-black text-white">
             {isEdit ? 'Update Investment Position' : 'Log New Investment Position'}
           </h3>

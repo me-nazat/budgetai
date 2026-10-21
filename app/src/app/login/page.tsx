@@ -261,7 +261,7 @@ function LoginForm() {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-12 bg-[#06080F] text-slate-100 relative overflow-hidden select-none">
-            {/* Ambient Background Glows — Emerald, Cyan & Obsidian Depth (Zero Purple) */}
+            {/* Ambient Background Glows — Emerald, Cyan & Obsidian Depth (Sovereign Theme) */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-15%] left-[-10%] w-[700px] h-[700px] rounded-full bg-emerald-500/[0.08] blur-[150px]" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[650px] h-[650px] rounded-full bg-cyan-500/[0.07] blur-[160px]" />

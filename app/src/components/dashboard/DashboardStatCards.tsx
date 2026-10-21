@@ -77,46 +77,50 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
     const savingsProgressPct = Math.max(0, Math.min(100, (savingsRate / 20) * 100));
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8 stagger-children">
             {/* ── CARD 1: Safe-to-Spend & Daily Allowance ── */}
             <TiltCard
-                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-visible flex flex-col justify-between hover:border-primary/30"
+                className="glass-panel stat-gradient-emerald p-5 lg:p-6 rounded-3xl relative overflow-visible flex flex-col justify-between group breathe border border-gray-100 dark:border-white/5 hover:border-emerald-500/40 transition-all duration-300"
             >
-                <div>
-                    <div className="flex items-center justify-between mb-1">
+                {/* Hairline top-edge light reflection */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent dark:via-emerald-400/25" />
+                
+                {/* Subtle corner jewel glow */}
+                <div className="pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full bg-emerald-500/10 blur-2xl dark:bg-emerald-500/15" />
+
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-1.5">
-                            <span className="text-[var(--color-text-muted)] text-xs font-semibold tracking-wider uppercase">
+                            <span className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
                                 Safe-to-Spend
                             </span>
                             <button
                                 type="button"
                                 onClick={() => setShowFormulaPopover(!showFormulaPopover)}
-                                className="w-4 h-4 rounded-full text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] hover:bg-[var(--bg-hover)] inline-flex items-center justify-center transition-colors focus-visible:outline-none"
+                                className="w-4 h-4 rounded-full text-gray-400 hover:text-gray-900 dark:hover:text-white inline-flex items-center justify-center transition-colors focus-visible:outline-none"
                                 title="Click to view Safe-to-Spend calculation formula"
                                 aria-label="Safe-to-Spend breakdown"
                             >
                                 <span className="material-symbols-outlined text-[14px]">info</span>
                             </button>
                         </div>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
-                            <span className="material-symbols-outlined text-[19px]">verified_user</span>
-                        </span>
+                        <span className="material-symbols-outlined text-[20px] text-emerald-500 opacity-80 group-hover:scale-110 transition-transform duration-300">verified_user</span>
                     </div>
 
                     <h3
-                        className="text-gray-950 dark:text-white text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1"
+                        className="text-transparent bg-clip-text bg-gradient-to-br from-gray-950 via-gray-800 to-gray-600 dark:from-white dark:via-gray-100 dark:to-gray-400 text-2xl lg:text-[1.875rem] font-black tracking-tight tabular-nums font-mono my-1 number-appear"
                         data-numeric="true"
                     >
                         {formatAmount(safeToSpend.safeToSpendTotal, fmt(safeToSpend.safeToSpendTotal))}
                     </h3>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
+                <div className="relative z-10 flex items-center justify-between gap-2 mt-2 pt-2.5 border-t border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 tabular-nums font-mono border border-emerald-500/20">
                             {formatAmount(safeToSpend.dailySafeAllowance, fmt(safeToSpend.dailySafeAllowance))}/day
                         </span>
-                        <span className="text-[var(--color-text-muted)] text-[11px] font-medium">
+                        <span className="text-gray-500 dark:text-gray-400 text-xs font-medium">
                             {safeToSpend.daysRemaining} days left
                         </span>
                     </div>
@@ -126,36 +130,36 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
                 {showFormulaPopover && (
                     <div
                         ref={popoverRef}
-                        className="absolute top-[calc(100%+6px)] left-0 w-72 p-4 rounded-xl border border-gray-200 dark:border-white/10 bg-white/95 dark:bg-surface-dark/95 shadow-2xl z-40 text-xs space-y-2.5 backdrop-blur-xl"
+                        className="glass-card-elevated absolute top-[calc(100%+8px)] left-0 w-72 p-4 rounded-2xl z-40 text-xs space-y-2.5 backdrop-blur-2xl border border-gray-200 dark:border-white/10 shadow-2xl"
                     >
                         <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-2">
-                            <span className="font-semibold text-[var(--color-text-main)]">Safe-to-Spend Formula</span>
+                            <span className="font-bold text-gray-900 dark:text-white">Safe-to-Spend Formula</span>
                             <button
                                 type="button"
                                 onClick={() => setShowFormulaPopover(false)}
-                                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                                className="text-gray-400 hover:text-gray-900 dark:hover:text-white"
                             >
                                 <span className="material-symbols-outlined text-[16px]">close</span>
                             </button>
                         </div>
                         <div className="space-y-1.5 tabular-nums font-mono">
-                            <div className="flex justify-between text-emerald-500">
-                                <span className="text-[var(--color-text-muted)] font-sans">Liquid Cash:</span>
+                            <div className="flex justify-between text-emerald-500 font-semibold">
+                                <span className="text-gray-500 dark:text-gray-400 font-sans">Liquid Cash:</span>
                                 <span>+{formatAmount(safeToSpend.liquidCash, fmt(safeToSpend.liquidCash))}</span>
                             </div>
-                            <div className="flex justify-between text-rose-500">
-                                <span className="text-[var(--color-text-muted)] font-sans">Upcoming Bills:</span>
+                            <div className="flex justify-between text-rose-500 font-semibold">
+                                <span className="text-gray-500 dark:text-gray-400 font-sans">Upcoming Bills:</span>
                                 <span>-{formatAmount(safeToSpend.upcomingCommittedBills, fmt(safeToSpend.upcomingCommittedBills))}</span>
                             </div>
-                            <div className="flex justify-between text-amber-500">
-                                <span className="text-[var(--color-text-muted)] font-sans">Budget & Goals:</span>
+                            <div className="flex justify-between text-amber-500 font-semibold">
+                                <span className="text-gray-500 dark:text-gray-400 font-sans">Budget & Goals:</span>
                                 <span>-{formatAmount(safeToSpend.remainingBudgetReservations, fmt(safeToSpend.remainingBudgetReservations))}</span>
                             </div>
-                            <div className="flex justify-between text-rose-500">
-                                <span className="text-[var(--color-text-muted)] font-sans">Card Balances:</span>
+                            <div className="flex justify-between text-rose-500 font-semibold">
+                                <span className="text-gray-500 dark:text-gray-400 font-sans">Card Balances:</span>
                                 <span>-{formatAmount(safeToSpend.creditCardCurrentBalance, fmt(safeToSpend.creditCardCurrentBalance))}</span>
                             </div>
-                            <div className="border-t border-gray-100 dark:border-white/10 pt-1.5 flex justify-between font-bold text-[var(--color-text-main)]">
+                            <div className="border-t border-gray-100 dark:border-white/10 pt-1.5 flex justify-between font-bold text-gray-900 dark:text-white">
                                 <span className="font-sans">Free Cashflow:</span>
                                 <span>{formatAmount(safeToSpend.safeToSpendTotal, fmt(safeToSpend.safeToSpendTotal))}</span>
                             </div>
@@ -166,41 +170,45 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
 
             {/* ── CARD 2: Net Worth & Liquid Ratio ── */}
             <TiltCard
-                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:border-primary/30"
+                className="glass-panel stat-gradient-blue p-5 lg:p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between group breathe border border-gray-100 dark:border-white/5 hover:border-primary/40 transition-all duration-300"
             >
-                <div>
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="text-[var(--color-text-muted)] text-xs font-semibold tracking-wider uppercase">
+                {/* Hairline top-edge light reflection */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent dark:via-primary/25" />
+                
+                {/* Subtle corner jewel glow */}
+                <div className="pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full bg-primary/10 blur-2xl dark:bg-primary/15" />
+
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
                             Net Worth
                         </span>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
-                            <span className="material-symbols-outlined text-[19px]">account_balance</span>
-                        </span>
+                        <span className="material-symbols-outlined text-[20px] text-primary opacity-80 group-hover:scale-110 transition-transform duration-300">account_balance</span>
                     </div>
 
                     <h3
-                        className="text-gray-950 dark:text-white text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1"
+                        className="text-transparent bg-clip-text bg-gradient-to-br from-gray-950 via-gray-800 to-gray-600 dark:from-white dark:via-gray-100 dark:to-gray-400 text-2xl lg:text-[1.875rem] font-black tracking-tight tabular-nums font-mono my-1 number-appear"
                         data-numeric="true"
                     >
                         {formatAmount(totalNetWorth, fmt(totalNetWorth))}
                     </h3>
                 </div>
 
-                <div className="flex items-center justify-between gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
+                <div className="relative z-10 flex items-center justify-between gap-1.5 mt-2 pt-2.5 border-t border-gray-100 dark:border-white/10">
                     <span
-                        className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-0.5 tabular-nums font-mono ${
+                        className={`text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-0.5 tabular-nums font-mono border ${
                             netSavingsDelta >= 0
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20'
                         }`}
                         data-numeric="true"
                     >
-                        <span className="material-symbols-outlined text-[13px]">
+                        <span className="material-symbols-outlined text-[14px]">
                             {netSavingsDelta >= 0 ? 'trending_up' : 'trending_down'}
                         </span>
                         {netWorthMoMPercent >= 0 ? '+' : ''}{netWorthMoMPercent.toFixed(1)}%
                     </span>
-                    <span className="text-[var(--color-text-muted)] text-[11px] font-medium tabular-nums font-mono">
+                    <span className="text-gray-500 dark:text-gray-400 text-xs font-medium tabular-nums font-mono">
                         {liquidRatio}% liquid
                     </span>
                 </div>
@@ -208,41 +216,45 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
 
             {/* ── CARD 3: Monthly Spending & Pacing Velocity ── */}
             <TiltCard
-                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:border-primary/30"
+                className="glass-panel stat-gradient-orange p-5 lg:p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between group breathe border border-gray-100 dark:border-white/5 hover:border-amber-500/40 transition-all duration-300"
             >
-                <div>
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="text-[var(--color-text-muted)] text-xs font-semibold tracking-wider uppercase">
+                {/* Hairline top-edge light reflection */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent dark:via-amber-400/25" />
+                
+                {/* Subtle corner jewel glow */}
+                <div className="pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full bg-amber-500/10 blur-2xl dark:bg-amber-500/15" />
+
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
                             Monthly Spending
                         </span>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500">
-                            <span className="material-symbols-outlined text-[19px]">shopping_bag</span>
-                        </span>
+                        <span className="material-symbols-outlined text-[20px] text-amber-500 opacity-80 group-hover:scale-110 transition-transform duration-300">shopping_bag</span>
                     </div>
 
                     <h3
-                        className="text-gray-950 dark:text-white text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1"
+                        className="text-transparent bg-clip-text bg-gradient-to-br from-gray-950 via-gray-800 to-gray-600 dark:from-white dark:via-gray-100 dark:to-gray-400 text-2xl lg:text-[1.875rem] font-black tracking-tight tabular-nums font-mono my-1 number-appear"
                         data-numeric="true"
                     >
                         {formatAmount(monthlyExpenses, fmt(monthlyExpenses))}
                     </h3>
                 </div>
 
-                <div className="flex items-center justify-between gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
+                <div className="relative z-10 flex items-center justify-between gap-1.5 mt-2 pt-2.5 border-t border-gray-100 dark:border-white/10">
                     <span
-                        className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-0.5 tabular-nums font-mono ${
+                        className={`text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-0.5 tabular-nums font-mono border ${
                             isPaceFavorable
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20'
                         }`}
                         data-numeric="true"
                     >
-                        <span className="material-symbols-outlined text-[13px]">
+                        <span className="material-symbols-outlined text-[14px]">
                             {isPaceFavorable ? 'speed' : 'trending_up'}
                         </span>
                         {paceMetrics.paceDeltaPercent >= 0 ? '+' : ''}{paceMetrics.paceDeltaPercent.toFixed(1)}% pace
                     </span>
-                    <span className="text-[var(--color-text-muted)] text-[11px] font-medium tabular-nums font-mono truncate max-w-[110px]" title={`Projected: ${fmt(paceMetrics.projectedMonthEndSpend)}`}>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs font-medium tabular-nums font-mono truncate max-w-[110px]" title={`Projected: ${fmt(paceMetrics.projectedMonthEndSpend)}`}>
                         proj {formatAmount(paceMetrics.projectedMonthEndSpend, fmt(paceMetrics.projectedMonthEndSpend))}
                     </span>
                 </div>
@@ -250,41 +262,47 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
 
             {/* ── CARD 4: Net Cashflow & Savings Rate ── */}
             <TiltCard
-                className="card-glass p-5 lg:p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:border-primary/30"
+                className="glass-panel stat-gradient-emerald p-5 lg:p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between group breathe border border-gray-100 dark:border-white/5 hover:border-teal-500/40 transition-all duration-300"
             >
-                <div>
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="text-[var(--color-text-muted)] text-xs font-semibold tracking-wider uppercase">
+                {/* Hairline top-edge light reflection */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-400/40 to-transparent dark:via-teal-400/25" />
+                
+                {/* Subtle corner jewel glow */}
+                <div className="pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full bg-teal-500/10 blur-2xl dark:bg-teal-500/15" />
+
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
                             Net Cashflow
                         </span>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-500">
-                            <span className="material-symbols-outlined text-[19px]">savings</span>
-                        </span>
+                        <span className="material-symbols-outlined text-[20px] text-teal-500 opacity-80 group-hover:scale-110 transition-transform duration-300">savings</span>
                     </div>
 
                     <h3
-                        className={`text-2xl lg:text-[1.875rem] font-bold tracking-tight tabular-nums font-mono my-1 ${
-                            netCashflow >= 0 ? 'text-gray-950 dark:text-white' : 'text-rose-600 dark:text-rose-400'
-                        }`}
+                        className={`text-transparent bg-clip-text ${
+                            netCashflow >= 0
+                                ? 'bg-gradient-to-br from-gray-950 via-gray-800 to-gray-600 dark:from-white dark:via-gray-100 dark:to-gray-400'
+                                : 'bg-gradient-to-br from-rose-600 to-rose-400'
+                        } text-2xl lg:text-[1.875rem] font-black tracking-tight tabular-nums font-mono my-1 number-appear`}
                         data-numeric="true"
                     >
                         {formatAmount(netCashflow, fmt(netCashflow))}
                     </h3>
                 </div>
 
-                <div className="space-y-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
+                <div className="relative z-10 space-y-1.5 mt-2 pt-2.5 border-t border-gray-100 dark:border-white/10">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-600 dark:text-teal-400 tabular-nums font-mono">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-600 dark:text-teal-400 tabular-nums font-mono border border-teal-500/20">
                             {savingsRate.toFixed(1)}% saved
                         </span>
-                        <span className="text-[var(--color-text-muted)] text-[11px] font-medium">
+                        <span className="text-gray-500 dark:text-gray-400 text-xs font-medium">
                             Target: 20%
                         </span>
                     </div>
                     {/* Micro Benchmark Progress Bar */}
                     <div className="w-full h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
                         <div
-                            className={`h-full transition-all duration-300 rounded-full ${
+                            className={`h-full transition-all duration-500 rounded-full ${
                                 savingsRate >= 20 ? 'bg-emerald-500' : 'bg-primary'
                             }`}
                             style={{ width: `${savingsProgressPct}%` }}

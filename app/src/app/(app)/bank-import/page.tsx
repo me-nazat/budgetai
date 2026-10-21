@@ -8,7 +8,7 @@
  * 2. High-Density Reconciliation Table (bulk controls, inline editing, duplicate resolution)
  * 3. Instant Post-Commit Confirmation & Ledger Impact Banner
  *
- * Zero popup modals. Strict Purple Ban compliant.
+ * Zero popup modals. Sovereign Sapphire Palette compliant.
  *
  * @module app/(app)/bank-import/page
  */

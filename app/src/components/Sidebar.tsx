@@ -212,7 +212,7 @@ export default function Sidebar() {
 
                     {user && (
                         <div
-                            className="relative rounded-xl bg-white dark:bg-[#161b22] border border-gray-200/60 dark:border-white/5 p-2.5 flex items-center gap-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden group"
+                            className="relative rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200/60 dark:border-white/10 p-2.5 flex items-center gap-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden group"
                             onMouseEnter={() => setProfileHovered(true)}
                             onMouseLeave={() => setProfileHovered(false)}
                             onClick={() => router.push('/settings')}

@@ -374,7 +374,8 @@ export default function HouseholdWorkspacePage() {
       {/* 4 Executive KPI Summary Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Monthly Shared Spend */}
-        <TiltCard className="glass-panel stat-gradient-blue rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5">
+        <TiltCard className="card-glass stat-gradient-blue rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5 border border-white/[0.08]">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
           <div className="flex flex-col gap-1 relative z-10">
             <div className="flex items-center justify-between">
               <p className="whitespace-nowrap text-content-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">
@@ -392,7 +393,8 @@ export default function HouseholdWorkspacePage() {
         </TiltCard>
 
         {/* Card 2: My Household Share */}
-        <TiltCard className="glass-panel stat-gradient-orange rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5">
+        <TiltCard className="card-glass stat-gradient-orange rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5 border border-white/[0.08]">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
           <div className="flex flex-col gap-1 relative z-10">
             <div className="flex items-center justify-between">
               <p className="whitespace-nowrap text-content-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">
@@ -410,7 +412,8 @@ export default function HouseholdWorkspacePage() {
         </TiltCard>
 
         {/* Card 3: Paid Out of Pocket */}
-        <TiltCard className="glass-panel stat-gradient-blue rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5">
+        <TiltCard className="card-glass stat-gradient-blue rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5 border border-white/[0.08]">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
           <div className="flex flex-col gap-1 relative z-10">
             <div className="flex items-center justify-between">
               <p className="whitespace-nowrap text-content-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">
@@ -427,10 +430,11 @@ export default function HouseholdWorkspacePage() {
 
         {/* Card 4: Net Settlement Position */}
         <TiltCard
-          className={`glass-panel ${
+          className={`card-glass ${
             netBalance > 0 ? 'stat-gradient-emerald' : netBalance < 0 ? 'stat-gradient-rose' : 'stat-gradient-blue'
-          } rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5`}
+          } rounded-3xl relative overflow-hidden group breathe p-4 lg:p-5 border border-white/[0.08]`}
         >
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
           <div className="flex flex-col gap-1 relative z-10">
             <div className="flex items-center justify-between">
               <p className="whitespace-nowrap text-content-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">
@@ -647,20 +651,21 @@ export default function HouseholdWorkspacePage() {
 
       {/* Shared Expense Logging Modal */}
       {showAddExpenseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-in">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="w-full max-w-lg rounded-3xl bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 p-6 shadow-2xl space-y-5"
+            className="w-full max-w-lg rounded-3xl card-glass-elevated relative overflow-hidden bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-white/10 p-6 lg:p-7 shadow-2xl space-y-5"
           >
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
             <div className="flex items-center justify-between border-b border-gray-200/80 dark:border-white/10 pb-3">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-xl">receipt_long</span>
                   Log Shared Household Expense
                 </h3>
-                <p className="text-xs text-gray-400">Recorded with double-entry personal account sync</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Recorded with double-entry personal account sync</p>
               </div>
               <button
                 type="button"
@@ -673,20 +678,20 @@ export default function HouseholdWorkspacePage() {
 
             <form onSubmit={handleSaveExpense} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">Expense Description</label>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Expense Description</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Costco Grocery Restock, High-Speed WiFi"
                   value={expenseDescription}
                   onChange={(e) => setExpenseDescription(e.target.value)}
-                  className="w-full rounded-xl bg-slate-950 border border-white/10 px-3.5 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-emerald-500"
+                  className="w-full rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 outline-none focus:border-primary transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-300 block mb-1">Total Bill Amount ({symbol})</label>
+                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Total Amount ({symbol})</label>
                   <input
                     type="number"
                     step="0.01"
@@ -695,31 +700,31 @@ export default function HouseholdWorkspacePage() {
                     placeholder="0.00"
                     value={expenseAmount}
                     onChange={(e) => setExpenseAmount(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950 border border-white/10 px-3.5 py-2.5 text-sm font-mono font-bold text-white outline-none focus:border-emerald-500"
+                    className="w-full rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 px-4 py-2.5 text-sm font-mono font-bold text-gray-900 dark:text-white outline-none focus:border-primary transition-all tabular-nums"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-300 block mb-1">Category</label>
+                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Category</label>
                   <select
                     value={expenseCategory}
                     onChange={(e) => setExpenseCategory(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950 border border-white/10 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
+                    className="w-full rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-primary transition-all"
                   >
                     {customCategories.length > 0 ? (
                       customCategories.map((c) => (
-                        <option key={c.name} value={c.name}>
+                        <option key={c.name} value={c.name} className="bg-[#12182B] text-white">
                           {c.name}
                         </option>
                       ))
                     ) : (
                       <>
-                        <option value="Groceries">Groceries</option>
-                        <option value="Utilities">Utilities</option>
-                        <option value="Rent">Rent</option>
-                        <option value="Dining">Dining</option>
-                        <option value="Home & Supplies">Home & Supplies</option>
-                        <option value="Other">Other</option>
+                        <option value="Groceries" className="bg-[#12182B] text-white">Groceries</option>
+                        <option value="Utilities" className="bg-[#12182B] text-white">Utilities</option>
+                        <option value="Rent" className="bg-[#12182B] text-white">Rent</option>
+                        <option value="Dining" className="bg-[#12182B] text-white">Dining</option>
+                        <option value="Home & Supplies" className="bg-[#12182B] text-white">Home & Supplies</option>
+                        <option value="Other" className="bg-[#12182B] text-white">Other</option>
                       </>
                     )}
                   </select>
@@ -728,14 +733,14 @@ export default function HouseholdWorkspacePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-300 block mb-1">Paid By</label>
+                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Paid By</label>
                   <select
                     value={expensePaidBy ?? ''}
                     onChange={(e) => setExpensePaidBy(Number(e.target.value))}
-                    className="w-full rounded-xl bg-slate-950 border border-white/10 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
+                    className="w-full rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-primary transition-all"
                   >
                     {members.map((m) => (
-                      <option key={m.userId} value={m.userId}>
+                      <option key={m.userId} value={m.userId} className="bg-[#12182B] text-white">
                         {m.name || m.email} {m.userId === currentUserId ? '(You)' : ''}
                       </option>
                     ))}
@@ -743,17 +748,17 @@ export default function HouseholdWorkspacePage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-300 block mb-1">
+                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">
                     Funding Account {payerIsMe ? '(Deduction)' : ''}
                   </label>
                   <select
                     value={expenseAccountId ?? ''}
                     onChange={(e) => setExpenseAccountId(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full rounded-xl bg-slate-950 border border-white/10 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
+                    className="w-full rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-primary transition-all"
                   >
-                    <option value="">No bank deduction (cash/external)</option>
+                    <option value="" className="bg-[#12182B] text-white">No bank deduction (external)</option>
                     {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
+                      <option key={a.id} value={a.id} className="bg-[#12182B] text-white">
                         {a.name} ({fmt(a.currentBalance)})
                       </option>
                     ))}
@@ -763,15 +768,15 @@ export default function HouseholdWorkspacePage() {
 
               {/* Split Mode Selector */}
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1.5">Split Allocation Strategy</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Split Allocation Strategy</label>
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/20 border border-white/5">
                   <button
                     type="button"
                     onClick={() => setExpenseSplitMode('equal')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-colors ${
+                    className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                       expenseSplitMode === 'equal'
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'bg-slate-950 text-gray-400 border-white/10 hover:text-white'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     Equal ({members.length} members)
@@ -779,10 +784,10 @@ export default function HouseholdWorkspacePage() {
                   <button
                     type="button"
                     onClick={() => setExpenseSplitMode('custom')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-colors ${
+                    className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                       expenseSplitMode === 'custom'
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'bg-slate-950 text-gray-400 border-white/10 hover:text-white'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     Custom % Ratios
@@ -792,9 +797,9 @@ export default function HouseholdWorkspacePage() {
 
               {/* Custom Split Inputs */}
               {expenseSplitMode === 'custom' && (
-                <div className="space-y-2 p-3 rounded-xl bg-slate-950 border border-white/5">
+                <div className="space-y-2 p-3.5 rounded-xl bg-black/20 border border-white/5">
                   <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1">
-                    Member Share Percentages (Total must = 100%)
+                    Member Share Percentages (Total = 100%)
                   </p>
                   {members.map((m) => (
                     <div key={m.userId} className="flex items-center justify-between gap-3 text-xs">
@@ -812,7 +817,7 @@ export default function HouseholdWorkspacePage() {
                             const val = parseFloat(e.target.value) || 0;
                             setCustomSplits((prev) => ({ ...prev, [m.userId]: val }));
                           }}
-                          className="w-16 rounded-lg bg-slate-900 border border-white/10 px-2 py-1 text-right text-xs font-mono font-bold text-white outline-none"
+                          className="w-16 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-right text-xs font-mono font-bold text-white outline-none"
                         />
                         <span className="text-gray-400">%</span>
                       </div>
@@ -821,30 +826,32 @@ export default function HouseholdWorkspacePage() {
                 </div>
               )}
 
-              {/* Live Double-Entry Accounting Preview Pill */}
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 space-y-1.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+              {/* Clean Personal Ledger Accounting Summary */}
+              <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4 space-y-2 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-primary dark:text-[#38bdf8]">
                   <span className="material-symbols-outlined text-[16px]">account_balance</span>
-                  <span>Live Personal Ledger Accounting Preview</span>
+                  <span>Personal Ledger Accounting Summary</span>
                 </div>
                 {payerIsMe ? (
-                  <p className="text-[11px] text-gray-300">
-                    {expenseAccountId && selectedAccountName
-                      ? `1. Outflow: ${fmt(parsedAmount)} will be deducted from your "${selectedAccountName}" account.`
-                      : `1. Outflow: ${fmt(parsedAmount)} logged without direct bank balance debit.`}
-                    <br />
-                    2. Monthly Personal P&amp;L: only your personal share of{' '}
-                    <span className="font-bold text-white font-mono">{fmt(calculatedMyShare)}</span> will count as personal
-                    expense.
-                    <br />
-                    3. Settlement: the remaining{' '}
-                    <span className="font-bold text-emerald-300 font-mono">{fmt(calculatedOthersShare)}</span> will be tracked
-                    as receivables from roommates.
-                  </p>
+                  <div className="text-[11px] text-gray-400 space-y-1">
+                    <p>
+                      {expenseAccountId && selectedAccountName
+                        ? `• Outflow: ${fmt(parsedAmount)} will be deducted from "${selectedAccountName}".`
+                        : `• Outflow: ${fmt(parsedAmount)} logged without direct debit.`}
+                    </p>
+                    <p>
+                      • Your personal share:{' '}
+                      <strong className="text-white font-mono">{fmt(calculatedMyShare)}</strong>
+                    </p>
+                    <p>
+                      • Roommate receivables:{' '}
+                      <strong className="text-emerald-400 font-mono">{fmt(calculatedOthersShare)}</strong>
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-[11px] text-gray-300">
+                  <p className="text-[11px] text-gray-400">
                     Paid by roommate. Your personal budget will record an expense liability of{' '}
-                    <span className="font-bold text-rose-300 font-mono">{fmt(calculatedMyShare)}</span> to be settled.
+                    <strong className="text-rose-400 font-mono">{fmt(calculatedMyShare)}</strong>.
                   </p>
                 )}
               </div>
@@ -860,7 +867,7 @@ export default function HouseholdWorkspacePage() {
                 <button
                   type="submit"
                   disabled={isSubmittingExpense}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md shadow-primary/25 hover-lift flex items-center gap-1.5"
                 >
                   {isSubmittingExpense ? 'Logging...' : 'Save & Sync Ledger'}
                 </button>
@@ -872,15 +879,16 @@ export default function HouseholdWorkspacePage() {
 
       {/* Set Cap Modal */}
       {showCapModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-in">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="w-full max-w-sm rounded-3xl bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 p-6 shadow-2xl space-y-4"
+            className="w-full max-w-sm rounded-3xl card-glass-elevated relative overflow-hidden bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-white/10 p-6 shadow-2xl space-y-4"
           >
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
             <div className="flex items-center justify-between border-b border-gray-200/80 dark:border-white/10 pb-3">
-              <h3 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-lg">shield</span>
                 Set Monthly Spending Cap
               </h3>
@@ -895,33 +903,33 @@ export default function HouseholdWorkspacePage() {
 
             <form onSubmit={handleSaveCap} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">Category</label>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Category</label>
                 <select
                   value={capCategory}
                   onChange={(e) => setCapCategory(e.target.value)}
-                  className="w-full rounded-xl bg-slate-950 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                  className="w-full rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 px-3.5 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-primary transition-all"
                 >
                   {customCategories.length > 0 ? (
                     customCategories.map((c) => (
-                      <option key={c.name} value={c.name}>
+                      <option key={c.name} value={c.name} className="bg-[#12182B] text-white">
                         {c.name}
                       </option>
                     ))
                   ) : (
                     <>
-                      <option value="Groceries">Groceries</option>
-                      <option value="Utilities">Utilities</option>
-                      <option value="Rent">Rent</option>
-                      <option value="Dining">Dining</option>
-                      <option value="Home & Supplies">Home & Supplies</option>
-                      <option value="Other">Other</option>
+                      <option value="Groceries" className="bg-[#12182B] text-white">Groceries</option>
+                      <option value="Utilities" className="bg-[#12182B] text-white">Utilities</option>
+                      <option value="Rent" className="bg-[#12182B] text-white">Rent</option>
+                      <option value="Dining" className="bg-[#12182B] text-white">Dining</option>
+                      <option value="Home & Supplies" className="bg-[#12182B] text-white">Home & Supplies</option>
+                      <option value="Other" className="bg-[#12182B] text-white">Other</option>
                     </>
                   )}
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">Monthly Limit ({symbol})</label>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Monthly Limit ({symbol})</label>
                 <input
                   type="number"
                   step="1"
@@ -930,7 +938,7 @@ export default function HouseholdWorkspacePage() {
                   placeholder="500"
                   value={capAmount}
                   onChange={(e) => setCapAmount(e.target.value)}
-                  className="w-full rounded-xl bg-slate-950 border border-white/10 px-3.5 py-2 text-sm font-mono font-bold text-white outline-none focus:border-emerald-500"
+                  className="w-full rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 px-3.5 py-2 text-sm font-mono font-bold text-gray-900 dark:text-white outline-none focus:border-primary transition-all tabular-nums"
                 />
               </div>
 
@@ -945,7 +953,7 @@ export default function HouseholdWorkspacePage() {
                 <button
                   type="submit"
                   disabled={isSubmittingCap}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold transition-colors"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md shadow-primary/25 hover-lift"
                 >
                   {isSubmittingCap ? 'Saving...' : 'Save Cap'}
                 </button>

@@ -318,8 +318,8 @@ export default function DashboardPage() {
     const userName = user?.name || '';
     const sym = CURRENCIES[currency].symbol;
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-    const gridColor = isDark ? '#21262d' : '#e5e7eb';
-    const tickColor = isDark ? '#8b949e' : '#6b7280';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : '#e5e7eb';
+    const tickColor = isDark ? '#94a3b8' : '#6b7280';
 
     // Memoize heavy chart data
     const barData = useMemo(() => data ? ({
@@ -522,7 +522,7 @@ export default function DashboardPage() {
                     <div>
                         <p className="text-xs text-gray-500 dark:text-text-muted">{greeting()}</p>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                            {userName || 'Welcome'} 👋
+                            {userName || 'Welcome'}
                         </h2>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -692,7 +692,7 @@ export default function DashboardPage() {
 
                         if (widgetId === 'ai_insight') {
                             return (
-                                <div key={widgetId} className="relative glass-panel rounded-2xl p-5 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
+                                <div key={widgetId} className="relative glass-panel rounded-2xl p-5 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#12182B] dark:to-emerald-900/10">
                                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgb(16,185,129)]" />
                                     <div className="flex items-start gap-3">
                                         <div className="relative shrink-0 mt-0.5">
@@ -725,8 +725,8 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="space-y-3">
                                         {data.recentTransactions.length === 0 ? (
-                                            <div className="bg-gray-50 dark:bg-[#161b22] border border-gray-100 dark:border-[#30363d] rounded-2xl p-8 text-center shadow-inner">
-                                                <div className="w-12 h-12 bg-gray-100 dark:bg-[#21262d] rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <div className="bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/10 rounded-2xl p-8 text-center shadow-inner">
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
                                                     <span className="material-symbols-outlined text-2xl text-gray-400 dark:text-gray-500">receipt_long</span>
                                                 </div>
                                                 <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
@@ -774,7 +774,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
                                         {marketNews.slice(0, 3).map(news => (
-                                            <div key={news.id} className="block p-3 rounded-xl border border-gray-100 dark:border-[#30363d] bg-gray-50/20 dark:bg-[#161b22]/20">
+                                            <div key={news.id} className="block p-3 rounded-xl border border-gray-100 dark:border-white/10 bg-gray-50/20 dark:bg-white/[0.02]">
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-150 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400">
                                                         {news.sentiment}
@@ -802,7 +802,7 @@ export default function DashboardPage() {
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <div>
                         <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                            {greeting()}{userName ? `, ${userName}` : ''} 👋
+                            {greeting()}{userName ? `, ${userName}` : ''}
                         </h2>
                         <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Unified financial command center and cashflow runway.</p>
                     </div>
@@ -882,7 +882,8 @@ export default function DashboardPage() {
 
                 {/* Month Pacing & Budget Envelopes Section */}
                 {isDesktopSectionVisible('monthPacing') && data.spendingPace && (
-                    <div className="glass-panel p-6 rounded-3xl mb-8 border border-gray-200 dark:border-white/5 bg-white dark:bg-surface-dark shadow-sm">
+                    <div className="card-glass relative overflow-hidden p-6 lg:p-7 rounded-3xl mb-8 shadow-xl backdrop-blur-2xl">
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                             <div>
                                 <div className="flex items-center gap-2">
@@ -895,20 +896,20 @@ export default function DashboardPage() {
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                                 {data.spendingPace.budgetConsumedPercent <= data.spendingPace.monthElapsedPercent ? (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                         On Track ({Math.abs(Math.round((data.spendingPace.monthElapsedPercent - data.spendingPace.budgetConsumedPercent) * 10) / 10)}% under calendar pace)
                                     </span>
                                 ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm">
                                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                         Accelerated Burn ({Math.round((data.spendingPace.budgetConsumedPercent - data.spendingPace.monthElapsedPercent) * 10) / 10}% over calendar pace)
                                     </span>
                                 )}
-                                <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg tabular-nums font-mono ${
+                                <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-lg tabular-nums font-mono border ${
                                     data.spendingPace.paceDeltaPercent <= 0 
-                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' 
-                                        : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
+                                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20' 
+                                        : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'
                                 }`}>
                                     {data.spendingPace.paceDeltaPercent > 0 ? '+' : ''}{data.spendingPace.paceDeltaPercent}% vs same day last month
                                 </span>
@@ -927,7 +928,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="h-2.5 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
                                     <div 
-                                        className="h-full rounded-full bg-primary transition-all duration-700" 
+                                        className="h-full rounded-full bg-gradient-to-r from-primary to-blue-400 transition-all duration-700 shadow-sm" 
                                         style={{ width: `${Math.min(100, data.spendingPace.monthElapsedPercent)}%` }} 
                                     />
                                 </div>
@@ -945,12 +946,12 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="h-2.5 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
                                     <div 
-                                        className={`h-full rounded-full transition-all duration-700 ${
+                                        className={`h-full rounded-full transition-all duration-700 shadow-sm ${
                                             data.spendingPace.budgetConsumedPercent >= 100 
-                                                ? 'bg-rose-500' 
+                                                ? 'bg-gradient-to-r from-rose-500 to-rose-600' 
                                                 : data.spendingPace.budgetConsumedPercent > data.spendingPace.monthElapsedPercent 
-                                                    ? 'bg-amber-500' 
-                                                    : 'bg-emerald-500'
+                                                    ? 'bg-gradient-to-r from-amber-400 to-amber-500' 
+                                                    : 'bg-gradient-to-r from-emerald-500 to-teal-400'
                                         }`} 
                                         style={{ width: `${Math.min(100, data.spendingPace.budgetConsumedPercent)}%` }} 
                                     />
@@ -960,7 +961,7 @@ export default function DashboardPage() {
 
                         {/* Category Budget Envelopes Progress Strip */}
                         {data.budgetAlerts && data.budgetAlerts.length > 0 && (
-                            <div className="pt-4 border-t border-gray-150 dark:border-white/5">
+                            <div className="pt-4 border-t border-gray-200/70 dark:border-white/10">
                                 <div className="flex items-center justify-between mb-3">
                                     <h4 className="text-xs font-bold text-gray-500 dark:text-text-muted uppercase tracking-wider">Top Category Envelopes</h4>
                                     <Link href="/budgets" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
@@ -969,7 +970,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     {data.budgetAlerts.slice(0, 4).map(b => (
-                                        <div key={b.category} className="rounded-2xl border border-gray-150 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] p-3.5 space-y-2">
+                                        <div key={b.category} className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-3.5 space-y-2 backdrop-blur-md">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{b.category}</span>
                                                 <span className={`text-[11px] font-bold tabular-nums font-mono ${
@@ -1000,7 +1001,8 @@ export default function DashboardPage() {
 
                 {/* Accounts & Liquidity Ledger */}
                 {isDesktopSectionVisible('accountsLiquidity') && data.accountsSummary && (
-                    <div className="glass-panel p-6 rounded-3xl mb-8 border border-gray-200 dark:border-white/5 bg-white dark:bg-surface-dark shadow-sm">
+                    <div className="card-glass relative overflow-hidden p-6 lg:p-7 rounded-3xl mb-8 shadow-xl backdrop-blur-2xl">
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                             <div>
                                 <div className="flex items-center gap-2">
@@ -1013,7 +1015,7 @@ export default function DashboardPage() {
                             </div>
                             <Link 
                                 href="/accounts" 
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors self-start sm:self-auto"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200/80 dark:border-white/10 bg-white/70 dark:bg-white/5 text-xs font-bold text-primary hover:bg-primary/10 transition-colors self-start sm:self-auto shadow-sm"
                             >
                                 <span>Manage Accounts</span>
                                 <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -1100,7 +1102,8 @@ export default function DashboardPage() {
                 {isDesktopSectionVisible('cashflowChart') && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
                         {/* Spending Burn Trajectory & Category Breakdown */}
-                        <div className="lg:col-span-2 glass-panel p-6 rounded-3xl border border-gray-200 dark:border-white/5 bg-white dark:bg-surface-dark shadow-sm">
+                        <div className="lg:col-span-2 card-glass relative overflow-hidden p-6 lg:p-7 rounded-3xl border border-gray-200/80 dark:border-white/10 shadow-xl backdrop-blur-2xl">
+                            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
                             <SpendingChart
                                 dailySpending={data.dailySpending}
                                 previousMonthDailySpending={data.previousMonthDailySpending || []}
@@ -1148,8 +1151,9 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
                     {/* Recent Transactions */}
                     {isDesktopSectionVisible('recent_activity') && (
-                        <div className="lg:col-span-2 glass-panel rounded-3xl overflow-visible ambient-glow">
-                            <div className="p-6 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center">
+                        <div className="lg:col-span-2 card-glass relative overflow-hidden rounded-3xl shadow-xl backdrop-blur-2xl">
+                            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+                            <div className="p-6 border-b border-gray-200/80 dark:border-white/10 flex justify-between items-center">
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
                                 <Link href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
                                     All transactions <span className="material-symbols-outlined text-base">arrow_forward</span>
@@ -1166,7 +1170,7 @@ export default function DashboardPage() {
                                             <th className="px-4 lg:px-6 py-3.5 font-semibold text-right w-12">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
+                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5 text-sm">
                                         {data.recentTransactions.length === 0 ? (
                                             <tr><td colSpan={5} className="px-6 py-12 text-center">
                                                 <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
@@ -1256,10 +1260,10 @@ export default function DashboardPage() {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.96, y: 12 }}
                                 transition={{ duration: 0.2 }}
-                                className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]"
+                                className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#12182B]/95"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#30363d] px-5 py-4">
+                                <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 px-5 py-4">
                                     <h3 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
                                         <span className="material-symbols-outlined text-primary text-xl">edit</span>
                                         Edit Transaction
@@ -1275,7 +1279,7 @@ export default function DashboardPage() {
                                             <select
                                                 value={editingTx.type}
                                                 onChange={(event) => setEditingTx({ ...editingTx, type: event.target.value as "expense" | "earning", category: '' })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
                                             >
                                                 <option value="expense">Expense</option>
                                                 <option value="earning">Earning</option>
@@ -1288,7 +1292,7 @@ export default function DashboardPage() {
                                                 step="0.01"
                                                 value={editingTx.amount}
                                                 onChange={(event) => setEditingTx({ ...editingTx, amount: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -1298,7 +1302,7 @@ export default function DashboardPage() {
                                             <select
                                                 value={editingTx.category}
                                                 onChange={(event) => setEditingTx({ ...editingTx, category: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
                                             >
                                                 <option value="">Select</option>
                                                 {dashboardCategoryOptions.map(category => (
@@ -1307,7 +1311,7 @@ export default function DashboardPage() {
                                                 {customCats.filter(category => category.type === editingTx.type).length > 0 && (
                                                     <optgroup label="Custom">
                                                         {customCats.filter(category => category.type === editingTx.type).map(category => (
-                                                            <option key={category.id} value={category.name}>{category.name}</option>
+                                                             <option key={category.id} value={category.name}>{category.name}</option>
                                                         ))}
                                                     </optgroup>
                                                 )}
@@ -1319,7 +1323,7 @@ export default function DashboardPage() {
                                                 type="date"
                                                 value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''}
                                                 onChange={(event) => setEditingTx({ ...editingTx, date: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -1330,11 +1334,11 @@ export default function DashboardPage() {
                                             value={editingTx.description || ''}
                                             onChange={(event) => setEditingTx({ ...editingTx, description: event.target.value })}
                                             placeholder="Optional description"
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
+                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
                                         />
                                     </div>
                                     <div className="flex gap-3 pt-1">
-                                        <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-[#21262d] dark:text-gray-300 dark:hover:bg-[#30363d] transition-colors">
+                                        <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 dark:border dark:border-white/10 transition-colors">
                                             Cancel
                                         </button>
                                         <button
@@ -1362,7 +1366,7 @@ export default function DashboardPage() {
                                 initial={{ opacity: 0, scale: 0.96, y: 18 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.96, y: 18 }}
-                                className="w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-zinc-900"
+                                className="w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#12182B]/95"
                             >
                                 <div className="p-5 text-center">
                                     <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-500/10">

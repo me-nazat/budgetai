@@ -176,17 +176,16 @@ export default function TourSettlementModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
             transition={spring}
-            className="relative z-50 max-h-[88dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[2rem] border border-white/10 bg-[#0f172a] shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
+            className="relative z-50 max-h-[88dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl card-glass-elevated border border-white/10 bg-white/95 dark:bg-[#12182B]/95 shadow-2xl backdrop-blur-2xl"
           >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             <div className="p-6">
-              <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="mb-6 flex items-center justify-between gap-4 border-b border-gray-200/80 dark:border-white/10 pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                    <span className="material-symbols-outlined text-[24px]">handshake</span>
-                  </div>
+                  <span className="material-symbols-outlined text-[26px] text-emerald-500 dark:text-emerald-400">handshake</span>
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">Tour Accounting</p>
-                    <h2 id="tour-settlement-title" className="text-xl font-black text-white">Record Debt Settlement</h2>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-500 dark:text-emerald-400">Tour Accounting</p>
+                    <h2 id="tour-settlement-title" className="text-xl font-black text-gray-950 dark:text-white">Record Debt Settlement</h2>
                   </div>
                 </div>
                 <button

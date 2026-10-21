@@ -381,7 +381,7 @@ function DashboardMockup() {
                 {/* Floating Card 1 */}
                 <motion.div 
                     style={{ rotateX: rotateXSecondary, rotateY: rotateYSecondary, transformStyle: "preserve-3d" }}
-                    className="p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-100 dark:border-white/5 shadow-xl"
+                    className="p-4 rounded-2xl bg-white dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-100 dark:border-white/10 shadow-xl"
                 >
                     <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-primary/10 dark:bg-lp-cyan/20 flex items-center justify-center text-primary dark:text-lp-cyan">
@@ -397,7 +397,7 @@ function DashboardMockup() {
                 {/* Floating Card 2 */}
                 <motion.div 
                     style={{ rotateX: rotateXSecondary, rotateY: rotateYSecondary, transformStyle: "preserve-3d" }}
-                    className="p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-100 dark:border-white/5 shadow-xl"
+                    className="p-4 rounded-2xl bg-white dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-100 dark:border-white/10 shadow-xl"
                 >
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm text-emerald-500">trending_up</span>
@@ -410,7 +410,7 @@ function DashboardMockup() {
             {/* Floating Card 3 (Tertiary depth) */}
             <motion.div 
                 style={{ rotateX: rotateXTertiary, rotateY: rotateYTertiary, transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
-                className="absolute -right-8 -bottom-8 lg:-right-16 lg:bottom-12 w-64 rounded-2xl bg-white/90 dark:bg-[#161b22]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 shadow-2xl hidden md:block"
+                className="absolute -right-8 -bottom-8 lg:-right-16 lg:bottom-12 w-64 rounded-2xl bg-white/90 dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 shadow-2xl hidden md:block"
             >
                 <p className="text-sm text-gray-500 dark:text-slate-400">Product Designer and Manager, Bangladesh</p>
             </motion.div>

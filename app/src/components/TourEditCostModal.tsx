@@ -486,8 +486,9 @@ export default function TourEditCostModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
             transition={spring}
-            className="relative z-50 max-h-[88dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[2rem] border border-white/10 bg-[#0f172a] shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
+            className="relative z-50 max-h-[88dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-3xl card-glass-elevated border border-white/10 bg-white/95 dark:bg-[#12182B]/95 shadow-2xl backdrop-blur-2xl"
           >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             <div className="p-5 sm:p-6">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>

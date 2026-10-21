@@ -136,7 +136,7 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-950 text-slate-100 relative overflow-hidden">
-            {/* Ambient Lighting Accents (Zero-Purple) */}
+            {/* Ambient Lighting Accents (Sovereign Navy) */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute -top-[20%] -left-[10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[140px]" />
                 <div className="absolute -bottom-[20%] -right-[10%] w-[600px] h-[600px] rounded-full bg-sky-500/10 blur-[140px]" />

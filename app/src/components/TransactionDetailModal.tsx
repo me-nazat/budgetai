@@ -343,7 +343,7 @@ export default function TransactionDetailModal({
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
                                 placeholder="Add extra details, context, or receipt notes..."
-                                className="w-full flex-1 min-h-[120px] p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none transition-all text-[15px] leading-relaxed text-gray-800 dark:text-gray-200 placeholder-gray-400 whitespace-pre-wrap shadow-sm"
+                                className="w-full flex-1 min-h-[120px] p-4 rounded-2xl bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none transition-all text-[15px] leading-relaxed text-gray-800 dark:text-gray-200 placeholder-gray-400 whitespace-pre-wrap shadow-sm"
                             />
                             {notes !== (transaction.notes || '') && (
                                 <button
@@ -361,14 +361,14 @@ export default function TransactionDetailModal({
                         <div className="flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-white/5 mt-auto">
                             <button
                                 onClick={() => { onClose(); onEdit(transaction); }}
-                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-[#0A0E1A] dark:hover:bg-[#21262d] text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
+                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border dark:border-white/10 text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
                                 title="Edit"
                             >
                                 <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">edit</span>
                             </button>
                             <button
                                 onClick={() => { onClose(); onDuplicate(transaction); }}
-                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-[#0A0E1A] dark:hover:bg-[#21262d] text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
+                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border dark:border-white/10 text-gray-700 dark:text-gray-300 rounded-xl flex justify-center items-center transition-colors group"
                                 title="Duplicate"
                             >
                                 <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">content_copy</span>

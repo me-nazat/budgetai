@@ -7,9 +7,9 @@ interface RecurringItem { id: number; name: string; type: string; amount: number
 
 const CATEGORIES = ['Salary', 'Rent', 'Utilities', 'Subscriptions', 'Insurance', 'Groceries', 'Transport', 'Internet', 'Phone', 'Loan', 'Other'];
 const FREQUENCIES = [
-    { value: 'weekly', label: 'Weekly', icon: '📅' },
-    { value: 'monthly', label: 'Monthly', icon: '🗓️' },
-    { value: 'yearly', label: 'Yearly', icon: '📆' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'yearly', label: 'Yearly' },
 ];
 
 export function RecurringContent() {
@@ -69,7 +69,8 @@ export function RecurringContent() {
 
             {/* Add Form */}
             {showAdd && (
-                <div className="card-premium rounded-xl p-6 mb-6 animate-slide-up">
+                <div className="card-glass relative overflow-hidden rounded-2xl p-6 mb-6 animate-slide-up">
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
                     <h3 className="text-gray-900 dark:text-white font-bold mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">repeat</span> New Recurring Transaction
                     </h3>
@@ -77,47 +78,47 @@ export function RecurringContent() {
                         <div>
                             <label className="text-xs font-medium text-gray-500 dark:text-text-muted mb-1 block">Name</label>
                             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Netflix, Rent, Salary"
-                                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-bg-dark border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white text-sm outline-none focus:border-primary" />
+                                className="w-full px-3 py-2.5 bg-black/20 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm outline-none focus:border-primary" />
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-500 dark:text-text-muted mb-1 block">Type</label>
                             <div className="flex gap-2">
-                                <button onClick={() => setType('expense')} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all border ${type === 'expense' ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-800 text-red-600' : 'bg-gray-50 dark:bg-bg-dark border-gray-300 dark:border-[#30363d] text-gray-500'}`}>
-                                    ▼ Expense
+                                <button onClick={() => setType('expense')} className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border ${type === 'expense' ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-black/20 dark:bg-black/30 border-gray-300 dark:border-white/10 text-gray-400'}`}>
+                                    Expense
                                 </button>
-                                <button onClick={() => setType('earning')} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all border ${type === 'earning' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-800 text-emerald-600' : 'bg-gray-50 dark:bg-bg-dark border-gray-300 dark:border-[#30363d] text-gray-500'}`}>
-                                    ▲ Earning
+                                <button onClick={() => setType('earning')} className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border ${type === 'earning' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-black/20 dark:bg-black/30 border-gray-300 dark:border-white/10 text-gray-400'}`}>
+                                    Income
                                 </button>
                             </div>
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-500 dark:text-text-muted mb-1 block">Amount</label>
                             <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="1500"
-                                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-bg-dark border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white text-sm outline-none focus:border-primary" />
+                                className="w-full px-3 py-2.5 bg-black/20 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm outline-none focus:border-primary font-mono tabular-nums" />
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-500 dark:text-text-muted mb-1 block">Category</label>
                             <select value={category} onChange={e => setCategory(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-bg-dark border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white text-sm outline-none focus:border-primary">
+                                className="w-full px-3 py-2.5 bg-black/20 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm outline-none focus:border-primary">
                                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-500 dark:text-text-muted mb-1 block">Frequency</label>
                             <select value={frequency} onChange={e => setFrequency(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-bg-dark border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white text-sm outline-none focus:border-primary">
-                                {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.icon} {f.label}</option>)}
+                                className="w-full px-3 py-2.5 bg-black/20 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm outline-none focus:border-primary">
+                                {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-500 dark:text-text-muted mb-1 block">Next Due Date</label>
                             <input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-bg-dark border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white text-sm outline-none focus:border-primary" />
+                                className="w-full px-3 py-2.5 bg-black/20 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm outline-none focus:border-primary" />
                         </div>
                     </div>
                     <div className="flex justify-end gap-3 mt-6">
                         <button onClick={() => setShowAdd(false)} className="px-5 py-2.5 text-gray-500 hover:text-gray-900 dark:hover:text-white text-sm font-medium transition-all">Cancel</button>
-                        <button onClick={addItem} disabled={!name || !amount} className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-bold transition-all hover:-translate-y-0.5 shadow-md btn-primary-glow disabled:opacity-50 disabled:hover:translate-y-0 flex items-center gap-2">
+                        <button onClick={addItem} disabled={!name || !amount} className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 shadow-md btn-primary-glow disabled:opacity-50 disabled:hover:translate-y-0 flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px]">save</span> Save
                         </button>
                     </div>
@@ -127,17 +128,20 @@ export function RecurringContent() {
             {/* Monthly Summary */}
             {items.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8">
-                    <div className="card-premium rounded-xl p-5 text-center flex flex-col justify-center animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                        <p className="text-gray-500 dark:text-text-muted text-sm font-medium mb-1">Monthly Recurring Expenses</p>
-                        <p className="text-2xl font-bold text-red-500 tracking-tight">− {fmt(monthlyExpTotal)}</p>
+                    <div className="card-glass relative overflow-hidden rounded-2xl p-5 text-center flex flex-col justify-center animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+                        <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider mb-1">Monthly Recurring Expenses</p>
+                        <p className="text-2xl font-black text-rose-500 tracking-tight tabular-nums font-mono">− {fmt(monthlyExpTotal)}</p>
                     </div>
-                    <div className="card-premium rounded-xl p-5 text-center flex flex-col justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                        <p className="text-gray-500 dark:text-text-muted text-sm font-medium mb-1">Monthly Recurring Income</p>
-                        <p className="text-2xl font-bold text-emerald-500 tracking-tight">+ {fmt(monthlyEarnTotal)}</p>
+                    <div className="card-glass relative overflow-hidden rounded-2xl p-5 text-center flex flex-col justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+                        <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider mb-1">Monthly Recurring Income</p>
+                        <p className="text-2xl font-black text-emerald-500 tracking-tight tabular-nums font-mono">+ {fmt(monthlyEarnTotal)}</p>
                     </div>
-                    <div className="card-premium rounded-xl p-5 text-center flex flex-col justify-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                        <p className="text-gray-500 dark:text-text-muted text-sm font-medium mb-1">Monthly Net Flow</p>
-                        <p className={`text-2xl font-bold tracking-tight ${monthlyEarnTotal - monthlyExpTotal >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <div className="card-glass relative overflow-hidden rounded-2xl p-5 text-center flex flex-col justify-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+                        <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider mb-1">Monthly Net Flow</p>
+                        <p className={`text-2xl font-black tracking-tight tabular-nums font-mono ${monthlyEarnTotal - monthlyExpTotal >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {monthlyEarnTotal - monthlyExpTotal >= 0 ? '+' : '−'} {fmt(Math.abs(monthlyEarnTotal - monthlyExpTotal))}
                         </p>
                     </div>
@@ -157,7 +161,7 @@ export function RecurringContent() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50/50 dark:bg-[#0A0E1A]/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-[#30363d]">
+                                    <tr className="bg-gray-50/50 dark:bg-[#0A0E1A]/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider border-b border-gray-200 dark:border-white/10">
                                         <th className="px-6 py-4 font-semibold">Name</th>
                                         <th className="px-6 py-4 font-semibold">Type</th>
                                         <th className="px-6 py-4 font-semibold">Category</th>
@@ -181,8 +185,8 @@ export function RecurringContent() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-500 dark:text-gray-400 text-sm font-medium">{item.category}</td>
-                                                <td className="px-6 py-4 text-gray-500 dark:text-gray-400 text-sm capitalize font-medium flex items-center gap-1 mt-1">
-                                                    {FREQUENCIES.find(f => f.value === item.frequency)?.icon} {item.frequency}
+                                                <td className="px-6 py-4 text-gray-500 dark:text-gray-400 text-sm capitalize font-medium">
+                                                    {item.frequency}
                                                 </td>
                                                 <td className={`px-6 py-4 text-right text-sm font-bold ${isExp ? 'text-red-500' : 'text-emerald-500'}`}>
                                                     {isExp ? '−' : '+'} {fmt(item.amount)}

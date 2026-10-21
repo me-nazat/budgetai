@@ -72,11 +72,11 @@ export function BankReconciliationCardQueue({
       await onResolve(currentItem.id, resolution);
 
       if (resolution === 'kept_both') {
-        toast.success(`Marked as New Transaction: "${currentItem.description}"`, { icon: '➕' });
+        toast.success(`Marked as New Transaction: "${currentItem.description}"`);
       } else if (resolution === 'merged') {
-        toast.info(`Merged as duplicate with existing record`, { icon: '🔗' });
+        toast.info(`Merged as duplicate with existing record`);
       } else if (resolution === 'discarded') {
-        toast.warning(`Discarded entry`, { icon: '🗑️' });
+        toast.warning(`Discarded entry`);
       }
 
       // Advance to next card if not at end

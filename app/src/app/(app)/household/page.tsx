@@ -744,7 +744,7 @@ function SettlementsPanel({
 
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
       toast.success(
-        `Settled ${fmt(settleTarget.amount)} to ${settleTarget.payeeName}! Payment recorded in spending history. 🎉`
+        `Settled ${fmt(settleTarget.amount)} to ${settleTarget.payeeName}! Payment recorded in spending history.`
       );
       setSettleTarget(null);
       await mutate('/api/households');
@@ -841,7 +841,7 @@ function SettlementsPanel({
                               owes {fmt(matrixDebt)}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">৳0</span>
+                            <span className="text-xs text-gray-400">{fmt(0)}</span>
                           )}
                         </td>
                       );

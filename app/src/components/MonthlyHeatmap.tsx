@@ -33,7 +33,7 @@ function calculateQuartiles(amounts: number[]) {
 }
 
 const GREEN_INTENSITY = [
-    'bg-gray-100 dark:bg-[#161b22] text-gray-400',
+    'bg-gray-100 dark:bg-white/[0.04] text-gray-400',
     'bg-emerald-200/60 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200',
     'bg-emerald-300 dark:bg-emerald-500/40 text-emerald-900 dark:text-emerald-100',
     'bg-emerald-500 dark:bg-emerald-500/70 text-white',
@@ -41,7 +41,7 @@ const GREEN_INTENSITY = [
 ];
 
 const RED_INTENSITY = [
-    'bg-gray-100 dark:bg-[#161b22] text-gray-400',
+    'bg-gray-100 dark:bg-white/[0.04] text-gray-400',
     'bg-rose-200/60 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200',
     'bg-rose-300 dark:bg-rose-500/40 text-rose-900 dark:text-rose-100',
     'bg-rose-500 dark:bg-rose-500/70 text-white',
@@ -208,7 +208,7 @@ export default function MonthlyHeatmap({
                                             ? 'border-2 border-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
                                             : 'border-black/5 dark:border-white/5'
                                     } ${
-                                        day.isToday ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#161b22]' : ''
+                                        day.isToday ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#12182B]' : ''
                                     } hover:scale-105 hover:z-20 hover:shadow-lg`}
                                     title={day.isOutlier ? 'High spending outlier (>2.5x median)' : undefined}
                                 >

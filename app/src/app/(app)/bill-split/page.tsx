@@ -305,13 +305,13 @@ export default function BillSplitPage() {
       {/* Executive Header & KPI Strip */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-400 mb-1">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-1">
             Fast Collaborative Finance
           </p>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-gray-950 dark:text-white tracking-tight">
             Ad-Hoc Bill Splitter & IOU Tracker
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Split dinners, cabs, and shared expenses in under 15 seconds — auto-synced to your personal accounts
           </p>
         </div>
@@ -319,50 +319,55 @@ export default function BillSplitPage() {
 
       {/* 4 KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl">
-          <p className="text-[11px] font-black uppercase tracking-wider text-gray-400">Total Split Spend</p>
-          <h3 className="text-xl sm:text-2xl font-black text-white font-mono mt-1 tabular-nums">
+        <div className="glass-panel relative overflow-hidden p-5 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Split Spend</p>
+          <h3 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-950 to-gray-600 dark:from-white dark:to-gray-400 font-mono mt-1 tabular-nums">
             {fmt(totalSplitSpend)}
           </h3>
-          <p className="text-[10px] text-gray-500 mt-1">{splits.length} standalone splits logged</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">{splits.length} standalone splits logged</p>
         </div>
 
-        <div className="p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] backdrop-blur-xl">
-          <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">You Are Owed (IOUs)</p>
-          <h3 className="text-xl sm:text-2xl font-black text-emerald-400 font-mono mt-1 tabular-nums">
+        <div className="glass-panel stat-gradient-emerald relative overflow-hidden p-5 rounded-3xl border border-emerald-500/20 shadow-sm">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent dark:via-emerald-400/25" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">You Are Owed (IOUs)</p>
+          <h3 className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1 tabular-nums">
             +{fmt(totalOwedToMe)}
           </h3>
-          <p className="text-[10px] text-emerald-500/80 mt-1">{activeIous.length} pending repayments</p>
+          <p className="text-[11px] text-emerald-500/80 mt-1">{activeIous.length} pending repayments</p>
         </div>
 
-        <div className="p-5 rounded-2xl border border-rose-500/20 bg-rose-500/[0.04] backdrop-blur-xl">
-          <p className="text-[11px] font-black uppercase tracking-wider text-rose-400">Active IOUs Count</p>
-          <h3 className="text-xl sm:text-2xl font-black text-rose-400 font-mono mt-1 tabular-nums">
+        <div className="glass-panel stat-gradient-rose relative overflow-hidden p-5 rounded-3xl border border-rose-500/20 shadow-sm">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/40 to-transparent dark:via-rose-400/25" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Active IOUs Count</p>
+          <h3 className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1 tabular-nums">
             {activeIous.length}
           </h3>
-          <p className="text-[10px] text-rose-400/80 mt-1">Pending settling</p>
+          <p className="text-[11px] text-rose-500/80 mt-1">Pending settling</p>
         </div>
 
-        <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl">
-          <p className="text-[11px] font-black uppercase tracking-wider text-sky-400">Settled Clean</p>
-          <h3 className="text-xl sm:text-2xl font-black text-sky-400 font-mono mt-1 tabular-nums">
+        <div className="glass-panel stat-gradient-blue relative overflow-hidden p-5 rounded-3xl border border-primary/20 shadow-sm">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent dark:via-primary/25" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Settled Clean</p>
+          <h3 className="text-xl sm:text-2xl font-black text-primary font-mono mt-1 tabular-nums">
             100%
           </h3>
-          <p className="text-[10px] text-gray-400 mt-1">No ghost debts</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">No ghost debts</p>
         </div>
       </div>
 
       {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: 15-Second Quick Split Form */}
-        <div className="lg:col-span-7 p-6 rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl shadow-2xl space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="lg:col-span-7 card-glass relative overflow-hidden p-6 rounded-3xl shadow-xl space-y-6">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+          <div className="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-white/10">
             <div className="flex items-center gap-2.5">
               <span className="material-symbols-outlined text-[22px] text-amber-400">bolt</span>
-              <h2 className="text-lg font-black text-white">Create Quick Split</h2>
+              <h2 className="text-lg font-black text-gray-950 dark:text-white">Create Quick Split</h2>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              ⚡ Under 15 Seconds
+            <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20">
+              <span className="material-symbols-outlined text-[13px] mr-1">speed</span> Under 15 Seconds
             </span>
           </div>
 
@@ -712,58 +717,57 @@ export default function BillSplitPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative z-50 w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f172a] p-6 shadow-2xl"
+              className="relative z-50 w-full max-w-md rounded-3xl card-glass-elevated overflow-hidden border border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl p-6 shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="flex items-center justify-between mb-4 border-b border-gray-200/80 dark:border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                    <span className="material-symbols-outlined text-[22px]">payments</span>
-                  </div>
+                  <span className="material-symbols-outlined text-[24px] text-emerald-500 dark:text-emerald-400">payments</span>
                   <div>
-                    <h3 className="text-base font-black text-white">Settle Friend IOU</h3>
-                    <p className="text-[11px] text-gray-400">Mark repaid and credit your personal bank account</p>
+                    <h3 className="text-base font-black text-gray-950 dark:text-white">Settle Friend IOU</h3>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Mark repaid and credit your personal bank account</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSettlingIou(null)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">close</span>
                 </button>
               </div>
 
               <div className="space-y-4 py-2">
-                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+                <div className="p-3.5 rounded-2xl bg-black/20 border border-white/10 space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-400">Friend:</span>
-                    <span className="font-bold text-white">{settlingIou.name}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{settlingIou.name}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-400">Repayment Amount:</span>
-                    <span className="font-black text-emerald-400 font-mono">
+                    <span className="font-black text-emerald-500 dark:text-emerald-400 font-mono">
                       +{fmt(settlingIou.amount)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-400">For Split:</span>
-                    <span className="font-bold text-gray-300">{settlingIou.description}</span>
+                    <span className="font-bold text-gray-700 dark:text-gray-300">{settlingIou.description}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-black uppercase tracking-wider text-emerald-400 block mb-1.5 flex items-center gap-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-emerald-500 dark:text-emerald-400 block mb-1.5 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[16px]">account_balance</span>
                     Deposit Funds Into My Account
                   </label>
                   <select
                     value={depositAccountId ?? ''}
                     onChange={(e) => setDepositAccountId(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#1e293b] border border-white/10 text-xs font-bold text-white outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-black/20 dark:bg-black/30 border border-white/10 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-primary transition-all"
                   >
-                    <option value="">Do not link personal account</option>
+                    <option value="" className="bg-[#12182B] text-white">Do not link personal account</option>
                     {accounts.map((acc: any) => (
-                      <option key={acc.id} value={acc.id}>
+                      <option key={acc.id} value={acc.id} className="bg-[#12182B] text-white">
                         {acc.name} ({fmt(Number(acc.currentBalance ?? acc.balance ?? 0))}) • {acc.type}
                       </option>
                     ))}

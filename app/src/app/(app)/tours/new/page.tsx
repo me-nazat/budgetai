@@ -175,7 +175,8 @@ export default function NewTourPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Tour Details */}
-        <div className="p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+        <div className="relative overflow-hidden p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           <h2 className="text-sm font-black uppercase tracking-wider text-gray-950 dark:text-white flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[18px]">flight_takeoff</span>
             1. Trip Essentials
@@ -253,7 +254,8 @@ export default function NewTourPage() {
         </div>
 
         {/* Target Budget & Kitty Pool Toggle */}
-        <div className="p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+        <div className="relative overflow-hidden p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           <h2 className="text-sm font-black uppercase tracking-wider text-gray-950 dark:text-white flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
             2. Budget & Kitty Pool
@@ -305,7 +307,8 @@ export default function NewTourPage() {
         </div>
 
         {/* Travellers Section */}
-        <div className="p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+        <div className="relative overflow-hidden p-6 rounded-3xl card-glass space-y-4 shadow-xl">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-black uppercase tracking-wider text-gray-950 dark:text-white flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-500 text-[18px]">group</span>

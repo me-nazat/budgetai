@@ -365,7 +365,7 @@ export default function BudgetPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Month Stepper */}
-          <div className="flex items-center bg-white dark:bg-surface-dark border border-gray-200 dark:border-[#30363d] rounded-xl p-1 shadow-sm">
+          <div className="flex items-center bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/10 rounded-xl p-1 shadow-sm">
             <button
               onClick={handlePrevMonth}
               aria-label="Previous month"
@@ -445,72 +445,80 @@ export default function BudgetPage() {
 
       {/* Summary Metrics Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-outlined text-primary bg-primary/10 p-2.5 rounded-xl text-[20px]">
+        <div className="card-glass relative overflow-hidden rounded-2xl p-6 border border-white/[0.08] dark:border-white/[0.08] hover-lift group shadow-lg">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full bg-primary/10 blur-2xl group-hover:bg-primary/20 transition-all" />
+          <div className="flex items-center gap-3 mb-2 relative z-10">
+            <span className="material-symbols-outlined text-primary bg-primary/10 border border-primary/20 p-2.5 rounded-xl text-[20px]">
               account_balance_wallet
             </span>
             <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider">
               {t('budgetsPage.totalAllocated')}
             </p>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums font-mono">
+          <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums font-mono relative z-10">
             {fmt(totalAllocated)}
           </h3>
-          <p className="text-xs text-gray-400 mt-1">Base monthly allocated budget</p>
+          <p className="text-xs text-gray-400 mt-1 relative z-10">Base monthly allocated budget</p>
         </div>
 
-        <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-outlined text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 p-2.5 rounded-xl text-[20px]">
+        <div className="card-glass relative overflow-hidden rounded-2xl p-6 border border-white/[0.08] dark:border-white/[0.08] hover-lift group shadow-lg">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-all" />
+          <div className="flex items-center gap-3 mb-2 relative z-10">
+            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl text-[20px]">
               history_toggle_off
             </span>
             <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider">
               {t('budgetsPage.rolloverCarried')}
             </p>
           </div>
-          <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums font-mono">
+          <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums font-mono relative z-10">
             +{fmt(totalRollover)}
           </h3>
-          <p className="text-xs text-gray-400 mt-1">Surplus unspent from prior cycle</p>
+          <p className="text-xs text-gray-400 mt-1 relative z-10">Surplus unspent from prior cycle</p>
         </div>
 
-        <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-outlined text-rose-600 bg-rose-50 dark:bg-rose-500/10 p-2.5 rounded-xl text-[20px]">
+        <div className="card-glass relative overflow-hidden rounded-2xl p-6 border border-white/[0.08] dark:border-white/[0.08] hover-lift group shadow-lg">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition-all" />
+          <div className="flex items-center gap-3 mb-2 relative z-10">
+            <span className="material-symbols-outlined text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl text-[20px]">
               shopping_cart_checkout
             </span>
             <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider">
               {t('budgetsPage.totalSpent')}
             </p>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums font-mono">
+          <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums font-mono relative z-10">
             {fmt(totalSpent)}
           </h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 mt-1 relative z-10">
             {totalEffectiveLimit > 0 ? `${((totalSpent / totalEffectiveLimit) * 100).toFixed(0)}% consumed` : '0% consumed'}
           </p>
         </div>
 
-        <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-outlined text-teal-600 bg-teal-50 dark:bg-teal-500/10 p-2.5 rounded-xl text-[20px]">
+        <div className="card-glass relative overflow-hidden rounded-2xl p-6 border border-white/[0.08] dark:border-white/[0.08] hover-lift group shadow-lg">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          <div className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full bg-teal-500/10 blur-2xl group-hover:bg-teal-500/20 transition-all" />
+          <div className="flex items-center gap-3 mb-2 relative z-10">
+            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 border border-teal-500/20 p-2.5 rounded-xl text-[20px]">
               savings
             </span>
             <p className="text-gray-500 dark:text-text-muted text-xs font-bold uppercase tracking-wider">
               {t('budgetsPage.totalRemaining')}
             </p>
           </div>
-          <h3 className="text-3xl font-black text-teal-600 dark:text-teal-400 tracking-tight tabular-nums font-mono">
+          <h3 className="text-3xl font-black text-teal-600 dark:text-teal-400 tracking-tight tabular-nums font-mono relative z-10">
             {fmt(totalRemaining)}
           </h3>
-          <p className="text-xs text-gray-400 mt-1">Available in active envelopes</p>
+          <p className="text-xs text-gray-400 mt-1 relative z-10">Available in active envelopes</p>
         </div>
       </div>
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex bg-gray-100 dark:bg-surface-dark p-1 rounded-xl border border-gray-200 dark:border-[#30363d] w-fit">
+        <div className="flex card-glass p-1 rounded-xl border border-white/[0.08] dark:border-white/[0.08] w-fit">
           {[
             { id: 'all', label: 'All Envelopes', count: budgets.length },
             { id: 'on_track', label: 'On Track', count: budgets.filter((b) => b.pacingStatus === 'on_track').length },
@@ -522,7 +530,7 @@ export default function BudgetPage() {
               onClick={() => setStatusFilter(tab.id as any)}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
                 statusFilter === tab.id
-                  ? 'bg-white dark:bg-[#1a202c] text-gray-900 dark:text-white shadow-sm'
+                  ? 'bg-primary/20 text-primary dark:text-[#38bdf8] border border-primary/30 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
@@ -542,7 +550,7 @@ export default function BudgetPage() {
           <p className="text-sm font-medium">Synchronizing envelope balances and burn pace...</p>
         </div>
       ) : filteredBudgets.length === 0 ? (
-        <div className="glass-panel rounded-2xl p-16 text-center">
+        <div className="card-glass rounded-2xl p-16 text-center border border-white/[0.08]">
           <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4">
             account_balance_wallet
           </span>
@@ -570,21 +578,22 @@ export default function BudgetPage() {
             const pct = effectiveLimit > 0 ? (b.spent / effectiveLimit) * 100 : 0;
             const remaining = Math.max(0, effectiveLimit - b.spent);
 
-            // Progress bar color based on status
-            let barColor = 'bg-emerald-500';
-            if (pct >= 100) barColor = 'bg-rose-500';
-            else if (pct >= 80 || b.pacingStatus === 'pacing_fast') barColor = 'bg-amber-500';
+            // Progress bar gradient based on status
+            let barGradient = 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]';
+            if (pct >= 100) barGradient = 'bg-gradient-to-r from-rose-500 to-red-500 shadow-[0_0_12px_rgba(244,63,94,0.35)]';
+            else if (pct >= 80 || b.pacingStatus === 'pacing_fast') barGradient = 'bg-gradient-to-r from-amber-500 to-orange-400 shadow-[0_0_12px_rgba(245,158,11,0.35)]';
 
             return (
               <div
                 key={b.id}
-                className="glass-panel rounded-2xl p-6 border border-gray-200 dark:border-white/5 hover:border-primary/40 transition-all flex flex-col justify-between group shadow-sm hover:shadow-md"
+                className="card-glass relative overflow-hidden rounded-2xl p-6 border border-white/[0.08] dark:border-white/[0.08] hover:border-primary/40 hover-lift transition-all flex flex-col justify-between group shadow-lg"
               >
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
                 <div>
                   {/* Category Header */}
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 flex items-center justify-center rounded-xl ${style.iconBg} ${style.icon} group-hover:scale-105 transition-transform`}>
+                      <div className={`w-11 h-11 flex items-center justify-center rounded-xl ${style.iconBg} ${style.icon} group-hover:scale-105 transition-transform border border-white/5`}>
                         <span className="material-symbols-outlined text-[22px]">{catIcon}</span>
                       </div>
                       <div>
@@ -625,7 +634,7 @@ export default function BudgetPage() {
                   </div>
 
                   {/* Amounts Grid */}
-                  <div className="grid grid-cols-2 gap-3 mb-4 p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="grid grid-cols-2 gap-3 mb-4 p-3.5 rounded-xl bg-black/20 dark:bg-black/30 border border-white/5 backdrop-blur-sm">
                     <div>
                       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
                         {t('budgetsPage.spentSoFar')}
@@ -644,9 +653,9 @@ export default function BudgetPage() {
                     </div>
                   </div>
 
-                  {/* Visual Progress Bar */}
+                  {/* Visual Progress Bar with Glow */}
                   <div className="mb-4">
-                    <div className="flex justify-between text-xs font-semibold mb-1">
+                    <div className="flex justify-between text-xs font-semibold mb-1.5">
                       <span className="text-gray-500 dark:text-text-muted">
                         Cap: {fmt(effectiveLimit)}
                       </span>
@@ -654,9 +663,9 @@ export default function BudgetPage() {
                         {pct.toFixed(0)}% Utilized
                       </span>
                     </div>
-                    <div className="w-full h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden shadow-inner">
+                    <div className="w-full h-2 rounded-full bg-black/40 border border-white/5 overflow-hidden p-[1px]">
                       <div
-                        className={`h-full ${barColor} rounded-full transition-all duration-700 ease-out`}
+                        className={`h-full ${barGradient} rounded-full transition-all duration-700 ease-out`}
                         style={{ width: `${Math.min(pct, 100)}%` }}
                       ></div>
                     </div>
@@ -665,17 +674,17 @@ export default function BudgetPage() {
                   {/* Burn Pace Analysis */}
                   <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 mb-4 px-1">
                     <span>
-                      Ideal: <strong className="text-gray-700 dark:text-gray-300">{fmt(b.idealDailyBurn || 0)}/d</strong>
+                      Ideal: <strong className="text-gray-700 dark:text-gray-300 font-mono">{fmt(b.idealDailyBurn || 0)}/d</strong>
                     </span>
                     <span>
-                      Actual: <strong className={`${(b.actualDailyBurn || 0) > (b.idealDailyBurn || 0) ? 'text-amber-500' : 'text-emerald-500'}`}>{fmt(b.actualDailyBurn || 0)}/d</strong>
+                      Actual: <strong className={`font-mono ${(b.actualDailyBurn || 0) > (b.idealDailyBurn || 0) ? 'text-amber-500' : 'text-emerald-500'}`}>{fmt(b.actualDailyBurn || 0)}/d</strong>
                     </span>
                     <span>{b.daysRemaining ?? 0} days left</span>
                   </div>
                 </div>
 
                 {/* Footer Controls */}
-                <div className="pt-3 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
                   {/* Rollover Toggle */}
                   <button
                     onClick={() => handleToggleRollover(b)}
@@ -728,13 +737,14 @@ export default function BudgetPage() {
       {/* ONE-CLICK REBALANCE MODAL */}
       <AnimatePresence>
         {showRebalanceModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white dark:bg-[#12161f] border border-gray-200 dark:border-white/10 rounded-3xl p-6 lg:p-8 w-full max-w-lg shadow-2xl"
+              className="card-glass-elevated relative overflow-hidden bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 lg:p-8 w-full max-w-lg shadow-2xl"
             >
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
@@ -913,13 +923,14 @@ export default function BudgetPage() {
       {/* ADD / EDIT BUDGET MODAL */}
       <AnimatePresence>
         {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white dark:bg-[#12161f] border border-gray-200 dark:border-white/10 rounded-3xl p-6 lg:p-8 w-full max-w-md shadow-2xl"
+              className="card-glass-elevated relative overflow-hidden bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 lg:p-8 w-full max-w-md shadow-2xl"
             >
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">

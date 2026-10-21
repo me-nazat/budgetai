@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
           if (pct >= 100) {
             await PushService.sendToUser(userId, {
-              title: `🚨 Budget Exceeded: ${budget.category}`,
+              title: `Budget Exceeded: ${budget.category}`,
               body: `You've spent ${Math.round(pct)}% of your ${budget.category} budget this month.`,
               tag: 'budget',
               url: '/budget',
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
             results.budgetAlerts++;
           } else if (pct >= 80) {
             await PushService.sendToUser(userId, {
-              title: `⚠️ Budget Warning: ${budget.category}`,
+              title: `Budget Warning: ${budget.category}`,
               body: `You've used ${Math.round(pct)}% of your ${budget.category} budget.`,
               tag: 'budget',
               url: '/budget',
@@ -148,11 +148,11 @@ export async function GET(request: NextRequest) {
 
         for (const sub of upcomingRecurring) {
           const title = isPaydayWindow
-            ? `💰 Payday Aligned: ${sub.name} Due Soon`
-            : `📅 Upcoming: ${sub.name}`;
+            ? `Payday Aligned: ${sub.name} Due Soon`
+            : `Upcoming: ${sub.name}`;
           const body = isPaydayWindow
-            ? `Your typical payday is here! ${sub.name} (৳${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`
-            : `${sub.name} (৳${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`;
+            ? `Your typical payday window is active. ${sub.name} (${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`
+            : `${sub.name} (${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`;
 
           await PushService.sendToUser(userId, {
             title,
@@ -177,14 +177,14 @@ export async function GET(request: NextRequest) {
 
             if (isNearPayoff) {
               await PushService.sendToUser(userId, {
-                title: `🎉 Last Payment Approaching: ${debt.name}`,
-                body: `Last payment on this debt is due soon 🎉 Only ৳${debt.balance.toFixed(2)} remaining to become completely debt-free!`,
+                title: `Final Payment Approaching: ${debt.name}`,
+                body: `Final payment on this liability is due soon. Only ${debt.balance.toFixed(2)} remaining to become completely debt-free.`,
                 tag: `debt-final-${debt.id}`,
                 url: '/debts',
               });
             } else {
               await PushService.sendToUser(userId, {
-                title: `💳 Debt Payment Due: ${debt.name}`,
+                title: `Debt Payment Due: ${debt.name}`,
                 body: `Minimum payment for "${debt.name}" is due on day ${debt.dueDayOfMonth} of the month.`,
                 tag: 'debts',
                 url: '/debts',
@@ -208,10 +208,10 @@ export async function GET(request: NextRequest) {
             if (pct >= milestone && pct < milestone + 5) {
               await PushService.sendToUser(userId, {
                 title: pct >= 100
-                  ? `🎉 Goal Reached: ${goal.name}!`
-                  : `🏁 ${milestone}% — ${goal.name}`,
+                  ? `Goal Reached: ${goal.name}`
+                  : `Milestone (${milestone}%): ${goal.name}`,
                 body: pct >= 100
-                  ? `Congratulations! You've reached your savings goal!`
+                  ? `Congratulations! You've reached your savings goal.`
                   : `You're ${milestone}% of the way to your "${goal.name}" goal.`,
                 tag: 'goals',
                 url: '/wealth-goals',
@@ -236,8 +236,8 @@ export async function GET(request: NextRequest) {
           // If user is spending more than earning, project 30 days ahead
           if (monthlyNet < 0) {
             await PushService.sendToUser(userId, {
-              title: '⚠️ Cash Flow Alert',
-              body: `At your current pace, you're spending $${Math.abs(monthlyNet).toFixed(0)} more than you earn monthly. Review your forecast.`,
+              title: 'Cash Flow Alert',
+              body: `At your current pace, you're spending ${Math.abs(monthlyNet).toFixed(0)} more than you earn monthly. Review your forecast.`,
               tag: 'budget',
               url: '/forecast',
               requireInteraction: true,

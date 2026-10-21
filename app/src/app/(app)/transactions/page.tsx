@@ -889,31 +889,31 @@ export default function TransactionsPage() {
       />
 
       {/* Keyboard Shortcuts Hint Bar */}
-      <div className="hidden lg:flex items-center justify-between text-[11px] font-semibold text-gray-400 dark:text-gray-500 px-3 py-1.5 mb-3 bg-gray-50/50 dark:bg-[#161b22]/50 border border-gray-200/50 dark:border-[#30363d]/50 rounded-xl">
+      <div className="hidden lg:flex items-center justify-between text-[11px] font-semibold text-gray-400 dark:text-gray-400 px-3 py-1.5 mb-3 bg-gray-50/50 dark:bg-white/[0.02] border border-gray-200/50 dark:border-white/10 rounded-xl">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#21262d] font-mono text-[10px]">
+            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 font-mono text-[10px] text-gray-700 dark:text-gray-300">
               j
             </kbd>
-            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#21262d] font-mono text-[10px]">
+            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 font-mono text-[10px] text-gray-700 dark:text-gray-300">
               k
             </kbd>
             <span>Navigate rows</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#21262d] font-mono text-[10px]">
+            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 font-mono text-[10px] text-gray-700 dark:text-gray-300">
               x
             </kbd>
             <span>Toggle select</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#21262d] font-mono text-[10px]">
+            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 font-mono text-[10px] text-gray-700 dark:text-gray-300">
               e
             </kbd>
             <span>Edit merchant</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#21262d] font-mono text-[10px]">
+            <kbd className="px-1.5 py-0.5 rounded border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 font-mono text-[10px] text-gray-700 dark:text-gray-300">
               Del
             </kbd>
             <span>Delete row</span>
@@ -925,11 +925,12 @@ export default function TransactionsPage() {
       </div>
 
       {/* ── Main Ledger Table (Desktop & Tablet) ── */}
-      <div className="rounded-2xl border border-gray-200/80 bg-white/95 dark:border-[#30363d] dark:bg-[#161b22]/95 shadow-sm overflow-hidden backdrop-blur-md">
+      <div className="card-glass relative overflow-hidden rounded-3xl border border-white/[0.08] dark:border-white/[0.08] shadow-2xl backdrop-blur-2xl">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="overflow-x-auto min-h-[400px]">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50/90 dark:bg-[#0A0E1A]/80 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-[#30363d]">
+              <tr className="bg-gray-50/90 dark:bg-[#0A0E1B]/90 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-white/[0.08]">
                 <th className="px-4 py-3.5 w-10 text-center">
                   <input
                     type="checkbox"
@@ -952,7 +953,7 @@ export default function TransactionsPage() {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
+            <tbody className="divide-y divide-gray-100 dark:divide-white/5 text-sm">
               {isLoading && transactions.length === 0 ? (
                 Array.from({ length: 8 }).map((_, index) => (
                   <tr key={`skeleton-${index}`}>
@@ -988,7 +989,7 @@ export default function TransactionsPage() {
               ) : dateGroups.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-16 text-center">
-                    <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-gray-100 dark:bg-[#21262d]">
+                    <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-gray-100 dark:bg-white/5">
                       <span className="material-symbols-outlined text-3xl text-gray-400">
                         search_off
                       </span>
@@ -1010,7 +1011,7 @@ export default function TransactionsPage() {
                   return (
                     <React.Fragment key={`group-${group.date}`}>
                       {/* ── Sticky Sub-Header for Date Group ── */}
-                      <tr className="sticky top-0 z-20 bg-gray-50/95 dark:bg-[#0A0E1A]/95 border-y border-gray-200/80 dark:border-[#30363d]/80 backdrop-blur-md">
+                      <tr className="sticky top-0 z-20 bg-gray-50/95 dark:bg-[#0A0E1B]/95 border-y border-gray-200/80 dark:border-white/[0.08] backdrop-blur-md">
                         <td className="px-4 py-2 text-center">
                           <input
                             type="checkbox"
@@ -1063,7 +1064,7 @@ export default function TransactionsPage() {
                                 ? 'bg-primary/10 dark:bg-primary/15'
                                 : isFocused
                                 ? 'bg-primary/5 dark:bg-primary/10 ring-1 ring-inset ring-primary/30'
-                                : 'hover:bg-gray-50/80 dark:hover:bg-[#21262d]/40'
+                                : 'hover:bg-gray-50/80 dark:hover:bg-white/[0.03]'
                             }`}
                           >
                             {/* Checkbox Cell */}
@@ -1241,8 +1242,8 @@ export default function TransactionsPage() {
                                         <span>Split ({splitsArray.length})</span>
                                       </button>
                                       {/* Tooltip on hover */}
-                                      <div className="pointer-events-none opacity-0 group-hover/split:opacity-100 transition-opacity duration-150 absolute left-0 bottom-full mb-2 z-50 w-64 rounded-xl border border-gray-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] p-2.5 shadow-xl text-left text-xs">
-                                        <div className="font-semibold text-gray-900 dark:text-white pb-1.5 border-b border-gray-100 dark:border-[#21262d] flex items-center justify-between">
+                                      <div className="pointer-events-none opacity-0 group-hover/split:opacity-100 transition-opacity duration-150 absolute left-0 bottom-full mb-2 z-50 w-64 rounded-xl border border-gray-200 dark:border-white/10 bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-xl p-2.5 shadow-xl text-left text-xs">
+                                        <div className="font-semibold text-gray-900 dark:text-white pb-1.5 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
                                           <span>Split Breakdown</span>
                                           <span className="text-[10px] text-gray-400">{splitsArray.length} categories</span>
                                         </div>
@@ -1289,7 +1290,7 @@ export default function TransactionsPage() {
                                         setInlineCategorySearch('');
                                       }
                                     }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-gray-700 dark:text-gray-300 transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border dark:border-white/10 text-gray-700 dark:text-gray-300 transition-colors"
                                   >
                                     <span className="material-symbols-outlined text-[14px] text-gray-400">
                                       {getCategoryIcon(tx.category, customCategories)}
@@ -1301,7 +1302,7 @@ export default function TransactionsPage() {
 
                               {editingCell?.id === tx.id &&
                                 editingCell?.field === 'category' && (
-                                  <div className="absolute left-4 top-full mt-1 z-30 w-56 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl dark:border-[#30363d] dark:bg-[#161b22]">
+                                  <div className="absolute left-4 top-full mt-1 z-30 w-56 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-xl p-2 shadow-xl dark:border-white/10 dark:bg-[#12182B]/95">
                                     <input
                                       type="text"
                                       autoFocus
@@ -1310,7 +1311,7 @@ export default function TransactionsPage() {
                                       onChange={(e) =>
                                         setInlineCategorySearch(e.target.value)
                                       }
-                                      className="w-full mb-1 px-2 py-1 text-xs border border-gray-200 dark:border-[#30363d] rounded-lg bg-gray-50 dark:bg-[#0A0E1A] text-gray-900 dark:text-white outline-none"
+                                      className="w-full mb-1 px-2 py-1 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white outline-none focus:border-primary/50"
                                     />
                                     <div className="max-h-44 overflow-y-auto space-y-0.5">
                                       {allCategoryList
@@ -1326,7 +1327,7 @@ export default function TransactionsPage() {
                                             onClick={() =>
                                               handleSaveInlineEdit(tx, 'category', c)
                                             }
-                                            className="w-full flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-[#21262d] text-left text-xs text-gray-800 dark:text-gray-200 font-medium"
+                                            className="w-full flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-left text-xs text-gray-800 dark:text-gray-200 font-medium"
                                           >
                                             <span className="material-symbols-outlined text-[14px] text-gray-400">
                                               {getCategoryIcon(c, customCategories)}
@@ -1356,7 +1357,7 @@ export default function TransactionsPage() {
                                     setEditingCell({ id: tx.id, field: 'account' });
                                   }
                                 }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-gray-700 dark:text-gray-300 transition-colors"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border dark:border-white/10 text-gray-700 dark:text-gray-300 transition-colors"
                               >
                                 {accountObj && (
                                   <span
@@ -1372,7 +1373,7 @@ export default function TransactionsPage() {
                               </button>
 
                               {editingCell?.id === tx.id && editingCell?.field === 'account' && (
-                                <div className="absolute left-4 top-full mt-1 z-30 w-56 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl dark:border-[#30363d] dark:bg-[#161b22]">
+                                <div className="absolute left-4 top-full mt-1 z-30 w-56 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-xl p-2 shadow-xl dark:border-white/10 dark:bg-[#12182B]/95">
                                   <div className="max-h-44 overflow-y-auto space-y-0.5">
                                     {accounts.map((acc: any) => (
                                       <button
@@ -1381,7 +1382,7 @@ export default function TransactionsPage() {
                                         onClick={() =>
                                           handleSaveInlineEdit(tx, 'account', acc.id)
                                         }
-                                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#21262d] text-left text-xs text-gray-800 dark:text-gray-200 font-medium"
+                                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-left text-xs text-gray-800 dark:text-gray-200 font-medium"
                                       >
                                         <div className="flex items-center gap-2 truncate">
                                           <span
@@ -1532,14 +1533,14 @@ export default function TransactionsPage() {
                   setBulkMoveAccountOpen(false);
                 }}
                 disabled={bulkSubmitting}
-                className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[16px]">category</span>
                 <span>Change Category</span>
               </button>
 
               {bulkCategorizeOpen && (
-                <div className="absolute bottom-full mb-2 left-0 z-50 w-56 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]">
+                <div className="absolute bottom-full mb-2 left-0 z-50 w-56 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-2xl p-2 shadow-2xl dark:border-white/10 dark:bg-[#12182B]/95">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 px-1">
                     Assign Category
                   </p>
@@ -1549,7 +1550,7 @@ export default function TransactionsPage() {
                         key={cat}
                         type="button"
                         onClick={() => handleBulkCategorize(cat)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#21262d] text-left text-xs font-medium text-gray-800 dark:text-gray-200"
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-left text-xs font-medium text-gray-800 dark:text-gray-200"
                       >
                         <span className="material-symbols-outlined text-[15px] text-gray-400">
                           {getCategoryIcon(cat, customCategories)}
@@ -1571,14 +1572,14 @@ export default function TransactionsPage() {
                   setBulkCategorizeOpen(false);
                 }}
                 disabled={bulkSubmitting}
-                className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
                 <span>Move Account</span>
               </button>
 
               {bulkMoveAccountOpen && (
-                <div className="absolute bottom-full mb-2 left-0 z-50 w-56 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]">
+                <div className="absolute bottom-full mb-2 left-0 z-50 w-56 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-2xl p-2 shadow-2xl dark:border-white/10 dark:bg-[#12182B]/95">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 px-1">
                     Select Target Account
                   </p>
@@ -1588,7 +1589,7 @@ export default function TransactionsPage() {
                         key={acc.id}
                         type="button"
                         onClick={() => handleBulkMoveAccount(acc.id)}
-                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#21262d] text-left text-xs font-medium text-gray-800 dark:text-gray-200"
+                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-left text-xs font-medium text-gray-800 dark:text-gray-200"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <span
@@ -1659,7 +1660,7 @@ export default function TransactionsPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-[#161b22] rounded-2xl shadow-2xl p-6 border border-gray-200 dark:border-[#30363d] text-center"
+              className="w-full max-w-sm bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl rounded-2xl shadow-2xl p-6 border border-gray-200 dark:border-white/10 text-center"
             >
               <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-4">
                 <span className="material-symbols-outlined text-[28px]">delete_forever</span>
@@ -1675,7 +1676,7 @@ export default function TransactionsPage() {
                 <button
                   type="button"
                   onClick={() => setDeletingTxId(null)}
-                  className="flex-1 py-2 px-4 rounded-xl border border-gray-200 dark:border-[#30363d] text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#21262d]"
+                  className="flex-1 py-2 px-4 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
                 >
                   Cancel
                 </button>
@@ -1702,7 +1703,7 @@ export default function TransactionsPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-[#161b22] rounded-2xl shadow-2xl p-6 border border-gray-200 dark:border-[#30363d] text-center"
+              className="w-full max-w-sm bg-white/95 dark:bg-[#12182B]/95 backdrop-blur-2xl rounded-2xl shadow-2xl p-6 border border-gray-200 dark:border-white/10 text-center"
             >
               <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-4">
                 <span className="material-symbols-outlined text-[28px]">delete_sweep</span>
@@ -1718,7 +1719,7 @@ export default function TransactionsPage() {
                 <button
                   type="button"
                   onClick={() => setShowBulkDeleteConfirm(false)}
-                  className="flex-1 py-2 px-4 rounded-xl border border-gray-200 dark:border-[#30363d] text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#21262d]"
+                  className="flex-1 py-2 px-4 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
                 >
                   Cancel
                 </button>

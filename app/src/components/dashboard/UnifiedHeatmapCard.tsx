@@ -19,7 +19,8 @@ export function UnifiedHeatmapCard({ year, month, dailySpending }: UnifiedHeatma
     const [activeTab, setActiveTab] = useState<'month' | 'year'>('month');
 
     return (
-        <div className="glass-panel p-6 rounded-3xl mb-8 border border-gray-200 dark:border-white/5 bg-white dark:bg-surface-dark shadow-sm">
+        <div className="card-glass relative overflow-hidden p-6 rounded-3xl mb-8 border border-white/[0.08] shadow-sm">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
             {/* Top Bar with Section Title and Tab Controls */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-150 dark:border-white/5">
                 <div>

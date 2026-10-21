@@ -514,7 +514,7 @@ export function SubscriptionsContent() {
 
       {/* Filters Strip */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex bg-gray-100 dark:bg-surface-dark p-1 rounded-xl border border-gray-200 dark:border-[#30363d] w-fit">
+        <div className="flex bg-gray-100 dark:bg-surface-dark p-1 rounded-xl border border-gray-200 dark:border-white/10 w-fit">
           {[
             { id: 'all', label: 'All Subscriptions', count: subs.length },
             { id: 'active', label: 'Active', count: subs.filter((s) => s.isActive).length },

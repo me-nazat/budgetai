@@ -165,7 +165,7 @@ export default function LanguagePickerSheet({ isOpen, onClose }: LanguagePickerS
                     className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition-all duration-200 min-h-[52px] ${
                       isSelected
                         ? 'bg-primary/10 border-primary/40 dark:border-primary/50 shadow-sm'
-                        : 'bg-gray-50 dark:bg-[#161b22] border-transparent hover:border-gray-200 dark:hover:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5'
+                        : 'bg-gray-50 dark:bg-white/[0.03] border-transparent hover:border-gray-200 dark:hover:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5'
                     } ${!lang.isAvailable ? 'opacity-65' : 'cursor-pointer'}`}
                   >
                     <div className="flex items-center gap-3.5">

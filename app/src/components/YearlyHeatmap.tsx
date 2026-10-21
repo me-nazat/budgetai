@@ -49,7 +49,7 @@ function calculateQuartiles(amounts: number[]) {
 }
 
 const GREEN_INTENSITY = [
-    'bg-gray-100 dark:bg-[#161b22]',
+    'bg-gray-100 dark:bg-white/[0.04]',
     'bg-emerald-200/60 dark:bg-emerald-500/20',
     'bg-emerald-300 dark:bg-emerald-500/40',
     'bg-emerald-500 dark:bg-emerald-500/70',
@@ -57,7 +57,7 @@ const GREEN_INTENSITY = [
 ];
 
 const RED_INTENSITY = [
-    'bg-gray-100 dark:bg-[#161b22]',
+    'bg-gray-100 dark:bg-white/[0.04]',
     'bg-rose-200/60 dark:bg-rose-500/20',
     'bg-rose-300 dark:bg-rose-500/40',
     'bg-rose-500 dark:bg-rose-500/70',
@@ -105,7 +105,7 @@ const HeatmapSquare = React.memo(function HeatmapSquare({
             }}
         >
             {day.date && (
-                <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-max px-3 py-2 bg-gray-900 dark:bg-[#21262d] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-2 group-hover:translate-y-0 pointer-events-none z-[9999]">
+                <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-max px-3 py-2 bg-gray-900 dark:bg-[#12182B] border border-gray-700 dark:border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-2 group-hover:translate-y-0 pointer-events-none z-[9999]">
                     <p className="font-bold mb-1 text-center text-gray-300">
                         {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
                             weekday: 'short',
@@ -131,7 +131,7 @@ const HeatmapSquare = React.memo(function HeatmapSquare({
                             Outlier (&gt;2.5x median)
                         </p>
                     )}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900 dark:border-t-[#21262d]"></div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900 dark:border-t-[#12182B]"></div>
                 </div>
             )}
         </div>

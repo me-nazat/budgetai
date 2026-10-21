@@ -116,7 +116,8 @@ export default function UpcomingBillsWidget() {
   }
 
   return (
-    <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-gray-200 dark:border-white/5 bg-white dark:bg-surface-dark shadow-sm flex flex-col justify-between h-full">
+    <div className="card-glass relative overflow-hidden p-5 sm:p-6 rounded-3xl border border-white/[0.08] shadow-sm flex flex-col justify-between h-full">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
       <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
