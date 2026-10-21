@@ -174,8 +174,39 @@
   }
 
   :where(.dark) body {
-    background: var(--bg-canvas, #090A0F);
+    background: var(--bg-canvas, #0A0E1B);
     color: var(--color-text-main);
+  }
+
+  /* Institutional Enterprise Dark Mode Contrast Assurance */
+  :where(.dark) h1,
+  :where(.dark) h2,
+  :where(.dark) h3,
+  :where(.dark) h4,
+  :where(.dark) h5,
+  :where(.dark) h6 {
+    color: var(--color-text-main, #FAFAFA);
+  }
+
+  :where(.dark) .text-gray-900,
+  :where(.dark) .text-gray-950 {
+    color: #FAFAFA;
+  }
+
+  :where(.dark) .text-gray-800,
+  :where(.dark) .text-gray-700 {
+    color: #CBD5E1;
+  }
+
+  :where(.dark) .text-gray-600,
+  :where(.dark) .text-gray-500 {
+    color: #94A3B8;
+  }
+
+  :where(.dark) .border-gray-200,
+  :where(.dark) .border-gray-150,
+  :where(.dark) .border-gray-100 {
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   /* Tabular numeral discipline across financial platform */

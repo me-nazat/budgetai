@@ -146,11 +146,30 @@ async function syncAll() {
   // 4. Ensure critical columns across all schema definitions
   const criticalColumns = [
     { table: 'bill_splits', col: 'linked_account_id', def: 'INTEGER' },
+    { table: 'transactions', col: 'account_id', def: 'INTEGER' },
+    { table: 'transactions', col: 'to_account_id', def: 'INTEGER' },
+    { table: 'transactions', col: 'tax_suggested', def: 'INTEGER DEFAULT 0' },
     { table: 'transactions', col: 'transfer_group_id', def: 'TEXT' },
     { table: 'transactions', col: 'splits', def: 'TEXT' },
     { table: 'transactions', col: 'client_mutation_id', def: 'TEXT' },
     { table: 'transactions', col: 'attachments', def: 'TEXT' },
+    { table: 'transactions', col: 'notes', def: "TEXT DEFAULT ''" },
+    { table: 'transactions', col: 'tax_deductible', def: 'INTEGER DEFAULT 0' },
+    { table: 'transactions', col: 'personal_share_amount', def: 'REAL' },
+    { table: 'transactions', col: 'reimbursement_status', def: "TEXT DEFAULT 'none'" },
+    { table: 'transactions', col: 'collaborative_source_type', def: 'TEXT' },
+    { table: 'transactions', col: 'collaborative_source_id', def: 'TEXT' },
+    { table: 'transactions', col: 'collaborative_expense_id', def: 'TEXT' },
+    { table: 'transactions', col: 'is_settlement_transfer', def: 'INTEGER DEFAULT 0' },
+    { table: 'transactions', col: 'merchant_normalized', def: 'TEXT' },
+    { table: 'transactions', col: 'is_split', def: 'INTEGER DEFAULT 0' },
+    { table: 'transactions', col: 'split_items_json', def: 'TEXT' },
+    { table: 'transactions', col: 'status', def: "TEXT DEFAULT 'cleared'" },
     { table: 'household_category_caps', col: 'rollover_policy', def: "TEXT DEFAULT 'none'" },
+    { table: 'household_settlements', col: 'payer_account_id', def: 'INTEGER' },
+    { table: 'household_settlements', col: 'payee_account_id', def: 'INTEGER' },
+    { table: 'household_settlements', col: 'settlement_account_id', def: 'INTEGER' },
+    { table: 'household_settlements', col: 'linked_transaction_id', def: 'INTEGER' },
   ];
 
   for (const { table, col, def } of criticalColumns) {

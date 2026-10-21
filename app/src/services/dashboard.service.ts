@@ -127,7 +127,7 @@ export class DashboardService {
     // 1. DETERMINISTIC SAFE-TO-SPEND ENGINE
     // ────────────────────────────────────────────────────────────
     // 1.1 Liquid Cash
-    const liquidCash = accounts
+    const accountsLiquidCash = accounts
       .filter((a) => {
         if (a.isArchived) return false;
         const type = (a.type || '').toLowerCase();
@@ -136,6 +136,7 @@ export class DashboardService {
         return ['cash', 'bank', 'mobile_wallet', 'wallet', 'checking', 'savings'].includes(type) || type !== 'other';
       })
       .reduce((sum, a) => sum + Math.max(0, a.currentBalance), 0);
+    const liquidCash = accounts.length > 0 ? accountsLiquidCash : Math.max(0, balance);
 
     // 1.2 Credit Card Current Balances Due
     const creditCardCurrentBalance = accounts
@@ -231,10 +232,11 @@ export class DashboardService {
     // ────────────────────────────────────────────────────────────
     // 3. ACCOUNTS & LIQUIDITY SUMMARY
     // ────────────────────────────────────────────────────────────
+    const accountsAssets = accounts
+      .filter((a) => !a.isArchived && a.type !== 'card')
+      .reduce((sum, a) => sum + Math.max(0, a.currentBalance), 0);
     const totalAssets = Math.round(
-      (accounts
-        .filter((a) => !a.isArchived && a.type !== 'card')
-        .reduce((sum, a) => sum + Math.max(0, a.currentBalance), 0) + netCollaborativeReceivables) * 100
+      ((accounts.length > 0 ? accountsAssets : Math.max(0, balance)) + netCollaborativeReceivables) * 100
     ) / 100;
 
     const totalDebtAmount = debtsList.reduce((sum, d) => sum + (d.balance || 0), 0);
@@ -249,7 +251,7 @@ export class DashboardService {
     const accountsSummary: AccountsSummaryDTO = {
       totalAssets,
       totalLiabilities,
-      netWorth: computedNetWorth,
+      netWorth: computedNetWorth !== 0 ? computedNetWorth : (latestNetWorth?.amount ?? balance),
       assetToLiabilityRatio,
       liquidCash,
       liquidRatio,

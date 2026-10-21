@@ -43,8 +43,10 @@ export const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({ data, fm
     // ────────────────────────────────────────────────────────────
     // 2. Net Worth & Liquid Ratio
     // ────────────────────────────────────────────────────────────
-    const totalNetWorth = data.accountsSummary?.netWorth ?? data.netWorth;
-    const liquidRatio = data.accountsSummary?.liquidRatio ?? 0;
+    const totalNetWorth = (data.accountsSummary?.netWorth !== undefined && data.accountsSummary?.netWorth !== 0)
+        ? data.accountsSummary.netWorth
+        : (data.netWorth || data.balance || 0);
+    const liquidRatio = data.accountsSummary?.liquidRatio ?? 100;
     const netSavingsDelta = data.netSavings;
     const prevEstimatedNetWorth = totalNetWorth - netSavingsDelta;
     const netWorthMoMPercent = prevEstimatedNetWorth !== 0
