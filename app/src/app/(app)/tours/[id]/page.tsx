@@ -531,9 +531,9 @@ export default function TourDashboard() {
 
   const currentUserId = userData?.user?.id as number | undefined;
   const currentUserName = useMemo(() => {
-    const p = participants.find(p => p.userId === currentUserId);
+    const p = participants.find(p => p.userId === currentUserId) || (tour?.createdBy === currentUserId ? participants[0] : undefined);
     return p ? p.name : (userData?.user?.name || 'Someone');
-  }, [participants, currentUserId, userData]);
+  }, [participants, currentUserId, userData, tour]);
   const isLoading = tourLoading || (!tourData && !tourError);
   const error = tourError ? (tourError.message || 'Unable to load tour.') : (tourData && !tourData.success ? tourData.error : null);
 
@@ -608,9 +608,11 @@ export default function TourDashboard() {
   const [itinLatitude, setItinLatitude] = useState('');
   const [itinLongitude, setItinLongitude] = useState('');
 
-  // Itinerary Filters
+  // Itinerary Filters & View Modes
   const [itinFilterType, setItinFilterType] = useState<string>('All');
   const [itinSearchQuery, setItinSearchQuery] = useState<string>('');
+  const [itinViewMode, setItinViewMode] = useState<'stream' | 'kanban'>('stream');
+  const [isGeneratingAiItinerary, setIsGeneratingAiItinerary] = useState(false);
 
   // Edit state — holds the item currently being edited (null = no edit in progress)
   const [editingItinItem, setEditingItinItem] = useState<ItineraryItem | null>(null);
@@ -1284,6 +1286,19 @@ export default function TourDashboard() {
     return Array.from(groups.entries());
   }, [filteredItinerary]);
 
+  const itineraryByDay = useMemo<[number, ItineraryItem[]][]>(() => {
+    const daysMap = new Map<number, ItineraryItem[]>();
+    filteredItinerary.forEach((item) => {
+      const list = daysMap.get(item.day) || [];
+      list.push(item);
+      daysMap.set(item.day, list);
+    });
+    daysMap.forEach((items) => {
+      items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    });
+    return Array.from(daysMap.entries()).sort((a, b) => a[0] - b[0]);
+  }, [filteredItinerary]);
+
   const handleToggleAssignee = (name: string) => {
     if (name === 'Everyone') {
       setSelectedAssignees(['Everyone']);
@@ -1800,62 +1815,98 @@ export default function TourDashboard() {
     setIsGeneratingAiSuggestions(true);
     haptics.tap();
 
-    const previous = checklist;
     try {
-      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist/ai-suggest`);
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist/ai-suggest`, {
+        method: 'POST',
+      });
       if (!res.ok) throw new Error('Failed to generate suggestions');
       const data = await res.json();
-      if (!data.success || !Array.isArray(data.suggestions)) {
+      if (!data.success) {
         throw new Error('Invalid suggestions data');
       }
 
-      const suggestions = data.suggestions;
-      const existingNames = new Set(checklist.map(c => c.name.trim().toLowerCase()));
-      const newSuggestions = suggestions.filter((s: any) => s.name && !existingNames.has(s.name.trim().toLowerCase()));
-
-      if (newSuggestions.length === 0) {
-        haptics.success();
-        setIsGeneratingAiSuggestions(false);
-        return;
-      }
-
-      const tempItems: ChecklistItem[] = newSuggestions.map((item: any, idx: number) => ({
-        id: 'temp_ai_suggest_' + Date.now() + '_' + idx,
-        name: item.name,
-        category: item.category || 'Other',
-        assignedTo: 'Everyone',
-        completed: false,
-        priority: item.priority || 'Medium',
-        quantity: item.quantity || 1,
-      }));
-
-      mutateChecklist(
-        { success: true, checklist: [...checklist, ...tempItems], categories: customCategoriesList },
-        { revalidate: false }
-      );
+      await mutateChecklist();
       haptics.success();
-
-      // Submit items to API
-      for (const item of newSuggestions) {
-        const formData = new FormData();
-        formData.append('name', item.name);
-        formData.append('category', item.category || 'Other');
-        formData.append('assignedTo', 'Everyone');
-        formData.append('priority', item.priority || 'Medium');
-        formData.append('quantity', String(item.quantity || 1));
-        await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
-      mutateChecklist();
     } catch (err) {
       console.error(err);
-      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
+      haptics.error();
     } finally {
       setIsGeneratingAiSuggestions(false);
     }
   };
+
+  const handleAiSuggestItinerary = async () => {
+    if (isGeneratingAiItinerary) return;
+    setIsGeneratingAiItinerary(true);
+    haptics.tap();
+
+    try {
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/itinerary/ai-suggest`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('Failed to generate AI itinerary');
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate itinerary');
+      }
+
+      await mutateItinerary();
+      haptics.success();
+    } catch (err) {
+      console.error(err);
+      haptics.error();
+    } finally {
+      setIsGeneratingAiItinerary(false);
+    }
+  };
+
+  const handleExportItinerary = useCallback(() => {
+    if (!itinerary || itinerary.length === 0) return;
+    const dest = tour?.destination || tour?.name || 'Trip';
+    const lines = [
+      `# ${tour?.name || 'Tour'} — Day-by-Day Itinerary`,
+      `**Destination**: ${dest}`,
+      `**Dates**: ${tour?.startDate || 'TBD'} to ${tour?.endDate || 'TBD'}`,
+      `**Total Budget**: ${tour?.totalBudget ? `${tour.baseCurrency || 'BDT'} ${tour.totalBudget}` : 'Not set'}`,
+      `**Generated on**: ${new Date().toLocaleDateString()}`,
+      '',
+      '---',
+      '',
+    ];
+
+    const sorted = [...itinerary].sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day;
+      return a.time.localeCompare(b.time);
+    });
+
+    let currentDay = -1;
+    for (const item of sorted) {
+      if (item.day !== currentDay) {
+        currentDay = item.day;
+        lines.push(`## Day ${currentDay}${item.groupTitle && item.groupTitle !== 'General Activities' ? ` — ${item.groupTitle}` : ''}`);
+        lines.push('');
+      }
+
+      const timeRange = `${formatTime12h(item.time)}${item.timeEnd ? ` – ${formatTime12h(item.timeEnd)}` : ''}`;
+      const costStr = item.costDisplay ? ` (Est. ${item.costDisplay})` : item.cost ? ` (Est. ${item.cost})` : '';
+      lines.push(`- **${timeRange}**: ${item.title}${costStr}`);
+      if (item.location) lines.push(`  - *Location*: ${item.location}`);
+      if (item.notes) lines.push(`  - *Notes*: ${item.notes}`);
+      lines.push(`  - *Status*: ${item.status || 'Planned'}`);
+      lines.push('');
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(tour?.name || 'tour').replace(/\s+/g, '-').toLowerCase()}-itinerary.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    haptics.success();
+  }, [itinerary, tour, haptics]);
 
   const generateDefaultChecklist = async () => {
     const defaults = [
@@ -1896,7 +1947,8 @@ export default function TourDashboard() {
   const averageCost = Number(tourData?.averageCost || 0);
   const balances = useMemo(() => (tourData?.balances ?? []) as TourParticipant[], [tourData?.balances]);
 
-  const currentUserBalanceObj = balances.find(b => b.userId === currentUserId);
+  const currentUserBalanceObj = balances.find(b => b.userId === currentUserId) ||
+    (tour?.createdBy === currentUserId ? (balances.find(b => b.userId === currentUserId) || balances[0]) : undefined);
   const myBalance = currentUserBalanceObj?.balance || 0;
   const myPaidAmount = currentUserBalanceObj?.paid || 0;
   const myTrueTripCost = Math.max(0, myPaidAmount - myBalance);
@@ -2211,6 +2263,20 @@ export default function TourDashboard() {
             </Link>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary sm:text-xs">Tour Command Center</p>
+              {tour.status && (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider border ${
+                  tour.status === 'completed'
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    : tour.status === 'planning'
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    : tour.status === 'archived'
+                    ? 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                }`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  {tour.status}
+                </span>
+              )}
               {tour.destination && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 text-[11px] font-bold text-sky-400">
                   <span className="material-symbols-outlined text-[13px]">location_on</span>
@@ -2674,22 +2740,66 @@ export default function TourDashboard() {
                 <div className="lg:col-span-2 glass-panel p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div>
-                      <h2 className="text-2xl font-black text-gray-950 dark:text-white">Trip Itinerary</h2>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Day-by-Day Schedule</span>
+                      </div>
+                      <h2 className="text-2xl font-black text-gray-950 dark:text-white mt-0.5">Trip Itinerary</h2>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5">
                         Plan and view your day-by-day activities, reservations, and timings.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => { haptics.tap(); setIsAddingItinerary(!isAddingItinerary); }}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover self-start sm:self-auto"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">{isAddingItinerary ? 'close' : 'add'}</span>
-                      {isAddingItinerary ? 'Cancel' : 'Add Activity'}
-                    </button>
+
+                    <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                      {/* AI Auto-Plan Itinerary */}
+                      <button
+                        type="button"
+                        onClick={handleAiSuggestItinerary}
+                        disabled={isGeneratingAiItinerary}
+                        className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/20 to-cyan-500/15 border border-emerald-500/30 px-3.5 py-2.5 text-xs font-black text-emerald-400 hover:from-emerald-500/25 hover:to-teal-500/30 disabled:opacity-50 transition-all shadow-sm"
+                        title="AI-powered day-by-day travel itinerary generation"
+                      >
+                        {isGeneratingAiItinerary ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            <span>Generating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-[17px] animate-pulse">auto_awesome</span>
+                            <span>AI Auto-Plan</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Export Itinerary */}
+                      <button
+                        type="button"
+                        onClick={handleExportItinerary}
+                        disabled={itinerary.length === 0}
+                        className="inline-flex items-center gap-1.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:text-white hover:bg-white/[0.08] disabled:opacity-40 transition-colors"
+                        title="Export Itinerary (Markdown / Offline document)"
+                      >
+                        <span className="material-symbols-outlined text-[17px]">file_download</span>
+                        <span className="hidden md:inline">Export</span>
+                      </button>
+
+                      {/* Add Activity Button */}
+                      <button
+                        type="button"
+                        onClick={() => { haptics.tap(); setIsAddingItinerary(!isAddingItinerary); }}
+                        className="inline-flex items-center gap-1.5 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{isAddingItinerary ? 'close' : 'add'}</span>
+                        {isAddingItinerary ? 'Cancel' : 'Add Activity'}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Search and Quick Filters */}
+                  {/* Search, Filter & View Toggle */}
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <div className="relative flex-1">
                       <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
@@ -2714,6 +2824,36 @@ export default function TourDashboard() {
                       <option value="transport">Transportation</option>
                       <option value="other">Other</option>
                     </select>
+
+                    {/* View Switcher: Timeline Stream vs Day-by-Day Board */}
+                    <div className="flex items-center rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-[#111827] p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => { haptics.tap(); setItinViewMode('stream'); }}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          itinViewMode === 'stream'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                        title="Timeline Stream View"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">timeline</span>
+                        <span className="hidden sm:inline">Timeline</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { haptics.tap(); setItinViewMode('kanban'); }}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          itinViewMode === 'kanban'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                        title="Day-by-Day Board View"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">grid_view</span>
+                        <span className="hidden sm:inline">Board</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2952,19 +3092,199 @@ export default function TourDashboard() {
                 <div className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
                   <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">route</span>
                   <h3 className="text-xl font-black text-gray-950 dark:text-white">No activities found</h3>
-                  <p className="mt-2 max-w-sm text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {itinerary.length > 0 ? 'Try clearing your search or category filters.' : 'Start planning your trip schedule by adding flight timings, hotel stays, and exciting activities!'}
+                  <p className="mt-2 max-w-md text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {itinerary.length > 0 ? 'Try clearing your search or category filters.' : 'Plan your journey step-by-step or use AI Auto-Plan to generate a tailored day-by-day travel schedule!'}
                   </p>
-                  {itinerary.length === 0 && (
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleAiSuggestItinerary}
+                      disabled={isGeneratingAiItinerary}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/20 to-cyan-500/15 border border-emerald-500/30 px-5 py-3 text-sm font-black text-emerald-400 hover:from-emerald-500/25 hover:to-teal-500/30 transition-all shadow-md"
+                    >
+                      <span className="material-symbols-outlined text-[20px] animate-pulse">auto_awesome</span>
+                      AI Auto-Plan Itinerary
+                    </button>
                     <button
                       type="button"
                       onClick={() => { haptics.tap(); setIsAddingItinerary(true); }}
-                      className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white hover:bg-primary-hover transition-all"
                     >
                       <span className="material-symbols-outlined text-[20px]">add</span>
-                      Add First Activity
+                      Add Activity Manually
                     </button>
-                  )}
+                  </div>
+                </div>
+              ) : itinViewMode === 'kanban' ? (
+                /* ── Day-by-Day Kanban Board ── */
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
+                  {itineraryByDay.map(([dayNum, dayActivities]) => {
+                    const dayCostSum = dayActivities.reduce((acc, it) => {
+                      const c = typeof it.cost === 'number' ? it.cost : parseFloat(String(it.cost || '').replace(/[^0-9.]/g, '')) || 0;
+                      return acc + c;
+                    }, 0);
+
+                    return (
+                      <div
+                        key={`kanban-day-${dayNum}`}
+                        className="rounded-3xl border border-gray-200/80 dark:border-white/10 bg-gray-50/50 dark:bg-surface-dark/70 p-4 sm:p-5 flex flex-col space-y-4 shadow-sm backdrop-blur-md"
+                      >
+                        {/* Day Column Header */}
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-200/60 dark:border-white/5">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
+                                Day {dayNum}
+                              </span>
+                              <span className="text-xs font-bold text-gray-400 dark:text-gray-500">
+                                {dayActivities.length} {dayActivities.length === 1 ? 'event' : 'events'}
+                              </span>
+                            </div>
+                            {dayCostSum > 0 && (
+                              <p className="text-[11px] font-mono font-bold text-emerald-500 mt-1">
+                                Est. {fmt(dayCostSum)}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              haptics.tap();
+                              setItinDay(dayNum);
+                              setIsAddingItinerary(true);
+                              window.scrollTo({ top: 320, behavior: 'smooth' });
+                            }}
+                            className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            title={`Add activity to Day ${dayNum}`}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">add</span>
+                          </button>
+                        </div>
+
+                        {/* Activities Cards */}
+                        <div className="space-y-3">
+                          {dayActivities.map((item) => {
+                            const typeIcons: Record<string, string> = {
+                              flight: 'flight_takeoff',
+                              hotel: 'hotel',
+                              food: 'restaurant',
+                              activity: 'local_activity',
+                              transport: 'directions_car',
+                              other: 'category',
+                            };
+                            const icon = typeIcons[item.type] || 'category';
+                            const statusMeta = {
+                              Planned: { bg: 'bg-amber-500/10 text-amber-500 border-amber-500/20', label: 'Planned' },
+                              Booked: { bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', label: 'Booked' },
+                              Completed: { bg: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Completed' },
+                            };
+                            const currentStatus = item.status || 'Planned';
+                            const meta = statusMeta[currentStatus];
+
+                            return (
+                              <div
+                                key={`kanban-item-${item.id}`}
+                                className="group rounded-2xl border border-gray-200/70 dark:border-white/5 bg-white dark:bg-white/[0.03] p-4 shadow-xs hover:border-primary/40 transition-all space-y-2.5"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300">
+                                      <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 truncate">
+                                      {formatTime12h(item.time)}{item.timeEnd ? ` – ${formatTime12h(item.timeEnd)}` : ''}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCycleStatus(item)}
+                                    className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border transition-transform hover:scale-105 shrink-0 ${meta.bg}`}
+                                    title="Click to cycle status"
+                                  >
+                                    {meta.label}
+                                  </button>
+                                </div>
+
+                                <div>
+                                  <h4 className="text-sm font-black text-gray-900 dark:text-white leading-snug">
+                                    {item.title}
+                                  </h4>
+                                  {item.location && (
+                                    <p className="text-[11px] font-medium text-primary mt-1 flex items-center gap-1 truncate">
+                                      <span className="material-symbols-outlined text-[13px]">location_on</span>
+                                      <span className="truncate">{getLocationNameValue(item.location)}</span>
+                                    </p>
+                                  )}
+                                  {item.notes && (
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 italic">
+                                      {item.notes}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
+                                  {(item.costDisplay || item.cost) ? (
+                                    <span className="text-xs font-mono font-black text-rose-500 dark:text-rose-400">
+                                      Est. {item.costDisplay || (item.cost != null ? fmt(Number(item.cost)) : '')}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-gray-400">Free / Included</span>
+                                  )}
+
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const costVal = typeof item.cost === 'number'
+                                          ? item.cost
+                                          : parseFloat(String(item.cost || '').replace(/[^0-9.]/g, '')) || undefined;
+                                        setCostModalMode('expense');
+                                        setCostModalPrefill({
+                                          amount: costVal,
+                                          description: `${item.title}${item.location ? ` - ${getLocationNameValue(item.location)}` : ''}`,
+                                          category:
+                                            item.type === 'flight' || item.type === 'transport'
+                                              ? 'Transportation'
+                                              : item.type === 'hotel'
+                                              ? 'Lodging'
+                                              : item.type === 'food'
+                                              ? 'Food & Dining'
+                                              : 'Activities & Sightseeing',
+                                        });
+                                        setIsAddModalOpen(true);
+                                        haptics.tap();
+                                      }}
+                                      className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors"
+                                      title="Log Cost"
+                                    >
+                                      <span className="material-symbols-outlined text-[13px]">receipt_long</span>
+                                      <span>Log</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditItinerary(item)}
+                                      className="flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-primary/10 hover:text-primary transition-colors"
+                                      title="Edit"
+                                    >
+                                      <span className="material-symbols-outlined text-[15px]">edit</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteItinerary(item.id)}
+                                      className="flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                                      title="Delete"
+                                    >
+                                      <span className="material-symbols-outlined text-[15px]">delete</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="space-y-10 relative">
@@ -4648,6 +4968,12 @@ export default function TourDashboard() {
         onClose={() => setIsEditModalOpen(false)}
         tourId={Number(tourId)}
         initialName={tour.name}
+        initialDestination={tour.destination || ''}
+        initialStartDate={tour.startDate || ''}
+        initialEndDate={tour.endDate || ''}
+        initialTotalBudget={tour.totalBudget || 0}
+        initialStatus={tour.status || 'active'}
+        initialBaseCurrency={tour.baseCurrency || 'BDT'}
         initialParticipants={participants.map(p => ({ id: p.id, name: p.name, userId: p.userId }))}
         onSaveSuccess={() => { void mutateTour(); }}
       />

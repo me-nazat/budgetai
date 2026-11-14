@@ -186,6 +186,30 @@ async function resolveTourId(routeContext?: RouteContextWithId): Promise<number>
 }
 
 async function getParticipants(tourId: number): Promise<TourParticipantResponse[]> {
+  // Self-heal: ensure tour creator is linked to a participant if not yet linked
+  const tour = await queryOne<{ created_by: number }>(
+    'SELECT created_by FROM tours WHERE id = ?',
+    [tourId]
+  );
+  if (tour?.created_by) {
+    const bound = await queryOne<{ id: number }>(
+      'SELECT id FROM tour_participants WHERE tour_id = ? AND user_id = ?',
+      [tourId, tour.created_by]
+    );
+    if (!bound) {
+      const creatorUser = await queryOne<{ name: string }>('SELECT name FROM users WHERE id = ?', [tour.created_by]);
+      const creatorName = creatorUser?.name?.trim().toLowerCase();
+      const participants = await queryAll<{ id: number; name: string }>(
+        'SELECT id, name FROM tour_participants WHERE tour_id = ? AND user_id IS NULL ORDER BY id ASC',
+        [tourId]
+      );
+      const match = (creatorName && participants.find(p => p.name.trim().toLowerCase() === creatorName)) || participants[0];
+      if (match) {
+        await run('UPDATE tour_participants SET user_id = ? WHERE id = ?', [tour.created_by, match.id]);
+      }
+    }
+  }
+
   const rows = await queryAll<DbRow>(
     `SELECT id, tour_id, name, user_id
      FROM tour_participants
@@ -229,36 +253,112 @@ async function getTourTransactions(userId: number, tourId: number): Promise<Tour
 
 async function getTourMetrics(tourId: number): Promise<TourMetrics> {
   const row = await queryOne<{ total: number; count: number; avg: number }>(
-    `SELECT COALESCE(SUM(amount), 0) AS total,
+    `SELECT COALESCE(SUM(amount * COALESCE(exchange_rate_to_tour_base, 1.0)), 0) AS total,
             COUNT(id) AS count,
-            COALESCE(AVG(amount), 0) AS avg
+            COALESCE(AVG(amount * COALESCE(exchange_rate_to_tour_base, 1.0)), 0) AS avg
      FROM tour_spendings
-     WHERE tour_id = ?`,
+     WHERE tour_id = ? AND (entry_type = 'expense' OR entry_type IS NULL)`,
     [tourId]
   );
 
   return {
-    totalSpent: toNumber(row?.total),
+    totalSpent: Math.round(toNumber(row?.total) * 100) / 100,
     transactionCount: toNumber(row?.count),
-    averageCost: toNumber(row?.avg),
+    averageCost: Math.round(toNumber(row?.avg) * 100) / 100,
   };
 }
 
-async function getTourBalances(tourId: number, participants: TourParticipantResponse[], totalSpent: number): Promise<TourParticipantWithBalance[]> {
-  const rows = await queryAll<{ participant_id: number; paid: number }>(
-    `SELECT paid_by_participant_id as participant_id, COALESCE(SUM(amount), 0) as paid
-     FROM tour_spendings
-     WHERE tour_id = ?
-     GROUP BY paid_by_participant_id`,
+async function getTourBalances(tourId: number, participants: TourParticipantResponse[], _totalSpent: number): Promise<TourParticipantWithBalance[]> {
+  const rawSpendings = await queryAll<DbRow>(
+    `SELECT * FROM tour_spendings WHERE tour_id = ?`,
     [tourId]
   );
-  
-  const paidMap = new Map(rows.map(r => [r.participant_id, toNumber(r.paid)]));
-  const perPerson = participants.length > 0 ? totalSpent / participants.length : 0;
-  
-  return participants.map(p => {
-    const paid = paidMap.get(p.id) ?? 0;
-    return { ...p, paid, balance: paid - perPerson };
+
+  const memberStats = new Map<number, {
+    totalPaidOutOfPocket: number;
+    totalDepositedToKitty: number;
+    totalConsumedShare: number;
+    totalSettledPaid: number;
+    totalSettledReceived: number;
+  }>();
+
+  for (const p of participants) {
+    memberStats.set(p.id, {
+      totalPaidOutOfPocket: 0,
+      totalDepositedToKitty: 0,
+      totalConsumedShare: 0,
+      totalSettledPaid: 0,
+      totalSettledReceived: 0,
+    });
+  }
+
+  for (const row of rawSpendings) {
+    const amount = toNumber(row.amount);
+    const rate = toNumber(row.exchange_rate_to_tour_base, 1.0);
+    const baseAmount = Math.round(amount * rate * 100) / 100;
+    const payerId = toNumber(row.paid_by_participant_id);
+    const recipientId = toNullableNumber(row.recipient_member_id);
+    const entryType = (row.entry_type || 'expense') as 'expense' | 'deposit' | 'settlement';
+    const fundingSource = (row.funding_source || 'member_direct') as 'member_direct' | 'tour_pool';
+    const splitBreakdown = parseSplitBreakdown(row.split_breakdown_json);
+
+    const payerStats = memberStats.get(payerId);
+    if (payerStats) {
+      if (entryType === 'deposit') {
+        payerStats.totalDepositedToKitty += baseAmount;
+      } else if (entryType === 'settlement') {
+        payerStats.totalSettledPaid += baseAmount;
+      } else if (entryType === 'expense' && fundingSource === 'member_direct') {
+        payerStats.totalPaidOutOfPocket += baseAmount;
+      }
+    }
+
+    if (entryType === 'settlement' && recipientId) {
+      const recipientStats = memberStats.get(recipientId);
+      if (recipientStats) {
+        recipientStats.totalSettledReceived += baseAmount;
+      }
+    }
+
+    if (entryType === 'expense') {
+      if (splitBreakdown.length > 0) {
+        for (const item of splitBreakdown) {
+          const mId = toNumber(item.memberId ?? item.id);
+          const mStats = memberStats.get(mId);
+          if (mStats) {
+            const share = (toNumber(item.shareAmount) || 0) * rate;
+            mStats.totalConsumedShare += share;
+          }
+        }
+      } else {
+        const perPerson = participants.length > 0 ? baseAmount / participants.length : 0;
+        for (const p of participants) {
+          const mStats = memberStats.get(p.id);
+          if (mStats) mStats.totalConsumedShare += perPerson;
+        }
+      }
+    }
+  }
+
+  return participants.map((p) => {
+    const stats = memberStats.get(p.id) || {
+      totalPaidOutOfPocket: 0,
+      totalDepositedToKitty: 0,
+      totalConsumedShare: 0,
+      totalSettledPaid: 0,
+      totalSettledReceived: 0,
+    };
+
+    const netBalance = Math.round(
+      ((stats.totalPaidOutOfPocket + stats.totalDepositedToKitty + stats.totalSettledPaid) -
+        (stats.totalConsumedShare + stats.totalSettledReceived)) * 100
+    ) / 100;
+
+    return {
+      ...p,
+      paid: Math.round(stats.totalPaidOutOfPocket * 100) / 100,
+      balance: netBalance,
+    };
   });
 }
 
@@ -348,10 +448,16 @@ export async function createTour(request: NextRequest, userId: number) {
       [tourId]
     );
 
-    for (const participant of data.participants) {
+    const userRow = await queryOne<{ name: string }>('SELECT name FROM users WHERE id = ?', [userId]);
+    const creatorName = userRow?.name?.trim().toLowerCase();
+
+    for (let i = 0; i < data.participants.length; i++) {
+      const participant = data.participants[i];
+      const isCreator = (creatorName && participant.trim().toLowerCase() === creatorName) ||
+                        (i === 0 && (!creatorName || participant.trim().toLowerCase() === 'me'));
       await run(
-        'INSERT INTO tour_participants (tour_id, name) VALUES (?, ?)',
-        [tourId, participant]
+        'INSERT INTO tour_participants (tour_id, name, user_id) VALUES (?, ?, ?)',
+        [tourId, participant, isCreator ? userId : null]
       );
     }
 
@@ -621,6 +727,12 @@ export async function getTour(
 
 const UpdateTourSchema = z.object({
   name: z.string().min(1, 'Tour name is required').max(100),
+  destination: z.string().max(100).optional().nullable(),
+  startDate: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable(),
+  baseCurrency: z.string().max(10).optional().nullable(),
+  totalBudget: z.coerce.number().optional().nullable(),
+  status: z.enum(['planning', 'active', 'completed', 'archived']).optional().nullable(),
   participants: z.array(z.object({
     id: z.number().optional(),
     name: z.string().min(1).max(100),
@@ -644,7 +756,7 @@ export async function updateTour(
     );
   }
 
-  const { name, participants } = validationResult.data;
+  const { name, destination, startDate, endDate, baseCurrency, totalBudget, status, participants } = validationResult.data;
 
   // Verify ownership
   const tour = await queryOne<DbRow>(
@@ -657,8 +769,37 @@ export async function updateTour(
   }
 
   try {
-    // Update name
-    await run('UPDATE tours SET name = ? WHERE id = ?', [name, tourId]);
+    // Update tour main attributes
+    await run(
+      `UPDATE tours
+       SET name = ?,
+           destination = CASE WHEN ? IS NOT NULL THEN ? ELSE destination END,
+           start_date = CASE WHEN ? IS NOT NULL THEN ? ELSE start_date END,
+           end_date = CASE WHEN ? IS NOT NULL THEN ? ELSE end_date END,
+           base_currency = CASE WHEN ? IS NOT NULL THEN ? ELSE base_currency END,
+           total_budget = CASE WHEN ? IS NOT NULL THEN ? ELSE total_budget END,
+           status = CASE WHEN ? IS NOT NULL THEN ? ELSE status END
+       WHERE id = ?`,
+      [
+        name,
+        destination !== undefined ? 1 : null,
+        destination ?? null,
+        startDate !== undefined ? 1 : null,
+        startDate ?? null,
+        endDate !== undefined ? 1 : null,
+        endDate ?? null,
+        baseCurrency !== undefined ? 1 : null,
+        baseCurrency ?? null,
+        totalBudget !== undefined ? 1 : null,
+        totalBudget ?? 0,
+        status !== undefined ? 1 : null,
+        status ?? 'active',
+        tourId,
+      ]
+    );
+
+    // Also update tour_groups mirror row if present
+    await run('UPDATE tour_groups SET name = ? WHERE id = ?', [name, tourId]).catch(() => undefined);
 
     // Handle participants
     for (const p of participants) {
@@ -684,6 +825,7 @@ export async function updateTour(
       }
     }
 
+    broadcastTourUpdate(tourId, { type: 'TOUR_UPDATED' });
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message || 'Internal error' }, { status: 500 });

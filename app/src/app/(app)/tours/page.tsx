@@ -98,7 +98,8 @@ export default function ToursPage() {
   // Get current user's balance for a tour
   const getUserBalance = useCallback((tour: Tour) => {
     if (!currentUserId || !tour.balances) return 0;
-    const member = tour.balances.find((b) => b.userId === currentUserId);
+    const member = tour.balances.find((b) => b.userId === currentUserId) ||
+      (tour.createdBy === currentUserId ? (tour.balances.find((b) => b.userId === currentUserId) || tour.balances[0]) : undefined);
     return member?.balance ?? 0;
   }, [currentUserId]);
 
