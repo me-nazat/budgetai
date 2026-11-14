@@ -21,6 +21,12 @@
     "typecheck": "NODE_OPTIONS='--max-old-space-size=4096' tsc --noEmit",
     "i18n:check": "node scripts/check-i18n.mjs"
   },
+  "allowScripts": {
+    "core-js": true,
+    "esbuild": true,
+    "sharp": true,
+    "unrs-resolver": true
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",

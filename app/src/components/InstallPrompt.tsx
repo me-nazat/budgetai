@@ -62,7 +62,8 @@ export default function InstallPrompt() {
       navigator.serviceWorker
         .register('/sw.js')
         .then((reg) => {
-          // registered
+          // Check for service worker updates immediately
+          reg.update();
         })
         .catch((err) => {
           console.warn('[PWA] Service worker registration failed:', err);
