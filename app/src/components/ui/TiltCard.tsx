@@ -25,7 +25,7 @@ export function TiltCard({
       style={style}
       className={cn(
         "relative rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]",
-        "transition-colors transition-transform duration-150 ease-out hover:-translate-y-[1px] hover:border-[var(--border-strong)]",
+        "transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-[2px] hover:border-[var(--border-strong)] hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/25",
         className
       )}
     >

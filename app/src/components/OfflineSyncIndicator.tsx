@@ -21,16 +21,18 @@ export default function OfflineSyncIndicator() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setIsOnline(navigator.onLine);
+    let timer: NodeJS.Timeout | null = null;
 
     const handleOnline = () => {
       setIsOnline(true);
       setShowReconnected(true);
       invalidateData();
-      const timer = setTimeout(() => setShowReconnected(false), 3500);
-      return () => clearTimeout(timer);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setShowReconnected(false), 3500);
     };
 
     const handleOffline = () => {
+      if (timer) clearTimeout(timer);
       setIsOnline(false);
       setShowReconnected(false);
     };
@@ -39,6 +41,7 @@ export default function OfflineSyncIndicator() {
     window.addEventListener('offline', handleOffline);
 
     return () => {
+      if (timer) clearTimeout(timer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };

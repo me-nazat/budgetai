@@ -170,6 +170,16 @@ export default function CommandPalette() {
         });
     }, [commands, search]);
 
+    // Keep active keyboard item smoothly visible
+    useEffect(() => {
+        if (listRef.current) {
+            const selectedElement = listRef.current.children[selectedIndex] as HTMLElement | undefined;
+            if (selectedElement) {
+                selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+    }, [selectedIndex]);
+
     // Handle Keyboard Navigation within the list
     const handleListKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'ArrowDown') {
@@ -238,14 +248,27 @@ export default function CommandPalette() {
                                     }}
                                     className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder:text-gray-400 text-sm font-medium"
                                 />
-                                <div className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-3">
+                                {search && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearch('');
+                                            setSelectedIndex(0);
+                                        }}
+                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 mr-2 p-1 rounded-md"
+                                        aria-label="Clear search"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">close</span>
+                                    </button>
+                                )}
+                                <div className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">
                                     <span className="bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded">esc</span>
                                     to close
                                 </div>
                             </div>
 
                             {/* Command Results */}
-                            <div ref={listRef} className="max-h-[360px] overflow-y-auto p-2 custom-scrollbar">
+                            <div ref={listRef} className="max-h-[380px] overflow-y-auto p-2 custom-scrollbar">
                                 {filtered.length === 0 ? (
                                     <div className="py-12 text-center text-gray-400">
                                         <span className="material-symbols-outlined text-3xl mb-2 opacity-50">search_off</span>
@@ -254,6 +277,12 @@ export default function CommandPalette() {
                                 ) : (
                                     filtered.map((cmd, idx) => {
                                         const isSelected = idx === selectedIndex;
+                                        const actionShortcut =
+                                            cmd.action === 'QUICK_ADD' ? 'C' :
+                                            cmd.action === 'SCAN_RECEIPT' ? 'R' :
+                                            cmd.action === 'TOGGLE_PRIVACY' ? 'P' :
+                                            cmd.action === 'SHOW_SHORTCUTS' ? '?' : null;
+
                                         return (
                                             <button
                                                 key={cmd.id}
@@ -276,9 +305,21 @@ export default function CommandPalette() {
                                                         {cmd.name}
                                                     </p>
                                                 </div>
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2 py-0.5 rounded bg-gray-100 dark:bg-white/5 shrink-0">
-                                                    {cmd.category}
-                                                </span>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    {actionShortcut && (
+                                                        <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-primary/15 text-primary border border-primary/20">
+                                                            {actionShortcut}
+                                                        </kbd>
+                                                    )}
+                                                    {isSelected && (
+                                                        <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-gray-200 dark:bg-white/15 text-gray-600 dark:text-gray-200">
+                                                            ↵
+                                                        </kbd>
+                                                    )}
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2 py-0.5 rounded bg-gray-100 dark:bg-white/5">
+                                                        {cmd.category}
+                                                    </span>
+                                                </div>
                                             </button>
                                         );
                                     })

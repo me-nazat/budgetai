@@ -161,8 +161,10 @@ export default function Sidebar() {
 
                     {/* Quick Command Palette Trigger Bar */}
                     <button
+                        type="button"
                         onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-                        className="flex items-center justify-between w-full px-3 py-1.5 mt-3 rounded-xl bg-gray-100/70 dark:bg-white/5 border border-gray-200/50 dark:border-white/5 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/60 dark:hover:bg-white/10 transition-all cursor-pointer"
+                        aria-label="Open Command Palette (Cmd+K)"
+                        className="flex items-center justify-between w-full px-3 py-1.5 mt-3 rounded-xl bg-gray-100/70 dark:bg-white/5 border border-gray-200/50 dark:border-white/5 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/60 dark:hover:bg-white/10 active:scale-[0.98] transition-all cursor-pointer select-none"
                     >
                         <span className="flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[15px] text-primary">search</span>
@@ -211,16 +213,18 @@ export default function Sidebar() {
                         <PrivacyToggle />
                         <LanguageToggle />
                         <button
+                            type="button"
                             onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
-                            className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-gray-500 dark:text-gray-400"
+                            className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 transition-all text-gray-500 dark:text-gray-400 cursor-pointer"
                             title="Keyboard Shortcuts (?)"
                             aria-label="Keyboard Shortcuts"
                         >
                             <span className="material-symbols-outlined text-sm">keyboard</span>
                         </button>
                         <button
+                            type="button"
                             onClick={toggleTheme}
-                            className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
+                            className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer"
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                             aria-label="Toggle Theme"
                         >

@@ -94,23 +94,25 @@ function Header({ onToggleTheme, onNavigate, isLoggedIn }: { onToggleTheme: () =
                     </motion.button>
                     {isLoggedIn ? (
                         <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            whileHover={{ scale: 1.04, y: -1 }}
+                            whileTap={{ scale: 0.97, y: 0 }}
+                            transition={{ type: 'spring', stiffness: 450, damping: 25 }}
                             onClick={() => onNavigate('/dashboard')}
-                            className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan transition-all duration-300"
+                            className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan border border-transparent shadow-md select-none cursor-pointer"
                         >
                             Go to Dashboard
                         </motion.button>
                     ) : (
                         <>
-                            <button onClick={() => onNavigate('/login')} className="hidden sm:block text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                            <button onClick={() => onNavigate('/login')} className="hidden sm:block text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer">
                                 Login
                             </button>
                             <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.04, y: -1 }}
+                                whileTap={{ scale: 0.97, y: 0 }}
+                                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
                                 onClick={() => onNavigate('/register')}
-                                className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan transition-all duration-300"
+                                className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan border border-transparent shadow-md select-none cursor-pointer"
                             >
                                 Get Started
                             </motion.button>
@@ -175,17 +177,24 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         {/* CTAs */}
                         <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4">
                             <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.04, y: -2 }}
+                                whileTap={{ scale: 0.97, y: 0 }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                                 onClick={() => onNavigate('/register')}
-                                className="lp-glow-btn h-14 rounded-xl bg-gradient-to-r from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 px-8 text-base font-bold text-white dark:text-black hover:brightness-110 transition-all duration-300 shadow-[0_0_40px_rgba(19,109,236,0.3)] dark:shadow-[0_0_40px_rgba(0,229,255,0.3)]"
+                                className="lp-glow-btn h-14 rounded-xl bg-gradient-to-r from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 px-8 text-base font-bold text-white dark:text-black hover:brightness-110 shadow-[0_0_40px_rgba(19,109,236,0.3)] dark:shadow-[0_0_40px_rgba(0,229,255,0.3)] select-none cursor-pointer flex items-center justify-center gap-2"
                             >
-                                Start Your Journey
+                                <span>Start Your Journey</span>
+                                <span className="material-symbols-outlined text-lg">arrow_forward</span>
                             </motion.button>
                             <motion.button 
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="h-14 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-8 text-base font-medium text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                                whileHover={{ scale: 1.03, y: -1 }}
+                                whileTap={{ scale: 0.97, y: 0 }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                                onClick={() => {
+                                    const el = document.getElementById('features');
+                                    el?.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                className="h-14 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-8 text-base font-medium text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2 select-none cursor-pointer"
                             >
                                 <span className="material-symbols-outlined text-primary dark:text-lp-cyan">play_circle</span>
                                 See How It Works
@@ -835,7 +844,7 @@ function InteractiveVisualizer() {
                                             <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
                                             <span className="text-gray-700 dark:text-slate-300">{item.name}</span>
                                         </div>
-                                        <div className="text-gray-955 dark:text-white">
+                                        <div className="text-gray-900 dark:text-white">
                                             <span>{item.amount} </span>
                                             <span className="text-gray-400 dark:text-slate-500">({item.pct}%)</span>
                                         </div>
@@ -1029,19 +1038,22 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.04, y: -2 }}
+                                whileTap={{ scale: 0.97, y: 0 }}
+                                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
                                 onClick={() => onNavigate('/register')}
-                                className="lp-glow-btn h-14 rounded-xl bg-white px-10 text-base font-bold text-gray-900 hover:bg-gray-100 transition-all duration-300"
+                                className="lp-glow-btn h-14 rounded-xl bg-white px-10 text-base font-bold text-gray-900 hover:bg-gray-100 shadow-xl cursor-pointer select-none"
                             >
                                 Create Free Account
                             </motion.button>
                             <motion.button 
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="h-14 rounded-xl border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 px-10 text-base font-medium text-white hover:bg-white/20 dark:hover:bg-white/10 transition-colors backdrop-blur-sm"
+                                whileHover={{ scale: 1.03, y: -1 }}
+                                whileTap={{ scale: 0.97, y: 0 }}
+                                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+                                onClick={() => onNavigate('/login')}
+                                className="h-14 rounded-xl border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 px-10 text-base font-medium text-white hover:bg-white/20 dark:hover:bg-white/10 transition-colors backdrop-blur-sm cursor-pointer select-none"
                             >
-                                Contact Sales
+                                Sign In
                             </motion.button>
                         </div>
                     </div>

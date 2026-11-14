@@ -28,14 +28,14 @@ export default function FloatingActionButton() {
         type="button"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.92 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        whileHover={{ scale: 1.08, y: -2 }}
+        whileTap={{ scale: 0.92, y: 0 }}
+        transition={{ type: 'spring', stiffness: 450, damping: 25 }}
         onClick={handleClick}
         aria-label="Quick Add Transaction"
-        className="w-13 h-13 rounded-2xl bg-gradient-to-br from-primary via-[#136DEC] to-blue-700 hover:brightness-110 text-white shadow-[0_10px_30px_rgba(19,109,236,0.45)] flex items-center justify-center transition-all border border-white/25 cursor-pointer"
+        className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary via-[#136DEC] to-blue-700 hover:brightness-110 text-white shadow-[0_10px_30px_rgba(19,109,236,0.45)] hover:shadow-[0_16px_36px_rgba(19,109,236,0.6)] flex items-center justify-center border border-white/25 cursor-pointer select-none"
       >
-        <span className="material-symbols-outlined text-2xl font-bold transition-transform group-hover:rotate-90 duration-300">add</span>
+        <span className="material-symbols-outlined text-2xl font-bold transition-transform duration-300 group-hover:rotate-90">add</span>
       </motion.button>
     </div>
   );

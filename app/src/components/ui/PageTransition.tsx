@@ -70,7 +70,6 @@ export function PageTransition({ children, className = 'w-full h-full pointer-ev
       initial="initial"
       animate="enter"
       className={className}
-      style={{ willChange: 'transform' }}
     >
       {children}
     </motion.div>

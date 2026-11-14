@@ -37,9 +37,9 @@ export const FluidButton = React.forwardRef<HTMLButtonElement, FluidButtonProps>
     const isDisabled = Boolean(disabled || isBusy);
 
     const baseClasses =
-      "relative inline-flex items-center justify-center font-medium rounded-lg select-none " +
+      "relative inline-flex items-center justify-center font-medium rounded-lg select-none cursor-pointer " +
       "transition-colors duration-150 ease-out " +
-      "active:scale-[0.99] active:transition-transform active:duration-75 " +
+      "active:scale-[0.98] active:transition-transform active:duration-75 " +
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 " +
       "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none";
 

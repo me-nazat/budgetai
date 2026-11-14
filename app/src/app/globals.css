@@ -122,6 +122,21 @@
     --checklist-text-muted: #4B5563;
     --checklist-badge-bg: #F3F4F6;
     --checklist-badge-text: #6B7280;
+
+    /* Physics-based Easing Variables (Modern Web Guidance & Baseline linear curves) */
+    --spring-easing: linear(
+      0, 0.016 0.5%, 0.06 1%, 0.226 2%, 1.116 5.4%, 1.375 6.6%, 1.527 7.7%, 1.565 8.2%, 1.585 8.8%, 1.581 9.3%, 1.559 9.8%, 1.458 10.9%,
+      0.937 14.3%, 0.784 15.5%, 0.693 16.6%, 0.67 17.1%, 0.657 17.7%, 0.671 18.7%, 0.729 19.8%, 1.042 23.3%, 1.13 24.5%, 1.182 25.6%,
+      1.201 26.7%, 1.192 27.7%, 1.156 28.8%, 0.977 32.2%, 0.925 33.4%, 0.894 34.5%, 0.882 35.6%, 0.887 36.6%, 0.907 37.7%, 1.045 42.4%,
+      1.069 44.5%, 1.059 46.3%, 0.979 50.9%, 0.96 53.4%, 0.966 55.3%, 1.013 59.9%, 1.024 62.3%, 0.986 71.2%, 1.008 79.9%, 0.995 88.9%, 1
+    );
+    --bounce-easing: linear(
+      0, 0.214 14.7%, 0.386 23.7%, 0.598 31.9%, 0.999 44.7%, 0.807 52.6%, 0.762 56%, 0.747 59.4%, 0.758 62.4%, 0.793 65.6%,
+      0.999 77.4%, 0.961 81.2%, 0.949 84.8%, 0.956 88%, 0.993 95.5%, 1
+    );
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   html.dark, :where(.dark) {
@@ -318,16 +333,63 @@
     background: rgba(0, 0, 0, 0.28);
   }
 
-  /* Smooth transitions on interactive elements without animating layout-heavy properties. */
+  /* Smooth transitions on interactive elements without fighting Framer Motion transforms */
   button,
   a,
   input,
   select,
   textarea {
-    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-property: color, background-color, border-color, box-shadow, opacity;
     transition-duration: 160ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Explicit micro-interaction class for elements that opt in to smooth CSS transform */
+  .interactive-transform {
+    transition-property: transform, box-shadow, border-color, background-color, color;
+    transition-duration: 180ms;
+    transition-timing-function: var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  }
+
+  /* Custom scrollbar utility for sleek, non-shifting scrollports */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
+    scrollbar-gutter: stable;
+  }
+
+  .dark .custom-scrollbar,
+  :where(.dark) .custom-scrollbar {
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.18);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 23, 42, 0.35);
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb,
+  :where(.dark) .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+  :where(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.32);
   }
 
   /* Google Material Symbols Font & Ligatures Guarantee */
@@ -710,7 +772,7 @@ html:not(.dark) .lp-glass-card {
 /* Glow Button */
 .lp-glow-btn {
   box-shadow: 0 0 15px rgba(19, 109, 236, 0.18);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease;
 }
 
 html:not(.dark) .lp-glow-btn {
@@ -719,12 +781,47 @@ html:not(.dark) .lp-glow-btn {
 
 .lp-glow-btn:hover {
   box-shadow: 0 0 30px rgba(19, 109, 236, 0.32);
-  transform: translateY(-2px);
 }
 
 html:not(.dark) .lp-glow-btn:hover {
   box-shadow: 0 8px 25px rgba(19, 109, 236, 0.4);
+}
+
+/* Antigravity Interactive Depth Utilities */
+.interactive-card {
+  transition: transform 0.22s var(--ease-out-expo), box-shadow 0.22s var(--ease-out-expo), border-color 0.22s ease;
+}
+.interactive-card:hover {
   transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(19, 109, 236, 0.14), 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}
+.dark .interactive-card:hover,
+:where(.dark) .interactive-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px -8px rgba(19, 109, 236, 0.24), 0 8px 20px -4px rgba(0, 0, 0, 0.5);
+}
+.interactive-card:active {
+  transform: scale(0.99);
+}
+
+.antigravity-float {
+  transition: transform 0.28s var(--ease-out-expo), box-shadow 0.28s var(--ease-out-expo);
+}
+.antigravity-float:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px -10px rgba(19, 109, 236, 0.18), 0 8px 16px -6px rgba(0, 0, 0, 0.08);
+}
+.dark .antigravity-float:hover,
+:where(.dark) .antigravity-float:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 42px -12px rgba(19, 109, 236, 0.3), 0 10px 24px -8px rgba(0, 0, 0, 0.6);
+}
+
+.tactile-press {
+  transition: transform 0.09s ease-out;
+}
+.tactile-press:active {
+  transform: scale(0.97);
 }
 
 /* Glow Text */
@@ -1510,16 +1607,6 @@ html:not(.dark) .lp-section-divider {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-  }
-}
 
 /* ============================================ */
 /* AUTH PAGE PREMIUM ANIMATIONS                 */
@@ -2123,15 +2210,32 @@ html.dark .financial-graph-endpoint,
 }
 
 /* ============================================ */
-/* REDUCED MOTION — Accessibility (Section 2.4) */
+/* ACCESSIBLE REDUCED MOTION (Modern Web Standards) */
 /* ============================================ */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  }
+
+  /* Disable spatial travel, spin, and continuous loops while keeping soft color/opacity transitions */
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping,
+  .lp-input-pulse {
+    animation: none !important;
+  }
+
+  .antigravity-float:hover,
+  .interactive-card:hover,
+  .card-premium:hover,
+  .capability-card:hover {
+    transform: none !important;
   }
 }
