@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import React, { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface TiltCardProps {
@@ -10,26 +11,52 @@ interface TiltCardProps {
   style?: React.CSSProperties;
 }
 
-/**
- * Surface card with subtle 1px border highlight and hover elevation shift.
- * Heavy 3D mouse-tilt calculations have been removed for 60fps institutional performance.
- */
-export function TiltCard({
-  children,
-  className,
-  tiltIntensity: _tiltIntensity,
-  style,
-}: TiltCardProps) {
+export function TiltCard({ children, className, tiltIntensity = 15, style }: TiltCardProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 20 });
+  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 20 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], [tiltIntensity, -tiltIntensity]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], [-tiltIntensity, tiltIntensity]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current || window.matchMedia("(pointer: coarse)").matches) return;
+    const rect = ref.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
   return (
-    <div
-      style={style}
-      className={cn(
-        "relative rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]",
-        "transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-[2px] hover:border-[var(--border-strong)] hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/25",
-        className
-      )}
+    <motion.div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d",
+        willChange: "transform",
+        ...style
+      }}
+      className={cn("relative transition-all duration-300", className)}
     >
-      <div className="w-full h-full">{children}</div>
-    </div>
+      <div style={{ transform: "translateZ(20px)" }} className="w-full h-full">
+        {children}
+      </div>
+    </motion.div>
   );
 }

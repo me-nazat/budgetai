@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Outfit, Playfair_Display, Noto_Sans_Bengali } from "next/font/google";
+import { Geist, Outfit, Playfair_Display, Fraunces } from "next/font/google";
 import "./globals.css";
 
 import "material-symbols/outlined.css";
@@ -24,10 +24,11 @@ const playfair = Playfair_Display({
   style: ["normal", "italic"],
 });
 
-const notoBengali = Noto_Sans_Bengali({
-  subsets: ["bengali"],
-  variable: "--font-bengali",
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
   display: "swap",
+  style: ["normal", "italic"],
 });
 
 
@@ -62,7 +63,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/wealth-ai-logo-v2.png" />
         <ThemeScript />
       </head>
-      <body className={`${geist.variable} ${outfit.variable} ${playfair.variable} ${notoBengali.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-gray-900 dark:text-gray-100`}>
+      <body className={`${geist.variable} ${outfit.variable} ${playfair.variable} ${fraunces.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>

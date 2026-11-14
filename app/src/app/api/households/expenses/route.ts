@@ -1,71 +1,174 @@
 export const dynamic = 'force-dynamic';
 
-import { NextRequest } from 'next/server';
+/**
+ * @fileoverview Household expenses API — Extended with GET and DELETE.
+ *
+ * GET  — List expenses for a household
+ * POST — Add a shared expense to a household
+ * DELETE — Remove a household expense
+ *
+ * @module api/households/expenses
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
-import { apiSuccess, apiError } from '@/lib/types/api';
-import { ValidationError, ErrorCode } from '@/lib/types/errors';
-import { HouseholdService } from '@/services/household.service';
+import { db } from '@/db/client';
+import { householdExpenses, householdMembers, users } from '@/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
+
+const CreateExpenseSchema = z.object({
+  householdId: z.number().int().positive(),
+  description: z.string().min(1).max(200),
+  amount: z.number().positive(),
+  category: z.string().min(1).max(50).default('Other'),
+  splitBetween: z.union([
+    z.literal('all'),
+    z.array(z.number()),
+  ]).default('all'),
+});
+
+/**
+ * GET /api/households/expenses?householdId=123
+ */
+export const GET = apiHandler(
+  withAuth<{ params: Promise<Record<string, string>> }>(async (request, { userId }) => {
+    const url = new URL(request.url);
+    const householdId = parseInt(url.searchParams.get('householdId') || '0');
+    if (!householdId) {
+      return NextResponse.json({ error: 'householdId required' }, { status: 400 });
+    }
+
+    // Verify membership
+    const [membership] = await db
+      .select()
+      .from(householdMembers)
+      .where(
+        and(
+          eq(householdMembers.householdId, householdId),
+          eq(householdMembers.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Not a member' }, { status: 403 });
+    }
+
+    const expenses = await db
+      .select({
+        id: householdExpenses.id,
+        householdId: householdExpenses.householdId,
+        userId: householdExpenses.userId,
+        description: householdExpenses.description,
+        amount: householdExpenses.amount,
+        category: householdExpenses.category,
+        splitBetween: householdExpenses.splitBetween,
+        createdAt: householdExpenses.createdAt,
+        userName: users.name,
+      })
+      .from(householdExpenses)
+      .innerJoin(users, eq(householdExpenses.userId, users.id))
+      .where(eq(householdExpenses.householdId, householdId))
+      .orderBy(desc(householdExpenses.createdAt));
+
+    return NextResponse.json({ expenses });
+  })
+);
 
 /**
  * POST /api/households/expenses
- * Reconciled write path:
- * 1. Checks category spending caps and flags capWarning
- * 2. Determines split percentages via strict priority (custom -> category rule -> allocation weights -> equal fallback)
- * 3. Inserts householdExpenses with personalShareAmount
- * 4. Deducts full amount from personal bank account (fundingAccountId) if provided
- * 5. Fans out insert into householdSettlements
- * 6. Broadcasts SSE refresh
  */
 export const POST = apiHandler(
-  withAuth(async (request: NextRequest, { userId }) => {
-    const body = await request.json().catch(() => ({}));
-    const {
-      householdId,
-      amount,
-      description,
-      category = 'Other',
-      paidByUserId,
-      splitMode = 'equal',
-      customRatios,
-      fundingAccountId,
-      accountId,
-      date,
-    } = body;
+  withAuth<{ params: Promise<Record<string, string>> }>(async (request, { userId }) => {
+    const body = await request.json();
+    const validated = CreateExpenseSchema.parse(body);
 
-    if (!householdId || typeof amount !== 'number' || amount <= 0 || !description) {
-      return apiError(
-        new ValidationError('Invalid expense parameters: householdId, amount > 0, and description are required', ErrorCode.INVALID_INPUT)
+    // Verify membership
+    const [membership] = await db
+      .select()
+      .from(householdMembers)
+      .where(
+        and(
+          eq(householdMembers.householdId, validated.householdId),
+          eq(householdMembers.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (!membership) {
+      return NextResponse.json(
+        { error: 'Not a member of this household' },
+        { status: 403 }
       );
     }
 
-    const hhId = Number(householdId);
-    const payerId = paidByUserId ? Number(paidByUserId) : userId;
-    const effectiveFundingAccountId = fundingAccountId ?? accountId ?? null;
+    const [expense] = await db
+      .insert(householdExpenses)
+      .values({
+        householdId: validated.householdId,
+        userId,
+        description: validated.description,
+        amount: validated.amount,
+        category: validated.category,
+        splitBetween: typeof validated.splitBetween === 'string'
+          ? validated.splitBetween
+          : JSON.stringify(validated.splitBetween),
+      })
+      .returning();
 
-    const result = await HouseholdService.createHouseholdExpense({
-      householdId: hhId,
-      userId: payerId,
-      description,
-      amount,
-      category,
-      fundingAccountId: effectiveFundingAccountId,
-      customSplits: splitMode === 'custom' ? customRatios : undefined,
-      date,
-    });
+    return NextResponse.json(expense, { status: 201 });
+  }),
+  { rateLimit: 'api' }
+);
 
-    return apiSuccess({
-      expenseId: result.expense.id,
-      totalAmount: amount,
-      payerId,
-      personalShareAmount: result.expense.personalShareAmount,
-      linkedTransactionId: result.expense.linkedTransactionId,
-      capWarning: result.capWarning,
-      capDetails: result.capDetails,
-      strategy: result.strategy,
-      settlementsCreated: result.settlementsCreated,
-      splitBreakdown: result.splitBreakdown,
-    });
+/**
+ * DELETE /api/households/expenses?id=123
+ */
+export const DELETE = apiHandler(
+  withAuth<{ params: Promise<Record<string, string>> }>(async (request, { userId }) => {
+    const url = new URL(request.url);
+    const expenseId = parseInt(url.searchParams.get('id') || '0');
+    if (!expenseId) {
+      return NextResponse.json({ error: 'id required' }, { status: 400 });
+    }
+
+    // Fetch the expense to verify ownership/membership
+    const [expense] = await db
+      .select()
+      .from(householdExpenses)
+      .where(eq(householdExpenses.id, expenseId))
+      .limit(1);
+
+    if (!expense) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    // Verify membership in the household
+    const [membership] = await db
+      .select()
+      .from(householdMembers)
+      .where(
+        and(
+          eq(householdMembers.householdId, expense.householdId),
+          eq(householdMembers.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    }
+
+    // Only the expense creator or household owner can delete
+    if (expense.userId !== userId && membership.role !== 'owner') {
+      return NextResponse.json({ error: 'Only the creator or household owner can delete' }, { status: 403 });
+    }
+
+    await db.delete(householdExpenses).where(eq(householdExpenses.id, expenseId));
+
+    return NextResponse.json({ success: true });
   }),
   { rateLimit: 'api' }
 );

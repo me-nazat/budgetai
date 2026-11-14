@@ -27,7 +27,7 @@ const dictionaries: Record<Locale, Record<string, any>> = {
   bn,
 };
 
-export const LanguageContext = createContext<LanguageContextValue>({
+const LanguageContext = createContext<LanguageContextValue>({
   locale: 'en',
   setLocale: () => {},
   toggleLanguage: () => {},
@@ -39,52 +39,27 @@ export function useLanguage() {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window === 'undefined') return 'en';
+  const [locale, setLocaleState] = useState<Locale>('en');
+
+  useEffect(() => {
     const stored = localStorage.getItem('appLanguage') as Locale;
-    return (stored === 'en' || stored === 'bn') ? stored : 'en';
-  });
-
-  useEffect(() => {
-    // Fetch user saved locale from database
-    fetch('/api/settings/locale')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.locale && (data.locale === 'en' || data.locale === 'bn')) {
-          setLocaleState(data.locale);
-          localStorage.setItem('appLanguage', data.locale);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = locale;
+    if (stored && (stored === 'en' || stored === 'bn')) {
+      setLocaleState(stored);
     }
-  }, [locale]);
-
-  const persistLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale);
-    localStorage.setItem('appLanguage', newLocale);
-    fetch('/api/settings/locale', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locale: newLocale }),
-    }).catch(() => {});
   }, []);
 
   const setLocale = useCallback((newLocale: Locale) => {
-    persistLocale(newLocale);
-  }, [persistLocale]);
+    setLocaleState(newLocale);
+    localStorage.setItem('appLanguage', newLocale);
+  }, []);
 
   const toggleLanguage = useCallback(() => {
-    setLocaleState((prev) => {
+    setLocaleState(prev => {
       const next = prev === 'en' ? 'bn' : 'en';
-      persistLocale(next);
+      localStorage.setItem('appLanguage', next);
       return next;
     });
-  }, [persistLocale]);
+  }, []);
 
   const t = useCallback((key: string, fallback?: string): string => {
     const dict = dictionaries[locale] || dictionaries.en;

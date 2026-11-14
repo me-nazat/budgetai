@@ -3,29 +3,20 @@
   "version": "1.5.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "prebuild": "node scripts/sync-database.mjs && node scripts/ensure-vercel-manifest.mjs || true",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "postbuild": "node scripts/ensure-vercel-manifest.mjs || true",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:sync": "node scripts/sync-database.mjs",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "typecheck": "NODE_OPTIONS='--max-old-space-size=4096' tsc --noEmit",
-    "i18n:check": "node scripts/check-i18n.mjs"
-  },
-  "allowScripts": {
-    "core-js": true,
-    "esbuild": true,
-    "sharp": true,
-    "unrs-resolver": true
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -83,5 +74,11 @@
   },
   "overrides": {
     "postcss": "^8.5.10"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "core-js": true,
+    "sharp": true,
+    "unrs-resolver": true
   }
 }

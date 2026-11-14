@@ -18,8 +18,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/client';
-import { users, budgets, savingsGoals, recurringTransactions, debts, module28PushScheduledJobs, transactions } from '@/db/schema';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { users, budgets, savingsGoals, recurringTransactions, debts } from '@/db/schema';
+import { eq, and, gte, lte } from 'drizzle-orm';
 import { PushService } from '@/services/push.service';
 import { PushRepository } from '@/repositories/push.repository';
 import { queryOne } from '@/lib/db';
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
           if (pct >= 100) {
             await PushService.sendToUser(userId, {
-              title: `Budget Exceeded: ${budget.category}`,
+              title: `🚨 Budget Exceeded: ${budget.category}`,
               body: `You've spent ${Math.round(pct)}% of your ${budget.category} budget this month.`,
               tag: 'budget',
               url: '/budget',
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
             results.budgetAlerts++;
           } else if (pct >= 80) {
             await PushService.sendToUser(userId, {
-              title: `Budget Warning: ${budget.category}`,
+              title: `⚠️ Budget Warning: ${budget.category}`,
               body: `You've used ${Math.round(pct)}% of your ${budget.category} budget.`,
               tag: 'budget',
               url: '/budget',
@@ -105,33 +105,11 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // ─── Module 18: Smart Payday Alignment & Upcoming Subscriptions ───
-        // Detect recurring salary/income pattern from transactions
-        const recentSalaries = await db
-          .select({ date: transactions.date })
-          .from(transactions)
-          .where(and(eq(transactions.userId, userId), eq(transactions.type, 'earning')))
-          .orderBy(desc(transactions.date))
-          .limit(10);
-
-        let typicalPayDay: number | null = null;
-        if (recentSalaries.length >= 2) {
-          const days = recentSalaries.map(s => new Date(s.date).getDate());
-          const counts: Record<number, number> = {};
-          days.forEach(d => { counts[d] = (counts[d] || 0) + 1; });
-          const topDay = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-          if (topDay && topDay[1] >= 2) {
-            typicalPayDay = parseInt(topDay[0], 10);
-          }
-        }
-
-        const isPaydayWindow = typicalPayDay !== null && Math.abs(now.getDate() - typicalPayDay) <= 2;
-        const daysAhead = isPaydayWindow ? 7 : 3;
-        const windowLimitDate = new Date(now);
-        windowLimitDate.setDate(windowLimitDate.getDate() + daysAhead);
-
+        // ─── Upcoming Subscription Renewals ───
+        const threeDaysFromNow = new Date(now);
+        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
         const todayStr = now.toISOString().split('T')[0];
-        const futureStr = windowLimitDate.toISOString().split('T')[0];
+        const futureStr = threeDaysFromNow.toISOString().split('T')[0];
 
         const upcomingRecurring = await db
           .select()
@@ -147,16 +125,9 @@ export async function GET(request: NextRequest) {
           );
 
         for (const sub of upcomingRecurring) {
-          const title = isPaydayWindow
-            ? `Payday Aligned: ${sub.name} Due Soon`
-            : `Upcoming: ${sub.name}`;
-          const body = isPaydayWindow
-            ? `Your typical payday window is active. ${sub.name} (${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`
-            : `${sub.name} (${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`;
-
           await PushService.sendToUser(userId, {
-            title,
-            body,
+            title: `📅 Upcoming: ${sub.name}`,
+            body: `${sub.name} (${sub.amount.toFixed(2)}) is due on ${sub.nextDate}.`,
             tag: 'subscriptions',
             url: '/recurring-subscriptions',
           });
@@ -172,24 +143,12 @@ export async function GET(request: NextRequest) {
         const currentDay = now.getDate();
         for (const debt of debtsList) {
           if (debt.dueDayOfMonth && Math.abs(debt.dueDayOfMonth - currentDay) <= 3) {
-            // Near payoff check: balance within 1.25x minimum payment
-            const isNearPayoff = debt.balance <= Math.max(debt.minimumPayment * 1.25, 2000);
-
-            if (isNearPayoff) {
-              await PushService.sendToUser(userId, {
-                title: `Final Payment Approaching: ${debt.name}`,
-                body: `Final payment on this liability is due soon. Only ${debt.balance.toFixed(2)} remaining to become completely debt-free.`,
-                tag: `debt-final-${debt.id}`,
-                url: '/debts',
-              });
-            } else {
-              await PushService.sendToUser(userId, {
-                title: `Debt Payment Due: ${debt.name}`,
-                body: `Minimum payment for "${debt.name}" is due on day ${debt.dueDayOfMonth} of the month.`,
-                tag: 'debts',
-                url: '/debts',
-              });
-            }
+            await PushService.sendToUser(userId, {
+              title: `💳 Debt Payment Due: ${debt.name}`,
+              body: `Minimum payment for "${debt.name}" is due on day ${debt.dueDayOfMonth} of the month.`,
+              tag: 'debts',
+              url: '/debts',
+            });
             results.subscriptionReminders++;
           }
         }
@@ -208,10 +167,10 @@ export async function GET(request: NextRequest) {
             if (pct >= milestone && pct < milestone + 5) {
               await PushService.sendToUser(userId, {
                 title: pct >= 100
-                  ? `Goal Reached: ${goal.name}`
-                  : `Milestone (${milestone}%): ${goal.name}`,
+                  ? `🎉 Goal Reached: ${goal.name}!`
+                  : `🏁 ${milestone}% — ${goal.name}`,
                 body: pct >= 100
-                  ? `Congratulations! You've reached your savings goal.`
+                  ? `Congratulations! You've reached your savings goal!`
                   : `You're ${milestone}% of the way to your "${goal.name}" goal.`,
                 tag: 'goals',
                 url: '/wealth-goals',
@@ -236,8 +195,8 @@ export async function GET(request: NextRequest) {
           // If user is spending more than earning, project 30 days ahead
           if (monthlyNet < 0) {
             await PushService.sendToUser(userId, {
-              title: 'Cash Flow Alert',
-              body: `At your current pace, you're spending ${Math.abs(monthlyNet).toFixed(0)} more than you earn monthly. Review your forecast.`,
+              title: '⚠️ Cash Flow Alert',
+              body: `At your current pace, you're spending $${Math.abs(monthlyNet).toFixed(0)} more than you earn monthly. Review your forecast.`,
               tag: 'budget',
               url: '/forecast',
               requireInteraction: true,
@@ -248,48 +207,6 @@ export async function GET(request: NextRequest) {
 
       } catch (userError) {
         console.error(`[cron/push-check] Error processing user ${userId}:`, userError);
-        results.errors++;
-      }
-    }
-
-    // ─── Module 28: Scheduled Push Jobs Queue Drain ───
-    const currentEpoch = Math.floor(Date.now() / 1000);
-    const pendingJobs = await db
-      .select()
-      .from(module28PushScheduledJobs)
-      .where(
-        and(
-          eq(module28PushScheduledJobs.status, 'pending'),
-          lte(module28PushScheduledJobs.runAt, currentEpoch)
-        )
-      )
-      .limit(50);
-
-    for (const job of pendingJobs) {
-      try {
-        const payload = JSON.parse(job.payloadJson);
-        await PushService.sendToUser(job.userId, {
-          title: payload.title || 'WealthAI Scheduled Alert',
-          body: payload.body || 'You have an upcoming financial obligation.',
-          tag: payload.tag || 'calendar-reminder',
-          url: payload.url || '/recurring-subscriptions',
-        });
-
-        await db
-          .update(module28PushScheduledJobs)
-          .set({
-            status: 'sent',
-            sentAt: Math.floor(Date.now() / 1000),
-          })
-          .where(eq(module28PushScheduledJobs.id, job.id));
-
-        (results as any).scheduledJobsSent = ((results as any).scheduledJobsSent || 0) + 1;
-      } catch (jobErr) {
-        console.error(`[cron/push-check] Error executing scheduled push job ${job.id}:`, jobErr);
-        await db
-          .update(module28PushScheduledJobs)
-          .set({ status: 'failed' })
-          .where(eq(module28PushScheduledJobs.id, job.id));
         results.errors++;
       }
     }

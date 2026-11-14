@@ -2,7 +2,6 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { motion, useScroll, useTransform, Variants, useMotionValue, useSpring, useMotionTemplate } from 'framer-motion';
 import FinancialLineGraph from '@/components/landing/FinancialLineGraph';
@@ -29,11 +28,13 @@ function useThemeToggle() {
 export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
     const router = useRouter();
     const toggleTheme = useThemeToggle();
+    const { scrollYProgress } = useScroll();
+    const y = useTransform(scrollYProgress, [0, 1], [0, -100]);
 
     return (
         <div className="relative flex min-h-screen flex-col bg-white dark:bg-[#0A0E1B] text-gray-700 dark:text-slate-300 overflow-x-hidden selection:bg-primary dark:selection:bg-lp-cyan selection:text-white dark:selection:text-[#0A0E1B]">
-            {/* Static ambient background glow */}
-            <div className="lp-ambient-glow pointer-events-none" />
+            {/* Ambient background glow */}
+            <motion.div style={{ y }} className="lp-ambient-glow" />
 
             <Header onToggleTheme={toggleTheme} onNavigate={(path) => router.push(path)} isLoggedIn={isLoggedIn} />
 
@@ -94,25 +95,23 @@ function Header({ onToggleTheme, onNavigate, isLoggedIn }: { onToggleTheme: () =
                     </motion.button>
                     {isLoggedIn ? (
                         <motion.button
-                            whileHover={{ scale: 1.04, y: -1 }}
-                            whileTap={{ scale: 0.97, y: 0 }}
-                            transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => onNavigate('/dashboard')}
-                            className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan border border-transparent shadow-md select-none cursor-pointer"
+                            className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan transition-all duration-300"
                         >
                             Go to Dashboard
                         </motion.button>
                     ) : (
                         <>
-                            <button onClick={() => onNavigate('/login')} className="hidden sm:block text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer">
+                            <button onClick={() => onNavigate('/login')} className="hidden sm:block text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                                 Login
                             </button>
                             <motion.button
-                                whileHover={{ scale: 1.04, y: -1 }}
-                                whileTap={{ scale: 0.97, y: 0 }}
-                                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => onNavigate('/register')}
-                                className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan border border-transparent shadow-md select-none cursor-pointer"
+                                className="lp-glow-btn inline-flex h-10 items-center justify-center rounded-lg bg-primary dark:bg-white px-5 text-sm font-bold text-white dark:text-black hover:bg-primary-hover dark:hover:bg-lp-cyan transition-all duration-300"
                             >
                                 Get Started
                             </motion.button>
@@ -153,18 +152,18 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         className="flex flex-col justify-center space-y-8"
                     >
                         {/* Badge */}
-                        <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 rounded-full border border-primary/25 dark:border-lp-cyan/25 bg-primary/10 dark:bg-lp-cyan/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-primary dark:text-lp-cyan w-fit backdrop-blur-md shadow-xs">
-                            <span className="relative flex h-2 w-2">
+                        <motion.div variants={fadeInUp} className="inline-flex items-center rounded-full border border-primary/20 dark:border-lp-cyan/20 bg-primary/5 dark:bg-lp-cyan/5 px-4 py-1.5 text-sm font-medium text-primary dark:text-lp-cyan w-fit backdrop-blur-sm">
+                            <span className="relative flex h-2 w-2 mr-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary dark:bg-lp-cyan opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary dark:bg-lp-cyan" />
                             </span>
-                            <span>Institutional 7-Pillar Finance & Monthly Command Center</span>
+                            Wealth Management Reimagined
                         </motion.div>
 
                         {/* Headline */}
                         <motion.h1 variants={fadeInUp} className="text-5xl font-medium tracking-tight text-gray-900 dark:text-white sm:text-6xl md:text-7xl lg:text-6xl xl:text-7xl leading-[1.1]" style={{ fontFamily: 'var(--font-playfair), serif' }}>
                             Master your<br />wealth with<br />
-                            <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-cyan-400 dark:from-lp-cyan dark:via-cyan-200 dark:to-white lp-glow-text">
+                            <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-indigo-400 dark:from-lp-cyan dark:via-cyan-200 dark:to-white lp-glow-text">
                                 precision.
                             </span>
                         </motion.h1>
@@ -177,24 +176,17 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         {/* CTAs */}
                         <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4">
                             <motion.button
-                                whileHover={{ scale: 1.04, y: -2 }}
-                                whileTap={{ scale: 0.97, y: 0 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => onNavigate('/register')}
-                                className="lp-glow-btn h-14 rounded-xl bg-gradient-to-r from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 px-8 text-base font-bold text-white dark:text-black hover:brightness-110 shadow-[0_0_40px_rgba(19,109,236,0.3)] dark:shadow-[0_0_40px_rgba(0,229,255,0.3)] select-none cursor-pointer flex items-center justify-center gap-2"
+                                className="lp-glow-btn h-14 rounded-xl bg-gradient-to-r from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 px-8 text-base font-bold text-white dark:text-black hover:brightness-110 transition-all duration-300 shadow-[0_0_40px_rgba(19,109,236,0.3)] dark:shadow-[0_0_40px_rgba(0,229,255,0.3)]"
                             >
-                                <span>Start Your Journey</span>
-                                <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                                Start Your Journey
                             </motion.button>
                             <motion.button 
-                                whileHover={{ scale: 1.03, y: -1 }}
-                                whileTap={{ scale: 0.97, y: 0 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                onClick={() => {
-                                    const el = document.getElementById('features');
-                                    el?.scrollIntoView({ behavior: 'smooth' });
-                                }}
-                                className="h-14 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-8 text-base font-medium text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2 select-none cursor-pointer"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="h-14 rounded-xl border border-gray-300 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-8 text-base font-medium text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
                             >
                                 <span className="material-symbols-outlined text-primary dark:text-lp-cyan">play_circle</span>
                                 See How It Works
@@ -205,7 +197,7 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         <motion.div variants={fadeInUp} className="pt-2 flex items-center gap-6 border-t border-gray-200 dark:border-white/5">
                             <div className="flex -space-x-3 pt-4">
                                 {[
-                                    'bg-gradient-to-br from-blue-400 to-cyan-500',
+                                    'bg-gradient-to-br from-blue-400 to-indigo-500',
                                     'bg-gradient-to-br from-emerald-400 to-teal-500',
                                     'bg-gradient-to-br from-amber-400 to-orange-500'
                                 ].map((bg, i) => (
@@ -241,7 +233,6 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
 }
 
 function DashboardMockup() {
-    const [mockupTab, setMockupTab] = useState<'command' | 'month' | 'goals'>('command');
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
@@ -306,208 +297,84 @@ function DashboardMockup() {
                         `,
                     }}
                 />
-                {/* Top bar with Interactive Tabs */}
-                <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-200 dark:border-white/5 bg-white/50 dark:bg-black/10">
-                    <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full bg-red-400" />
-                        <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                        <div className="h-3 w-3 rounded-full bg-green-400" />
-                    </div>
-                    {/* View Tabs */}
-                    <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-white/5 text-[11px] font-bold">
-                        <button
-                            type="button"
-                            onClick={() => setMockupTab('command')}
-                            className={`px-2.5 py-1 rounded-lg transition-all ${mockupTab === 'command' ? 'bg-white dark:bg-surface-dark text-primary shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
-                        >
-                            Command
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setMockupTab('month')}
-                            className={`px-2.5 py-1 rounded-lg transition-all ${mockupTab === 'month' ? 'bg-white dark:bg-surface-dark text-primary shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
-                        >
-                            My Month
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setMockupTab('goals')}
-                            className={`px-2.5 py-1 rounded-lg transition-all ${mockupTab === 'goals' ? 'bg-white dark:bg-surface-dark text-primary shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
-                        >
-                            Goals
-                        </button>
-                    </div>
+                {/* Top bar */}
+                <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 dark:border-white/5">
+                    <div className="h-3 w-3 rounded-full bg-red-400" />
+                    <div className="h-3 w-3 rounded-full bg-yellow-400" />
+                    <div className="h-3 w-3 rounded-full bg-green-400" />
+                    <div className="ml-4 h-2.5 w-32 bg-gray-200 dark:bg-white/10 rounded-full" />
                 </div>
 
-                {/* Content area based on tab */}
+                {/* Content area */}
                 <div className="p-6 space-y-6">
-                    {mockupTab === 'command' && (
-                        <>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center p-1 overflow-hidden">
-                                        <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={36} height={36} className="object-contain rounded-lg" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Wealth AI</p>
-                                        <p className="text-xs text-gray-400 dark:text-slate-500">Command Center</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-gray-400 dark:text-slate-500">Net Worth</p>
-                                    <p className="text-lg font-bold text-gray-900 dark:text-white">$1,240,500</p>
-                                </div>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center p-1 overflow-hidden">
+                                <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={36} height={36} className="object-contain rounded-lg" />
                             </div>
-
-                            <div className="relative h-40 border border-gray-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#0A0E1B] p-4 overflow-hidden">
-                                <p className="text-xs text-gray-400 dark:text-slate-500 mb-2 font-medium uppercase tracking-wider">Portfolio Performance</p>
-                                <svg className="w-full h-24" viewBox="0 0 400 100" preserveAspectRatio="none">
-                                    <defs>
-                                        <linearGradient id="chart-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                            <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.3" />
-                                            <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0" />
-                                        </linearGradient>
-                                        <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.4" />
-                                            <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="1" />
-                                        </linearGradient>
-                                    </defs>
-                                    <path d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10 L400,100 L0,100 Z" fill="url(#chart-gradient)" />
-                                    <motion.path 
-                                        initial={{ pathLength: 0 }}
-                                        animate={{ pathLength: 1 }}
-                                        transition={{ duration: 1.5, ease: "easeInOut" }}
-                                        d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10" 
-                                        fill="none" stroke="url(#line-gradient)" strokeWidth="2.5" strokeLinecap="round" 
-                                    />
-                                    <circle cx="400" cy="10" r="4" className="fill-primary dark:fill-lp-cyan" />
-                                    <circle cx="400" cy="10" r="8" className="fill-primary/20 dark:fill-lp-cyan/20">
-                                        <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
-                                        <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite" />
-                                    </circle>
-                                </svg>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex gap-3 items-start">
-                                    <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
-                                        <span className="material-symbols-outlined text-sm">smart_toy</span>
-                                    </div>
-                                    <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
-                                        Good morning, Alex. Your net worth increased by <span className="text-primary dark:text-lp-cyan font-semibold">+2.4%</span> this week.
-                                    </div>
-                                </div>
-                                <div className="flex gap-3 items-start justify-end">
-                                    <div className="bg-primary dark:bg-lp-cyan/20 rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white dark:text-lp-cyan max-w-[260px]">
-                                        That&apos;s great! Can I afford the trip to Italy in September?
-                                    </div>
-                                </div>
-                                <div className="flex gap-3 items-start">
-                                    <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
-                                        <span className="material-symbols-outlined text-sm">smart_toy</span>
-                                    </div>
-                                    <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
-                                        Yes. Based on your current trajectory, you&apos;ll have <span className="font-semibold text-gray-900 dark:text-white">$4,200</span> in savings by then.
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    {mockupTab === 'month' && (
-                        <div className="space-y-5 animate-in fade-in duration-300">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Monthly Command Center</p>
-                                    <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white">November 2026</h3>
-                                </div>
-                                <span className="px-3 py-1 text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full">
-                                    67% Saved
-                                </span>
-                            </div>
-
-                            {/* Mini KPIs */}
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Income</p>
-                                    <p className="text-base font-black text-emerald-500 tabular-nums">+$9,450</p>
-                                </div>
-                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Spent</p>
-                                    <p className="text-base font-black text-rose-500 tabular-nums">−$3,120</p>
-                                </div>
-                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Net Net</p>
-                                    <p className="text-base font-black text-primary tabular-nums">+$6,330</p>
-                                </div>
-                            </div>
-
-                            {/* Mini 7-day grid */}
-                            <div className="rounded-2xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/[0.02] p-3 space-y-2">
-                                <p className="text-xs font-bold text-gray-500">Live Calendar Matrix</p>
-                                <div className="grid grid-cols-7 gap-1.5 text-center">
-                                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                                        <div key={i} className="text-[10px] font-bold text-gray-400">{d}</div>
-                                    ))}
-                                    {[10, 11, 12, 13, 14, 15, 16].map((day, i) => (
-                                        <div key={day} className={`p-2 rounded-xl text-xs font-bold transition-all ${i === 4 ? 'bg-primary text-white shadow-sm' : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300'}`}>
-                                            <span>{day}</span>
-                                            <div className="flex justify-center gap-0.5 mt-1">
-                                                <span className="h-1 w-1 rounded-full bg-emerald-400" />
-                                                <span className="h-1 w-1 rounded-full bg-rose-400" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">Wealth AI</p>
+                                <p className="text-xs text-gray-400 dark:text-slate-500">Dashboard</p>
                             </div>
                         </div>
-                    )}
+                        <div className="text-right">
+                            <p className="text-xs text-gray-400 dark:text-slate-500">Net Worth</p>
+                            <p className="text-lg font-bold text-gray-900 dark:text-white">$1,240,500</p>
+                        </div>
+                    </div>
 
-                    {mockupTab === 'goals' && (
-                        <div className="space-y-4 animate-in fade-in duration-300">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Wealth & Goals</p>
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Active Milestones</h3>
-                                </div>
-                                <span className="px-3 py-1 text-xs font-bold bg-primary/10 text-primary rounded-full">
-                                    3 Active
-                                </span>
+                    <div className="relative h-40 border border-gray-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#0A0E1B] p-4 overflow-hidden">
+                        <p className="text-xs text-gray-400 dark:text-slate-500 mb-2 font-medium uppercase tracking-wider">Portfolio Performance</p>
+                        <svg className="w-full h-24" viewBox="0 0 400 100" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="chart-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.3" />
+                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0" />
+                                </linearGradient>
+                                <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.4" />
+                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="1" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10 L400,100 L0,100 Z" fill="url(#chart-gradient)" />
+                            <motion.path 
+                                initial={{ pathLength: 0 }}
+                                animate={{ pathLength: 1 }}
+                                transition={{ duration: 1.5, ease: "easeInOut" }}
+                                d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10" 
+                                fill="none" stroke="url(#line-gradient)" strokeWidth="2.5" strokeLinecap="round" 
+                            />
+                            <circle cx="400" cy="10" r="4" className="fill-primary dark:fill-lp-cyan" />
+                            <circle cx="400" cy="10" r="8" className="fill-primary/20 dark:fill-lp-cyan/20">
+                                <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite" />
+                            </circle>
+                        </svg>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="flex gap-3 items-start">
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
+                                <span className="material-symbols-outlined text-sm">smart_toy</span>
                             </div>
-
-                            <div className="space-y-3">
-                                <div className="p-3.5 rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-white/5 space-y-2">
-                                    <div className="flex justify-between items-center text-xs font-bold">
-                                        <span className="text-gray-800 dark:text-white">FIRE Retirement Goal</span>
-                                        <span className="text-primary tabular-nums">82.7% ($1.24M / $1.5M)</span>
-                                    </div>
-                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
-                                        <div className="h-full bg-primary rounded-full w-[82.7%]" />
-                                    </div>
-                                </div>
-
-                                <div className="p-3.5 rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-white/5 space-y-2">
-                                    <div className="flex justify-between items-center text-xs font-bold">
-                                        <span className="text-gray-800 dark:text-white">Emergency Liquid Reserves</span>
-                                        <span className="text-emerald-500 tabular-nums">100% ($60,000)</span>
-                                    </div>
-                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
-                                        <div className="h-full bg-emerald-500 rounded-full w-full" />
-                                    </div>
-                                </div>
-
-                                <div className="p-3.5 rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-white/5 space-y-2">
-                                    <div className="flex justify-between items-center text-xs font-bold">
-                                        <span className="text-gray-800 dark:text-white">Automated Round-Up Savings</span>
-                                        <span className="text-amber-500 tabular-nums">+$142 this month</span>
-                                    </div>
-                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
-                                        <div className="h-full bg-amber-500 rounded-full w-2/3" />
-                                    </div>
-                                </div>
+                            <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
+                                Good morning, Alex. Your net worth increased by <span className="text-primary dark:text-lp-cyan font-semibold">+2.4%</span> this week.
                             </div>
                         </div>
-                    )}
+                        <div className="flex gap-3 items-start justify-end">
+                            <div className="bg-primary dark:bg-lp-cyan/20 rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white dark:text-lp-cyan max-w-[260px]">
+                                That&apos;s great! Can I afford the trip to Italy in September?
+                            </div>
+                        </div>
+                        <div className="flex gap-3 items-start">
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
+                                <span className="material-symbols-outlined text-sm">smart_toy</span>
+                            </div>
+                            <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
+                                Yes. Based on your current trajectory, you&apos;ll have <span className="font-semibold text-gray-900 dark:text-white">$4,200</span> by August 20th.
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </motion.div>
 
@@ -515,7 +382,7 @@ function DashboardMockup() {
                 {/* Floating Card 1 */}
                 <motion.div 
                     style={{ rotateX: rotateXSecondary, rotateY: rotateYSecondary, transformStyle: "preserve-3d" }}
-                    className="p-4 rounded-2xl bg-white dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-100 dark:border-white/10 shadow-xl"
+                    className="p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-100 dark:border-white/5 shadow-xl"
                 >
                     <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-primary/10 dark:bg-lp-cyan/20 flex items-center justify-center text-primary dark:text-lp-cyan">
@@ -531,7 +398,7 @@ function DashboardMockup() {
                 {/* Floating Card 2 */}
                 <motion.div 
                     style={{ rotateX: rotateXSecondary, rotateY: rotateYSecondary, transformStyle: "preserve-3d" }}
-                    className="p-4 rounded-2xl bg-white dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-100 dark:border-white/10 shadow-xl"
+                    className="p-4 rounded-2xl bg-white dark:bg-[#161b22] border border-gray-100 dark:border-white/5 shadow-xl"
                 >
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm text-emerald-500">trending_up</span>
@@ -544,20 +411,9 @@ function DashboardMockup() {
             {/* Floating Card 3 (Tertiary depth) */}
             <motion.div 
                 style={{ rotateX: rotateXTertiary, rotateY: rotateYTertiary, transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
-                className="absolute -right-8 -bottom-8 lg:-right-16 lg:bottom-12 w-64 rounded-2xl bg-white/90 dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-4 shadow-2xl hidden md:block"
+                className="absolute -right-8 -bottom-8 lg:-right-16 lg:bottom-12 w-64 rounded-2xl bg-white/90 dark:bg-[#161b22]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 shadow-2xl hidden md:block"
             >
-                <div className="flex items-center gap-2.5 mb-2">
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold text-xs">
-                        <span className="material-symbols-outlined text-base">verified</span>
-                    </div>
-                    <div>
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">Active Runway</p>
-                        <p className="text-[11px] text-emerald-500 font-bold">18.4 Months Safe</p>
-                    </div>
-                </div>
-                <div className="h-1.5 w-full bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full w-4/5" />
-                </div>
+                <p className="text-sm text-gray-500 dark:text-slate-400">Product Designer and Manager, Bangladesh</p>
             </motion.div>
         </div>
     );
@@ -844,7 +700,7 @@ function InteractiveVisualizer() {
                                             <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
                                             <span className="text-gray-700 dark:text-slate-300">{item.name}</span>
                                         </div>
-                                        <div className="text-gray-900 dark:text-white">
+                                        <div className="text-gray-955 dark:text-white">
                                             <span>{item.amount} </span>
                                             <span className="text-gray-400 dark:text-slate-500">({item.pct}%)</span>
                                         </div>
@@ -994,8 +850,8 @@ function TestimonialSection() {
                 className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center"
             >
                 <motion.span variants={fadeInUp} className="material-symbols-outlined text-4xl text-primary/30 dark:text-lp-cyan/30 mb-4 block" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</motion.span>
-                <motion.blockquote variants={fadeInUp} className="text-xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-8 tracking-tight" style={{ fontFamily: 'var(--font-playfair), serif', fontStyle: 'italic', letterSpacing: '-0.02em', fontWeight: 500 }}>
-                    &ldquo;Wealth AI turns complex financial data into living clarity and proactive guidance. It feels less like a tracker and more like an intelligent CFO for your future.&rdquo;
+                <motion.blockquote variants={fadeInUp} className="text-xl sm:text-3xl font-medium text-gray-900 dark:text-white leading-relaxed mb-8 tracking-tight" style={{ fontFamily: 'var(--font-fraunces), serif', fontStyle: 'italic', letterSpacing: '-0.02em', fontWeight: 500 }}>
+                    &ldquo;Wealth AI completely changed how I look at my monthly budget. It feels less like a finance app and more like having a personal CFO in my pocket.&rdquo;
                 </motion.blockquote>
                 <motion.div variants={fadeInUp} className="flex flex-col items-center gap-3">
                     <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-blue-500 dark:from-lp-cyan dark:to-cyan-400 flex items-center justify-center text-white dark:text-black font-bold text-lg">
@@ -1024,7 +880,7 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
                 <motion.div 
                     variants={fadeInUp}
                     whileHover={{ scale: 1.01 }}
-                    className="relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-cyan-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0E1B] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5"
+                    className="relative rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-indigo-700 dark:from-[#0f1729] dark:via-[#0a1628] dark:to-[#0A0E1B] p-12 sm:p-20 text-center overflow-hidden border border-transparent dark:border-white/5"
                 >
                     <div className="absolute top-0 left-1/4 h-48 w-48 rounded-full bg-white/10 dark:bg-lp-cyan/10 blur-[80px]" />
                     <div className="absolute bottom-0 right-1/4 h-48 w-48 rounded-full bg-blue-400/10 dark:bg-blue-600/10 blur-[80px]" />
@@ -1038,22 +894,19 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <motion.button
-                                whileHover={{ scale: 1.04, y: -2 }}
-                                whileTap={{ scale: 0.97, y: 0 }}
-                                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => onNavigate('/register')}
-                                className="lp-glow-btn h-14 rounded-xl bg-white px-10 text-base font-bold text-gray-900 hover:bg-gray-100 shadow-xl cursor-pointer select-none"
+                                className="lp-glow-btn h-14 rounded-xl bg-white px-10 text-base font-bold text-gray-900 hover:bg-gray-100 transition-all duration-300"
                             >
                                 Create Free Account
                             </motion.button>
                             <motion.button 
-                                whileHover={{ scale: 1.03, y: -1 }}
-                                whileTap={{ scale: 0.97, y: 0 }}
-                                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
-                                onClick={() => onNavigate('/login')}
-                                className="h-14 rounded-xl border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 px-10 text-base font-medium text-white hover:bg-white/20 dark:hover:bg-white/10 transition-colors backdrop-blur-sm cursor-pointer select-none"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="h-14 rounded-xl border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 px-10 text-base font-medium text-white hover:bg-white/20 dark:hover:bg-white/10 transition-colors backdrop-blur-sm"
                             >
-                                Sign In
+                                Contact Sales
                             </motion.button>
                         </div>
                     </div>
@@ -1065,32 +918,9 @@ function CTASection({ onNavigate }: { onNavigate: (p: string) => void }) {
 
 function FooterSection() {
     const columns = [
-        {
-            title: 'Product',
-            links: [
-                { name: 'Features', href: '#features' },
-                { name: 'Pricing', href: '/register' },
-                { name: 'Security', href: '/settings/privacy' },
-                { name: 'Integrations', href: '/bank-import' },
-            ],
-        },
-        {
-            title: 'Company',
-            links: [
-                { name: 'About', href: '/' },
-                { name: 'Careers', href: '/register' },
-                { name: 'Blog', href: '/insights' },
-                { name: 'Contact', href: 'mailto:support@wealthai.app' },
-            ],
-        },
-        {
-            title: 'Resources',
-            links: [
-                { name: 'Help Center', href: '/chat' },
-                { name: 'Benchmarking', href: '/benchmarks' },
-                { name: 'Household', href: '/household' },
-            ],
-        },
+        { title: 'Product', links: ['Features', 'Pricing', 'Security', 'Integrations'] },
+        { title: 'Company', links: ['About', 'Careers', 'Blog', 'Contact'] },
+        { title: 'Resources', links: ['Help Center', 'API Docs', 'Community'] },
     ];
 
     return (
@@ -1114,7 +944,7 @@ function FooterSection() {
                             <ul className="space-y-3">
                                 {col.links.map((link, j) => (
                                     <li key={j}>
-                                        <Link href={link.href} className="text-sm text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors">{link.name}</Link>
+                                        <a href="#" className="text-sm text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors">{link}</a>
                                     </li>
                                 ))}
                             </ul>
@@ -1124,8 +954,8 @@ function FooterSection() {
                 <div className="pt-8 border-t border-gray-200 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
                     <p className="text-sm text-gray-500 dark:text-slate-500">© 2026 Wealth AI. All rights reserved.</p>
                     <div className="flex gap-6">
-                        <Link href="/settings/privacy" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Privacy</Link>
-                        <Link href="/login" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Terms</Link>
+                        <a href="#" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Privacy</a>
+                        <a href="#" className="text-sm text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white">Terms</a>
                     </div>
                 </div>
             </div>

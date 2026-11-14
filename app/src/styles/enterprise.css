@@ -1,8 +1,8 @@
 /**
- * @fileoverview Global CSS additions for institutional enterprise UI enhancements.
+ * @fileoverview Global CSS additions for enterprise UI enhancements.
  *
- * Implements Linear- & Stripe-inspired token hierarchy, tabular numeral discipline,
- * subtle structural shadows, and crisp surface cards without GPU-heavy blurs.
+ * Contains skeleton shimmer animations, glassmorphism utilities,
+ * and premium design tokens that extend the existing design system.
  *
  * @module styles/enterprise.css
  */
@@ -14,9 +14,9 @@
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.02) 25%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.02) 75%
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -32,191 +32,91 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   WEALTH AI SOVEREIGN SURFACE CARDS & FROSTED GLASS DEPTH
+   GLASSMORPHISM UTILITY CLASSES
    ═══════════════════════════════════════════════════════════════ */
 
-/* Clean standard card surface with subtle satin blur and hairline highlight */
-.glass-card,
-.card-glass {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 20px;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-}
-
-:where(.dark) .glass-card,
-:where(.dark) .card-glass {
-  background: rgba(18, 24, 43, 0.78);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
 }
 
-.glass-card:hover,
-.card-glass:hover {
-  transform: translateY(-3px);
-  border-color: rgba(19, 109, 236, 0.3);
-  box-shadow: 0 14px 38px -4px rgba(19, 109, 236, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.95);
-}
-
-:where(.dark) .glass-card:hover,
-:where(.dark) .card-glass:hover {
-  border-color: rgba(19, 109, 236, 0.4);
-  box-shadow: 0 16px 44px -4px rgba(19, 109, 236, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-/* Elevated card / modal surface */
 .glass-card-elevated {
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 24px;
-  box-shadow: 0 20px 48px -8px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 1);
-}
-
-:where(.dark) .glass-card-elevated {
-  background: rgba(26, 34, 56, 0.92);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
-  box-shadow: 0 24px 56px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-/* Strictly constrained 16px blur for sticky headers and navigation bars */
-.glass-header,
-.glass-nav-blur {
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ORGANIC AMBIENT MESH CANVAS (SIGNATURE WEALTH AI DEPTH)
+   GRADIENT MESH BACKGROUND
    ═══════════════════════════════════════════════════════════════ */
 
 .gradient-mesh-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
-  pointer-events: none;
   background:
-    radial-gradient(ellipse 80% 50% at 20% 30%, rgba(19, 109, 236, 0.08), transparent),
-    radial-gradient(ellipse 60% 40% at 85% 20%, rgba(16, 185, 129, 0.05), transparent),
-    radial-gradient(ellipse 70% 60% at 50% 90%, rgba(30, 58, 138, 0.08), transparent),
-    linear-gradient(180deg, #0A0E1B 0%, #060913 100%);
-}
-
-html:not(.dark) .gradient-mesh-bg {
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 30%, rgba(19, 109, 236, 0.04), transparent),
-    radial-gradient(ellipse 60% 40% at 85% 20%, rgba(16, 185, 129, 0.03), transparent),
-    radial-gradient(ellipse 70% 60% at 50% 90%, rgba(30, 58, 138, 0.03), transparent),
-    linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(6, 182, 212, 0.06), transparent),
+    radial-gradient(ellipse 70% 60% at 50% 90%, rgba(16, 185, 129, 0.05), transparent),
+    linear-gradient(135deg, #0a0a0f 0%, #0d0d1a 50%, #0a0a0f 100%);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   CRISP HOVER ELEVATION & MICRO-INTERACTIONS
+   MICRO INTERACTIONS
    ═══════════════════════════════════════════════════════════════ */
 
 .hover-lift {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hover-lift:hover {
-  transform: translateY(-3px);
-  border-color: rgba(19, 109, 236, 0.35);
-  box-shadow: 0 14px 34px -4px rgba(19, 109, 236, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
 }
 
 .hover-glow {
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: box-shadow 0.3s ease;
 }
 
 .hover-glow:hover {
-  border-color: rgba(19, 109, 236, 0.45);
-  box-shadow: 0 0 24px rgba(19, 109, 236, 0.25);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15),
+              0 0 40px rgba(99, 102, 241, 0.05);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   INSTITUTIONAL TYPOGRAPHY & TABULAR NUMERAL DISCIPLINE
+   ENTERPRISE TEXT STYLES
    ═══════════════════════════════════════════════════════════════ */
 
-/* Strict numerical alignment across all financial figures */
-table,
-th,
-td,
-.font-mono,
-.tabular-nums,
-.currency-value,
-.stat-value,
-[data-numeric="true"] {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Page titles */
-.page-title {
-  font-size: 1.5rem; /* 24px */
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.25;
-}
-
-/* Section & card headers */
-.section-header,
-.card-header-title {
-  font-size: 0.9375rem; /* 15px */
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-/* Primary KPI / Net Worth display numbers */
-.kpi-display-number,
-.net-worth-ticker {
-  font-size: clamp(1.875rem, 3.5vw, 2.25rem); /* 30px to 36px */
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Standard body & table cells */
-.body-default,
-table td,
-table th {
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.5;
-}
-
-/* Metadata, timestamps, and column headers */
-.meta-muted,
-.table-column-header,
-.timestamp-meta {
-  font-size: 0.75rem; /* 12px */
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: #94A3B8;
-}
-
-/* Semantic text accents */
 .text-gradient-primary {
-  color: var(--accent-primary, #136dec);
+  background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .text-gradient-success {
-  color: var(--finance-positive, #10B981);
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .text-gradient-warning {
-  color: var(--finance-warning, #FFB800);
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SCROLLBAR STYLING (THIN 6PX UNOBTRUSIVE)
+   SCROLLBAR STYLING (WEBKIT)
    ═══════════════════════════════════════════════════════════════ */
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -229,20 +129,12 @@ table th {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border-strong, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border-strong, rgba(15, 23, 42, 0.16));
-}
-
-html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 23, 42, 0.3);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -250,20 +142,20 @@ html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
    ═══════════════════════════════════════════════════════════════ */
 
 .focus-ring:focus-visible {
-  outline: 2px solid rgba(19, 109, 236, 0.6);
+  outline: 2px solid rgba(99, 102, 241, 0.6);
   outline-offset: 2px;
   border-radius: 8px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ANIMATED PULSE DOT (FOR LIVE STATUS INDICATORS)
+   ANIMATED PULSE DOT (FOR LIVE INDICATORS)
    ═══════════════════════════════════════════════════════════════ */
 
 .pulse-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--finance-positive, #10B981);
+  background: #10b981;
   position: relative;
 }
 
@@ -272,7 +164,7 @@ html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  background: var(--finance-positive-bg, rgba(16, 185, 129, 0.12));
+  background: rgba(16, 185, 129, 0.3);
   animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -286,10 +178,10 @@ html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
    ═══════════════════════════════════════════════════════════════ */
 
 .spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-  border-top-color: var(--accent-primary, #136dec);
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #6366f1;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

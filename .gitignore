@@ -10,13 +10,3 @@ node_modules/
 *.db
 *.db-shm
 *.db-wal
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
-cookies.txt
-*.cookie
-.agent
-.agent/
-/.agents/
-/scripts/
-/skills-lock.json

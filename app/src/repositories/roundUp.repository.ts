@@ -1,162 +1,27 @@
-/**
- * @fileoverview Round-Up Savings Repository for Module 15.
- *
- * Implements:
- * - Configuration of round-up rules backed by live roundUpRules table
- * - 30-day recent spending preview calculation
- * - Micro-savings sweep engine updating encrypted savings goal balances
- * - Milestone event logging (25%, 50%, 75%, 100%) in goalMilestones
- * - Proactive notification dispatch to Insights Hub
- *
- * @module repositories/roundUp.repository
- */
-
 import { db } from '@/db/client';
-import {
-  roundUpRules,
-  roundUpTransfers,
-  goalMilestones,
-  savingsGoals,
-  transactions,
-  accounts,
-  proactiveInsights,
-} from '@/db/schema';
-import { eq, and, sql, desc, gte } from 'drizzle-orm';
-import { encryptNumber, decryptNumber, isEncrypted } from '@/lib/crypto/encryption';
-
-export interface RoundUpRuleDTO {
-  id: string;
-  userId: number;
-  sourceAccountId: number;
-  targetGoalId: string;
-  multiplier: number;
-  minimumSweepThreshold: number;
-  isActive: boolean;
-}
+import { roundUpSettings, goalMilestones, savingsGoals } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 export class RoundUpRepository {
-  /**
-   * Get active user round-up rule from roundUpRules.
-   */
-  static async getRule(userId: number): Promise<RoundUpRuleDTO | null> {
-    const [rule] = await db
-      .select()
-      .from(roundUpRules)
-      .where(eq(roundUpRules.userId, userId))
-      .limit(1);
-
-    if (!rule) return null;
-
-    return {
-      id: rule.id,
-      userId: rule.userId,
-      sourceAccountId: rule.sourceAccountId,
-      targetGoalId: rule.targetGoalId,
-      multiplier: rule.multiplier,
-      minimumSweepThreshold: rule.minimumSweepThreshold,
-      isActive: Boolean(rule.isActive),
-    };
-  }
-
-  /**
-   * Compatibility wrapper for getSettings returning standard settings format.
-   */
+  /** Get user round-up settings */
   static async getSettings(userId: number) {
-    const rule = await this.getRule(userId);
-    if (!rule) {
-      return {
+    const [settings] = await db
+      .select()
+      .from(roundUpSettings)
+      .where(eq(roundUpSettings.userId, userId));
+    return (
+      settings || {
         id: 0,
         userId,
-        enabled: 0,
+        enabled: 1,
         roundingTier: 1.0,
         multiplier: 1.0,
         targetGoalId: null,
-      };
-    }
-
-    return {
-      id: rule.id,
-      userId: rule.userId,
-      enabled: rule.isActive ? 1 : 0,
-      roundingTier: 1.0,
-      multiplier: rule.multiplier,
-      targetGoalId: parseInt(rule.targetGoalId, 10) || null,
-      sourceAccountId: rule.sourceAccountId,
-      minimumSweepThreshold: rule.minimumSweepThreshold,
-    };
+      }
+    );
   }
 
-  /**
-   * Upsert round-up rule into canonical roundUpRules table.
-   */
-  static async saveRule(data: {
-    userId: number;
-    sourceAccountId?: number;
-    targetGoalId: string | number;
-    multiplier?: number;
-    minimumSweepThreshold?: number;
-    isActive?: boolean;
-  }) {
-    const existing = await db
-      .select()
-      .from(roundUpRules)
-      .where(eq(roundUpRules.userId, data.userId))
-      .limit(1);
-
-    let resolvedAccountId = data.sourceAccountId;
-    if (!resolvedAccountId) {
-      const [acc] = await db
-        .select({ id: accounts.id })
-        .from(accounts)
-        .where(eq(accounts.userId, data.userId))
-        .limit(1);
-      resolvedAccountId = acc?.id || 1;
-    }
-
-    const targetGoalStr = String(data.targetGoalId);
-    const mult = data.multiplier ?? 1.0;
-    const threshold = data.minimumSweepThreshold ?? 5.0;
-    const active = data.isActive !== undefined ? (data.isActive ? 1 : 0) : 1;
-    const now = Math.floor(Date.now() / 1000);
-
-    if (existing.length > 0) {
-      const [updated] = await db
-        .update(roundUpRules)
-        .set({
-          sourceAccountId: resolvedAccountId,
-          targetGoalId: targetGoalStr,
-          multiplier: mult,
-          minimumSweepThreshold: threshold,
-          isActive: active,
-          updatedAt: now,
-        })
-        .where(eq(roundUpRules.id, existing[0].id))
-        .returning();
-
-      return updated;
-    }
-
-    const [inserted] = await db
-      .insert(roundUpRules)
-      .values({
-        id: `rur_${crypto.randomUUID()}`,
-        userId: data.userId,
-        sourceAccountId: resolvedAccountId,
-        targetGoalId: targetGoalStr,
-        multiplier: mult,
-        minimumSweepThreshold: threshold,
-        isActive: active,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-
-    return inserted;
-  }
-
-  /**
-   * Compatibility wrapper for saveSettings.
-   */
+  /** Upsert user round-up settings */
   static async saveSettings(data: {
     userId: number;
     enabled?: number;
@@ -164,17 +29,37 @@ export class RoundUpRepository {
     multiplier?: number;
     targetGoalId?: number | null;
   }) {
-    return this.saveRule({
-      userId: data.userId,
-      targetGoalId: data.targetGoalId ? String(data.targetGoalId) : '1',
-      multiplier: data.multiplier,
-      isActive: data.enabled !== undefined ? Boolean(data.enabled) : true,
-    });
+    const existing = await db
+      .select()
+      .from(roundUpSettings)
+      .where(eq(roundUpSettings.userId, data.userId));
+
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(roundUpSettings)
+        .set({
+          ...data,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(roundUpSettings.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+
+    const [inserted] = await db
+      .insert(roundUpSettings)
+      .values({
+        userId: data.userId,
+        enabled: data.enabled ?? 1,
+        roundingTier: data.roundingTier ?? 1.0,
+        multiplier: data.multiplier ?? 1.0,
+        targetGoalId: data.targetGoalId ?? null,
+      })
+      .returning();
+    return inserted;
   }
 
-  /**
-   * Calculate round-up amount for spent transaction value.
-   */
+  /** Calculate round-up amount for spent transaction value */
   static calculateRoundUp(amount: number, tier: number = 1.0, multiplier: number = 1.0): number {
     if (amount <= 0) return 0;
     const remainder = amount % tier;
@@ -183,43 +68,7 @@ export class RoundUpRepository {
     return Math.round(baseRoundUp * multiplier * 100) / 100;
   }
 
-  /**
-   * Calculate 30-day live spending round-up preview without mutating database.
-   */
-  static async calculate30DayPreview(userId: number, multiplier: number = 1.0, tier: number = 1.0) {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-    const recentTxns = await db
-      .select({
-        id: transactions.id,
-        amount: transactions.amount,
-      })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.type, 'expense'),
-          gte(transactions.date, dateStr)
-        )
-      );
-
-    let projectedSweepTotal = 0;
-    for (const tx of recentTxns) {
-      projectedSweepTotal += this.calculateRoundUp(tx.amount, tier, multiplier);
-    }
-
-    return {
-      expenseCount: recentTxns.length,
-      projectedMonthlySweep: Math.round(projectedSweepTotal * 100) / 100,
-      multiplier,
-    };
-  }
-
-  /**
-   * Record goal milestone reached in event log table.
-   */
+  /** Record goal milestone reached */
   static async recordMilestone(goalId: number, percentage: number) {
     const [existing] = await db
       .select()
@@ -244,9 +93,7 @@ export class RoundUpRepository {
     return existing;
   }
 
-  /**
-   * Get achieved milestones for a goal.
-   */
+  /** Get achieved milestones for a goal */
   static async getMilestones(goalId: number) {
     return await db
       .select()
@@ -255,162 +102,49 @@ export class RoundUpRepository {
       .orderBy(goalMilestones.milestonePercentage);
   }
 
-  /**
-   * Process automatic round-up sweep for an expense transaction (Module 15).
-   * Updates encrypted savings goal balance, deducts from source account for double-entry integrity,
-   * and triggers milestone events.
-   */
-  static async processRoundUpForExpense(
-    userId: number,
-    expenseAmount: number,
-    transactionId?: number,
-    accountId?: number
-  ) {
-    const rule = await this.getRule(userId);
-    if (!rule || !rule.isActive || !rule.targetGoalId) return null;
+  /** Process automatic round-up sweep for an expense transaction (Module 15) */
+  static async processRoundUpForExpense(userId: number, expenseAmount: number) {
+    const settings = await this.getSettings(userId);
+    if (!settings || !settings.enabled || !settings.targetGoalId) return null;
 
     const roundUpDiff = this.calculateRoundUp(
       expenseAmount,
-      1.0,
-      rule.multiplier || 1.0
+      settings.roundingTier || 1.0,
+      settings.multiplier || 1.0
     );
 
     if (roundUpDiff <= 0) return null;
-
-    const goalIdNum = parseInt(rule.targetGoalId, 10);
-    if (isNaN(goalIdNum)) return null;
 
     // Fetch target goal
     const [goal] = await db
       .select()
       .from(savingsGoals)
-      .where(and(eq(savingsGoals.id, goalIdNum), eq(savingsGoals.userId, userId)));
+      .where(and(eq(savingsGoals.id, settings.targetGoalId), eq(savingsGoals.userId, userId)));
 
     if (!goal) return null;
 
-    // 0. Double-entry deduction from source bank account
-    const sourceAccId = accountId || rule.sourceAccountId;
-    if (sourceAccId) {
-      try {
-        await db
-          .update(accounts)
-          .set({
-            currentBalance: sql`${accounts.currentBalance} - ${roundUpDiff}`,
-          })
-          .where(and(eq(accounts.id, sourceAccId), eq(accounts.userId, userId)));
-      } catch (err) {
-        console.error('[roundUp] Failed to deduct round-up from bank account:', err);
-      }
-    }
+    const newSavedAmount = (goal.savedAmount || 0) + roundUpDiff;
 
-    // Decrypt current saved amount
-    let currentSaved = goal.savedAmount || 0;
-    if (goal.encryptedSavedAmount && isEncrypted(goal.encryptedSavedAmount)) {
-      try {
-        currentSaved = decryptNumber(goal.encryptedSavedAmount, 'amount');
-      } catch {
-        currentSaved = goal.savedAmount || 0;
-      }
-    }
-
-    const newSavedAmount = Math.round((currentSaved + roundUpDiff) * 100) / 100;
-    const encryptedNewSaved = encryptNumber(newSavedAmount, 'amount');
-
-    // 1. Record sweep transfer in roundUpTransfers
-    const transferId = `trans_${crypto.randomUUID()}`;
-    await db.insert(roundUpTransfers).values({
-      id: transferId,
-      ruleId: rule.id,
-      transactionId: transactionId || 1,
-      rawDelta: Math.round((roundUpDiff / (rule.multiplier || 1.0)) * 100) / 100,
-      multipliedAmount: roundUpDiff,
-      status: 'SWEPT',
-      sweptAt: Math.floor(Date.now() / 1000),
-    });
-
-    // 2. Update goal saved amount with encryption
+    // Update goal saved amount
     await db
       .update(savingsGoals)
-      .set({
-        savedAmount: newSavedAmount,
-        encryptedSavedAmount: encryptedNewSaved,
-      })
+      .set({ savedAmount: newSavedAmount })
       .where(eq(savingsGoals.id, goal.id));
 
-    // 3. Check milestone threshold crossing (25%, 50%, 75%, 100%)
-    let newlyHitMilestone: number | null = null;
-    if (goal.targetAmount > 0) {
-      const pct = Math.floor((newSavedAmount / goal.targetAmount) * 100);
-      const thresholds = [100, 75, 50, 25];
-      for (const t of thresholds) {
-        if (pct >= t && (goal.lastMilestoneHit || 0) < t) {
-          await db
-            .update(savingsGoals)
-            .set({ lastMilestoneHit: t })
-            .where(eq(savingsGoals.id, goal.id));
-
-          await this.recordMilestone(goal.id, t);
-          newlyHitMilestone = t;
-
-          // Surface milestone achievement into proactive insights feed
-          try {
-            await db.insert(proactiveInsights).values({
-              id: `ins_${crypto.randomUUID()}`,
-              userId,
-              insightType: 'SAVINGS_OPPORTUNITY',
-              severity: 'INFO',
-              title: `Goal Milestone Reached: ${t}%`,
-              message: `Congratulations! Your micro-savings round-ups just helped you hit ${t}% of your goal "${goal.name}".`,
-              actionLink: '/wealth-goals',
-              isDismissed: 0,
-              generatedAt: Math.floor(Date.now() / 1000),
-            });
-          } catch {
-            // Ignore insight logging error
-          }
-          break;
-        }
+    // Check milestone hit (25%, 50%, 75%, 100%)
+    const pct = Math.floor((newSavedAmount / goal.targetAmount) * 100);
+    const thresholds = [100, 75, 50, 25];
+    for (const t of thresholds) {
+      if (pct >= t && (goal.lastMilestoneHit || 0) < t) {
+        await db
+          .update(savingsGoals)
+          .set({ lastMilestoneHit: t })
+          .where(eq(savingsGoals.id, goal.id));
+        await this.recordMilestone(goal.id, t);
+        break;
       }
     }
 
-    return {
-      roundUpDiff,
-      newSavedAmount,
-      goalId: goal.id,
-      milestoneHit: newlyHitMilestone,
-    };
-  }
-
-  /**
-   * Returns monthly round-up statistics for a specific goal.
-   * e.g., total amount saved and number of round-ups swept in the current calendar month.
-   */
-  static async getGoalMonthlyRoundUpStats(userId: number, goalId: number | string) {
-    const goalIdStr = String(goalId);
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const startTimestamp = Math.floor(startOfMonth.getTime() / 1000);
-
-    const sweeps = await db
-      .select({
-        multipliedAmount: roundUpTransfers.multipliedAmount,
-      })
-      .from(roundUpTransfers)
-      .innerJoin(roundUpRules, eq(roundUpTransfers.ruleId, roundUpRules.id))
-      .where(
-        and(
-          eq(roundUpRules.userId, userId),
-          eq(roundUpRules.targetGoalId, goalIdStr),
-          eq(roundUpTransfers.status, 'SWEPT'),
-          gte(roundUpTransfers.sweptAt, startTimestamp)
-        )
-      );
-
-    const totalSaved = sweeps.reduce((sum, s) => sum + (s.multipliedAmount || 0), 0);
-    return {
-      totalSaved: Math.round(totalSaved * 100) / 100,
-      count: sweeps.length,
-    };
+    return { roundUpDiff, newSavedAmount, goalId: goal.id };
   }
 }

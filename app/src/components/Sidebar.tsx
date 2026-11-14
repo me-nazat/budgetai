@@ -7,19 +7,67 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
 import PrivacyToggle from '@/components/PrivacyToggle';
-import LanguageToggle from '@/components/LanguageToggle';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { SEVEN_PILLARS, SYSTEM_NAV_ITEMS, NAV_TRANSLATION_MAP, type NavItem } from '@/lib/navigation/registry';
+
+const navGroups = [
+    {
+        label: null, // Core — no label needed, it's obvious
+        items: [
+            { href: '/dashboard', icon: 'dashboard', label: 'Dashboard', filled: true },
+            { href: '/chat', icon: 'smart_toy', label: 'AI Chat' },
+            { href: '/transactions', icon: 'receipt_long', label: 'Transactions' },
+            { href: '/budget', icon: 'account_balance_wallet', label: 'Budgets' },
+        ],
+    },
+    {
+        label: 'Analytics',
+        items: [
+            { href: '/my-month', icon: 'calendar_month', label: 'My Month' },
+            { href: '/reports', icon: 'bar_chart', label: 'Reports' },
+            { href: '/overview', icon: 'analytics', label: 'Overview' },
+            { href: '/benchmarks', icon: 'leaderboard', label: 'Benchmarks' },
+        ],
+    },
+    {
+        label: 'Financial Tools',
+        items: [
+            { href: '/accounts', icon: 'account_balance', label: 'Accounts' },
+            { href: '/household', icon: 'family_restroom', label: 'Household' },
+            { href: '/bill-split', icon: 'call_split', label: 'Bill Split' },
+            { href: '/tours', icon: 'flight_takeoff', label: 'Tour Manager' },
+            { href: '/wealth-goals', icon: 'flag_circle', label: 'Wealth & Goals' },
+            { href: '/debts', icon: 'credit_card', label: 'Debt Planner' },
+            { href: '/forecast', icon: 'timeline', label: 'Cash Flow Forecast' },
+            { href: '/investments', icon: 'trending_up', label: 'Investments' },
+            { href: '/achievements', icon: 'emoji_events', label: 'Achievements' },
+            { href: '/fire', icon: 'rocket_launch', label: 'FIRE Simulator' },
+        ],
+    },
+    {
+        label: 'Smart Tools',
+        items: [
+            { href: '/tax-center', icon: 'receipt', label: 'Tax Center' },
+            { href: '/documents', icon: 'folder_open', label: 'Documents' },
+            { href: '/bank-import', icon: 'upload_file', label: 'Bank Import' },
+        ],
+    },
+    {
+        label: 'System',
+        items: [
+            { href: '/recurring-subscriptions', icon: 'repeat', label: 'Recurring & Subs' },
+            { href: '/automation-rules', icon: 'auto_awesome', label: 'Automation Rules' },
+            { href: '/notifications', icon: 'notifications', label: 'Alerts' },
+        ],
+    },
+];
+
 
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
-    const { t } = useLanguage();
     const { data: notificationsData } = useSWR('/api/notifications');
     const unreadCount = notificationsData?.unreadCount || 0;
     const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
-    const [isDark, setIsDark] = useState(() => (typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true));
-    const [profileHovered, setProfileHovered] = useState(false);
+    const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true);
 
     useEffect(() => {
         const observer = new MutationObserver(() => {
@@ -28,14 +76,12 @@ export default function Sidebar() {
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         return () => observer.disconnect();
     }, []);
+    const [profileHovered, setProfileHovered] = useState(false);
 
     useEffect(() => {
-        fetch('/api/auth/me')
-            .then(r => r.json())
-            .then(d => {
-                if (d.user) setUser(d.user);
-            })
-            .catch(() => {});
+        fetch('/api/auth/me').then(r => r.json()).then(d => {
+            if (d.user) setUser(d.user);
+        }).catch(() => { });
     }, []);
 
     const toggleTheme = () => {
@@ -50,8 +96,6 @@ export default function Sidebar() {
     const handleLogout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
         localStorage.removeItem('wealth-ai-swr-cache-v1');
-        localStorage.removeItem('wealth-ai-swr-cache-v3');
-        sessionStorage.removeItem('wealth-ai-core-meta-v1');
         localStorage.removeItem('wealth-ai-auth-state');
         router.push('/login');
     };
@@ -65,210 +109,155 @@ export default function Sidebar() {
         }
     };
 
-    const renderNavItem = (item: NavItem) => {
-        const isExactActive = pathname === item.href;
-        const isSubItemActive = item.subItems?.some(sub => pathname === sub.href || pathname?.startsWith(sub.href + '/'));
-        const isActive = isExactActive || pathname?.startsWith(item.href + '/') || isSubItemActive;
-
-        return (
-            <div key={item.href} className="space-y-1">
-                <Link
-                    href={item.href}
-                    onMouseEnter={() => prefetchData(item.href)}
-                    className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 relative group overflow-hidden ${
-                        isActive
-                            ? 'text-primary font-bold shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/60 dark:hover:bg-white/5'
-                    }`}
-                >
-                    {isActive && (
-                        <motion.div
-                            layoutId="sidebar-active"
-                            className="absolute inset-0 bg-primary/10 dark:bg-primary/15 rounded-xl border border-primary/20"
-                            initial={false}
-                            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                        />
-                    )}
-                    {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary)] z-10" />
-                    )}
-
-                    <div className="flex items-center gap-2.5 relative z-10 min-w-0">
-                        <span
-                            className={`material-symbols-outlined text-[20px] transition-transform duration-200 ${
-                                isActive ? 'scale-105' : 'group-hover:scale-110'
-                            }`}
-                            style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
-                        >
-                            {item.icon}
-                        </span>
-                        <span className="text-sm font-semibold truncate">
-                            {t(NAV_TRANSLATION_MAP[item.id] || item.id, item.label)}
-                        </span>
-                    </div>
-
-                    {item.href === '/notifications' && unreadCount > 0 && (
-                        <div className="relative z-10 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shadow-sm animate-pulse-slow">
-                            {unreadCount > 99 ? '99+' : unreadCount}
-                        </div>
-                    )}
-                </Link>
-
-                {/* Sub-items (if present and pillar is active) */}
-                {item.subItems && item.subItems.length > 0 && (
-                    <div className="pl-7 pr-2 space-y-0.5">
-                        {item.subItems.map((sub) => {
-                            const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
-                            return (
-                                <Link
-                                    key={sub.href}
-                                    href={sub.href}
-                                    onMouseEnter={() => prefetchData(sub.href)}
-                                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                        isSubActive
-                                            ? 'text-primary dark:text-primary font-bold bg-primary/10'
-                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-white/5'
-                                    }`}
-                                >
-                                    <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: isSubActive ? "'FILL' 1" : "'FILL' 0" }}>
-                                        {sub.icon}
-                                    </span>
-                                    <span className="truncate">{t(NAV_TRANSLATION_MAP[sub.id] || sub.id, sub.label)}</span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     return (
-        <aside className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col justify-between bg-white/80 dark:bg-surface-dark/80 backdrop-blur-2xl border-r border-gray-200/50 dark:border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
-            <div className="flex flex-col h-full min-h-0">
-                {/* Brand Header */}
-                <div className="p-5 pb-3 shrink-0">
-                    <Link href="/dashboard" className="flex items-center gap-3 group cursor-pointer">
+        <aside className={`
+        hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col justify-between
+        bg-white/80 dark:bg-surface-dark/80 backdrop-blur-2xl border-r border-gray-200/50 dark:border-white/5
+        transition-transform duration-300 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)]
+      `}>
+            <div className="flex flex-col h-full">
+                <div className="p-6 pb-2 shrink-0">
+                    <Link
+                        href="/"
+                        className="flex items-center gap-3 mb-6 group cursor-pointer"
+                    >
                         <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform duration-300 overflow-hidden shrink-0 relative">
                             <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={40} height={40} className="object-cover relative z-10" />
                             <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" />
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <h1 className="text-gray-900 dark:text-white text-base font-bold leading-none truncate tracking-tight">Wealth AI</h1>
-                            <p className="text-gray-400 dark:text-gray-500 text-[11px] font-semibold mt-1 truncate uppercase tracking-wider">7-Pillar Finance</p>
+                            <h1 className="text-gray-900 dark:text-white text-lg font-bold leading-none truncate tracking-tight">Wealth AI</h1>
+                            <p className="text-gray-500 dark:text-text-secondary text-xs font-medium mt-1 truncate">Smart Finance</p>
                         </div>
                     </Link>
-
-                    {/* Quick Command Palette Trigger Bar */}
-                    <button
-                        type="button"
-                        onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-                        aria-label="Open Command Palette (Cmd+K)"
-                        className="flex items-center justify-between w-full px-3 py-1.5 mt-3 rounded-xl bg-gray-100/70 dark:bg-white/5 border border-gray-200/50 dark:border-white/5 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/60 dark:hover:bg-white/10 active:scale-[0.98] transition-all cursor-pointer select-none"
-                    >
-                        <span className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[15px] text-primary">search</span>
-                            <span className="font-medium">Quick search...</span>
-                        </span>
-                        <kbd className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 font-bold text-gray-600 dark:text-gray-300 shadow-2xs">⌘K</kbd>
-                    </button>
                 </div>
 
-                {/* 7 Primary Pillars Navigation */}
-                <nav className="flex-1 overflow-y-auto px-3.5 pb-4 custom-scrollbar min-h-0 space-y-4">
-                    <div>
-                        <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500 select-none">
-                            Primary Pillars
-                        </p>
-                        <div className="space-y-1">
-                            {user?.isGuest
-                                ? SEVEN_PILLARS.filter(p => p.id === 'household').map(renderNavItem)
-                                : SEVEN_PILLARS.map(renderNavItem)
-                            }
-                        </div>
-                    </div>
+                {/* Navigation */}
+                <nav className="flex-1 overflow-y-auto px-3 lg:px-4 pb-6 custom-scrollbar min-h-0 relative">
+                    {navGroups.map((group, groupIdx) => {
+                        const filteredItems = user?.isGuest
+                            ? group.items.filter((item) => item.href === '/tours')
+                            : group.items;
 
-                    {!user?.isGuest && (
-                        <div className="pt-2 border-t border-gray-200/40 dark:border-white/5">
-                            <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500 select-none">
-                                System
-                            </p>
-                            <div className="space-y-1">
-                                {SYSTEM_NAV_ITEMS.map(renderNavItem)}
+                        if (filteredItems.length === 0) return null;
+
+                        return (
+                            <div key={groupIdx} className={groupIdx > 0 ? 'mt-4 pt-3 border-t border-gray-200/40 dark:border-white/5' : ''}>
+                                {group.label && !user?.isGuest && (
+                                    <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 select-none">
+                                        {group.label}
+                                    </p>
+                                )}
+                                <div className="space-y-0.5">
+                                    {filteredItems.map((item) => {
+                                    const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            onMouseEnter={() => prefetchData(item.href)}
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 relative group overflow-hidden ${isActive
+                                                ? 'text-primary font-bold shadow-sm'
+                                                : 'text-gray-600 dark:text-text-secondary hover:text-gray-900 dark:hover:text-white'
+                                                }`}
+                                        >
+                                            {isActive && (
+                                                <motion.div 
+                                                    layoutId="sidebar-active"
+                                                    className="absolute inset-0 bg-primary/10 dark:bg-primary/15 rounded-xl border border-primary/20"
+                                                    initial={false}
+                                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                                />
+                                            )}
+                                            {isActive && (
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_12px_var(--color-primary)] z-10" />
+                                            )}
+                                            
+                                            <div className="flex items-center gap-3">
+                                                <span className={`material-symbols-outlined relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:-rotate-3'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                                                    {item.icon}
+                                                </span>
+                                                <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
+                                                    {item.label}
+                                                </span>
+                                            </div>
+
+                                            {item.href === '/notifications' && unreadCount > 0 && (
+                                                <div className="relative z-10 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse-slow">
+                                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                                </div>
+                                            )}
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         </div>
-                    )}
+                    )})}
                 </nav>
-
+                
                 {/* Bottom section (Settings & Profile) */}
-                <div className="p-4 shrink-0 mt-auto border-t border-gray-200/40 dark:border-white/5 bg-gray-50/50 dark:bg-black/10">
-                    <div className="flex items-center gap-1.5 mb-3">
+                <div className="p-4 shrink-0 mt-auto">
+                    {/* Settings + Theme Toggle */}
+                    <div className="flex items-center gap-2 mb-3">
                         <Link
                             href="/settings"
-                            className="flex-1 min-w-0 flex items-center gap-2 px-2.5 py-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-xs font-semibold group"
+                            className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
                         >
-                            <span className="material-symbols-outlined text-[18px] group-hover:rotate-45 transition-transform">settings</span>
-                            <span className="truncate">{t('settings', 'Settings')}</span>
+                            <span className="material-symbols-outlined group-hover:rotate-45 transition-transform duration-300">settings</span>
+                            <span className="text-sm font-medium">Settings</span>
                         </Link>
                         <PrivacyToggle />
-                        <LanguageToggle />
                         <button
-                            type="button"
-                            onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
-                            className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 transition-all text-gray-500 dark:text-gray-400 cursor-pointer"
-                            title="Keyboard Shortcuts (?)"
-                            aria-label="Keyboard Shortcuts"
-                        >
-                            <span className="material-symbols-outlined text-sm">keyboard</span>
-                        </button>
-                        <button
-                            type="button"
                             onClick={toggleTheme}
-                            className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-surface-hover transition-all duration-300 group"
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                            aria-label="Toggle Theme"
                         >
-                            <span className="material-symbols-outlined text-sm text-gray-500 dark:text-gray-400" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            <span className="material-symbols-outlined text-lg text-gray-500 dark:text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-all duration-300 group-hover:rotate-45" style={{ fontVariationSettings: "'FILL' 1" }}>
                                 {isDark ? 'light_mode' : 'dark_mode'}
                             </span>
                         </button>
                     </div>
 
+                    {/* Highly Polished Profile Card */}
                     {user && (
-                        <div
-                            className="relative rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200/60 dark:border-white/10 p-2.5 flex items-center gap-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden group"
+                        <div 
+                            className="relative rounded-2xl bg-gray-50 dark:bg-[#161b22] border border-gray-200/60 dark:border-white/5 p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden group"
                             onMouseEnter={() => setProfileHovered(true)}
                             onMouseLeave={() => setProfileHovered(false)}
                             onClick={() => router.push('/settings')}
                         >
-                            <div className="relative w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-cyan-500 p-[1.5px] shrink-0">
-                                <div className="w-full h-full rounded-full bg-white dark:bg-[#0A0E1A] flex items-center justify-center">
-                                    <span className="text-xs font-bold text-primary">
+                            {/* Animated Background Glow */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            
+                            {/* Avatar */}
+                            <div className="relative w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-cyan-600 p-[2px] shrink-0 transform group-hover:scale-105 transition-transform duration-300">
+                                <div className="w-full h-full rounded-full bg-white dark:bg-[#0A0E1A] flex items-center justify-center overflow-hidden">
+                                    <span className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-tr from-primary to-cyan-600">
                                         {user.name.charAt(0).toUpperCase()}
                                     </span>
                                 </div>
                             </div>
-
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
-                                <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+                            
+                            {/* User Info */}
+                            <div className="flex-1 min-w-0 relative z-10">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate tracking-tight">{user.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-text-secondary truncate font-medium">{user.email}</p>
                             </div>
-
+                            
+                            {/* Hover Action (Sign Out overlay button) */}
                             <AnimatePresence>
                                 {profileHovered && (
-                                    <motion.button
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
+                                    <motion.button 
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 10 }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleLogout();
-                                        }}
-                                        className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
-                                        title="Sign out"
-                                        aria-label="Sign out"
+                                        }} 
+                                        className="absolute right-3 p-1.5 text-rose-500 bg-rose-50 dark:bg-rose-500/10 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors shadow-sm"
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">logout</span>
+                                        <span className="material-symbols-outlined text-[18px]">logout</span>
                                     </motion.button>
                                 )}
                             </AnimatePresence>

@@ -4,10 +4,6 @@
     {
       "path": "/api/cron/push-check",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/household-splits",
-      "schedule": "0 1 * * *"
     }
   ]
 }

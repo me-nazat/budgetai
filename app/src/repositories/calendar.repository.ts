@@ -1,204 +1,111 @@
 import { db } from '@/db/client';
-import { oauthAccounts, calendarSyncSettings, calendarEventLogs } from '@/db/schema';
+import { calendarSyncTokens, calendarSyncEvents } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { encryptCalendarToken, decryptCalendarToken, revokeGoogleToken } from '@/lib/security/calendarToken';
-import { randomUUID } from 'crypto';
 
 export class CalendarRepository {
-  /** Get calendar sync OAuth account for user */
+  /** Get calendar sync tokens for user */
   static async getToken(userId: number) {
-    const [account] = await db
+    const [token] = await db
       .select()
-      .from(oauthAccounts)
-      .where(and(eq(oauthAccounts.userId, userId), eq(oauthAccounts.provider, 'google_calendar')));
-
-    if (!account) return null;
-
-    const accessToken = decryptCalendarToken(account.encryptedAccessToken || '');
-    const refreshToken = decryptCalendarToken(account.encryptedRefreshToken || '');
-
-    // Also get calendarId and email from settings if available
-    const [settings] = await db
-      .select({ calendarId: calendarSyncSettings.calendarId, googleUserEmail: calendarSyncSettings.googleUserEmail })
-      .from(calendarSyncSettings)
-      .where(eq(calendarSyncSettings.userId, userId));
-
-    return {
-      id: account.id,
-      userId: account.userId,
-      accessToken,
-      refreshToken,
-      calendarId: settings?.calendarId || 'primary',
-      expiresAt: account.tokenExpiresAt || new Date(Date.now() + 3600 * 1000).toISOString(),
-      email: account.email || settings?.googleUserEmail || null,
-      scope: account.scope,
-    };
+      .from(calendarSyncTokens)
+      .where(eq(calendarSyncTokens.userId, userId));
+    return token || null;
   }
 
-  /** Save or update Google Calendar OAuth tokens in oauthAccounts */
+  /** Save or update Google Calendar OAuth tokens */
   static async saveToken(data: {
     userId: number;
     accessToken: string;
     refreshToken: string;
     calendarId?: string;
     expiresAt: string;
-    email?: string;
-    displayName?: string;
-    scope?: string;
   }) {
     const existing = await this.getToken(data.userId);
-    const encryptedAccessToken = encryptCalendarToken(data.accessToken);
-    const encryptedRefreshToken = data.refreshToken ? encryptCalendarToken(data.refreshToken) : undefined;
-
-    if (existing) {
-      await db
-        .update(oauthAccounts)
-        .set({
-          encryptedAccessToken,
-          ...(encryptedRefreshToken ? { encryptedRefreshToken } : {}),
-          tokenExpiresAt: data.expiresAt,
-          email: data.email || existing.email,
-          scope: data.scope || existing.scope,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(oauthAccounts.id, existing.id));
-    } else {
-      await db
-        .insert(oauthAccounts)
-        .values({
-          userId: data.userId,
-          provider: 'google_calendar',
-          providerAccountId: data.email || `google_cal_${data.userId}`,
-          email: data.email,
-          displayName: data.displayName || 'Google Calendar',
-          encryptedAccessToken,
-          encryptedRefreshToken: encryptedRefreshToken || encryptedAccessToken,
-          tokenExpiresAt: data.expiresAt,
-          scope: data.scope || 'https://www.googleapis.com/auth/calendar.events',
-        });
-    }
-
-    // Ensure calendarSyncSettings row exists and has calendarId/email set
-    const [settings] = await db
-      .select()
-      .from(calendarSyncSettings)
-      .where(eq(calendarSyncSettings.userId, data.userId));
-
-    if (settings) {
-      await db
-        .update(calendarSyncSettings)
-        .set({
-          calendarId: data.calendarId || settings.calendarId || 'primary',
-          googleUserEmail: data.email || settings.googleUserEmail,
-        })
-        .where(eq(calendarSyncSettings.userId, data.userId));
-    } else {
-      await db
-        .insert(calendarSyncSettings)
-        .values({
-          id: `cs_${randomUUID()}`,
-          userId: data.userId,
-          calendarId: data.calendarId || 'primary',
-          googleUserEmail: data.email,
-          syncBills: 1,
-          syncSubscriptions: 1,
-          syncDebts: 1,
-          reminderDaysBefore: 2,
-        });
-    }
-
-    return await this.getToken(data.userId);
-  }
-
-  /** Revoke/remove calendar token */
-  static async removeToken(userId: number) {
-    const token = await this.getToken(userId);
-    if (token?.refreshToken) {
-      await revokeGoogleToken(token.refreshToken);
-    }
-    return await db
-      .delete(oauthAccounts)
-      .where(and(eq(oauthAccounts.userId, userId), eq(oauthAccounts.provider, 'google_calendar')));
-  }
-
-  /** Record synced Google Calendar event in calendarEventLogs */
-  static async recordEventSync(data: {
-    userId: number;
-    sourceType: string;
-    sourceId: string;
-    googleEventId: string;
-    lastKnownHash: string;
-    nextPushAt?: number | null;
-  }) {
-    const [existing] = await db
-      .select()
-      .from(calendarEventLogs)
-      .where(
-        and(
-          eq(calendarEventLogs.userId, data.userId),
-          eq(calendarEventLogs.sourceType, data.sourceType),
-          eq(calendarEventLogs.sourceId, data.sourceId)
-        )
-      );
-
-    const nowEpoch = Math.floor(Date.now() / 1000);
 
     if (existing) {
       const [updated] = await db
-        .update(calendarEventLogs)
+        .update(calendarSyncTokens)
         .set({
-          googleEventId: data.googleEventId,
-          lastKnownHash: data.lastKnownHash,
-          nextPushAt: data.nextPushAt ?? existing.nextPushAt,
-          updatedAt: nowEpoch,
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          calendarId: data.calendarId || existing.calendarId,
+          expiresAt: data.expiresAt,
         })
-        .where(eq(calendarEventLogs.id, existing.id))
+        .where(eq(calendarSyncTokens.id, existing.id))
         .returning();
       return updated;
     }
 
     const [inserted] = await db
-      .insert(calendarEventLogs)
+      .insert(calendarSyncTokens)
       .values({
-        id: `cel_${randomUUID()}`,
         userId: data.userId,
-        sourceType: data.sourceType,
-        sourceId: data.sourceId,
-        googleEventId: data.googleEventId,
-        lastKnownHash: data.lastKnownHash,
-        nextPushAt: data.nextPushAt ?? null,
-        updatedAt: nowEpoch,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        calendarId: data.calendarId || 'primary',
+        expiresAt: data.expiresAt,
       })
       .returning();
     return inserted;
   }
 
-  /** Get existing event log by source */
-  static async getEventLog(userId: number, sourceType: string, sourceId: string) {
-    const [log] = await db
+  /** Revoke/remove calendar token */
+  static async removeToken(userId: number) {
+    return await db.delete(calendarSyncTokens).where(eq(calendarSyncTokens.userId, userId));
+  }
+
+  /** Record synced Google Calendar event */
+  static async recordEventSync(data: {
+    userId: number;
+    entityType: string;
+    entityId: number;
+    googleEventId: string;
+  }) {
+    const [existing] = await db
       .select()
-      .from(calendarEventLogs)
+      .from(calendarSyncEvents)
       .where(
         and(
-          eq(calendarEventLogs.userId, userId),
-          eq(calendarEventLogs.sourceType, sourceType),
-          eq(calendarEventLogs.sourceId, sourceId)
+          eq(calendarSyncEvents.userId, data.userId),
+          eq(calendarSyncEvents.entityType, data.entityType),
+          eq(calendarSyncEvents.entityId, data.entityId)
         )
       );
-    return log || null;
+
+    if (existing) {
+      const [updated] = await db
+        .update(calendarSyncEvents)
+        .set({
+          googleEventId: data.googleEventId,
+          lastSyncedAt: new Date().toISOString(),
+        })
+        .where(eq(calendarSyncEvents.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [inserted] = await db
+      .insert(calendarSyncEvents)
+      .values({
+        userId: data.userId,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        googleEventId: data.googleEventId,
+      })
+      .returning();
+    return inserted;
   }
 
   /** Remove synced event record */
-  static async deleteSyncedEvent(userId: number, sourceType: string, sourceId: string) {
+  static async deleteSyncedEvent(userId: number, entityType: string, entityId: number) {
     return await db
-      .delete(calendarEventLogs)
+      .delete(calendarSyncEvents)
       .where(
         and(
-          eq(calendarEventLogs.userId, userId),
-          eq(calendarEventLogs.sourceType, sourceType),
-          eq(calendarEventLogs.sourceId, sourceId)
+          eq(calendarSyncEvents.userId, userId),
+          eq(calendarSyncEvents.entityType, entityType),
+          eq(calendarSyncEvents.entityId, entityId)
         )
       );
   }
 }
-

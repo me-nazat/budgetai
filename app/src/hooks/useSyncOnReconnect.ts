@@ -27,11 +27,8 @@ export function useSyncOnReconnect() {
                 }
 
                 const payloads = pending.map((record) => ({
-                    id: record.clientMutationId || record.id,
-                    payload: {
-                        ...record.payload,
-                        clientMutationId: record.clientMutationId || record.id,
-                    },
+                    id: record.id,
+                    payload: record.payload,
                 }));
 
                 const res = await fetch('/api/transactions/batch-sync', {
@@ -41,22 +38,9 @@ export function useSyncOnReconnect() {
                 });
 
                 if (res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    const processed = new Set<string>(data.processedIds || pending.map((p) => p.id));
-                    
+                    // Successfully synced — remove all from IndexedDB
                     for (const record of pending) {
-                        const recId = record.clientMutationId || record.id;
-                        if (processed.has(recId) || processed.has(record.id)) {
-                            await deleteSyncedTransaction(record.id);
-                        } else if (record.retryCount >= MAX_RETRIES) {
-                            console.error(
-                                `[Sync] Abandoning transaction after ${MAX_RETRIES} retries:`,
-                                record.payload
-                            );
-                            await deleteSyncedTransaction(record.id);
-                        } else {
-                            await incrementRetryCount(record.id);
-                        }
+                        await deleteSyncedTransaction(record.id);
                     }
                     // Revalidate SWR caches to replace optimistic data with server data
                     await invalidateFinancialData();
@@ -92,5 +76,5 @@ export function useSyncOnReconnect() {
         return () => {
             window.removeEventListener('online', syncPending);
         };
-    }, [invalidateFinancialData]);
+    }, []);
 }

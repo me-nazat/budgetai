@@ -1,16 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '@/hooks/useCurrency';
-import { usePrivacy } from '@/contexts/PrivacyContext';
 import { CURRENCIES } from '@/lib/currency';
 import { generateMonthOptions } from '@/lib/dateUtils';
-import { useDashboard, useUser, useMarketNews, useExchangeRates, useLayout, useAccounts, DashboardData } from '@/hooks/useApi';
+import { useDashboard, useUser, useMarketNews, useExchangeRates, useLayout, DashboardData } from '@/hooks/useApi';
 import { useSWRConfig } from 'swr';
 import { useInvalidateFinancialData } from '@/hooks/useInvalidate';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
@@ -19,24 +18,13 @@ import React from 'react';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
 import { CATEGORIES_EXPENSE, CATEGORIES_INCOME, getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import TransactionDetailModal from '@/components/TransactionDetailModal';
-import AnimatedCounter from '@/components/ui/AnimatedCounter';
-import { FirstRunWizard } from '@/components/dashboard/FirstRunWizard';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 // Dynamically import charts and predictive cashflow to eliminate heavy main-thread blocking
 const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), { ssr: false });
 const Doughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), { ssr: false });
 const PredictiveCashflow = dynamic(() => import('@/components/charts/PredictiveCashflow'), { ssr: false });
-const SpendingChart = dynamic(() => import('@/components/charts/SpendingChart'), { ssr: false });
-const UpcomingBillsWidget = dynamic(() => import('@/components/UpcomingBillsWidget'), { ssr: false });
-const UnifiedHeatmapCard = dynamic(() => import('@/components/dashboard/UnifiedHeatmapCard'), { ssr: false });
-const UnifiedInsightsHub = dynamic(() => import('@/components/dashboard/UnifiedInsightsHub'), { ssr: false });
 import { TiltCard } from '@/components/ui/TiltCard';
-import { DashboardStatCards } from '@/components/dashboard/DashboardStatCards';
-import { DashboardLayoutModal } from '@/components/dashboard/DashboardLayoutModal';
-import { DashboardIntelHub } from '@/components/dashboard/DashboardIntelHub';
-import { HealthScoreWidget } from '@/components/dashboard/HealthScoreWidget';
-import { QuickAddTransactionModal } from '@/components/transactions/QuickAddTransactionModal';
-import { ReceiptScannerModal } from '@/components/transactions/ReceiptScannerModal';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -84,19 +72,29 @@ function DashboardSkeleton() {
     );
 }
 
+function HubSkeleton({ rows = 4 }: { rows?: number }) {
+    return (
+        <div className="space-y-3">
+            {Array.from({ length: rows }).map((_, index) => (
+                <div key={index} className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="mb-3 h-3 w-24 rounded-full shimmer-skeleton" />
+                    <div className="h-3 w-full rounded-full shimmer-skeleton" />
+                    <div className="mt-2 h-2.5 w-2/3 rounded-full shimmer-skeleton" />
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export default function DashboardPage() {
     const chartRef = useRef(null);
     const { currency, fmt } = useCurrency();
-    const { formatAmount } = usePrivacy();
     const router = useRouter();
     const { mutate } = useSWRConfig();
 
-    const currentCalendarMonth = useMemo(() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    }, []);
-
-    const [selectedMonth, setSelectedMonth] = useState<string>(currentCalendarMonth);
+    const [selectedMonth, setSelectedMonth] = useState<string>(
+        `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+    );
     const [selectedWeek, setSelectedWeek] = useState<string>('all');
 
     // SWR hooks — cached, stale-while-revalidate
@@ -105,19 +103,19 @@ export default function DashboardPage() {
     // Synchronously read from localStorage cache for instant render (no flash)
     const cacheKey = `/api/dashboard?month=${selectedMonth}&week=${selectedWeek}`;
     const localCacheData = (() => {
-        if (typeof window === 'undefined') return null;
-        try {
-            const raw = localStorage.getItem('wealth-ai-swr-cache-v3') || localStorage.getItem('wealth-ai-swr-cache-v1');
-            if (!raw) return null;
-            const parsed = JSON.parse(raw);
-            const entry = parsed[cacheKey];
-            if (entry && entry.value && entry.value.data) {
-                return entry.value.data as DashboardData;
-            }
-        } catch {
-            // Ignore parse errors
+      if (typeof window === 'undefined') return null;
+      try {
+        const raw = localStorage.getItem('wealth-ai-swr-cache-v1');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const entry = parsed[cacheKey];
+        if (entry && entry.value && entry.value.data) {
+          return entry.value.data as DashboardData;
         }
-        return null;
+      } catch {
+        // Ignore parse errors
+      }
+      return null;
     })();
 
     const data = swrData || localCacheData;
@@ -127,36 +125,7 @@ export default function DashboardPage() {
     const exchangeRates = useExchangeRates(currency);
     const { categories: customCats } = useCustomCategories('all');
 
-    // Quick Action Modals
-    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-    const [isReceiptScannerOpen, setIsReceiptScannerOpen] = useState(false);
-
-    // First-Run 60-Second Onboarding Wizard
-    const { accounts, mutate: mutateAccounts } = useAccounts();
-    const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const onboardingDone = localStorage.getItem('wealth-ai-onboarding-completed');
-            if (!onboardingDone && accounts && accounts.length === 0) {
-                setShowOnboardingWizard(true);
-            }
-        }
-    }, [accounts]);
-
-    const handleOnboardingComplete = () => {
-        setShowOnboardingWizard(false);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('wealth-ai-onboarding-completed', 'true');
-        }
-        mutateAccounts();
-        mutate('/api/accounts');
-        mutate(dashboardKey);
-        mutate('/api/budgets');
-        mutate('/api/settings');
-    };
-
-    // Layout Personalization
+    // Layout Personalization (Module 7)
     const { layout: layoutData, mutate: mutateLayout } = useLayout();
     const [isLayoutOpen, setIsLayoutOpen] = useState(false);
     const [layoutTab, setLayoutTab] = useState<'desktop' | 'mobile'>('desktop');
@@ -166,24 +135,21 @@ export default function DashboardPage() {
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const desktopLayout = layoutData?.dashboardLayout || [
-        'statCards',
-        'monthPacing',
-        'cashflowChart',
-        'accountsLiquidity',
-        'healthScore',
+        'net_worth',
+        'spending_trends',
+        'predictive',
+        'top_categories',
         'recent_activity',
-        'upcomingBills',
+        'budget_alerts',
         'intel_hub',
     ];
 
     const mobileLayout = layoutData?.mobileWidgetOrder || [
-        'statCards',
-        'monthPacing',
-        'accountsLiquidity',
-        'healthScore',
-        'recent_activity',
-        'upcomingBills',
+        'net_worth',
+        'quick_stats',
         'ai_insight',
+        'recent_activity',
+        'budget_alerts',
         'intel_hub',
     ];
 
@@ -270,32 +236,6 @@ export default function DashboardPage() {
         }
     };
 
-    // Month Navigation Helpers
-    const handlePrevMonth = () => {
-        const [y, m] = selectedMonth.split('-').map(Number);
-        const prevDate = new Date(y, m - 2, 1);
-        setSelectedMonth(`${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`);
-    };
-
-    const handleNextMonth = () => {
-        const [y, m] = selectedMonth.split('-').map(Number);
-        const nextDate = new Date(y, m, 1);
-        setSelectedMonth(`${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`);
-    };
-
-    const handleResetMonth = () => {
-        setSelectedMonth(currentCalendarMonth);
-        setSelectedWeek('all');
-    };
-
-    const formattedMonthLabel = useMemo(() => {
-        const [yearStr, monthStr] = selectedMonth.split('-');
-        const d = new Date(Number(yearStr), Number(monthStr) - 1, 1);
-        return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    }, [selectedMonth]);
-
-    const isCurrentMonth = selectedMonth === currentCalendarMonth;
-
     const [selectedDetailTx, setSelectedDetailTx] = useState<any | null>(null);
     const [editingTx, setEditingTx] = useState<EditableDashboardTransaction | null>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
@@ -304,7 +244,8 @@ export default function DashboardPage() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [mounted, setMounted] = useState(false);
 
-    // Intelligence Hub
+    // Intelligence Hub — default to 'news' tab (Task 2)
+    const [chartTimeframe, setChartTimeframe] = useState<'30D' | '90D' | 'YTD'>('30D');
     const invalidateFinancialData = useInvalidateFinancialData();
     const [activeTab, setActiveTab] = useState<'currency' | 'news' | 'calculator'>('news');
     const [calcAmount, setCalcAmount] = useState<number>(500);
@@ -315,14 +256,27 @@ export default function DashboardPage() {
         setTimeout(() => setMounted(true), 0);
     }, []);
 
+    // Generate last 12 months for the dropdown without 31st overflow bugs
+    const monthOptions = React.useMemo(() => generateMonthOptions(12), []);
+
+    const weekOptions = [
+        { value: 'all', label: 'Full Month' },
+        { value: '1', label: 'Week 1 (1st-7th)' },
+        { value: '2', label: 'Week 2 (8th-14th)' },
+        { value: '3', label: 'Week 3 (15th-21st)' },
+        { value: '4', label: 'Week 4 (22nd-End)' },
+    ];
+
+
+
     const userName = user?.name || '';
     const sym = CURRENCIES[currency].symbol;
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : '#e5e7eb';
-    const tickColor = isDark ? '#94a3b8' : '#6b7280';
+    const gridColor = isDark ? '#21262d' : '#e5e7eb';
+    const tickColor = isDark ? '#8b949e' : '#6b7280';
 
-    // Memoize heavy chart data
-    const barData = useMemo(() => data ? ({
+    // Memoize heavy chart data objects to prevent unnecessary React re-renders when other states change
+    const barData = React.useMemo(() => data ? ({
         labels: data.dailySpending.map((d: any) => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
         datasets: [
             { label: 'Expenses', data: data.dailySpending.map((d: any) => d.expenses), backgroundColor: isDark ? 'rgba(19, 109, 236, 0.6)' : 'rgba(19, 109, 236, 0.7)', borderRadius: 6, borderSkipped: false as const },
@@ -330,7 +284,7 @@ export default function DashboardPage() {
         ],
     }) : null, [data, isDark]);
 
-    const doughnutData = useMemo(() => data ? ({
+    const doughnutData = React.useMemo(() => data ? ({
         labels: data.categorySpending.map((c: any) => c.category.charAt(0).toUpperCase() + c.category.slice(1).toLowerCase()),
         datasets: [{
             data: data.categorySpending.map((c: any) => c.total),
@@ -343,11 +297,19 @@ export default function DashboardPage() {
         }],
     }) : null, [data, customCats]);
 
+    // Only show full spinner on very first load (no cached data at all)
     if (!data && isLoading) {
         return <DashboardSkeleton />;
     }
 
     if (!data) return <div className="p-8 text-gray-500">Failed to load dashboard</div>;
+
+    const stats = [
+        { label: 'Total Balance', value: fmt(data.balance), change: data.earnings.change, icon: 'account_balance', color: 'text-primary', gradient: 'stat-gradient-blue' },
+        { label: 'Monthly Earnings', value: fmt(data.earnings.current), change: data.earnings.change, icon: 'payments', color: 'text-emerald-500', gradient: 'stat-gradient-emerald' },
+        { label: 'Monthly Expenses', value: fmt(data.expenses.current), change: data.expenses.change, icon: 'shopping_cart', color: 'text-orange-500', gradient: 'stat-gradient-orange', negative: true },
+        { label: 'Net Savings', value: fmt(data.netSavings), change: data.netSavings > 0 ? 8.1 : -5, icon: 'savings', color: 'text-blue-500', gradient: 'stat-gradient-blue' },
+    ];
 
     const greeting = () => {
         const h = new Date().getHours();
@@ -374,6 +336,7 @@ export default function DashboardPage() {
         setEditSubmitting(true);
 
         try {
+            // Optimistic update
             mutate(
                 dashboardKey,
                 (current: any) => {
@@ -427,7 +390,72 @@ export default function DashboardPage() {
             await finishMutation();
         } catch (error) {
             console.error('Dashboard edit error:', error);
-            mutate(dashboardKey);
+            mutate(dashboardKey); // Rollback
+        } finally {
+            setEditSubmitting(false);
+        }
+    };
+
+    const submitDashboardDuplicate = async (tx: DashboardTransaction) => {
+        if (editSubmitting) return;
+        setEditSubmitting(true);
+        try {
+            // Optimistic update
+            mutate(
+                dashboardKey,
+                (current: any) => {
+                    if (!current) return current;
+                    const tempId = Date.now();
+                    const newTx = {
+                        id: tempId,
+                        type: tx.type,
+                        amount: tx.amount,
+                        category: tx.category,
+                        description: tx.description || tx.category,
+                        date: new Date().toISOString().split('T')[0],
+                    };
+                    const updatedTransactions = [newTx, ...current.recentTransactions];
+                    
+                    let newExpenses = current.expenses.current;
+                    let newEarnings = current.earnings.current;
+                    if (tx.type === 'expense') {
+                        newExpenses += tx.amount;
+                    } else {
+                        newEarnings += tx.amount;
+                    }
+                    const newBalance = current.balance + (tx.type === 'earning' ? tx.amount : -tx.amount);
+                    const newNetSavings = newEarnings - newExpenses;
+
+                    return {
+                        ...current,
+                        recentTransactions: updatedTransactions,
+                        expenses: { ...current.expenses, current: newExpenses },
+                        earnings: { ...current.earnings, current: newEarnings },
+                        netSavings: newNetSavings,
+                        balance: newBalance
+                    };
+                },
+                { revalidate: false }
+            );
+
+            const response = await fetch('/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: tx.type,
+                    amount: tx.amount,
+                    category: tx.category,
+                    description: tx.description || tx.category,
+                    date: new Date().toISOString().split('T')[0],
+                }),
+            });
+
+            if (!response.ok) throw new Error('Dashboard transaction duplicate failed');
+
+            await finishMutation();
+        } catch (error) {
+            console.error('Dashboard duplicate error:', error);
+            mutate(dashboardKey); // Rollback
         } finally {
             setEditSubmitting(false);
         }
@@ -439,6 +467,7 @@ export default function DashboardPage() {
         setDeleteSubmitting(true);
 
         try {
+            // Optimistic update
             mutate(
                 dashboardKey,
                 (current: any) => {
@@ -477,24 +506,15 @@ export default function DashboardPage() {
             await finishMutation();
         } catch (error) {
             console.error('Dashboard delete error:', error);
-            mutate(dashboardKey);
+            mutate(dashboardKey); // Rollback
         } finally {
             setDeleteSubmitting(false);
         }
     };
 
-    // Section Visibility Helpers
-    const isDesktopSectionVisible = (key: string) => {
-        if (key === 'statCards') return desktopLayout.includes('statCards') || desktopLayout.includes('net_worth');
-        if (key === 'monthPacing') return desktopLayout.includes('monthPacing') || desktopLayout.includes('budget_alerts');
-        if (key === 'cashflowChart') return desktopLayout.includes('cashflowChart') || desktopLayout.includes('spending_trends') || desktopLayout.includes('predictive');
-        if (key === 'accountsLiquidity') return desktopLayout.includes('accountsLiquidity');
-        if (key === 'healthScore') return desktopLayout.includes('healthScore');
-        if (key === 'upcomingBills') return desktopLayout.includes('upcomingBills');
-        if (key === 'recent_activity') return desktopLayout.includes('recent_activity');
-        if (key === 'intel_hub') return desktopLayout.includes('intel_hub');
-        return true;
-    };
+    const renderActionMenu = (tx: DashboardTransaction) => (
+        <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 ml-1 text-sm">chevron_right</span>
+    );
 
     return (
         <div className="p-4 lg:p-8 max-w-[1600px] mx-auto page-enter">
@@ -507,6 +527,7 @@ export default function DashboardPage() {
                 </div>
             )}
 
+            {/* Subtle revalidation indicator — replaces full-screen spinner */}
             {isValidating && (
                 <div className="fixed top-0 left-0 lg:left-64 right-0 z-50 h-0.5">
                     <div className="h-full bg-primary/60 animate-pulse rounded-full" />
@@ -514,205 +535,152 @@ export default function DashboardPage() {
             )}
 
             {/* ═══════════════════════════════════════════════
-               MOBILE VIEW (hidden on desktop)
+               MOBILE HOME VIEW
                ═══════════════════════════════════════════════ */}
             <div className="lg:hidden">
-                {/* Mobile Header with Period Switcher and Quick Actions */}
-                <div className="flex items-center justify-between mb-4">
+                {/* Mobile Greeting Header */}
+                <div className="flex items-center justify-between mb-6">
                     <div>
-                        <p className="text-xs text-gray-500 dark:text-text-muted">{greeting()}</p>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                            {userName || 'Welcome'}
+                        <p className="text-sm text-gray-500 dark:text-text-muted">{greeting()}</p>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            {userName || 'Welcome'} 👋
                         </h2>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <Link
-                            href="/my-month"
-                            className="w-9 h-9 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shadow-sm active:scale-95 transition-transform"
-                            title="My Month Command Center"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">calendar_month</span>
-                        </Link>
-                        <button
-                            onClick={() => setIsQuickAddOpen(true)}
-                            className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-md active:scale-95 transition-transform"
-                            title="Add Transaction"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">add</span>
-                        </button>
-                        <button
-                            onClick={() => setIsReceiptScannerOpen(true)}
-                            className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 flex items-center justify-center shadow-sm active:scale-95 transition-transform"
-                            title="Scan Receipt"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">document_scanner</span>
-                        </button>
-                        <button
-                            onClick={() => {
-                                if (layoutData) {
-                                    setTempDesktopLayout(layoutData.dashboardLayout);
-                                    setTempMobileLayout(layoutData.mobileWidgetOrder);
-                                }
-                                setLayoutTab('mobile');
-                                setIsLayoutOpen(true);
-                            }}
-                            className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 flex items-center justify-center shadow-sm active:scale-95 transition-transform"
-                            title="Customize Layout"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">dashboard_customize</span>
-                        </button>
+                    <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold text-base shadow-lg shadow-primary/25">
+                        {userName ? userName.charAt(0).toUpperCase() : 'U'}
                     </div>
                 </div>
 
-                {/* Mobile Month Switcher Bar */}
-                <div className="mb-4 flex items-center justify-between bg-white dark:bg-surface-dark border border-gray-200/80 dark:border-white/10 rounded-2xl p-2 shadow-sm">
+                <div className="mb-5 grid grid-cols-3 gap-2">
+                    <label className="flex items-center gap-1.5 rounded-2xl border border-gray-200/70 bg-white/80 px-2 py-2.5 text-[11px] font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-[15px] text-primary">calendar_month</span>
+                        <select
+                            value={selectedMonth}
+                            onChange={e => setSelectedMonth(e.target.value)}
+                            className="min-w-0 flex-1 bg-transparent text-[11px] font-bold outline-none"
+                        >
+                            {monthOptions.map(m => (
+                                <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label.split(' ')[0]}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 rounded-2xl border border-gray-200/70 bg-white/80 px-2 py-2.5 text-[11px] font-semibold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-[15px] text-primary">view_week</span>
+                        <select
+                            value={selectedWeek}
+                            onChange={e => setSelectedWeek(e.target.value)}
+                            className="min-w-0 flex-1 bg-transparent text-[11px] font-bold outline-none"
+                        >
+                            {weekOptions.map(w => (
+                                <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label.replace(' (1st-7th)', '').replace(' (8th-14th)', '').replace(' (15th-21st)', '').replace(' (22nd-End)', '')}</option>
+                            ))}
+                        </select>
+                    </label>
                     <button
-                        onClick={handlePrevMonth}
-                        className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                        title="Previous Month"
+                        onClick={() => {
+                            if (layoutData) {
+                                setTempDesktopLayout(layoutData.dashboardLayout);
+                                setTempMobileLayout(layoutData.mobileWidgetOrder);
+                            }
+                            setLayoutTab('mobile');
+                            setIsLayoutOpen(true);
+                        }}
+                        className="flex items-center justify-center gap-1 rounded-2xl border border-gray-200/70 bg-white/80 px-2 py-2.5 text-[11px] font-bold text-gray-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/80 dark:text-gray-300"
                     >
-                        <span className="material-symbols-outlined text-base leading-none">chevron_left</span>
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-900 dark:text-white">
-                            {formattedMonthLabel}
-                        </span>
-                        {!isCurrentMonth && (
-                            <button
-                                onClick={handleResetMonth}
-                                className="px-2 py-0.5 text-[10px] font-bold text-primary bg-primary/10 rounded-full hover:bg-primary/20 transition-colors"
-                            >
-                                Today
-                            </button>
-                        )}
-                    </div>
-                    <button
-                        onClick={handleNextMonth}
-                        className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                        title="Next Month"
-                    >
-                        <span className="material-symbols-outlined text-base leading-none">chevron_right</span>
+                        <span className="material-symbols-outlined text-[16px] text-primary">dashboard_customize</span>
+                        <span>Layout</span>
                     </button>
                 </div>
 
                 {/* Dynamic Mobile Layout */}
                 <div className="flex flex-col gap-5">
                     {mobileLayout.map((widgetId) => {
-                        if (widgetId === 'statCards' || widgetId === 'net_worth') {
-                            return <DashboardStatCards key={widgetId} data={data} fmt={fmt} />;
-                        }
-
-                        if (widgetId === 'monthPacing' && data.spendingPace) {
+                        if (widgetId === 'quick_stats') {
                             return (
-                                <div key={widgetId} className="glass-panel p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white dark:bg-surface-dark shadow-sm">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="material-symbols-outlined text-primary text-base">speed</span>
-                                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Month Burn Rate</h3>
-                                        </div>
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                            data.spendingPace.budgetConsumedPercent <= data.spendingPace.monthElapsedPercent
-                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                                        }`}>
-                                            {data.spendingPace.budgetConsumedPercent <= data.spendingPace.monthElapsedPercent ? 'On Track' : 'High Burn'}
-                                        </span>
+                                <div key={widgetId} className="flex overflow-x-auto custom-scrollbar gap-3 pb-2 snap-x stagger-children">
+                                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out both' }}>
+                                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-emerald-500 text-[18px]">savings</span></div>
+                                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Savings Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%</p></div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <div className="flex justify-between text-[11px] font-semibold mb-1 text-gray-600 dark:text-gray-400">
-                                                <span>Calendar Elapsed</span>
-                                                <span className="tabular-nums font-mono">{data.spendingPace.monthElapsedPercent}% ({data.spendingPace.dayOfMonth}/{data.spendingPace.daysInMonth}d)</span>
-                                            </div>
-                                            <div className="h-2 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
-                                                <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${Math.min(100, data.spendingPace.monthElapsedPercent)}%` }} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="flex justify-between text-[11px] font-semibold mb-1 text-gray-600 dark:text-gray-400">
-                                                <span>Budget Consumed</span>
-                                                <span className="tabular-nums font-mono">{data.spendingPace.budgetConsumedPercent}% ({formatAmount(data.spendingPace.currentMonthSpendToDate, fmt(data.spendingPace.currentMonthSpendToDate))})</span>
-                                            </div>
-                                            <div className="h-2 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
-                                                <div 
-                                                    className={`h-full rounded-full transition-all duration-700 ${
-                                                        data.spendingPace.budgetConsumedPercent > data.spendingPace.monthElapsedPercent ? 'bg-amber-500' : 'bg-emerald-500'
-                                                    }`} 
-                                                    style={{ width: `${Math.min(100, data.spendingPace.budgetConsumedPercent)}%` }} 
-                                                />
-                                            </div>
-                                        </div>
+                                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.1s both' }}>
+                                        <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-rose-500 text-[18px]">speed</span></div>
+                                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Burn Rate</p><p className="text-sm font-bold text-gray-900 dark:text-white">{sym}{(data.expenses.current / Math.max(1, new Date().getDate())).toFixed(0)}/d</p></div>
+                                    </div>
+                                    <div className="snap-start shrink-0 glass-panel p-3 rounded-2xl flex items-center gap-3 w-[150px]" style={{ animation: 'slideUp 0.4s ease-out 0.2s both' }}>
+                                        <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center icon-glow"><span className="material-symbols-outlined text-amber-500 text-[18px]">warning</span></div>
+                                        <div><p className="text-[10px] text-gray-500 dark:text-text-muted uppercase font-bold tracking-wider">Active Alerts</p><p className="text-sm font-bold text-gray-900 dark:text-white">{data.budgetAlerts.filter(b => b.percentage >= 80).length}</p></div>
                                     </div>
                                 </div>
                             );
                         }
 
-                        if (widgetId === 'accountsLiquidity' && data.accountsSummary) {
+                        if (widgetId === 'net_worth') {
                             return (
-                                <div key={widgetId} className="glass-panel p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white dark:bg-surface-dark shadow-sm">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="material-symbols-outlined text-primary text-base">account_balance_wallet</span>
-                                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Accounts & Liquidity</h3>
-                                        </div>
-                                        <Link href="/accounts" className="text-[11px] font-bold text-primary hover:underline">
-                                            View all
-                                        </Link>
-                                    </div>
-                                    <div className="p-2.5 rounded-xl bg-gray-50/80 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5 mb-3">
-                                        <div className="flex justify-between text-[11px] font-semibold mb-1">
-                                            <span className="text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">Assets: {formatAmount(data.accountsSummary.totalAssets, fmt(data.accountsSummary.totalAssets))}</span>
-                                            <span className="text-rose-600 dark:text-rose-400 tabular-nums font-mono">Liab: {formatAmount(data.accountsSummary.totalLiabilities, fmt(data.accountsSummary.totalLiabilities))}</span>
-                                        </div>
-                                        <div className="h-2 rounded-full bg-gray-200/80 dark:bg-white/10 overflow-hidden flex">
-                                            <div 
-                                                className="bg-emerald-500 h-full transition-all duration-700" 
-                                                style={{ width: `${(data.accountsSummary.totalAssets / Math.max(1, data.accountsSummary.totalAssets + data.accountsSummary.totalLiabilities)) * 100}%` }} 
-                                            />
-                                            <div 
-                                                className="bg-rose-500 h-full transition-all duration-700" 
-                                                style={{ width: `${(data.accountsSummary.totalLiabilities / Math.max(1, data.accountsSummary.totalAssets + data.accountsSummary.totalLiabilities)) * 100}%` }} 
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {data.accountsSummary.accounts.slice(0, 3).map(acc => (
-                                            <div key={acc.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-white/[0.02] text-xs">
-                                                <span className="font-semibold text-gray-800 dark:text-gray-200 truncate">{acc.name}</span>
-                                                <span className={`font-mono font-bold ${acc.isLiability ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
-                                                    {formatAmount(acc.balance, fmt(acc.balance))}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        }
+                                <div key={widgetId} className="relative rounded-[2rem] p-6 overflow-hidden shadow-2xl shadow-primary/20 dark:shadow-primary/10 breathe hover:scale-[1.02] transition-transform duration-500">
+                                    {/* Animated background layers */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 dark:from-primary/80 dark:via-blue-800/80 dark:to-indigo-900/80" />
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" style={{ animationDuration: '4s' }} />
+                                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3 animate-pulse" style={{ animationDuration: '5s', animationDirection: 'reverse' }} />
 
-                        if (widgetId === 'healthScore') {
-                            return (
-                                <div key={widgetId}>
-                                    <HealthScoreWidget compact={true} />
+                                    {/* Glass Overlay */}
+                                    <div className="absolute inset-0 bg-white/5 dark:bg-black/10 backdrop-blur-[2px]" />
+
+                                    {/* Content */}
+                                    <div className="relative z-10">
+                                        <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Total Balance</p>
+                                        <h3 className="text-4xl font-bold text-white tracking-tight mb-6 number-appear flex items-baseline gap-1">
+                                            <span className="text-2xl text-white/70">{sym}</span>
+                                            <AnimatedCounter value={data.balance} delay={0.1} />
+                                        </h3>
+
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-5 h-5 rounded-full bg-emerald-400/20 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-emerald-300 text-[12px] font-bold">arrow_downward</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Income</span>
+                                                </div>
+                                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
+                                                    <span className="text-xs text-white/70">{sym}</span>
+                                                    <AnimatedCounter value={data.earnings.current} delay={0.2} />
+                                                </p>
+                                            </div>
+                                            <div className="flex-1 bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-3 shadow-inner">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-white text-[12px] font-bold">arrow_upward</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Expense</span>
+                                                </div>
+                                                <p className="text-base font-bold text-white flex items-baseline gap-0.5">
+                                                    <span className="text-xs text-white/70">{sym}</span>
+                                                    <AnimatedCounter value={data.expenses.current} delay={0.3} />
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             );
                         }
 
                         if (widgetId === 'ai_insight') {
                             return (
-                                <div key={widgetId} className="relative glass-panel rounded-2xl p-5 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#12182B] dark:to-emerald-900/10">
+                                <div key={widgetId} className="relative glass-panel rounded-2xl p-5 overflow-hidden border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#161b22] dark:to-emerald-900/10">
                                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgb(16,185,129)]" />
                                     <div className="flex items-start gap-3">
                                         <div className="relative shrink-0 mt-0.5">
-                                            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
-                                                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                                            <div className="absolute inset-0 bg-emerald-400 blur-md rounded-full animate-pulse opacity-50" style={{ animationDuration: '3s' }} />
+                                            <div className="relative w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
+                                                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl animate-bounce-in" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
                                             </div>
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5">AI Insight</p>
                                             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
                                                 {data.netSavings > 0
-                                                    ? `Great job! You've saved ${formatAmount(data.netSavings, fmt(data.netSavings))} this period. Your safe daily burn allowance is ${formatAmount(data.safeToSpend?.dailySafeAllowance || 0, fmt(data.safeToSpend?.dailySafeAllowance || 0))}/day.`
-                                                    : `Heads up — monthly expenses exceed income. Safe-to-spend is strictly capped at liquid reserves minus committed bills.`}
+                                                    ? `Great job! You've saved ${fmt(data.netSavings)} this period. Your savings rate is ${data.earnings.current > 0 ? ((data.netSavings / data.earnings.current) * 100).toFixed(0) : 0}%.`
+                                                    : `Heads up — you're spending more than you earn this period. Consider reviewing your top expense categories.`}
                                             </p>
                                         </div>
                                     </div>
@@ -732,28 +700,29 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="space-y-3">
                                         {data.recentTransactions.length === 0 ? (
-                                            <div className="bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/10 rounded-2xl p-8 text-center shadow-inner">
-                                                <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <div className="bg-gray-50 dark:bg-[#161b22] border border-gray-100 dark:border-[#30363d] rounded-2xl p-8 text-center shadow-inner">
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-[#21262d] rounded-full flex items-center justify-center mx-auto mb-3">
                                                     <span className="material-symbols-outlined text-2xl text-gray-400 dark:text-gray-500">receipt_long</span>
                                                 </div>
                                                 <p className="text-sm font-medium text-gray-500 dark:text-text-muted">No transactions yet</p>
                                             </div>
-                                        ) : data.recentTransactions.slice(0, 5).map(t => (
-                                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible glass-panel rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] hover:shadow-md cursor-pointer group">
-                                                <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
-                                                    <span className={`material-symbols-outlined text-lg ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        ) : data.recentTransactions.slice(0, 7).map(t => (
+                                            <div key={t.id} onClick={() => setSelectedDetailTx(t)} className="relative overflow-visible glass-panel rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] active:bg-gray-50/80 dark:active:bg-surface-hover/80 hover:shadow-md hover:border-primary/30 cursor-pointer group category-accent" style={{ borderLeftColor: getCategoryHex(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats) }}>
+                                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-transparent via-primary/30 dark:via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
+                                                    <span className={`material-symbols-outlined text-xl ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
                                                         {getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}
                                                     </span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
+                                                    <p className="text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">{t.description || t.category}</p>
                                                     <p className="text-xs font-medium text-gray-400 dark:text-text-muted">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                                                 </div>
                                                 <div className="ml-auto flex shrink-0 items-center gap-1">
-                                                    <p className={`text-sm font-bold tabular-nums font-mono ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
-                                                        {t.type === 'expense' ? '−' : '+'}{formatAmount(t.amount, fmt(t.amount))}
+                                                    <p className={`text-base font-bold ${t.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
+                                                        {t.type === 'expense' ? '−' : '+'}{fmt(t.amount)}
                                                     </p>
-                                                    <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 text-sm">chevron_right</span>
+                                                    {renderActionMenu(t)}
                                                 </div>
                                             </div>
                                         ))}
@@ -762,10 +731,37 @@ export default function DashboardPage() {
                             );
                         }
 
-                        if (widgetId === 'upcomingBills') {
+                        if (widgetId === 'budget_alerts') {
                             return (
-                                <div key={widgetId}>
-                                    <UpcomingBillsWidget />
+                                <div key={widgetId} className="glass-panel p-5 rounded-2xl">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-amber-500">warning</span>
+                                            Budget Alerts
+                                        </h3>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {data.budgetAlerts.length === 0 ? (
+                                            <p className="text-xs text-gray-500 text-center py-4">No active budget alerts</p>
+                                        ) : (
+                                            data.budgetAlerts.map(b => (
+                                                <div key={b.category} className="space-y-1">
+                                                    <div className="flex justify-between text-xs font-semibold">
+                                                        <span className="text-gray-700 dark:text-gray-300">{b.category}</span>
+                                                        <span className={b.percentage >= 100 ? 'text-rose-500' : b.percentage >= 80 ? 'text-amber-500' : 'text-gray-500'}>
+                                                            {b.percentage.toFixed(0)}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-[#21262d] overflow-hidden">
+                                                        <div 
+                                                            className={`h-full rounded-full transition-all duration-500 ${b.percentage >= 100 ? 'bg-rose-500' : b.percentage >= 80 ? 'bg-amber-500' : 'bg-blue-500'}`} 
+                                                            style={{ width: `${Math.min(100, b.percentage)}%` }} 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             );
                         }
@@ -781,7 +777,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
                                         {marketNews.slice(0, 3).map(news => (
-                                            <div key={news.id} className="block p-3 rounded-xl border border-gray-100 dark:border-white/10 bg-gray-50/20 dark:bg-white/[0.02]">
+                                            <div key={news.id} className="block p-3 rounded-xl border border-gray-100 dark:border-[#30363d] bg-gray-50/20 dark:bg-[#161b22]/20">
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-150 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400">
                                                         {news.sentiment}
@@ -805,441 +801,334 @@ export default function DashboardPage() {
                DESKTOP VIEW (hidden on mobile)
                ═══════════════════════════════════════════════ */}
             <div className="hidden lg:block">
-                {/* Unified Institutional Command Header */}
+                {/* Header */}
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <div>
                         <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                            {greeting()}{userName ? `, ${userName}` : ''}
+                            {greeting()}{userName ? `, ${userName}` : ''} 👋
                         </h2>
-                        <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Unified financial command center and cashflow runway.</p>
+                        <p className="text-gray-500 dark:text-text-muted text-sm mt-1">Here&apos;s what&apos;s happening with your money.</p>
                     </div>
-
-                    <div className="flex items-center gap-3 flex-wrap">
-                        {/* Month/Period Switcher */}
-                        <div className="flex items-center bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/10 rounded-xl p-1 shadow-sm">
-                            <button
-                                onClick={handlePrevMonth}
-                                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                                title="Previous Month"
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#30363d]">
+                            <span className="material-symbols-outlined text-base">calendar_month</span>
+                            <select
+                                value={selectedMonth}
+                                onChange={e => setSelectedMonth(e.target.value)}
+                                className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
                             >
-                                <span className="material-symbols-outlined text-base leading-none">chevron_left</span>
-                            </button>
-                            <span className="px-3 text-xs font-bold text-gray-800 dark:text-gray-100 min-w-[130px] text-center">
-                                {formattedMonthLabel}
-                            </span>
-                            <button
-                                onClick={handleNextMonth}
-                                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                                title="Next Month"
-                            >
-                                <span className="material-symbols-outlined text-base leading-none">chevron_right</span>
-                            </button>
-                            {!isCurrentMonth && (
-                                <button
-                                    onClick={handleResetMonth}
-                                    className="ml-1 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary/10 rounded-md transition-colors"
-                                    title="Reset to current month"
-                                >
-                                    Today
-                                </button>
-                            )}
+                                {monthOptions.map(m => (
+                                    <option key={m.value} value={m.value} className="bg-white dark:bg-surface-dark">{m.label}</option>
+                                ))}
+                            </select>
                         </div>
-
-                        {/* Quick Actions */}
-                        <div className="flex items-center gap-2">
-                            <Link
-                                href="/my-month"
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all shadow-sm active:scale-95"
-                                title="Open My Month Command Center"
+                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#30363d]">
+                            <span className="material-symbols-outlined text-base">view_week</span>
+                            <select
+                                value={selectedWeek}
+                                onChange={e => setSelectedWeek(e.target.value)}
+                                className="bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
                             >
-                                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                                <span>My Month</span>
-                            </Link>
-                            <button
-                                onClick={() => setIsQuickAddOpen(true)}
-                                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">add</span>
-                                <span>Add Transaction</span>
-                            </button>
-                            <button
-                                onClick={() => setIsReceiptScannerOpen(true)}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark text-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">document_scanner</span>
-                                <span>Scan Receipt</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (layoutData) {
-                                        setTempDesktopLayout(layoutData.dashboardLayout);
-                                        setTempMobileLayout(layoutData.mobileWidgetOrder);
-                                    }
-                                    setLayoutTab('desktop');
-                                    setIsLayoutOpen(true);
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark text-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">dashboard_customize</span>
-                                <span>Customize</span>
-                            </button>
+                                {weekOptions.map(w => (
+                                    <option key={w.value} value={w.value} className="bg-white dark:bg-surface-dark">{w.label}</option>
+                                ))}
+                            </select>
                         </div>
+                        <button
+                            onClick={() => {
+                                if (layoutData) {
+                                    setTempDesktopLayout(layoutData.dashboardLayout);
+                                    setTempMobileLayout(layoutData.mobileWidgetOrder);
+                                }
+                                setLayoutTab('desktop');
+                                setIsLayoutOpen(true);
+                            }}
+                            className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-text-muted bg-gray-100 dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#30363d] hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">dashboard_customize</span>
+                            <span>Customize</span>
+                        </button>
                     </div>
                 </header>
 
-                {/* Actionable Briefing Strip (Overdue Bills, 85%+ Budget Envelopes, Micro-Savings Sweep) */}
-                <UnifiedInsightsHub currencySymbol={sym} budgetAlerts={data.budgetAlerts} />
 
-                {/* KPI Stat Cards (Card 1: Safe-to-Spend, Card 2: Net Worth, Card 3: Monthly Spend & Velocity, Card 4: Net Cashflow & Savings Rate) */}
-                {isDesktopSectionVisible('statCards') && (
-                    <DashboardStatCards data={data} fmt={fmt} />
-                )}
-
-                {/* Month Pacing & Budget Envelopes Section */}
-                {isDesktopSectionVisible('monthPacing') && data.spendingPace && (
-                    <div className="card-glass relative overflow-hidden p-6 lg:p-7 rounded-3xl mb-8 shadow-xl backdrop-blur-2xl">
-                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary text-xl">speed</span>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Monthly Burn Rate & Pacing</h3>
-                                </div>
-                                <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">
-                                    Day {data.spendingPace.dayOfMonth} of {data.spendingPace.daysInMonth} ({data.spendingPace.monthElapsedPercent}% elapsed) • Extrapolated month-end spend: <span className="font-bold text-gray-900 dark:text-white tabular-nums font-mono">{formatAmount(data.spendingPace.projectedMonthEndSpend, fmt(data.spendingPace.projectedMonthEndSpend))}</span>
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                {data.spendingPace.budgetConsumedPercent <= data.spendingPace.monthElapsedPercent ? (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                        On Track ({Math.abs(Math.round((data.spendingPace.monthElapsedPercent - data.spendingPace.budgetConsumedPercent) * 10) / 10)}% under calendar pace)
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8 stagger-children">
+                    {stats.map((s, i) => (
+                        <TiltCard key={i} className={`glass-panel ${s.gradient} p-5 lg:p-6 rounded-3xl relative overflow-hidden group breathe`}
+                            style={{ animationDelay: `${i * 0.08}s`, animation: `slideUp 0.5s ease-out ${i * 0.08}s both` }}>
+                            <div className="flex flex-col gap-1 relative z-10">
+                                <p className="text-gray-500 dark:text-text-muted text-xs font-semibold uppercase tracking-wider">{s.label}</p>
+                                <h3 className="text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-2xl lg:text-3xl font-bold tracking-tight number-appear">{s.value}</h3>
+                                <div className="flex items-center gap-1.5 mt-2">
+                                    <span className={`${s.change >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'} text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1`}>
+                                        <span className="material-symbols-outlined text-sm">{s.change >= 0 ? 'trending_up' : 'trending_down'}</span>
+                                        {s.change >= 0 ? '+' : ''}{s.change.toFixed(1)}%
                                     </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                        Accelerated Burn ({Math.round((data.spendingPace.budgetConsumedPercent - data.spendingPace.monthElapsedPercent) * 10) / 10}% over calendar pace)
-                                    </span>
-                                )}
-                                <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-lg tabular-nums font-mono border ${
-                                    data.spendingPace.paceDeltaPercent <= 0 
-                                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20' 
-                                        : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'
-                                }`}>
-                                    {data.spendingPace.paceDeltaPercent > 0 ? '+' : ''}{data.spendingPace.paceDeltaPercent}% vs same day last month
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Dual Progress: Month Elapsed vs Budget Consumed */}
-                        <div className="space-y-4 mb-6">
-                            <div>
-                                <div className="flex justify-between text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full bg-primary" />
-                                        Calendar Month Elapsed
-                                    </span>
-                                    <span className="tabular-nums font-mono text-gray-500">{data.spendingPace.dayOfMonth} / {data.spendingPace.daysInMonth} days ({data.spendingPace.monthElapsedPercent}%)</span>
-                                </div>
-                                <div className="h-2.5 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
-                                    <div 
-                                        className="h-full rounded-full bg-gradient-to-r from-primary to-blue-400 transition-all duration-700 shadow-sm" 
-                                        style={{ width: `${Math.min(100, data.spendingPace.monthElapsedPercent)}%` }} 
-                                    />
+                                    <span className="text-gray-400 dark:text-text-muted text-xs">vs prev period</span>
                                 </div>
                             </div>
-
-                            <div>
-                                <div className="flex justify-between text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className={`w-2 h-2 rounded-full ${data.spendingPace.budgetConsumedPercent > data.spendingPace.monthElapsedPercent ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                                        Total Budget Consumed
-                                    </span>
-                                    <span className="tabular-nums font-mono text-gray-500">
-                                        {data.spendingPace.budgetConsumedPercent}% ({formatAmount(data.spendingPace.currentMonthSpendToDate, fmt(data.spendingPace.currentMonthSpendToDate))})
-                                    </span>
-                                </div>
-                                <div className="h-2.5 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
-                                    <div 
-                                        className={`h-full rounded-full transition-all duration-700 shadow-sm ${
-                                            data.spendingPace.budgetConsumedPercent >= 100 
-                                                ? 'bg-gradient-to-r from-rose-500 to-rose-600' 
-                                                : data.spendingPace.budgetConsumedPercent > data.spendingPace.monthElapsedPercent 
-                                                    ? 'bg-gradient-to-r from-amber-400 to-amber-500' 
-                                                    : 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                                        }`} 
-                                        style={{ width: `${Math.min(100, data.spendingPace.budgetConsumedPercent)}%` }} 
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Category Budget Envelopes Progress Strip */}
-                        {data.budgetAlerts && data.budgetAlerts.length > 0 && (
-                            <div className="pt-4 border-t border-gray-200/70 dark:border-white/10">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-xs font-bold text-gray-500 dark:text-text-muted uppercase tracking-wider">Top Category Envelopes</h4>
-                                    <Link href="/budgets" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                                        Manage Envelopes <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                                    </Link>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                    {data.budgetAlerts.slice(0, 4).map(b => (
-                                        <div key={b.category} className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-3.5 space-y-2 backdrop-blur-md">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{b.category}</span>
-                                                <span className={`text-[11px] font-bold tabular-nums font-mono ${
-                                                    b.percentage >= 100 ? 'text-rose-500' : b.percentage >= 80 ? 'text-amber-500' : 'text-emerald-500'
-                                                }`}>
-                                                    {b.percentage.toFixed(0)}%
-                                                </span>
-                                            </div>
-                                            <div className="h-1.5 rounded-full bg-gray-200/80 dark:bg-white/10 overflow-hidden">
-                                                <div 
-                                                    className={`h-full rounded-full transition-all duration-500 ${
-                                                        b.percentage >= 100 ? 'bg-rose-500' : b.percentage >= 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                    }`} 
-                                                    style={{ width: `${Math.min(100, b.percentage)}%` }} 
-                                                />
-                                            </div>
-                                            <div className="flex justify-between text-[10px] text-gray-400 dark:text-text-muted tabular-nums font-mono">
-                                                <span>{formatAmount(b.spent, fmt(b.spent))} spent</span>
-                                                <span>{formatAmount(b.limit, fmt(b.limit))}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Accounts & Liquidity Ledger */}
-                {isDesktopSectionVisible('accountsLiquidity') && data.accountsSummary && (
-                    <div className="card-glass relative overflow-hidden p-6 lg:p-7 rounded-3xl mb-8 shadow-xl backdrop-blur-2xl">
-                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary text-xl">account_balance_wallet</span>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Accounts & Liquidity Ledger</h3>
-                                </div>
-                                <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">
-                                    Net Worth: <span className="font-bold text-gray-900 dark:text-white tabular-nums font-mono">{formatAmount(data.accountsSummary.netWorth, fmt(data.accountsSummary.netWorth))}</span> • {data.accountsSummary.liquidRatio}% held in liquid cash ({formatAmount(data.accountsSummary.liquidCash, fmt(data.accountsSummary.liquidCash))})
-                                </p>
-                            </div>
-                            <Link 
-                                href="/accounts" 
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200/80 dark:border-white/10 bg-white/70 dark:bg-white/5 text-xs font-bold text-primary hover:bg-primary/10 transition-colors self-start sm:self-auto shadow-sm"
-                            >
-                                <span>Manage Accounts</span>
-                                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                            </Link>
-                        </div>
-
-                        {/* Asset to Liability Bar */}
-                        <div className="mb-6 p-4 rounded-2xl bg-gray-50/80 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5">
-                            <div className="flex justify-between items-center text-xs font-semibold mb-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                                    <span className="text-gray-700 dark:text-gray-300">Total Assets</span>
-                                    <span className="tabular-nums font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                        {formatAmount(data.accountsSummary.totalAssets, fmt(data.accountsSummary.totalAssets))}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                                    <span className="text-gray-700 dark:text-gray-300">Total Liabilities</span>
-                                    <span className="tabular-nums font-mono font-bold text-rose-600 dark:text-rose-400">
-                                        {formatAmount(data.accountsSummary.totalLiabilities, fmt(data.accountsSummary.totalLiabilities))}
-                                    </span>
-                                </div>
-                            </div>
-                            {data.accountsSummary.totalAssets + data.accountsSummary.totalLiabilities > 0 ? (
-                                <div className="h-3 rounded-full bg-gray-200/80 dark:bg-white/10 overflow-hidden flex">
-                                    <div 
-                                        className="bg-emerald-500 h-full transition-all duration-700" 
-                                        style={{ width: `${(data.accountsSummary.totalAssets / (data.accountsSummary.totalAssets + data.accountsSummary.totalLiabilities)) * 100}%` }} 
-                                        title={`Assets: ${data.accountsSummary.totalAssets}`}
-                                    />
-                                    <div 
-                                        className="bg-rose-500 h-full transition-all duration-700" 
-                                        style={{ width: `${(data.accountsSummary.totalLiabilities / (data.accountsSummary.totalAssets + data.accountsSummary.totalLiabilities)) * 100}%` }} 
-                                        title={`Liabilities: ${data.accountsSummary.totalLiabilities}`}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="h-3 rounded-full bg-gray-200 dark:bg-white/10" />
-                            )}
-                        </div>
-
-                        {/* Account rows grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                            {data.accountsSummary.accounts.length === 0 ? (
-                                <p className="text-xs text-gray-500 col-span-full py-4 text-center">No active accounts found.</p>
-                            ) : (
-                                data.accountsSummary.accounts.map(acc => (
-                                    <Link
-                                        key={acc.id}
-                                        href="/accounts"
-                                        className="group flex items-center justify-between p-3.5 rounded-2xl border border-gray-150 dark:border-white/5 bg-white dark:bg-surface-dark hover:border-primary/40 hover:shadow-sm transition-all"
-                                    >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                                                acc.isLiability 
-                                                    ? 'bg-rose-50 text-rose-500 dark:bg-rose-500/10' 
-                                                    : 'bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10'
-                                            }`}>
-                                                <span className="material-symbols-outlined text-[18px]">
-                                                    {acc.type === 'credit' ? 'credit_card' : acc.type === 'loan' ? 'payments' : 'account_balance'}
-                                                </span>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white truncate group-hover:text-primary transition-colors">{acc.name}</p>
-                                                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{acc.type}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right shrink-0 ml-2">
-                                            <p className={`text-xs font-bold tabular-nums font-mono ${
-                                                acc.isLiability ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'
-                                            }`}>
-                                                {formatAmount(acc.balance, fmt(acc.balance))}
-                                            </p>
-                                        </div>
-                                    </Link>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Charts & Analytics Row */}
-                {isDesktopSectionVisible('cashflowChart') && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
-                        {/* Spending Burn Trajectory & Category Breakdown */}
-                        <div className="lg:col-span-2 card-glass relative overflow-hidden p-6 lg:p-7 rounded-3xl border border-gray-200/80 dark:border-white/10 shadow-xl backdrop-blur-2xl">
-                            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
-                            <SpendingChart
-                                dailySpending={data.dailySpending}
-                                previousMonthDailySpending={data.previousMonthDailySpending || []}
-                                categorySpending={data.categorySpending}
-                                activeMonth={selectedMonth}
-                            />
-                        </div>
-
-                        {/* Deterministic 30-Day Liquidity Projection */}
-                        <div className="flex flex-col gap-5">
-                            {data.dailySpending && data.earnings && (
-                                <PredictiveCashflow
-                                    dailySpending={data.dailySpending}
-                                    monthlyIncome={data.earnings.current}
-                                    liquidCash={data.safeToSpend?.liquidCash || data.accountsSummary?.liquidCash || data.balance}
-                                />
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Health Score & Committed Bills Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
-                    {isDesktopSectionVisible('healthScore') && (
-                        <div className="lg:col-span-2">
-                            <HealthScoreWidget />
-                        </div>
-                    )}
-
-                    {isDesktopSectionVisible('upcomingBills') && (
-                        <div className="h-full">
-                            <UpcomingBillsWidget />
-                        </div>
-                    )}
+                        </TiltCard>
+                    ))}
                 </div>
 
-                {/* Unified Activity Heatmap (Month Grid & 12-Month Activity) */}
-                <UnifiedHeatmapCard
-                    year={parseInt(selectedMonth.split('-')[0], 10)}
-                    month={parseInt(selectedMonth.split('-')[1], 10)}
-                    dailySpending={data.dailySpending || []}
-                />
+                {/* Charts & Alerts */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
+                    {/* Spending Trends */}
+                    <TiltCard className="lg:col-span-2 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.35s both' }}>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
+                                <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Income vs Expenses over time</p>
+                            </div>
+                        </div>
+                        <div className="h-[320px]">
+                            <Bar ref={chartRef} data={barData!} options={{
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
+                                    tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8, displayColors: true, boxPadding: 4 },
+                                },
+                                scales: {
+                                    x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
+                                    y: { beginAtZero: true, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => sym + v, font: { size: 11 }, padding: 8 }, border: { display: false } },
+                                },
+                            }} />
+                        </div>
+                    </TiltCard>
+
+                    {/* Budget Alerts & Categories */}
+                    <div className="flex flex-col gap-5" style={{ animation: 'slideUp 0.5s ease-out 0.45s both' }}>
+                        {/* Predictive Analytics */}
+                        {data.dailySpending && data.earnings && (
+                            <PredictiveCashflow dailySpending={data.dailySpending} monthlyIncome={data.earnings.current} />
+                        )}
+
+                        {/* Top Categories */}
+                        {data.categorySpending.length > 0 && (
+                            <TiltCard className="glass-panel p-6 rounded-3xl flex-1 ambient-glow">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Top Categories</h3>
+                                <div className="h-[160px]">
+                                    <Doughnut data={doughnutData!} options={{
+                                        responsive: true, maintainAspectRatio: false,
+                                        animation: { duration: 800, easing: 'easeOutQuart' },
+                                        plugins: {
+                                            legend: { position: 'right' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
+                                            tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
+                                        },
+                                        cutout: '68%',
+                                    }} />
+                                </div>
+                            </TiltCard>
+                        )}
+                    </div>
+                </div>
 
                 {/* Final Row: Recent Transactions & Financial Intelligence Hub */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
-                    {/* Recent Transactions */}
-                    {isDesktopSectionVisible('recent_activity') && (
-                        <div className="lg:col-span-2 card-glass relative overflow-hidden rounded-3xl shadow-xl backdrop-blur-2xl">
-                            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
-                            <div className="p-6 border-b border-gray-200/80 dark:border-white/10 flex justify-between items-center">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
-                                <Link href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
-                                    All transactions <span className="material-symbols-outlined text-base">arrow_forward</span>
-                                </Link>
-                            </div>
-                            <div className="overflow-visible">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider">
-                                            <th className="px-4 lg:px-6 py-3.5 font-semibold">Transaction</th>
-                                            <th className="px-4 lg:px-6 py-3.5 font-semibold hidden md:table-cell">Category</th>
-                                            <th className="px-4 lg:px-6 py-3.5 font-semibold hidden sm:table-cell">Date</th>
-                                            <th className="px-4 lg:px-6 py-3.5 font-semibold text-right">Amount</th>
-                                            <th className="px-4 lg:px-6 py-3.5 font-semibold text-right w-12">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5 text-sm">
-                                        {data.recentTransactions.length === 0 ? (
-                                            <tr><td colSpan={5} className="px-6 py-12 text-center">
-                                                <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
-                                                <p className="text-gray-400 dark:text-text-muted">No transactions found for this period.</p>
-                                            </td></tr>
-                                        ) : data.recentTransactions.map((t) => (
-                                            <tr key={t.id} onClick={() => setSelectedDetailTx(t)} className="hover:bg-gray-50 dark:hover:bg-surface-hover/50 transition-colors duration-200 cursor-pointer relative group">
-                                                <td className="px-4 lg:px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
-                                                            <span className="material-symbols-outlined text-lg">{getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}</span>
-                                                        </div>
-                                                        <span className="font-medium text-gray-900 dark:text-white truncate">{t.description || t.category}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 lg:px-6 py-4 hidden md:table-cell">
-                                                    <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-surface-hover text-gray-600 dark:text-text-muted">
-                                                        {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 lg:px-6 py-4 text-gray-500 dark:text-text-muted hidden sm:table-cell">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                                                <td className={`px-4 lg:px-6 py-4 text-right font-semibold tabular-nums font-mono ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                    {t.type === 'expense' ? '-' : '+'}{formatAmount(t.amount, fmt(t.amount))}
-                                                </td>
-                                                <td className="px-4 lg:px-6 py-4 text-right w-12 text-gray-400">
-                                                    <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">chevron_right</span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
 
-                    {/* Financial Intelligence Hub */}
-                    {isDesktopSectionVisible('intel_hub') && (
-                        <div className="flex flex-col gap-5">
-                            <DashboardIntelHub
-                                currency={currency}
-                                exchangeRates={exchangeRates}
-                                marketNews={marketNews}
-                                fmt={fmt}
-                                activeTab={activeTab}
-                                setActiveTab={setActiveTab}
-                                calcAmount={calcAmount}
-                                setCalcAmount={setCalcAmount}
-                                calcYears={calcYears}
-                                setCalcYears={setCalcYears}
-                                calcRate={calcRate}
-                                setCalcRate={setCalcRate}
-                            />
+                    {/* Recent Transactions (Takes up 2 cols on large) */}
+                    <div className="lg:col-span-2 glass-panel rounded-3xl overflow-visible ambient-glow" style={{ animation: 'slideUp 0.5s ease-out 0.55s both' }}>
+                        <div className="p-6 border-b border-gray-200 dark:border-[#30363d] flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
+                            <Link href="/transactions" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
+                                All transactions <span className="material-symbols-outlined text-base">arrow_forward</span>
+                            </Link>
                         </div>
-                    )}
+                        <div className="overflow-visible">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50/80 dark:bg-surface-dark/50 text-xs text-gray-500 dark:text-text-muted uppercase tracking-wider">
+                                        <th className="px-4 lg:px-6 py-3.5 font-semibold">Transaction</th>
+                                        <th className="px-4 lg:px-6 py-3.5 font-semibold hidden md:table-cell">Category</th>
+                                        <th className="px-4 lg:px-6 py-3.5 font-semibold hidden sm:table-cell">Date</th>
+                                        <th className="px-4 lg:px-6 py-3.5 font-semibold text-right">Amount</th>
+                                        <th className="px-4 lg:px-6 py-3.5 font-semibold text-right w-12">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-[#21262d] text-sm">
+                                    {data.recentTransactions.length === 0 ? (
+                                        <tr><td colSpan={5} className="px-6 py-12 text-center">
+                                            <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 block mb-2">receipt_long</span>
+                                            <p className="text-gray-400 dark:text-text-muted">No transactions yet. Use AI Chat to start tracking!</p>
+                                        </td></tr>
+                                    ) : data.recentTransactions.map((t) => (
+                                        <tr key={t.id} onClick={() => setSelectedDetailTx(t)} className="hover:bg-gray-50 dark:hover:bg-surface-hover/50 transition-colors duration-200 cursor-pointer relative group">
+                                            <td className="px-4 lg:px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
+                                                        <span className="material-symbols-outlined text-lg">{getCategoryIcon(t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase(), customCats)}</span>
+                                                    </div>
+                                                    <span className="font-medium text-gray-900 dark:text-white truncate">{t.description || t.category}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 lg:px-6 py-4 hidden md:table-cell">
+                                                <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-surface-hover text-gray-600 dark:text-text-muted">
+                                                    {t.category.charAt(0).toUpperCase() + t.category.slice(1).toLowerCase()}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 lg:px-6 py-4 text-gray-500 dark:text-text-muted hidden sm:table-cell">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                            <td className={`px-4 lg:px-6 py-4 text-right font-semibold ${t.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                {t.type === 'expense' ? '-' : '+'}{fmt(t.amount)}
+                                            </td>
+                                            <td className="px-4 lg:px-6 py-4 text-right w-12 text-gray-400">
+                                                <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">chevron_right</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-5" style={{ animation: 'slideUp 0.5s ease-out 0.65s both' }}>
+                        {/* Budget Alerts */}
+                        <div className="glass-panel p-6 rounded-3xl">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Budget Alerts</h3>
+                                {data.budgetAlerts.length > 0 && (
+                                    <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold px-2 py-1 rounded-md">
+                                        {data.budgetAlerts.filter(b => b.percentage >= 80).length} Alerts
+                                    </span>
+                                )}
+                            </div>
+                            <div className="space-y-4">
+                                {data.budgetAlerts.length === 0 ? (
+                                    <div className="text-center py-4">
+                                        <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-600 mb-2 block">verified</span>
+                                        <p className="text-sm text-gray-400 dark:text-text-muted">No budget alerts. Set budgets to track spending.</p>
+                                    </div>
+                                ) : data.budgetAlerts.slice(0, 3).map((b, i) => (
+                                    <div key={i}>
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{b.category}</span>
+                                            <span className={`text-xs font-bold ${b.percentage >= 100 ? 'text-rose-500' : b.percentage >= 80 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                                {b.percentage >= 100 ? 'Over Budget!' : b.percentage >= 80 ? `${b.percentage}% used` : 'On Track'}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-100 dark:bg-surface-hover rounded-full h-2 overflow-hidden">
+                                            <div className={`h-2 rounded-full transition-all duration-700 ease-out ${b.percentage >= 100 ? 'bg-rose-500' : b.percentage >= 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                style={{ width: `${Math.min(b.percentage, 100)}%` }} />
+                                        </div>
+                                        <div className="flex justify-between mt-1 text-xs text-gray-400 dark:text-text-muted">
+                                            <span>{fmt(b.spent)} spent</span>
+                                            <span>{fmt(b.limit)} limit</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Financial Intelligence Hub */}
+                        <div className="glass-panel rounded-3xl flex flex-col overflow-hidden ambient-glow">
+                        <div className="p-5 border-b border-gray-200 dark:border-[#30363d] bg-gradient-to-r from-blue-500/10 to-transparent">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <span className="material-symbols-outlined text-blue-500">insights</span>
+                                Intelligence Hub
+                            </h3>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex bg-gray-50 dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] text-sm">
+                            <button onClick={() => setActiveTab('currency')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'currency' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Rates</button>
+                            <button onClick={() => setActiveTab('news')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'news' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>News</button>
+                            <button onClick={() => setActiveTab('calculator')} className={`flex-1 py-3 font-semibold transition-colors border-b-2 ${activeTab === 'calculator' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Growth</button>
+                        </div>
+
+                        {/* Tab Content */}
+                        <div className="p-5 flex-1 bg-white dark:bg-surface-dark overflow-y-auto max-h-[350px]">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={activeTab}
+                                    initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
+                                    animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                                    exit={{ opacity: 0, filter: 'blur(8px)', y: -8 }}
+                                    transition={{ duration: 0.22 }}
+                                    className={`space-y-4 ${activeTab === 'calculator' ? 'flex flex-col h-full' : ''}`}
+                                >
+                                    {activeTab === 'currency' ? (
+                                        <>
+                                            {!exchangeRates ? (
+                                                <HubSkeleton rows={5} />
+                                            ) : (
+                                                <>
+                                                    <p className="text-xs text-gray-500 mb-3 font-medium">1 {currency} equals:</p>
+                                                    <div className="space-y-3">
+                                                        {['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => {
+                                                            // If base is already one of these, skip or show USD instead
+                                                            if (c === currency) return null;
+                                                            const rate = exchangeRates.rates[c];
+                                                            if (!rate) return null;
+                                                            return (
+                                                                <div key={c} className="flex justify-between items-center group p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors border border-transparent hover:border-gray-100 dark:hover:border-[#30363d]">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#21262d] flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                                            {c.slice(0, 2)}
+                                                                        </div>
+                                                                        <span className="font-semibold text-gray-900 dark:text-white">{c}</span>
+                                                                    </div>
+                                                                    <span className="font-mono text-gray-700 dark:text-gray-300 group-hover:text-blue-500 transition-colors">{rate.toFixed(4)}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    ) : activeTab === 'news' ? (
+                                        <>
+                                            {marketNews.length === 0 ? (
+                                                <HubSkeleton rows={4} />
+                                            ) : (
+                                                marketNews.map(news => (
+                                                    <a key={news.id} href="#" className="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-surface-hover border border-gray-100 dark:border-[#30363d] transition-all hover:scale-[1.02] hover:shadow-md">
+                                                        <div className="flex justify-between items-start mb-1.5">
+                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${news.sentiment === 'positive' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                                                news.sentiment === 'negative' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
+                                                                    'bg-gray-100 text-gray-700 dark:bg-[#21262d] dark:text-gray-300'
+                                                                }`}>
+                                                                {news.sentiment}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400">{news.time}</span>
+                                                        </div>
+                                                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-blue-500 transition-colors">{news.title}</h4>
+                                                        <p className="text-xs text-gray-500 font-medium">{news.source}</p>
+                                                    </a>
+                                                ))
+                                            )}
+                                        </>
+                                    ) : activeTab === 'calculator' ? (
+                                        <>
+                                            <p className="text-xs text-gray-500 mb-2">See how monthly savings grow over time with compound interest.</p>
+        
+                                            <div className="space-y-3 flex-1">
+                                                <div>
+                                                    <label htmlFor="calcAmount" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Monthly Save <span>{fmt(calcAmount)}</span></label>
+                                                    <input id="calcAmount" type="range" min="50" max="5000" step="50" value={calcAmount} onChange={e => setCalcAmount(Number(e.target.value))} className="w-full accent-blue-500" />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="calcYears" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Years <span>{calcYears} yrs</span></label>
+                                                    <input id="calcYears" type="range" min="1" max="40" step="1" value={calcYears} onChange={e => setCalcYears(Number(e.target.value))} className="w-full accent-blue-500" />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="calcRate" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">Est. Return <span>{calcRate}%</span></label>
+                                                    <input id="calcRate" type="range" min="1" max="15" step="0.5" value={calcRate} onChange={e => setCalcRate(Number(e.target.value))} className="w-full accent-blue-500" />
+                                                </div>
+                                            </div>
+        
+                                            <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-center">
+                                                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Future Value</p>
+                                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                                    {fmt(calcAmount * 12 * ((Math.pow(1 + calcRate / 100, calcYears) - 1) / (calcRate / 100)))}
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : null}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+                    </div>
+                    </div>
+
                 </div>
 
                 {/* Floating AI Button */}
@@ -1248,24 +1137,8 @@ export default function DashboardPage() {
                     <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ease-in-out font-bold text-sm">Talk to AI</span>
                 </a>
             </div>
+            {/* End Desktop View */}
 
-            {/* Quick Add Transaction Modal */}
-            {mounted && (
-                <QuickAddTransactionModal
-                    isOpen={isQuickAddOpen}
-                    onClose={() => setIsQuickAddOpen(false)}
-                />
-            )}
-
-            {/* Receipt Scanner Modal */}
-            {mounted && (
-                <ReceiptScannerModal
-                    isOpen={isReceiptScannerOpen}
-                    onClose={() => setIsReceiptScannerOpen(false)}
-                />
-            )}
-
-            {/* Edit Transaction Modal */}
             {mounted && createPortal(
                 <AnimatePresence>
                     {editingTx && (
@@ -1275,10 +1148,10 @@ export default function DashboardPage() {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.96, y: 12 }}
                                 transition={{ duration: 0.2 }}
-                                className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#12182B]/95"
+                                className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 px-5 py-4">
+                                <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#30363d] px-5 py-4">
                                     <h3 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
                                         <span className="material-symbols-outlined text-primary text-xl">edit</span>
                                         Edit Transaction
@@ -1294,7 +1167,7 @@ export default function DashboardPage() {
                                             <select
                                                 value={editingTx.type}
                                                 onChange={(event) => setEditingTx({ ...editingTx, type: event.target.value as "expense" | "earning", category: '' })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             >
                                                 <option value="expense">Expense</option>
                                                 <option value="earning">Earning</option>
@@ -1307,7 +1180,7 @@ export default function DashboardPage() {
                                                 step="0.01"
                                                 value={editingTx.amount}
                                                 onChange={(event) => setEditingTx({ ...editingTx, amount: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -1317,7 +1190,7 @@ export default function DashboardPage() {
                                             <select
                                                 value={editingTx.category}
                                                 onChange={(event) => setEditingTx({ ...editingTx, category: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             >
                                                 <option value="">Select</option>
                                                 {dashboardCategoryOptions.map(category => (
@@ -1326,7 +1199,7 @@ export default function DashboardPage() {
                                                 {customCats.filter(category => category.type === editingTx.type).length > 0 && (
                                                     <optgroup label="Custom">
                                                         {customCats.filter(category => category.type === editingTx.type).map(category => (
-                                                             <option key={category.id} value={category.name}>{category.name}</option>
+                                                            <option key={category.id} value={category.name}>{category.name}</option>
                                                         ))}
                                                     </optgroup>
                                                 )}
@@ -1338,7 +1211,7 @@ export default function DashboardPage() {
                                                 type="date"
                                                 value={editingTx.date ? (editingTx.date.includes('T') ? editingTx.date.split('T')[0] : editingTx.date) : ''}
                                                 onChange={(event) => setEditingTx({ ...editingTx, date: event.target.value })}
-                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -1349,11 +1222,11 @@ export default function DashboardPage() {
                                             value={editingTx.description || ''}
                                             onChange={(event) => setEditingTx({ ...editingTx, description: event.target.value })}
                                             placeholder="Optional description"
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 dark:border-[#30363d] dark:bg-[#0A0E1A] dark:text-white"
                                         />
                                     </div>
                                     <div className="flex gap-3 pt-1">
-                                        <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 dark:border dark:border-white/10 transition-colors">
+                                        <button type="button" onClick={() => { setEditingTx(null); setEditSubmitting(false); }} className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-[#21262d] dark:text-gray-300 dark:hover:bg-[#30363d] transition-colors">
                                             Cancel
                                         </button>
                                         <button
@@ -1372,7 +1245,6 @@ export default function DashboardPage() {
                 document.body
             )}
 
-            {/* Delete Transaction Modal */}
             {mounted && createPortal(
                 <AnimatePresence>
                     {deletingTxId && (
@@ -1381,7 +1253,7 @@ export default function DashboardPage() {
                                 initial={{ opacity: 0, scale: 0.96, y: 18 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.96, y: 18 }}
-                                className="w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#12182B]/95"
+                                className="w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-[#30363d] dark:bg-zinc-900"
                             >
                                 <div className="p-5 text-center">
                                     <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-500/10">
@@ -1417,41 +1289,15 @@ export default function DashboardPage() {
                     }}
                     onDuplicate={(tx) => {
                         setSelectedDetailTx(null);
+                        submitDashboardDuplicate(tx);
                     }}
                     onDelete={(tx) => {
                         setSelectedDetailTx(null);
                         setDeletingTxId(tx.id);
                     }}
-                    onNotesChange={() => {}}
-                />
-            )}
-
-            {/* Layout Customization Modal */}
-            {mounted && (
-                <DashboardLayoutModal
-                    isOpen={isLayoutOpen}
-                    onClose={() => setIsLayoutOpen(false)}
-                    layoutTab={layoutTab}
-                    setLayoutTab={setLayoutTab}
-                    tempDesktopLayout={tempDesktopLayout}
-                    tempMobileLayout={tempMobileLayout}
-                    handleMoveDesktop={handleMoveDesktop}
-                    handleMoveMobile={handleMoveMobile}
-                    handleToggleDesktop={handleToggleDesktop}
-                    handleToggleMobile={handleToggleMobile}
-                    handleDragStart={handleDragStart}
-                    handleDragOver={handleDragOver}
-                    handleDrop={handleDrop}
-                    saveLayout={saveLayout}
-                    layoutSubmitting={layoutSubmitting}
-                />
-            )}
-
-            {/* First-Run 60-Second Setup Wizard */}
-            {showOnboardingWizard && (
-                <FirstRunWizard
-                    onComplete={handleOnboardingComplete}
-                    onSkip={() => setShowOnboardingWizard(false)}
+                    onNotesChange={(id, notes) => {
+                        // Optional optimistic update logic if needed
+                    }}
                 />
             )}
         </div>

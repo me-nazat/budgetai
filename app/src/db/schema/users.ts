@@ -52,18 +52,6 @@ export const users = sqliteTable('users', {
    */
   currency: text('currency').default('BDT'),
 
-  /**
-   * User preferred UI locale language ('en' | 'bn').
-   * @default 'en'
-   */
-  locale: text('locale').default('en'),
-
-  /**
-   * Legacy alias for preferred UI locale language ('en' | 'bn').
-   * @default 'en'
-   */
-  preferredLocale: text('preferred_locale').default('en'),
-
   /** Whether budget-related notifications are enabled. 1 = enabled, 0 = disabled. */
   notifyBudget: integer('notify_budget').default(1),
 
@@ -101,23 +89,13 @@ export const users = sqliteTable('users', {
   /** JSON-stringified array representing the mobile dashboard layout widget order and visibility. */
   mobileWidgetOrder: text('mobile_widget_order'),
 
-  /**
-   * @deprecated Use `userDemographics` table instead. This column is kept for
-   * backward compatibility during the transition period and will be removed in
-   * a future release. All new code should read/write `userDemographics`.
-   */
+  /** Peer benchmark data opt-in preference. 1 = opted in, 0 = opted out. */
   benchmarkOptIn: integer('benchmark_opt_in').default(0),
 
-  /**
-   * @deprecated Use `userDemographics.ageBracket` instead. Legacy column kept
-   * for read-only backward compatibility.
-   */
+  /** Demographic age tier for peer benchmarking (e.g. '18-24', '25-34', '35-44', '45-54', '55+'). */
   demographicAgeTier: text('demographic_age_tier'),
 
-  /**
-   * @deprecated Use `userDemographics.regionBracket` instead. Legacy column kept
-   * for read-only backward compatibility.
-   */
+  /** Demographic region code for peer benchmarking (e.g. 'US-NY', 'US-CA', 'BD-DH', 'GLOBAL'). */
   demographicRegion: text('demographic_region'),
 
   /** Account creation timestamp (UTC ISO-8601). */

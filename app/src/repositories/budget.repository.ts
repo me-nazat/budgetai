@@ -6,7 +6,7 @@
 
 import { db } from '@/db/client';
 import { budgets } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * Input data for creating or updating a budget.
@@ -17,8 +17,6 @@ export interface CreateBudgetInput {
   monthlyLimit: number;
   month: number;
   year: number;
-  rolloverEnabled?: boolean | number;
-  rolloverBalance?: number;
 }
 
 /**
@@ -110,112 +108,39 @@ export class BudgetRepository {
    * Creates a new budget entry.
    *
    * @param data - Budget creation data.
-   * @param txClient - Optional transaction client.
    * @returns The created budget record.
    */
   static async create(
-    data: CreateBudgetInput,
-    txClient?: any
+    data: CreateBudgetInput
   ): Promise<typeof budgets.$inferSelect> {
-    const client = txClient || db;
-    const rolloverEnabled = data.rolloverEnabled ? 1 : 0;
-    const result = await client
+    const result = await db
       .insert(budgets)
-      .values({
-        userId: data.userId,
-        category: data.category,
-        monthlyLimit: data.monthlyLimit,
-        month: data.month,
-        year: data.year,
-        rolloverEnabled,
-        rolloverBalance: data.rolloverBalance ?? 0,
-      })
+      .values(data)
       .returning();
 
     return result[0];
   }
 
   /**
-   * Updates a budget's monthly limit, rollover status, or rollover balance.
+   * Updates a budget's monthly limit.
    *
    * @param userId - The user's ID.
    * @param id - The budget ID.
-   * @param data - The fields to update (or number for backwards compatibility).
-   * @param txClient - Optional transaction client.
+   * @param monthlyLimit - The new spending limit.
    * @returns The updated budget, or undefined.
    */
   static async update(
     userId: number,
     id: number,
-    data: number | { monthlyLimit?: number; rolloverEnabled?: boolean | number; rolloverBalance?: number },
-    txClient?: any
+    monthlyLimit: number
   ): Promise<typeof budgets.$inferSelect | undefined> {
-    const client = txClient || db;
-    const updateData: Record<string, any> = {};
-
-    if (typeof data === 'number') {
-      updateData.monthlyLimit = data;
-    } else {
-      if (data.monthlyLimit !== undefined) updateData.monthlyLimit = data.monthlyLimit;
-      if (data.rolloverEnabled !== undefined) {
-        updateData.rolloverEnabled = data.rolloverEnabled ? 1 : 0;
-      }
-      if (data.rolloverBalance !== undefined) updateData.rolloverBalance = data.rolloverBalance;
-    }
-
-    const result = await client
+    const result = await db
       .update(budgets)
-      .set(updateData)
+      .set({ monthlyLimit })
       .where(and(eq(budgets.id, id), eq(budgets.userId, userId)))
       .returning();
 
     return result[0];
-  }
-
-  /**
-   * Rebalances funds between two budget envelopes atomically.
-   */
-  static async rebalance(
-    userId: number,
-    fromId: number,
-    toId: number,
-    amount: number
-  ): Promise<{ from: typeof budgets.$inferSelect; to: typeof budgets.$inferSelect }> {
-    return await db.transaction(async (tx) => {
-      const fromBudget = await tx
-        .select()
-        .from(budgets)
-        .where(and(eq(budgets.id, fromId), eq(budgets.userId, userId)))
-        .limit(1);
-
-      const toBudget = await tx
-        .select()
-        .from(budgets)
-        .where(and(eq(budgets.id, toId), eq(budgets.userId, userId)))
-        .limit(1);
-
-      if (!fromBudget[0] || !toBudget[0]) {
-        throw new Error('Budget envelope not found');
-      }
-
-      if (fromBudget[0].monthlyLimit < amount) {
-        throw new Error(`Insufficient budget in ${fromBudget[0].category} to transfer ${amount}`);
-      }
-
-      const [updatedFrom] = await tx
-        .update(budgets)
-        .set({ monthlyLimit: sql`monthly_limit - ${amount}` })
-        .where(eq(budgets.id, fromId))
-        .returning();
-
-      const [updatedTo] = await tx
-        .update(budgets)
-        .set({ monthlyLimit: sql`monthly_limit + ${amount}` })
-        .where(eq(budgets.id, toId))
-        .returning();
-
-      return { from: updatedFrom, to: updatedTo };
-    });
   }
 
   /**

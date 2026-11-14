@@ -18,14 +18,16 @@ import { dashboardLayouts } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 const DEFAULT_WIDGET_ORDER = [
-  'statCards',
-  'monthPacing',
-  'cashflowChart',
-  'accountsLiquidity',
-  'healthScore',
-  'upcomingBills',
-  'recent_activity',
-  'intel_hub',
+  'net-worth',
+  'monthly-spending',
+  'budget-overview',
+  'savings-goals',
+  'recent-transactions',
+  'income-vs-expense',
+  'upcoming-bills',
+  'investments-summary',
+  'debt-progress',
+  'ai-insights',
 ];
 
 const UpdateSchema = z.object({

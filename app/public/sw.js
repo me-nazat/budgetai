@@ -1,5 +1,5 @@
 /**
- * Wealth AI — Service Worker (v2)
+ * Wealth AI — Service Worker (v3 Resilient)
  *
  * Provides:
  * - App shell caching for offline support
@@ -13,7 +13,7 @@
  * - Navigation: Network-first with self-healing auto-reconnect fallback
  */
 
-const CACHE_NAME = 'wealth-ai-v2';
+const CACHE_NAME = 'wealth-ai-v3-resilient';
 const STATIC_ASSETS = [
   '/wealth-ai-logo-v2.png',
   '/manifest.json',

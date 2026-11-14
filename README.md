@@ -17,9 +17,7 @@
 &nbsp;
 [![License](https://img.shields.io/badge/License-MIT-6366F1?style=for-the-badge&labelColor=0A0A0A)](LICENSE)
 &nbsp;
-[![Next.js](https://img.shields.io/badge/Next.js-16-ffffff?style=for-the-badge&logo=nextdotjs&logoColor=white&labelColor=0A0A0A)](https://nextjs.org)
-&nbsp;
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black&labelColor=0A0A0A)](https://react.dev)
+[![Next.js](https://img.shields.io/badge/Next.js-14-ffffff?style=for-the-badge&logo=nextdotjs&logoColor=white&labelColor=0A0A0A)](https://nextjs.org)
 &nbsp;
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=0A0A0A)](https://typescriptlang.org)
 
@@ -71,19 +69,18 @@
 
 | Metric | Value |
 |:---|:---|
-| 📁 Total Project Files | `450+` |
-| 🔷 TypeScript & TSX Modules | `408 files` |
-| 🧪 Automated Test Coverage | `18 suites · 170 tests passing (100%)` |
-| 🌐 Localization & Keys | `Bilingual (EN ⇄ বাংলা) · 647 keys` |
-| 📝 Total Lines of Code | `76,600+` |
-| 💎 Pure Logic & Code | `62,000+ lines` |
-| 🖊️ Documentation & Comments | `14,600 lines` |
+| 📁 Total Project Files | `210` |
+| 🔷 TypeScript Modules | `105 files` |
+| ⚛️ React Components & Pages | `70 files` |
+| 📝 Total Lines of Code | `33,200+` |
+| 💎 Pure Logic & Code | `25,500+ lines` |
+| 🖊️ Documentation Comments | `4,300 lines` |
 
 </div>
 
 <br/>
 
-Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.js 16 App Router** (React 19), featuring **Drizzle ORM** for type-safe database schemas and queries, a service layer for business logic, and a multi-layered security framework. The entire UI is built around a near-black `#0A0A0A` design system with glassmorphism card components, smooth Framer Motion animations, and full responsiveness across all screen sizes.
+Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.js 14 App Router**, featuring a repository pattern for clean data access, a service layer for business logic, and a multi-layered security framework. The entire UI is built around a near-black `#0A0A0A` design system with glassmorphism card components, smooth Framer Motion animations, and full responsiveness across all screen sizes.
 
 <br/>
 
@@ -296,106 +293,6 @@ Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.
 
 <br/>
 
-### 〔 16 〕 &nbsp; Multi-Member Household Budgeting & Automated Settlements (Module 10)
-
-> Shared family and roommate finances with mathematical debt minimization.
-
-- **Unified household ledger**: multi-member expense logging with category caps, proportional income allocation, and recurring shared bill splits
-- **Automated settlement engine**: calculates the absolute minimum number of inter-member payments needed to clear group balances using greedy settlement algorithms
-- **Audit & approval workflows**: real-time member approval, audit logging, and deep-linked settlement receipts
-
-<br/>
-
-### 〔 17 〕 &nbsp; Anonymous Peer Financial Benchmarks (Module 11)
-
-> Privacy-preserving percentile comparisons against similar income and age cohorts.
-
-- **Differential privacy & k-anonymity (k ≥ 5)**: data is perturbed and aggregated with zero personally identifiable data leakage
-- **Cohort percentile curves**: benchmarks savings rate, emergency runway, discretionary spend ratio, and net worth trajectory
-- **Shareable Benchmark Cards**: branded visual share cards with custom privacy masking for social comparisons
-
-<br/>
-
-### 〔 18 〕 &nbsp; Bangladesh Tax Optimization & Exemption Shield (Module 12)
-
-> Country-specific progressive tax brackets with NBR-compliant deduction strategies.
-
-- **Automated tax slab calculations**: male, female/senior, disabled, and gazetted freedom fighter threshold support under current Finance Act rules
-- **Investment rebate shield**: tracks eligible investment allowances (DPS, life insurance, approved stocks/provident funds) to maximize allowable tax credit
-- **Tax Pack export & accountant token**: one-click encrypted PDF/CSV export and secure time-limited token generation for external tax consultants
-
-<br/>
-
-### 〔 19 〕 &nbsp; AI Document Vault with Semantic Vector Search (Module 13)
-
-> Natural language question-answering over your financial records and receipts.
-
-- **Vector embeddings**: generates 1536-dim semantic embeddings for uploaded bills, bank notices, receipts, and statements
-- **Cosine similarity search**: ask natural language queries ("What was my dining expenditure in Sylhet last quarter?") with citation snippets and confidence scores
-- **OCR pipeline integration**: dual-engine OCR (Gemini Vision + Tesseract fallback) for zero-effort metadata extraction
-
-<br/>
-
-### 〔 20 〕 &nbsp; Privacy Center & Account Masking (Module 14)
-
-> Military-grade financial shielding in public and shared environments.
-
-- **One-tap Privacy Shield**: dynamically masks sensitive account numbers and balances across the entire dashboard (`•••• 4821` / `৳ ••••••`)
-- **Sensors & auto-lock**: shake-to-hide mobile gesture, configurable inactivity auto-lock, and blurred tab switching
-- **Server-side redaction**: unmasked figures are never sent over the wire when privacy mode is engaged
-
-<br/>
-
-### 〔 21 〕 &nbsp; Micro-Savings & Automated Round-Up Vaults (Module 15)
-
-> Turn spare change from daily transactions into automated wealth accrual.
-
-- **Transaction round-up engine**: rounds daily debit transactions to the nearest ৳10, ৳50, or ৳100 with multiplier multipliers (1×, 2×, 5×)
-- **Virtual goal vaults**: automatic routing of round-up capital into dedicated savings milestones with emergency caps
-- **Weekly automated sweeps**: cron-driven consolidation minimizing transaction fees while maintaining goal momentum
-
-<br/>
-
-### 〔 22 〕 &nbsp; Multi-Page PDF & OCR Bank Reconciliation (Module 16)
-
-> Instant parsing and reconciliation for major Bangladeshi and international banks.
-
-- **Multi-page parser**: parses statements from City Bank, BRAC Bank, Dutch-Bangla Bank, EBL, bKash, and Nagad
-- **Fuzzy reconciliation & duplicate detector**: cross-matches bank statement rows against logged transactions using Levenshtein distance and timestamp windows
-- **One-click batch commit**: review matched vs unmatched line items and commit approved transactions in a single atomic transaction
-
-<br/>
-
-### 〔 23 〕 &nbsp; Native Bilingual Localization (EN ⇄ বাংলা) (Module 17)
-
-> True bilingual parity across every label, chart, date, and currency representation.
-
-- **100% dictionary coverage**: 647 synchronized keys between English and Bengali verified via automated CI coverage assertions
-- **Locale-aware formatting**: Bengali numerals (০-৯), full Bengali month calendar names, ৳ comma-grouping (৳১,২৩,৪৫৬), and compact suffixes
-- **Tactile language toggle**: 44×44px switch in sidebar, mobile drawer, and modal picker sheet in settings
-
-<br/>
-
-### 〔 24 〕 &nbsp; Google Calendar Sync & Smart Push Alerts (Module 18)
-
-> Never miss a recurring bill or debt payoff milestone.
-
-- **Two-way Google Calendar integration**: auto-creates calendar events for upcoming recurring obligations with server-side OAuth AES-256-GCM encryption
-- **Morning-of (8 AM) smart push alerts**: schedules Web-Push notifications on the morning of due dates with prefilled deep-links
-- **Automatic reconciliation**: updates calendar events to "✅ Paid" when transactions are logged and reschedules when dates change
-
-<br/>
-
-### 〔 25 〕 &nbsp; Agentic AI Coach Action Expansion & Unified Insights Hub (Module 19)
-
-> Chat-driven financial execution with one-tap action cards and proactive anomaly detection.
-
-- **Interactive chat action cards**: AI proposes transaction logging, budget envelope adjustments, or goal contributions directly in the chat with 1-tap "Apply", "Reject", or "Edit"
-- **5-second undo toast**: reversible execution via inverse operational payloads if clicked within the undo window
-- **Unified Proactive Insights Hub**: nightly machine-learning scans surface spending spikes, subscription leaks, and savings opportunities, filtered by user feedback ratings
-
-<br/>
-
 ---
 
 <br/>
@@ -405,11 +302,11 @@ Wealth AI is engineered with **enterprise-grade architecture** on top of **Next.
 ```
 src/
 │
-├── app/                          # Next.js 16 App Router (React 19)
+├── app/                          # Next.js 14 App Router
 │   ├── (app)/                    # 🔒 Authenticated views (protected routes)
 │   │   ├── overview/             #    Dashboard, health score, charts
 │   │   ├── my-month/             #    Interactive monthly calendar
-│   │   ├── chat/                 #    AI Financial Assistant chat
+│   │   ├── coach/                #    AI Financial Coach chat
 │   │   ├── simulator/            #    What-If Simulator
 │   │   ├── fire/                 #    FIRE Calculator
 │   │   ├── subscriptions/        #    Subscription Tracker
@@ -505,19 +402,19 @@ src/
 
 | Layer | Technology | Purpose |
 |:---|:---|:---|
-| **Framework** | Next.js 16 (App Router) + React 19 | Full-stack React with server components & API routes |
+| **Framework** | Next.js 14 (App Router) | Full-stack React with server components & API routes |
 | **Language** | TypeScript (strict) | End-to-end type safety, zero `any` tolerance |
-| **Styling** | Tailwind CSS v4 | Modern high-performance utility CSS engine |
-| **Animations** | Framer Motion + Centralized Variants | Page transitions, stagger reveals, reduced-motion accessibility |
+| **Styling** | Tailwind CSS | Utility-first responsive design system |
+| **Animations** | Framer Motion | Page transitions, stagger reveals, micro-interactions |
 | **Charts** | Recharts + Chart.js | Area, donut, bar, sparkline, and arc gauge charts |
-| **Database & ORM** | Turso (libSQL) + Drizzle ORM | Edge-deployed SQLite with type-safe schema, migrations & queries |
-| **Auth** | JWT (jose) + Passkeys + 2FA | httpOnly cookies, refresh rotation, WebAuthn & TOTP |
+| **Database** | Turso (libSQL) | Edge-deployed SQLite — fast global reads |
+| **Auth** | JWT + bcrypt | httpOnly cookies, refresh rotation, account lockout |
 | **AI — Insights** | Google Gemini API | Receipt scanning, NL transaction parsing, anomaly alerts |
 | **AI — Coach** | OpenRouter API | Streaming conversational AI with full financial context |
 | **Storage** | Google Drive API | Receipt backup and AI-queryable document sync |
 | **Currency** | open.er-api.com | Hourly live exchange rates (server-side cached) |
-| **PWA** | Web App Manifest + Service Worker | Offline shell caching, install prompt, standalone mobile app |
-| **Export** | jsPDF + ExcelJS | PDF schedules, Excel workbooks, CSV ledger exports |
+| **PWA** | next-pwa + Workbox | Offline shell caching, install prompt, service worker |
+| **Export** | jsPDF + html2canvas | PDF monthly reports, PNG snapshot cards |
 | **Deployment** | Vercel | Edge functions, automatic HTTPS, zero-config CI/CD |
 
 </div>

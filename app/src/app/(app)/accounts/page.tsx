@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useAccounts } from '@/hooks/useApi';
 import { Toaster, toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,9 +19,8 @@ interface Account {
 
 export default function AccountsPage() {
   const { fmt } = useCurrency();
-  const { accounts: swrAccounts, isLoading, mutate: mutateAccounts } = useAccounts();
-  const accounts: Account[] = (swrAccounts as Account[]) || [];
-  const loading = isLoading;
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   // Modal / Bottom sheet states
@@ -43,6 +41,25 @@ export default function AccountsPage() {
   const [transferAmount, setTransferAmount] = useState('');
   const [transferDesc, setTransferDesc] = useState('');
   const [transferDate, setTransferDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const loadAccounts = async () => {
+    try {
+      const res = await fetch('/api/accounts');
+      const data = await res.json();
+      if (data.accounts) {
+        setAccounts(data.accounts);
+      }
+    } catch (err) {
+      console.error('Failed to load accounts:', err);
+      toast.error('Failed to load accounts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAccounts();
+  }, []);
 
   const openAddAccount = () => {
     setEditingAccount(null);
@@ -93,7 +110,7 @@ export default function AccountsPage() {
 
       toast.success(editingAccount ? 'Account updated' : 'Account created');
       setIsAccountModalOpen(false);
-      void mutateAccounts();
+      void loadAccounts();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -113,7 +130,7 @@ export default function AccountsPage() {
       });
       if (!res.ok) throw new Error('Failed to update account status');
       toast.success(acc.isArchived ? 'Account unarchived' : 'Account archived');
-      void mutateAccounts();
+      void loadAccounts();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -158,7 +175,7 @@ export default function AccountsPage() {
       setIsTransferModalOpen(false);
       setTransferAmount('');
       setTransferDesc('');
-      void mutateAccounts();
+      void loadAccounts();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -384,7 +401,7 @@ export default function AccountsPage() {
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Color Tag</label>
                   <div className="flex gap-3">
-                    {['#136dec', '#10b981', '#FFB800', '#FF2A5F', '#06b6d4', '#34495e'].map((c) => (
+                    {['#136dec', '#10b981', '#FFB800', '#FF2A5F', '#8e44ad', '#34495e'].map((c) => (
                       <button
                         key={c}
                         type="button"

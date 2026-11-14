@@ -1,79 +1,78 @@
+/**
+ * @fileoverview Page transition wrapper using Framer Motion AnimatePresence.
+ *
+ * Wraps page content to animate route transitions with smooth fade
+ * and slide effects. Uses the pathname as the animation key.
+ *
+ * @module components/ui/PageTransition
+ */
+
 'use client';
 
-import { type ReactNode, useSyncExternalStore } from 'react';
+import { type ReactNode } from 'react';
 import { motion, type Variants } from 'framer-motion';
+import { usePathname } from 'next/navigation';
 
 /**
  * Props for the PageTransition component.
  */
-export interface PageTransitionProps {
-  /** Page content to render. */
+interface PageTransitionProps {
+  /** Page content to animate. */
   children: ReactNode;
-  /** Optional custom class name. */
-  className?: string;
-}
-
-function subscribeReducedMotion(callback: () => void) {
-  if (typeof window === 'undefined') return () => {};
-  const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-  mediaQuery.addEventListener('change', callback);
-  return () => mediaQuery.removeEventListener('change', callback);
-}
-
-function getReducedMotionSnapshot() {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-function getReducedMotionServerSnapshot() {
-  return false;
 }
 
 /**
- * Lightweight, zero-lag route transition.
- * Renders at opacity: 1 immediately on frame 1 without blank-screen flashes,
- * using at most a subtle 100ms GPU-composited translate3d(0, 2px, 0) entrance.
+ * Animation variants for page transitions.
  */
 const pageVariants: Variants = {
   initial: {
-    opacity: 1,
-    transform: 'translate3d(0, 2px, 0)',
+    opacity: 0,
+    y: 8,
+    filter: 'blur(4px)',
   },
   enter: {
     opacity: 1,
-    transform: 'translate3d(0, 0, 0)',
+    y: 0,
+    filter: 'blur(0px)',
     transition: {
-      duration: 0.1,
-      ease: [0.16, 1, 0.3, 1],
+      duration: 0.3,
+      ease: [0.25, 0.46, 0.45, 0.94],
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    filter: 'blur(4px)',
+    transition: {
+      duration: 0.2,
+      ease: [0.25, 0.46, 0.45, 0.94],
     },
   },
 };
 
-const reducedMotionVariants: Variants = {
-  initial: { opacity: 1, transform: 'translate3d(0, 0, 0)' },
-  enter: { opacity: 1, transform: 'translate3d(0, 0, 0)', transition: { duration: 0 } },
-};
-
 /**
- * Instant PageTransition — guarantees immediate first paint with zero pointer lag.
+ * PageTransition — smooth route change animation wrapper.
+ *
+ * @example
+ * ```tsx
+ * // In layout.tsx
+ * <PageTransition>
+ *   {children}
+ * </PageTransition>
+ * ```
  */
-export function PageTransition({ children, className = 'w-full h-full pointer-events-auto' }: PageTransitionProps) {
-  const shouldReduceMotion = useSyncExternalStore(
-    subscribeReducedMotion,
-    getReducedMotionSnapshot,
-    getReducedMotionServerSnapshot
-  );
+export default function PageTransition({ children }: PageTransitionProps) {
+  const pathname = usePathname();
 
   return (
     <motion.div
-      variants={shouldReduceMotion ? reducedMotionVariants : pageVariants}
+      key={pathname}
+      variants={pageVariants}
       initial="initial"
       animate="enter"
-      className={className}
+      style={{ minHeight: '100%' }}
     >
       {children}
     </motion.div>
   );
 }
-
-export default PageTransition;

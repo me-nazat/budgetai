@@ -6,13 +6,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import useSWR, { mutate } from 'swr';
 import { createPortal } from 'react-dom';
-import AnimatedCounter from '@/components/ui/AnimatedCounter';
+import AnimatedCounter from '@/components/AnimatedCounter';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useCurrency } from '@/hooks/useCurrency';
-import TourAddCostModal, { EntryType } from '@/components/TourAddCostModal';
+import TourAddCostModal from '@/components/TourAddCostModal';
 import TourEditCostModal from '@/components/TourEditCostModal';
-import TourSettlementModal from '@/components/TourSettlementModal';
 import TourTransactionDetailModal from '@/components/TourTransactionDetailModal';
 import { getCategoryIcon, getCategoryHex } from '@/lib/categoryUtils';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
@@ -89,13 +88,6 @@ interface Tour {
   name: string;
   createdAt: string | null;
   createdBy: number;
-  destination?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
-  baseCurrency?: string | null;
-  totalBudget?: number | null;
-  status?: string | null;
-  inviteCode?: string | null;
 }
 
 const spring = { type: 'spring' as const, stiffness: 400, damping: 30 };
@@ -531,9 +523,9 @@ export default function TourDashboard() {
 
   const currentUserId = userData?.user?.id as number | undefined;
   const currentUserName = useMemo(() => {
-    const p = participants.find(p => p.userId === currentUserId) || (tour?.createdBy === currentUserId ? participants[0] : undefined);
+    const p = participants.find(p => p.userId === currentUserId);
     return p ? p.name : (userData?.user?.name || 'Someone');
-  }, [participants, currentUserId, userData, tour]);
+  }, [participants, currentUserId, userData]);
   const isLoading = tourLoading || (!tourData && !tourError);
   const error = tourError ? (tourError.message || 'Unable to load tour.') : (tourData && !tourData.success ? tourData.error : null);
 
@@ -545,40 +537,19 @@ export default function TourDashboard() {
   const router = useRouter();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [costModalMode, setCostModalMode] = useState<EntryType>('expense');
-  const [costModalPrefill, setCostModalPrefill] = useState<{
-    fromParticipantId?: number;
-    toParticipantId?: number;
-    amount?: number;
-    description?: string;
-    category?: string;
-  } | null>(null);
-  const [copiedInvite, setCopiedInvite] = useState(false);
   const [isEditCostOpen, setIsEditCostOpen] = useState(false);
-  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
-  const [settlementPrefill, setSettlementPrefill] = useState<{
-    fromParticipantId?: number;
-    toParticipantId?: number;
-    amount?: number;
-  } | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<TourTransaction | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { categories: customCategories } = useCustomCategories('expense');
   const haptics = useHaptics();
 
-  const kittySummary = tourData?.kittySummary as {
-    totalDeposited: number;
-    totalSpentFromKitty: number;
-    remainingKittyBalance: number;
-  } | undefined;
-
   // Category Filter and Pagination States
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [visibleTransactionsLimit, setVisibleTransactionsLimit] = useState<number>(15);
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState<'ledger' | 'settlements' | 'analytics' | 'itinerary' | 'checklist'>('ledger');
+  const [activeTab, setActiveTab] = useState<'ledger' | 'itinerary' | 'checklist' | 'settlements'>('ledger');
   const [ledgerSubTab, setLedgerSubTab] = useState<'transactions' | 'analytics' | 'balances'>('transactions');
 
   // Itinerary Planner state
@@ -608,11 +579,9 @@ export default function TourDashboard() {
   const [itinLatitude, setItinLatitude] = useState('');
   const [itinLongitude, setItinLongitude] = useState('');
 
-  // Itinerary Filters & View Modes
+  // Itinerary Filters
   const [itinFilterType, setItinFilterType] = useState<string>('All');
   const [itinSearchQuery, setItinSearchQuery] = useState<string>('');
-  const [itinViewMode, setItinViewMode] = useState<'stream' | 'kanban'>('stream');
-  const [isGeneratingAiItinerary, setIsGeneratingAiItinerary] = useState(false);
 
   // Edit state — holds the item currently being edited (null = no edit in progress)
   const [editingItinItem, setEditingItinItem] = useState<ItineraryItem | null>(null);
@@ -1286,19 +1255,6 @@ export default function TourDashboard() {
     return Array.from(groups.entries());
   }, [filteredItinerary]);
 
-  const itineraryByDay = useMemo<[number, ItineraryItem[]][]>(() => {
-    const daysMap = new Map<number, ItineraryItem[]>();
-    filteredItinerary.forEach((item) => {
-      const list = daysMap.get(item.day) || [];
-      list.push(item);
-      daysMap.set(item.day, list);
-    });
-    daysMap.forEach((items) => {
-      items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-    });
-    return Array.from(daysMap.entries()).sort((a, b) => a[0] - b[0]);
-  }, [filteredItinerary]);
-
   const handleToggleAssignee = (name: string) => {
     if (name === 'Everyone') {
       setSelectedAssignees(['Everyone']);
@@ -1815,98 +1771,62 @@ export default function TourDashboard() {
     setIsGeneratingAiSuggestions(true);
     haptics.tap();
 
+    const previous = checklist;
     try {
-      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist/ai-suggest`, {
-        method: 'POST',
-      });
+      const res = await fetch(`/api/bill-splits/tours/${tourId}/checklist/ai-suggest`);
       if (!res.ok) throw new Error('Failed to generate suggestions');
       const data = await res.json();
-      if (!data.success) {
+      if (!data.success || !Array.isArray(data.suggestions)) {
         throw new Error('Invalid suggestions data');
       }
 
-      await mutateChecklist();
+      const suggestions = data.suggestions;
+      const existingNames = new Set(checklist.map(c => c.name.trim().toLowerCase()));
+      const newSuggestions = suggestions.filter((s: any) => s.name && !existingNames.has(s.name.trim().toLowerCase()));
+
+      if (newSuggestions.length === 0) {
+        haptics.success();
+        setIsGeneratingAiSuggestions(false);
+        return;
+      }
+
+      const tempItems: ChecklistItem[] = newSuggestions.map((item: any, idx: number) => ({
+        id: 'temp_ai_suggest_' + Date.now() + '_' + idx,
+        name: item.name,
+        category: item.category || 'Other',
+        assignedTo: 'Everyone',
+        completed: false,
+        priority: item.priority || 'Medium',
+        quantity: item.quantity || 1,
+      }));
+
+      mutateChecklist(
+        { success: true, checklist: [...checklist, ...tempItems], categories: customCategoriesList },
+        { revalidate: false }
+      );
       haptics.success();
+
+      // Submit items to API
+      for (const item of newSuggestions) {
+        const formData = new FormData();
+        formData.append('name', item.name);
+        formData.append('category', item.category || 'Other');
+        formData.append('assignedTo', 'Everyone');
+        formData.append('priority', item.priority || 'Medium');
+        formData.append('quantity', String(item.quantity || 1));
+        await fetch(`/api/bill-splits/tours/${tourId}/checklist`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
+      mutateChecklist();
     } catch (err) {
       console.error(err);
-      haptics.error();
+      mutateChecklist({ success: true, checklist: previous, categories: customCategoriesList }, { revalidate: true });
     } finally {
       setIsGeneratingAiSuggestions(false);
     }
   };
-
-  const handleAiSuggestItinerary = async () => {
-    if (isGeneratingAiItinerary) return;
-    setIsGeneratingAiItinerary(true);
-    haptics.tap();
-
-    try {
-      const res = await fetch(`/api/bill-splits/tours/${tourId}/itinerary/ai-suggest`, {
-        method: 'POST',
-      });
-      if (!res.ok) throw new Error('Failed to generate AI itinerary');
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate itinerary');
-      }
-
-      await mutateItinerary();
-      haptics.success();
-    } catch (err) {
-      console.error(err);
-      haptics.error();
-    } finally {
-      setIsGeneratingAiItinerary(false);
-    }
-  };
-
-  const handleExportItinerary = useCallback(() => {
-    if (!itinerary || itinerary.length === 0) return;
-    const dest = tour?.destination || tour?.name || 'Trip';
-    const lines = [
-      `# ${tour?.name || 'Tour'} — Day-by-Day Itinerary`,
-      `**Destination**: ${dest}`,
-      `**Dates**: ${tour?.startDate || 'TBD'} to ${tour?.endDate || 'TBD'}`,
-      `**Total Budget**: ${tour?.totalBudget ? `${tour.baseCurrency || 'BDT'} ${tour.totalBudget}` : 'Not set'}`,
-      `**Generated on**: ${new Date().toLocaleDateString()}`,
-      '',
-      '---',
-      '',
-    ];
-
-    const sorted = [...itinerary].sort((a, b) => {
-      if (a.day !== b.day) return a.day - b.day;
-      return a.time.localeCompare(b.time);
-    });
-
-    let currentDay = -1;
-    for (const item of sorted) {
-      if (item.day !== currentDay) {
-        currentDay = item.day;
-        lines.push(`## Day ${currentDay}${item.groupTitle && item.groupTitle !== 'General Activities' ? ` — ${item.groupTitle}` : ''}`);
-        lines.push('');
-      }
-
-      const timeRange = `${formatTime12h(item.time)}${item.timeEnd ? ` – ${formatTime12h(item.timeEnd)}` : ''}`;
-      const costStr = item.costDisplay ? ` (Est. ${item.costDisplay})` : item.cost ? ` (Est. ${item.cost})` : '';
-      lines.push(`- **${timeRange}**: ${item.title}${costStr}`);
-      if (item.location) lines.push(`  - *Location*: ${item.location}`);
-      if (item.notes) lines.push(`  - *Notes*: ${item.notes}`);
-      lines.push(`  - *Status*: ${item.status || 'Planned'}`);
-      lines.push('');
-    }
-
-    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${(tour?.name || 'tour').replace(/\s+/g, '-').toLowerCase()}-itinerary.md`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    haptics.success();
-  }, [itinerary, tour, haptics]);
 
   const generateDefaultChecklist = async () => {
     const defaults = [
@@ -1947,61 +1867,12 @@ export default function TourDashboard() {
   const averageCost = Number(tourData?.averageCost || 0);
   const balances = useMemo(() => (tourData?.balances ?? []) as TourParticipant[], [tourData?.balances]);
 
-  const currentUserBalanceObj = balances.find(b => b.userId === currentUserId) ||
-    (tour?.createdBy === currentUserId ? (balances.find(b => b.userId === currentUserId) || balances[0]) : undefined);
+  const currentUserBalanceObj = balances.find(b => b.userId === currentUserId);
   const myBalance = currentUserBalanceObj?.balance || 0;
-  const myPaidAmount = currentUserBalanceObj?.paid || 0;
-  const myTrueTripCost = Math.max(0, myPaidAmount - myBalance);
-
-  const tripDays = useMemo(() => {
-    if (tour?.startDate && tour?.endDate) {
-      const s = new Date(tour.startDate).getTime();
-      const e = new Date(tour.endDate).getTime();
-      const diff = Math.ceil((e - s) / (1000 * 60 * 60 * 24)) + 1;
-      if (diff > 0) return diff;
-    }
-    const uniqueDates = new Set(transactions.map((t) => t.date).filter(Boolean));
-    return Math.max(1, uniqueDates.size);
-  }, [tour?.startDate, tour?.endDate, transactions]);
-
-  const dailyBurn = tripDays > 0 ? totalSpent / tripDays : 0;
-  const perPersonPerDay = tripDays > 0 && participants.length > 0 ? (totalSpent / participants.length) / tripDays : 0;
-
-  const categoryComparison = useMemo(() => {
-    const plannedMap: Record<string, number> = {};
-    const actualMap: Record<string, number> = {};
-
-    itinerary.forEach((item) => {
-      const cat =
-        item.type === 'flight' || item.type === 'transport'
-          ? 'Transportation'
-          : item.type === 'hotel'
-          ? 'Lodging'
-          : item.type === 'food'
-          ? 'Food & Dining'
-          : 'Activities & Sightseeing';
-      const cost = typeof item.cost === 'number' ? item.cost : parseFloat(String(item.cost || '')) || 0;
-      plannedMap[cat] = (plannedMap[cat] || 0) + cost;
-    });
-
-    transactions.forEach((tx) => {
-      const cat = tx.category || 'Other';
-      actualMap[cat] = (actualMap[cat] || 0) + Number(tx.amount || 0);
-    });
-
-    const allCats = Array.from(new Set([...Object.keys(plannedMap), ...Object.keys(actualMap)]));
-
-    return allCats.map((cat) => ({
-      category: cat,
-      planned: plannedMap[cat] || 0,
-      actual: actualMap[cat] || 0,
-      diff: (actualMap[cat] || 0) - (plannedMap[cat] || 0),
-    }));
-  }, [itinerary, transactions]);
 
   const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-  const tickColor = isDark ? '#94a3b8' : '#6b7280';
-  const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : '#e5e7eb';
+  const tickColor = isDark ? '#8b949e' : '#6b7280';
+  const gridColor = isDark ? '#21262d' : '#e5e7eb';
 
   const barData = useMemo(() => {
     if (transactions.length === 0) {
@@ -2261,52 +2132,7 @@ export default function TourDashboard() {
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               Back to Tours
             </Link>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary sm:text-xs">Tour Command Center</p>
-              {tour.status && (
-                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider border ${
-                  tour.status === 'completed'
-                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                    : tour.status === 'planning'
-                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                    : tour.status === 'archived'
-                    ? 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                }`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                  {tour.status}
-                </span>
-              )}
-              {tour.destination && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 text-[11px] font-bold text-sky-400">
-                  <span className="material-symbols-outlined text-[13px]">location_on</span>
-                  {tour.destination}
-                </span>
-              )}
-              {tour.startDate && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-[11px] font-bold text-gray-300">
-                  <span className="material-symbols-outlined text-[13px]">calendar_month</span>
-                  {tour.startDate}{tour.endDate ? ` – ${tour.endDate}` : ''}
-                </span>
-              )}
-              {tour.inviteCode && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(tour.inviteCode!);
-                    setCopiedInvite(true);
-                    haptics.tap();
-                    setTimeout(() => setCopiedInvite(false), 2000);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-mono font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                  title="Copy invite code"
-                >
-                  <span className="material-symbols-outlined text-[13px]">key</span>
-                  <span>{tour.inviteCode}</span>
-                  <span className="material-symbols-outlined text-[12px]">{copiedInvite ? 'check' : 'content_copy'}</span>
-                </button>
-              )}
-            </div>
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-primary sm:text-xs">Tour Dashboard</p>
             <h1 className="max-w-4xl text-balance text-[2rem] font-black tracking-tight text-gray-950 dark:text-white sm:text-4xl lg:text-5xl">
               {tour.name}
             </h1>
@@ -2360,27 +2186,7 @@ export default function TourDashboard() {
 
             <motion.button
               type="button"
-              onClick={() => {
-                setCostModalMode('settlement');
-                setCostModalPrefill(null);
-                setIsAddModalOpen(true);
-              }}
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.97 }}
-              transition={spring}
-              className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-xs font-black text-emerald-400 backdrop-blur-xl hover:bg-emerald-500/20 sm:px-5 sm:py-3.5 sm:text-sm"
-            >
-              <span className="material-symbols-outlined text-[18px] sm:text-[20px]">handshake</span>
-              Settle Debt
-            </motion.button>
-
-            <motion.button
-              type="button"
-              onClick={() => {
-                setCostModalMode('expense');
-                setCostModalPrefill(null);
-                setIsAddModalOpen(true);
-              }}
+              onClick={() => setIsAddModalOpen(true)}
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.97 }}
               transition={spring}
@@ -2392,148 +2198,42 @@ export default function TourDashboard() {
           </div>
         </div>
 
-        {/* Shared Kitty Deficit Warning Banner */}
-        {kittySummary && kittySummary.remainingKittyBalance < -0.01 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 flex flex-wrap items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-rose-400 text-2xl">warning</span>
-              <div>
-                <p className="text-sm font-black text-rose-300">Shared Kitty Deficit Warning</p>
-                <p className="text-xs text-rose-200/80">
-                  Collective pool is overdrawn by {fmt(Math.abs(kittySummary.remainingKittyBalance))}. Members should deposit funds to replenish the kitty.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCostModalMode('deposit');
-                setCostModalPrefill(null);
-                setIsAddModalOpen(true);
-              }}
-              className="shrink-0 px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[16px]">savings</span>
-              Deposit to Kitty
-            </button>
-          </motion.div>
-        )}
-
-        {/* Top 4 Executive KPI Cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5 sm:mb-8">
-          {/* Card 1: Total Group Spend */}
-          <TiltCard className="card-glass stat-gradient-blue rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="-mx-4 mb-5 sm:mb-8 flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-4 pb-2 overscroll-x-contain sm:mx-0 sm:px-0 md:gap-4 md:overflow-visible lg:gap-5 stagger-children">
+          <TiltCard className="glass-panel stat-gradient-blue min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0s', animation: 'slideUp 0.5s ease-out 0s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-              <div className="flex items-center justify-between">
-                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Total Group Spend</p>
-                <span className="text-[10px] font-bold text-sky-400 font-mono">
-                  {fmt(dailyBurn)}/day
-                </span>
-              </div>
-              <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight tabular-nums number-appear">
-                {fmt(totalSpent)}
-              </h3>
-              {tour.totalBudget ? (
-                <div className="mt-1 space-y-1">
-                  <div className="flex items-center justify-between text-[10px] text-gray-400">
-                    <span>Target {fmt(tour.totalBudget)}</span>
-                    <span className="font-bold text-gray-300 font-mono">{Math.round((totalSpent / tour.totalBudget) * 100)}%</span>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${
-                        totalSpent > tour.totalBudget ? 'bg-rose-500' : (totalSpent / tour.totalBudget) > 0.8 ? 'bg-amber-400' : 'bg-primary'
-                      }`}
-                      style={{ width: `${Math.min(100, (totalSpent / tour.totalBudget) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <p className="text-[10px] text-gray-400 font-medium">Avg {fmt(averageCost)} per transaction</p>
-              )}
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Total Spent</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(totalSpent)}</h3>
             </div>
           </TiltCard>
-
-          {/* Card 2: My True Trip Cost */}
-          <TiltCard className="card-glass stat-gradient-orange rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <TiltCard className="glass-panel stat-gradient-emerald min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.08s', animation: 'slideUp 0.5s ease-out 0.08s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-              <div className="flex items-center justify-between">
-                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">My True Trip Cost</p>
-                <span className="text-[10px] font-bold text-amber-400 font-mono">
-                  {participants.length} travellers
-                </span>
-              </div>
-              <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight tabular-nums number-appear">
-                {fmt(myTrueTripCost)}
-              </h3>
-              <p className="text-[10px] text-gray-400 font-medium">
-                Paid out {fmt(myPaidAmount)} · Net offset {myBalance >= 0 ? `+${fmt(myBalance)}` : `-${fmt(Math.abs(myBalance))}`}
-              </p>
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Per Person</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(perPerson)}</h3>
             </div>
           </TiltCard>
-
-          {/* Card 3: My Net Balance */}
-          <TiltCard className={`card-glass ${myBalance > 0 ? 'stat-gradient-emerald' : myBalance < 0 ? 'stat-gradient-rose' : 'stat-gradient-blue'} rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]`} style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <TiltCard className="glass-panel stat-gradient-orange min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6" style={{ animationDelay: '0.16s', animation: 'slideUp 0.5s ease-out 0.16s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-              <div className="flex items-center justify-between">
-                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">My Net Position</p>
-                <span className={`h-2 w-2 rounded-full ${myBalance > 0 ? 'bg-emerald-400' : myBalance < 0 ? 'bg-rose-400' : 'bg-gray-400'}`} />
-              </div>
-              <h3 className={`truncate whitespace-nowrap text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight tabular-nums ${
-                myBalance > 0 ? 'text-emerald-400' : myBalance < 0 ? 'text-rose-400' : 'text-gray-900 dark:text-white'
-              }`}>
-                {myBalance > 0 ? '+' : myBalance < 0 ? '-' : ''}{fmt(Math.abs(myBalance))}
-              </h3>
-              <p className="text-[10px] text-gray-400 font-medium">
-                {myBalance > 0 ? 'Group owes you back' : myBalance < 0 ? 'You owe group debt' : 'All accounts settled'}
-              </p>
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Avg Cost</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">{fmt(averageCost)}</h3>
             </div>
           </TiltCard>
-
-          {/* Card 4: Shared Kitty Pool */}
-          <TiltCard className={`card-glass ${(kittySummary?.remainingKittyBalance ?? 0) < 0 ? 'stat-gradient-rose' : 'stat-gradient-emerald'} rounded-3xl relative overflow-hidden group breathe p-4 lg:p-6 border border-white/[0.08]`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <TiltCard className={`glass-panel ${myBalance >= 0 ? 'stat-gradient-blue' : 'stat-gradient-rose'} min-w-[9.75rem] flex-[0_0_9.75rem] snap-start rounded-3xl relative overflow-hidden group breathe p-4 md:min-w-0 md:flex-1 lg:p-6`} style={{ animationDelay: '0.24s', animation: 'slideUp 0.5s ease-out 0.24s both' }}>
             <div className="flex flex-col gap-1 relative z-10">
-              <div className="flex items-center justify-between">
-                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">Shared Kitty Pool</p>
-                <span className={`h-2 w-2 rounded-full ${(kittySummary?.remainingKittyBalance ?? 0) < 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'}`} />
-              </div>
-              <h3 className={`truncate whitespace-nowrap text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight tabular-nums ${(kittySummary?.remainingKittyBalance ?? 0) < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                {fmt(kittySummary?.remainingKittyBalance ?? 0)}
-              </h3>
-              <div className="flex items-center justify-between text-[10px] text-gray-400">
-                <span>{fmt(kittySummary?.totalDeposited ?? 0)} in · {fmt(kittySummary?.totalSpentFromKitty ?? 0)} out</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCostModalMode('deposit');
-                    setCostModalPrefill(null);
-                    setIsAddModalOpen(true);
-                  }}
-                  className="font-bold text-primary hover:underline"
-                >
-                  + Add
-                </button>
-              </div>
+                <p className="whitespace-nowrap text-gray-500 dark:text-text-muted text-[10px] font-semibold uppercase tracking-wider sm:text-xs">My Balance</p>
+                <h3 className="truncate whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight number-appear">
+                  {myBalance > 0 ? '+' : myBalance < 0 ? '-' : ''}{fmt(Math.abs(myBalance))}
+                </h3>
             </div>
           </TiltCard>
         </div>
 
-        {/* 5 Navigation Tabs */}
-        <div className="-mx-4 mb-5 sm:mb-8 flex gap-2 overflow-x-auto border-b border-gray-200 px-4 pb-4 dark:border-white/10 sm:mx-0 sm:px-0 hide-scrollbar">
+        {/* Navigation Tabs */}
+        <div className="-mx-4 mb-5 sm:mb-8 flex gap-2 overflow-x-auto border-b border-gray-200 px-4 pb-4 dark:border-white/10 sm:mx-0 sm:px-0">
           {[
-            { id: 'ledger', label: 'Expenses & Ledger', icon: 'receipt_long' },
-            { id: 'settlements', label: 'Balances & Settlements', icon: 'handshake' },
-            { id: 'analytics', label: 'Budget & Analytics', icon: 'query_stats' },
+            { id: 'ledger', label: 'Expenses Ledger', icon: 'receipt_long' },
             { id: 'itinerary', label: 'Itinerary Planner', icon: 'calendar_month' },
             { id: 'checklist', label: 'Packing Checklist', icon: 'backpack' },
+            { id: 'settlements', label: 'Balances & Settlements', icon: 'handshake' }
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -2570,15 +2270,112 @@ export default function TourDashboard() {
               transition={spring}
               className="space-y-5 sm:space-y-8"
             >
+              {/* Mobile Sub-tab Switcher */}
+              <div className="lg:hidden flex p-1 bg-gray-100 dark:bg-white/[0.04] rounded-2xl border border-gray-200 dark:border-white/10 mb-5 sm:mb-6">
+                <button
+                  type="button"
+                  onClick={() => { haptics.tap(); setLedgerSubTab('transactions'); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                    ledgerSubTab === 'transactions'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-sm border border-gray-200/50 dark:border-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                  Ledger
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { haptics.tap(); setLedgerSubTab('balances'); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                    ledgerSubTab === 'balances'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-sm border border-gray-200/50 dark:border-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+                  Balances
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { haptics.tap(); setLedgerSubTab('analytics'); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                    ledgerSubTab === 'analytics'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-sm border border-gray-200/50 dark:border-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">analytics</span>
+                  Analytics
+                </button>
+              </div>
+
+              {/* Split-Screen Analytics: Spending Trends & Expense Distribution */}
+              <div className={`flex flex-col lg:flex-row gap-5 ${ledgerSubTab !== 'analytics' ? 'hidden lg:flex' : ''}`}>
+                  <TiltCard className="w-full lg:w-[60%] shrink-0 glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'none' }}>
+                      <div className="flex justify-between items-center mb-6">
+                          <div>
+                              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
+                              <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Tour expenses over time</p>
+                          </div>
+                      </div>
+                      <div className="h-[320px]">
+                          <Bar data={barData!} options={{
+                              responsive: true, maintainAspectRatio: false,
+                              plugins: {
+                                  legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
+                                  tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8 },
+                              },
+                              scales: {
+                                  x: { stacked: true, grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
+                                  y: { stacked: true, beginAtZero: true, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => fmt(Number(v)), font: { size: 11 }, padding: 8 }, border: { display: false } },
+                              },
+                          }} />
+                      </div>
+                  </TiltCard>
+
+                  <TiltCard className="w-full lg:w-[40%] glass-panel p-6 rounded-3xl ambient-glow" style={{ animation: 'none' }} tiltIntensity={7.5}>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
+                      <div className="h-[320px] min-h-[160px]">
+                          <Doughnut data={doughnutData!} options={{
+                              responsive: true, maintainAspectRatio: false,
+                              animation: { duration: 800, easing: 'easeOutQuart' },
+                              plugins: {
+                                  legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
+                                  tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
+                              },
+                              cutout: '68%',
+                          }} />
+                      </div>
+                  </TiltCard>
+              </div>
+
+              {/* Injected Balances Overview */}
+              <div className={`mt-8 ${ledgerSubTab !== 'balances' ? 'hidden lg:block' : ''}`}>
+                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-4">Balances Overview</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {balances.map((participant) => (
+                    <div key={participant.id} className="rounded-2xl border border-gray-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                      <h3 className="truncate text-lg font-black text-gray-950 dark:text-white">{participant.name}</h3>
+                      <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                        Paid {fmt(participant.paid || 0)}
+                      </p>
+                      <p className={`mt-3 text-lg font-black ${(participant.balance || 0) > 0 ? 'text-emerald-500' : (participant.balance || 0) < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                        {(participant.balance || 0) > 0
+                          ? `Gets back ${fmt(participant.balance || 0)}`
+                          : (participant.balance || 0) < 0
+                            ? `Owes ${fmt(Math.abs(participant.balance || 0))}`
+                            : 'Settled'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Transactions Ledger */}
-              <div>
+              <div className={`mt-5 sm:mt-10 ${ledgerSubTab !== 'transactions' ? 'hidden lg:block' : ''}`}>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
-                    <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">
-                      All group expenses, kitty pool deductions, and direct settlements
-                    </p>
-                  </div>
+                  <h2 className="text-2xl font-black text-gray-950 dark:text-white">Transactions Ledger</h2>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black uppercase tracking-wider text-gray-400">Filter Category:</span>
                     <select
@@ -2723,6 +2520,59 @@ export default function TourDashboard() {
                   </div>
                 )}
               </div>
+
+              {/* Member Contributions Doughnut Chart */}
+              {balances.some(b => (b.paid || 0) > 0) && (
+                <motion.section
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[2rem] border border-gray-200 bg-white/80 p-7 shadow-[0_20px_65px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-white/[0.02] mt-10"
+                >
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-black text-gray-950 dark:text-white">Member Contributions</h2>
+                    <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Breakdown of total money paid by each member of the trip.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row gap-8 items-center">
+                    <div className="w-full lg:w-[45%] h-[240px] flex items-center justify-center">
+                      <Doughnut data={contributionData!} options={{
+                        responsive: true, maintainAspectRatio: false,
+                        animation: { duration: 800, easing: 'easeOutQuart' },
+                        plugins: {
+                          legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 11 } } },
+                          tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8, callbacks: { label: (c) => `Paid: ${fmt(Number(c.raw))}` } },
+                        },
+                        cutout: '68%',
+                      }} />
+                    </div>
+                    <div className="w-full lg:w-[55%] space-y-3">
+                      {balances
+                        .filter(b => (b.paid || 0) > 0)
+                        .sort((a, b) => (b.paid || 0) - (a.paid || 0))
+                        .map((b, i) => {
+                          const totalPaid = balances.reduce((sum, item) => sum + (item.paid || 0), 0);
+                          const percent = totalPaid > 0 ? Math.round(((b.paid || 0) / totalPaid) * 100) : 0;
+                          const colors = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e', '#06b6d4', '#14b8a6', '#ec4899', '#0ea5e9'];
+                          const dotColor = colors[i % colors.length];
+                          return (
+                            <div key={b.id} className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-white/[0.01]">
+                              <div className="flex items-center gap-2.5">
+                                <div className="size-3 rounded-full" style={{ backgroundColor: dotColor }} />
+                                <span className="text-sm font-black text-gray-950 dark:text-white">{b.name}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-sm font-mono font-black text-gray-900 dark:text-gray-200">{fmt(b.paid || 0)}</span>
+                                <span className="ml-2.5 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md font-bold">{percent}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </motion.section>
+              )}
             </motion.div>
           )}
 
@@ -2740,66 +2590,22 @@ export default function TourDashboard() {
                 <div className="lg:col-span-2 glass-panel p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Day-by-Day Schedule</span>
-                      </div>
-                      <h2 className="text-2xl font-black text-gray-950 dark:text-white mt-0.5">Trip Itinerary</h2>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5">
+                      <h2 className="text-2xl font-black text-gray-950 dark:text-white">Trip Itinerary</h2>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
                         Plan and view your day-by-day activities, reservations, and timings.
                       </p>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-                      {/* AI Auto-Plan Itinerary */}
-                      <button
-                        type="button"
-                        onClick={handleAiSuggestItinerary}
-                        disabled={isGeneratingAiItinerary}
-                        className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/20 to-cyan-500/15 border border-emerald-500/30 px-3.5 py-2.5 text-xs font-black text-emerald-400 hover:from-emerald-500/25 hover:to-teal-500/30 disabled:opacity-50 transition-all shadow-sm"
-                        title="AI-powered day-by-day travel itinerary generation"
-                      >
-                        {isGeneratingAiItinerary ? (
-                          <>
-                            <svg className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                            <span>Generating...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined text-[17px] animate-pulse">auto_awesome</span>
-                            <span>AI Auto-Plan</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* Export Itinerary */}
-                      <button
-                        type="button"
-                        onClick={handleExportItinerary}
-                        disabled={itinerary.length === 0}
-                        className="inline-flex items-center gap-1.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:text-white hover:bg-white/[0.08] disabled:opacity-40 transition-colors"
-                        title="Export Itinerary (Markdown / Offline document)"
-                      >
-                        <span className="material-symbols-outlined text-[17px]">file_download</span>
-                        <span className="hidden md:inline">Export</span>
-                      </button>
-
-                      {/* Add Activity Button */}
-                      <button
-                        type="button"
-                        onClick={() => { haptics.tap(); setIsAddingItinerary(!isAddingItinerary); }}
-                        className="inline-flex items-center gap-1.5 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">{isAddingItinerary ? 'close' : 'add'}</span>
-                        {isAddingItinerary ? 'Cancel' : 'Add Activity'}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { haptics.tap(); setIsAddingItinerary(!isAddingItinerary); }}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-primary-hover self-start sm:self-auto"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{isAddingItinerary ? 'close' : 'add'}</span>
+                      {isAddingItinerary ? 'Cancel' : 'Add Activity'}
+                    </button>
                   </div>
 
-                  {/* Search, Filter & View Toggle */}
+                  {/* Search and Quick Filters */}
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <div className="relative flex-1">
                       <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
@@ -2816,44 +2622,14 @@ export default function TourDashboard() {
                       onChange={(e) => setItinFilterType(e.target.value)}
                       className="rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-[#111827] px-3 py-2 text-xs font-bold text-gray-800 dark:text-white outline-none focus:border-primary"
                     >
-                      <option value="All">All Types</option>
-                      <option value="activity">Activities</option>
-                      <option value="flight">Flights</option>
-                      <option value="hotel">Hotels</option>
-                      <option value="food">Dining</option>
-                      <option value="transport">Transportation</option>
-                      <option value="other">Other</option>
+                      <option value="All">All Types 🌐</option>
+                      <option value="activity">Activities 🎯</option>
+                      <option value="flight">Flights ✈️</option>
+                      <option value="hotel">Hotels 🏨</option>
+                      <option value="food">Food 🍽️</option>
+                      <option value="transport">Transport 🚗</option>
+                      <option value="other">Other 📦</option>
                     </select>
-
-                    {/* View Switcher: Timeline Stream vs Day-by-Day Board */}
-                    <div className="flex items-center rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-[#111827] p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => { haptics.tap(); setItinViewMode('stream'); }}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          itinViewMode === 'stream'
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'
-                        }`}
-                        title="Timeline Stream View"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">timeline</span>
-                        <span className="hidden sm:inline">Timeline</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { haptics.tap(); setItinViewMode('kanban'); }}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          itinViewMode === 'kanban'
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'
-                        }`}
-                        title="Day-by-Day Board View"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">grid_view</span>
-                        <span className="hidden sm:inline">Board</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
 
@@ -2954,12 +2730,12 @@ export default function TourDashboard() {
                               onChange={e => setItinType(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="activity">Activity</option>
-                              <option value="flight">Flight</option>
-                              <option value="hotel">Hotel</option>
-                              <option value="food">Dining</option>
-                              <option value="transport">Transportation</option>
-                              <option value="other">Other</option>
+                              <option value="activity">Activity 🎯</option>
+                              <option value="flight">Flight ✈️</option>
+                              <option value="hotel">Hotel 🏨</option>
+                              <option value="food">Food 🍽️</option>
+                              <option value="transport">Transport 🚗</option>
+                              <option value="other">Other 📦</option>
                             </select>
                           </div>
                         </div>
@@ -3002,9 +2778,9 @@ export default function TourDashboard() {
                               onChange={e => setItinStatus(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="Planned">Planned</option>
-                              <option value="Booked">Booked</option>
-                              <option value="Completed">Completed</option>
+                              <option value="Planned">Planned 🗓️</option>
+                              <option value="Booked">Booked ✅</option>
+                              <option value="Completed">Completed 🎉</option>
                             </select>
                           </div>
                         </div>
@@ -3092,199 +2868,19 @@ export default function TourDashboard() {
                 <div className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
                   <span className="material-symbols-outlined mb-4 text-6xl text-gray-300 dark:text-gray-600">route</span>
                   <h3 className="text-xl font-black text-gray-950 dark:text-white">No activities found</h3>
-                  <p className="mt-2 max-w-md text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {itinerary.length > 0 ? 'Try clearing your search or category filters.' : 'Plan your journey step-by-step or use AI Auto-Plan to generate a tailored day-by-day travel schedule!'}
+                  <p className="mt-2 max-w-sm text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {itinerary.length > 0 ? 'Try clearing your search or category filters.' : 'Start planning your trip schedule by adding flight timings, hotel stays, and exciting activities!'}
                   </p>
-                  <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleAiSuggestItinerary}
-                      disabled={isGeneratingAiItinerary}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/20 to-cyan-500/15 border border-emerald-500/30 px-5 py-3 text-sm font-black text-emerald-400 hover:from-emerald-500/25 hover:to-teal-500/30 transition-all shadow-md"
-                    >
-                      <span className="material-symbols-outlined text-[20px] animate-pulse">auto_awesome</span>
-                      AI Auto-Plan Itinerary
-                    </button>
+                  {itinerary.length === 0 && (
                     <button
                       type="button"
                       onClick={() => { haptics.tap(); setIsAddingItinerary(true); }}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white hover:bg-primary-hover transition-all"
+                      className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white"
                     >
                       <span className="material-symbols-outlined text-[20px]">add</span>
-                      Add Activity Manually
+                      Add First Activity
                     </button>
-                  </div>
-                </div>
-              ) : itinViewMode === 'kanban' ? (
-                /* ── Day-by-Day Kanban Board ── */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-                  {itineraryByDay.map(([dayNum, dayActivities]) => {
-                    const dayCostSum = dayActivities.reduce((acc, it) => {
-                      const c = typeof it.cost === 'number' ? it.cost : parseFloat(String(it.cost || '').replace(/[^0-9.]/g, '')) || 0;
-                      return acc + c;
-                    }, 0);
-
-                    return (
-                      <div
-                        key={`kanban-day-${dayNum}`}
-                        className="rounded-3xl border border-gray-200/80 dark:border-white/10 bg-gray-50/50 dark:bg-surface-dark/70 p-4 sm:p-5 flex flex-col space-y-4 shadow-sm backdrop-blur-md"
-                      >
-                        {/* Day Column Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-gray-200/60 dark:border-white/5">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
-                                Day {dayNum}
-                              </span>
-                              <span className="text-xs font-bold text-gray-400 dark:text-gray-500">
-                                {dayActivities.length} {dayActivities.length === 1 ? 'event' : 'events'}
-                              </span>
-                            </div>
-                            {dayCostSum > 0 && (
-                              <p className="text-[11px] font-mono font-bold text-emerald-500 mt-1">
-                                Est. {fmt(dayCostSum)}
-                              </p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              haptics.tap();
-                              setItinDay(dayNum);
-                              setIsAddingItinerary(true);
-                              window.scrollTo({ top: 320, behavior: 'smooth' });
-                            }}
-                            className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                            title={`Add activity to Day ${dayNum}`}
-                          >
-                            <span className="material-symbols-outlined text-[18px]">add</span>
-                          </button>
-                        </div>
-
-                        {/* Activities Cards */}
-                        <div className="space-y-3">
-                          {dayActivities.map((item) => {
-                            const typeIcons: Record<string, string> = {
-                              flight: 'flight_takeoff',
-                              hotel: 'hotel',
-                              food: 'restaurant',
-                              activity: 'local_activity',
-                              transport: 'directions_car',
-                              other: 'category',
-                            };
-                            const icon = typeIcons[item.type] || 'category';
-                            const statusMeta = {
-                              Planned: { bg: 'bg-amber-500/10 text-amber-500 border-amber-500/20', label: 'Planned' },
-                              Booked: { bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', label: 'Booked' },
-                              Completed: { bg: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Completed' },
-                            };
-                            const currentStatus = item.status || 'Planned';
-                            const meta = statusMeta[currentStatus];
-
-                            return (
-                              <div
-                                key={`kanban-item-${item.id}`}
-                                className="group rounded-2xl border border-gray-200/70 dark:border-white/5 bg-white dark:bg-white/[0.03] p-4 shadow-xs hover:border-primary/40 transition-all space-y-2.5"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300">
-                                      <span className="material-symbols-outlined text-[16px]">{icon}</span>
-                                    </div>
-                                    <span className="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 truncate">
-                                      {formatTime12h(item.time)}{item.timeEnd ? ` – ${formatTime12h(item.timeEnd)}` : ''}
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCycleStatus(item)}
-                                    className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border transition-transform hover:scale-105 shrink-0 ${meta.bg}`}
-                                    title="Click to cycle status"
-                                  >
-                                    {meta.label}
-                                  </button>
-                                </div>
-
-                                <div>
-                                  <h4 className="text-sm font-black text-gray-900 dark:text-white leading-snug">
-                                    {item.title}
-                                  </h4>
-                                  {item.location && (
-                                    <p className="text-[11px] font-medium text-primary mt-1 flex items-center gap-1 truncate">
-                                      <span className="material-symbols-outlined text-[13px]">location_on</span>
-                                      <span className="truncate">{getLocationNameValue(item.location)}</span>
-                                    </p>
-                                  )}
-                                  {item.notes && (
-                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 italic">
-                                      {item.notes}
-                                    </p>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
-                                  {(item.costDisplay || item.cost) ? (
-                                    <span className="text-xs font-mono font-black text-rose-500 dark:text-rose-400">
-                                      Est. {item.costDisplay || (item.cost != null ? fmt(Number(item.cost)) : '')}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] text-gray-400">Free / Included</span>
-                                  )}
-
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const costVal = typeof item.cost === 'number'
-                                          ? item.cost
-                                          : parseFloat(String(item.cost || '').replace(/[^0-9.]/g, '')) || undefined;
-                                        setCostModalMode('expense');
-                                        setCostModalPrefill({
-                                          amount: costVal,
-                                          description: `${item.title}${item.location ? ` - ${getLocationNameValue(item.location)}` : ''}`,
-                                          category:
-                                            item.type === 'flight' || item.type === 'transport'
-                                              ? 'Transportation'
-                                              : item.type === 'hotel'
-                                              ? 'Lodging'
-                                              : item.type === 'food'
-                                              ? 'Food & Dining'
-                                              : 'Activities & Sightseeing',
-                                        });
-                                        setIsAddModalOpen(true);
-                                        haptics.tap();
-                                      }}
-                                      className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors"
-                                      title="Log Cost"
-                                    >
-                                      <span className="material-symbols-outlined text-[13px]">receipt_long</span>
-                                      <span>Log</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditItinerary(item)}
-                                      className="flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-primary/10 hover:text-primary transition-colors"
-                                      title="Edit"
-                                    >
-                                      <span className="material-symbols-outlined text-[15px]">edit</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteItinerary(item.id)}
-                                      className="flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
-                                      title="Delete"
-                                    >
-                                      <span className="material-symbols-outlined text-[15px]">delete</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  )}
                 </div>
               ) : (
                 <div className="space-y-10 relative">
@@ -3387,38 +2983,13 @@ export default function TourDashboard() {
                                     <div className="flex items-center gap-1.5 self-end sm:self-auto">
                                       {(item.costDisplay || item.cost) && (
                                         <span className="text-sm font-mono font-black text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-lg">
-                                          Est. {item.costDisplay || (item.cost != null ? fmt(Number(item.cost)) : '')}
+                                          Est. {item.costDisplay
+                                            ? item.costDisplay.includes('-')
+                                              ? item.costDisplay.replace('-', ' – ')
+                                              : item.costDisplay
+                                            : fmt(Number(item.cost))}
                                         </span>
                                       )}
-                                      {/* Log Expense button */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const costVal = typeof item.cost === 'number'
-                                            ? item.cost
-                                            : parseFloat(String(item.cost || '').replace(/[^0-9.]/g, '')) || undefined;
-                                          setCostModalMode('expense');
-                                          setCostModalPrefill({
-                                            amount: costVal,
-                                            description: `${item.title}${item.location ? ` - ${item.location}` : ''}`,
-                                            category:
-                                              item.type === 'flight' || item.type === 'transport'
-                                                ? 'Transportation'
-                                                : item.type === 'hotel'
-                                                ? 'Lodging'
-                                                : item.type === 'food'
-                                                ? 'Food & Dining'
-                                                : 'Activities & Sightseeing',
-                                          });
-                                          setIsAddModalOpen(true);
-                                          haptics.tap();
-                                        }}
-                                        className="inline-flex items-center gap-1 rounded-xl bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
-                                        title="Log Actual Expense"
-                                      >
-                                        <span className="material-symbols-outlined text-[15px]">receipt_long</span>
-                                        <span>Log Cost</span>
-                                      </button>
                                       {/* Edit button */}
                                       <button
                                         type="button"
@@ -3641,12 +3212,12 @@ export default function TourDashboard() {
                               onChange={e => setEditItinType(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="activity">Activity</option>
-                              <option value="flight">Flight</option>
-                              <option value="hotel">Hotel</option>
-                              <option value="food">Dining</option>
-                              <option value="transport">Transportation</option>
-                              <option value="other">Other</option>
+                              <option value="activity">Activity 🎯</option>
+                              <option value="flight">Flight ✈️</option>
+                              <option value="hotel">Hotel 🏨</option>
+                              <option value="food">Food 🍽️</option>
+                              <option value="transport">Transport 🚗</option>
+                              <option value="other">Other 📦</option>
                             </select>
                           </div>
                         </div>
@@ -3688,9 +3259,9 @@ export default function TourDashboard() {
                               onChange={e => setEditItinStatus(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="Planned">Planned</option>
-                              <option value="Booked">Booked</option>
-                              <option value="Completed">Completed</option>
+                              <option value="Planned">Planned 🗓️</option>
+                              <option value="Booked">Booked ✅</option>
+                              <option value="Completed">Completed 🎉</option>
                             </select>
                           </div>
                         </div>
@@ -3844,11 +3415,11 @@ export default function TourDashboard() {
                             onChange={e => setEditCheckCategory(e.target.value)}
                             className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                           >
-                            <option value="Documents">Documents</option>
-                            <option value="Clothing">Clothing</option>
-                            <option value="Electronics">Electronics</option>
-                            <option value="Toiletries">Toiletries</option>
-                            <option value="Other">Other</option>
+                            <option value="Documents">Documents 📄</option>
+                            <option value="Clothing">Clothing 👕</option>
+                            <option value="Electronics">Electronics 🔌</option>
+                            <option value="Toiletries">Toiletries 🧴</option>
+                            <option value="Other">Other 📦</option>
                             {customCategoriesList.map(cat => (
                               <option key={cat.id} value={cat.name}>{cat.name}</option>
                             ))}
@@ -3900,9 +3471,9 @@ export default function TourDashboard() {
                               onChange={e => setEditCheckPriority(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary"
                             >
-                              <option value="High">High Priority</option>
-                              <option value="Medium">Medium Priority</option>
-                              <option value="Low">Low Priority</option>
+                              <option value="High">High 🔴</option>
+                              <option value="Medium">Medium 🟡</option>
+                              <option value="Low">Low 🟢</option>
                             </select>
                           </div>
                           <div>
@@ -4200,11 +3771,11 @@ export default function TourDashboard() {
                                 onChange={e => setCheckCategory(e.target.value)}
                                 className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                               >
-                                <option value="Documents">Documents</option>
-                                <option value="Clothing">Clothing</option>
-                                <option value="Electronics">Electronics</option>
-                                <option value="Toiletries">Toiletries</option>
-                                <option value="Other">Other</option>
+                                <option value="Documents">Documents 📄</option>
+                                <option value="Clothing">Clothing 👕</option>
+                                <option value="Electronics">Electronics 🔌</option>
+                                <option value="Toiletries">Toiletries 🧴</option>
+                                <option value="Other">Other 📦</option>
                                 {customCategoriesList.map(cat => (
                                   <option key={cat.id} value={cat.name}>{cat.name}</option>
                                 ))}
@@ -4256,9 +3827,9 @@ export default function TourDashboard() {
                               onChange={e => setCheckPriority(e.target.value as any)}
                               className="mt-1 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111827] px-4 py-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-primary"
                             >
-                              <option value="High">High Priority</option>
-                              <option value="Medium">Medium Priority</option>
-                              <option value="Low">Low Priority</option>
+                              <option value="High">🔴 High Priority</option>
+                              <option value="Medium">🟡 Medium Priority</option>
+                              <option value="Low">🟢 Low Priority</option>
                             </select>
                           </div>
                           <div>
@@ -4395,13 +3966,7 @@ export default function TourDashboard() {
                                 : 'text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-white/5'
                             }`}
                           >
-                            {prio === 'High' ? (
-                              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-rose-500" />High</span>
-                            ) : prio === 'Medium' ? (
-                              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-amber-500" />Medium</span>
-                            ) : prio === 'Low' ? (
-                              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-emerald-500" />Low</span>
-                            ) : 'All'}
+                            {prio === 'High' ? '🔴 High' : prio === 'Medium' ? '🟡 Medium' : prio === 'Low' ? '🟢 Low' : 'All'}
                           </button>
                         ))}
                       </div>
@@ -4605,22 +4170,10 @@ export default function TourDashboard() {
 
               {/* Settlement Plan */}
               <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-xl font-black text-gray-950 dark:text-white mb-1">Settlement Plan</h3>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Optimized payments to settle all group debts with the fewest transactions.
-                    </p>
-                  </div>
-                  {settlementPlan.length > 0 && (
-                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-400">
-                      <span className="material-symbols-outlined text-[14px]">alt_route</span>
-                      <span>
-                        Simplified from {Math.max(settlementPlan.length * 2, transactions.filter(t => t.splitType !== 'self').length || settlementPlan.length)} raw debts to {settlementPlan.length} transfer{settlementPlan.length === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <h3 className="text-xl font-black text-gray-950 dark:text-white mb-1">Settlement Plan</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">
+                  Optimized payments to settle all group debts with the fewest transactions.
+                </p>
 
                 {settlementPlan.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -4658,41 +4211,17 @@ export default function TourDashboard() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const fromP = participants.find((p) => p.name === plan.from);
-                              const toP = participants.find((p) => p.name === plan.to);
-                              setCostModalMode('settlement');
-                              setCostModalPrefill({
-                                fromParticipantId: fromP?.id,
-                                toParticipantId: toP?.id,
-                                amount: plan.amount,
-                                description: `Settlement: ${plan.from} to ${plan.to}`,
-                                category: 'Settlement',
-                              });
-                              setIsAddModalOpen(true);
-                              haptics.tap();
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-xs transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                            <span>Mark Settled</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(`${plan.from} paid ${fmt(plan.amount)} to ${plan.to}`);
-                              haptics.tap();
-                            }}
-                            className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-                            title="Copy settlement details"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${plan.from} paid ${fmt(plan.amount)} to ${plan.to}`);
+                            haptics.tap();
+                          }}
+                          className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                          title="Copy settlement details"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                        </button>
                       </motion.div>
                     ))}
                   </div>
@@ -4720,7 +4249,7 @@ export default function TourDashboard() {
                         animation: { duration: 800, easing: 'easeOutQuart' },
                         plugins: {
                           legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 11 } } },
-                          tooltip: { backgroundColor: isDark ? '#12182B' : '#fff', titleColor: isDark ? '#FAFAFA' : '#1f2937', bodyColor: isDark ? '#CBD5E1' : '#6b7280', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8, callbacks: { label: (c) => `Paid: ${fmt(Number(c.raw))}` } },
+                          tooltip: { backgroundColor: isDark ? '#161b22' : '#fff', titleColor: isDark ? '#f0f6fc' : '#1f2937', bodyColor: isDark ? '#8b949e' : '#6b7280', borderColor: isDark ? '#30363d' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8, callbacks: { label: (c) => `Paid: ${fmt(Number(c.raw))}` } },
                         },
                         cutout: '68%',
                       }} />
@@ -4753,165 +4282,19 @@ export default function TourDashboard() {
               )}
             </motion.div>
           )}
-
-          {activeTab === 'analytics' && (
-            <motion.div
-              key="analytics-tab"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={spring}
-              className="space-y-8"
-            >
-              {/* Analytics Top KPI Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="glass-panel p-5 rounded-2xl border border-gray-200 dark:border-white/10">
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Target vs Actual</p>
-                  <div className="mt-2 flex items-baseline justify-between">
-                    <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{fmt(totalSpent)}</span>
-                    <span className="text-xs text-gray-400">of {tour.totalBudget ? fmt(tour.totalBudget) : 'No cap'}</span>
-                  </div>
-                  {tour.totalBudget && (
-                    <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          totalSpent > tour.totalBudget ? 'bg-rose-500' : (totalSpent / tour.totalBudget) > 0.8 ? 'bg-amber-400' : 'bg-primary'
-                        }`}
-                        style={{ width: `${Math.min(100, (totalSpent / tour.totalBudget) * 100)}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="glass-panel p-5 rounded-2xl border border-gray-200 dark:border-white/10">
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Per Person Per Day</p>
-                  <div className="mt-2 flex items-baseline justify-between">
-                    <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{fmt(perPersonPerDay)}</span>
-                    <span className="text-xs text-emerald-400 font-bold">/ person / day</span>
-                  </div>
-                  <p className="mt-2 text-xs text-gray-400">Across {tripDays} day{tripDays === 1 ? '' : 's'} and {participants.length} member{participants.length === 1 ? '' : 's'}</p>
-                </div>
-
-                <div className="glass-panel p-5 rounded-2xl border border-gray-200 dark:border-white/10">
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Average Expense</p>
-                  <div className="mt-2 flex items-baseline justify-between">
-                    <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{fmt(averageCost)}</span>
-                    <span className="text-xs text-sky-400 font-bold">{transactions.length} entries</span>
-                  </div>
-                  <p className="mt-2 text-xs text-gray-400">Total volume recorded in trip ledger</p>
-                </div>
-              </div>
-
-              {/* Split-Screen Charts: Spending Trends & Category Distribution */}
-              <div className="flex flex-col lg:flex-row gap-5">
-                <TiltCard className="w-full lg:w-[60%] shrink-0 glass-panel p-6 rounded-3xl" style={{ animation: 'none' }}>
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Spending Trends</h3>
-                      <p className="text-xs text-gray-500 dark:text-text-muted mt-0.5">Tour expenses over time</p>
-                    </div>
-                  </div>
-                  <div className="h-[320px]">
-                    <Bar data={barData!} options={{
-                      responsive: true, maintainAspectRatio: false,
-                      plugins: {
-                        legend: { position: 'top' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: 500 } } },
-                        tooltip: { backgroundColor: isDark ? '#12182B' : '#fff', titleColor: isDark ? '#FAFAFA' : '#1f2937', bodyColor: isDark ? '#CBD5E1' : '#6b7280', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', borderWidth: 1, padding: 12, cornerRadius: 8 },
-                      },
-                      scales: {
-                        x: { stacked: true, grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 11 }, padding: 10 } },
-                        y: { stacked: true, beginAtZero: true, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { color: tickColor, callback: (v) => fmt(Number(v)), font: { size: 11 }, padding: 8 }, border: { display: false } },
-                      },
-                    }} />
-                  </div>
-                </TiltCard>
-
-                <TiltCard className="w-full lg:w-[40%] glass-panel p-6 rounded-3xl" style={{ animation: 'none' }} tiltIntensity={7.5}>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Expense Distribution</h3>
-                  <div className="h-[320px] min-h-[160px]">
-                    <Doughnut data={doughnutData!} options={{
-                      responsive: true, maintainAspectRatio: false,
-                      animation: { duration: 800, easing: 'easeOutQuart' },
-                      plugins: {
-                        legend: { position: 'bottom' as const, labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } },
-                        tooltip: { backgroundColor: isDark ? '#12182B' : '#fff', titleColor: isDark ? '#FAFAFA' : '#1f2937', bodyColor: isDark ? '#CBD5E1' : '#6b7280', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', borderWidth: 1, padding: 10, cornerRadius: 8 },
-                      },
-                      cutout: '68%',
-                    }} />
-                  </div>
-                </TiltCard>
-              </div>
-
-              {/* Planned vs Actual Category Comparison Table */}
-              <div className="glass-panel p-6 rounded-3xl">
-                <div className="mb-4">
-                  <h3 className="text-xl font-black text-gray-950 dark:text-white">Planned vs. Actual Spending</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Comparison between estimated itinerary items and logged trip expenses.
-                  </p>
-                </div>
-
-                {categoryComparison.length === 0 ? (
-                  <p className="text-sm text-gray-400 py-4">No categories recorded yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {categoryComparison.map((row) => {
-                      const pct = row.planned > 0 ? Math.round((row.actual / row.planned) * 100) : 100;
-                      return (
-                        <div key={row.category} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-sm font-black text-gray-900 dark:text-white">{row.category}</span>
-                            <div className="flex items-center gap-4 text-xs font-mono">
-                              <span className="text-gray-400">Planned: <span className="font-bold text-gray-200">{fmt(row.planned)}</span></span>
-                              <span className="text-gray-400">Actual: <span className="font-bold text-gray-200">{fmt(row.actual)}</span></span>
-                              <span className={`px-2 py-0.5 rounded-full font-bold ${
-                                row.diff > 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
-                              }`}>
-                                {row.diff > 0 ? `+${fmt(row.diff)} over` : `${fmt(Math.abs(row.diff))} under`}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${
-                                row.actual > row.planned && row.planned > 0
-                                  ? 'bg-rose-500'
-                                  : 'bg-emerald-400'
-                              }`}
-                              style={{ width: `${Math.min(100, pct)}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
         </AnimatePresence>
       </div>
 
       <TourAddCostModal
         isOpen={isAddModalOpen}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setSelectedTransaction(null);
-          setCostModalPrefill(null);
-          setCostModalMode('expense');
-        }}
+        onClose={() => { setIsAddModalOpen(false); setSelectedTransaction(null); }}
         participants={participants}
         tourId={Number(tourId)}
         currentUserId={currentUserId}
         isCreator={tour.createdBy === currentUserId}
-        initialMode={costModalMode}
-        initialPrefill={costModalPrefill}
-        kittyBalance={kittySummary?.remainingKittyBalance ?? 0}
         onSaveSuccess={() => {
           setIsAddModalOpen(false);
           setSelectedTransaction(null);
-          setCostModalPrefill(null);
-          setCostModalMode('expense');
           void mutateTour();
         }}
       />
@@ -4927,23 +4310,6 @@ export default function TourDashboard() {
         onSaveSuccess={() => {
           setIsEditCostOpen(false);
           setSelectedTransaction(null);
-          void mutateTour();
-        }}
-      />
-
-      <TourSettlementModal
-        isOpen={isSettlementModalOpen}
-        onClose={() => {
-          setIsSettlementModalOpen(false);
-          setSettlementPrefill(null);
-        }}
-        participants={participants}
-        tourId={Number(tourId)}
-        prefill={settlementPrefill}
-        currentUserId={currentUserId}
-        onSaveSuccess={() => {
-          setIsSettlementModalOpen(false);
-          setSettlementPrefill(null);
           void mutateTour();
         }}
       />
@@ -4968,12 +4334,6 @@ export default function TourDashboard() {
         onClose={() => setIsEditModalOpen(false)}
         tourId={Number(tourId)}
         initialName={tour.name}
-        initialDestination={tour.destination || ''}
-        initialStartDate={tour.startDate || ''}
-        initialEndDate={tour.endDate || ''}
-        initialTotalBudget={tour.totalBudget || 0}
-        initialStatus={tour.status || 'active'}
-        initialBaseCurrency={tour.baseCurrency || 'BDT'}
         initialParticipants={participants.map(p => ({ id: p.id, name: p.name, userId: p.userId }))}
         onSaveSuccess={() => { void mutateTour(); }}
       />

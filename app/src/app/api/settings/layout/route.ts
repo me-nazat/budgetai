@@ -10,24 +10,21 @@ import { AuditService } from '@/services/audit.service';
 import { getClientIP } from '@/lib/security/rate-limiter';
 
 const DEFAULT_DESKTOP_LAYOUT = [
-  'statCards',
-  'monthPacing',
-  'cashflowChart',
-  'accountsLiquidity',
-  'healthScore',
+  'net_worth',
+  'quick_stats',
+  'spending_trends',
+  'top_categories',
+  'predictive',
   'recent_activity',
-  'upcomingBills',
+  'budget_alerts',
   'intel_hub',
 ];
 
 const DEFAULT_MOBILE_LAYOUT = [
-  'statCards',
-  'monthPacing',
-  'accountsLiquidity',
-  'healthScore',
+  'net_worth',
+  'quick_stats',
   'recent_activity',
-  'upcomingBills',
-  'ai_insight',
+  'budget_alerts',
   'intel_hub',
 ];
 

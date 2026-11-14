@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiHandler } from '@/lib/middleware/api-handler';
 import { withAuth } from '@/lib/middleware/with-auth';
 import { DocumentRepository } from '@/repositories/document.repository';
-import { getGenAI } from '@/lib/ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const GET = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
@@ -25,99 +25,34 @@ export const POST = apiHandler(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // AI Vision / OCR Text Extraction via Gemini API using getGenAI()
+    // AI Vision / OCR Text Extraction via Gemini API
     let ocrText = '';
-    let merchantName: string | null = null;
-    let documentDate: string | null = null;
-    let totalAmount: number | null = null;
-    let taxAmount: number | null = null;
-    let lineItems: Array<{ description: string; quantity?: number; unitPrice?: number; totalPrice: number }> = [];
-
     try {
       if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         const base64 = buffer.toString('base64');
-        const genAI = getGenAI();
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-        const prompt = `Extract structured financial data from this receipt/statement/bill document.
-Return a valid JSON object strictly matching this schema:
-{
-  "merchantName": "string or null",
-  "documentDate": "YYYY-MM-DD or null",
-  "totalAmount": number or null,
-  "taxAmount": number or null,
-  "lineItems": [
-    { "description": "item name", "quantity": 1, "unitPrice": 10.0, "totalPrice": 10.0 }
-  ],
-  "rawText": "full plain extracted text from the document"
-}
-Do not enclose in markdown code fences. Respond with raw JSON only.`;
-
+        const visionPrompt = `Extract all written, printed, or structured text from this document receipt/file. Provide raw extracted text contextually:`;
         const result = await model.generateContent([
-          { text: prompt },
+          { text: visionPrompt },
           { inlineData: { data: base64, mimeType: file.type } },
         ]);
-
-        const rawResponse = result.response.text().trim().replace(/```json?\n?/g, '').replace(/```\n?/g, '').trim();
-        const parsed = JSON.parse(rawResponse);
-        merchantName = parsed.merchantName || null;
-        documentDate = parsed.documentDate || null;
-        totalAmount = typeof parsed.totalAmount === 'number' ? parsed.totalAmount : null;
-        taxAmount = typeof parsed.taxAmount === 'number' ? parsed.taxAmount : null;
-        if (Array.isArray(parsed.lineItems)) {
-          lineItems = parsed.lineItems.map((li: any) => ({
-            description: String(li.description || 'Item'),
-            quantity: typeof li.quantity === 'number' ? li.quantity : 1,
-            unitPrice: typeof li.unitPrice === 'number' ? li.unitPrice : null,
-            totalPrice: typeof li.totalPrice === 'number' ? li.totalPrice : 0,
-          }));
-        }
-        ocrText = parsed.rawText || rawResponse;
+        ocrText = result.response.text().trim();
       }
     } catch {
-      ocrText = `Extracted document text preview for ${file.name}`;
-      merchantName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      ocrText = `Extracted OCR text preview for file ${file.name}`;
     }
 
-    // Save document to DB with encrypted fields and in-process embedding
+    // Save document to DB
     const doc = await DocumentRepository.createDocument({
       userId,
       fileName: file.name,
       fileUrl: `/uploads/${Date.now()}_${file.name}`,
       fileType: file.type || 'application/octet-stream',
-      fileSize: file.size,
-      merchantName,
-      documentDate,
-      totalAmount,
-      taxAmount,
-      ocrRawText: ocrText,
-      lineItems,
+      ocrText,
     });
 
-    return NextResponse.json({ success: true, document: doc }, { status: 201 });
-  }),
-  { rateLimit: 'upload' }
-);
-
-export const DELETE = apiHandler(
-  withAuth(async (request: NextRequest, { userId }) => {
-    const url = new URL(request.url);
-    let id = url.searchParams.get('id');
-    if (!id) {
-      const body = await request.json().catch(() => ({}));
-      id = body?.id;
-    }
-
-    if (!id) {
-      return NextResponse.json({ error: 'Document id is required' }, { status: 400 });
-    }
-
-    const deleted = await DocumentRepository.deleteDocument(id, userId);
-    if (!deleted) {
-      return NextResponse.json({ error: 'Document not found or unauthorized' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, deletedId: id });
-  }),
-  { rateLimit: 'api' }
+    return NextResponse.json(doc, { status: 201 });
+  })
 );

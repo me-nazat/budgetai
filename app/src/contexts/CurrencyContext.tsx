@@ -2,11 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CurrencyCode, CURRENCIES, formatCurrency, convertAmount, FALLBACK_RATES } from '@/lib/currency';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CurrencyContextType {
     currency: CurrencyCode;
-    symbol: string;
     rates: Record<string, number>;
     setCurrency: (currency: CurrencyCode) => void;
     fmt: (amountInBase: number) => string;
@@ -17,7 +15,6 @@ interface CurrencyContextType {
 const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-    const { locale } = useLanguage();
     const [currency, setCurrencyState] = useState<CurrencyCode>(() => {
         if (typeof window === 'undefined') return 'BDT';
         const stored = localStorage.getItem('budget-ai-currency') as CurrencyCode;
@@ -56,22 +53,19 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
     const fmt = (amountInBase: number) => {
         const converted = convertAmount(amountInBase, 'BDT', currency, rates);
-        return formatCurrency(converted, currency, locale);
+        return formatCurrency(converted, currency);
     };
 
     const fmtRaw = (amountInLocal: number) => {
-        return formatCurrency(amountInLocal, currency, locale);
+        return formatCurrency(amountInLocal, currency);
     };
-
 
     const convert = (amount: number, from: CurrencyCode, to: CurrencyCode) => {
         return convertAmount(amount, from, to, rates);
     };
 
-    const symbol = CURRENCIES[currency]?.symbol || '$';
-
     return (
-        <CurrencyContext.Provider value={{ currency, symbol, rates, setCurrency, fmt, fmtRaw, convert }}>
+        <CurrencyContext.Provider value={{ currency, rates, setCurrency, fmt, fmtRaw, convert }}>
             {children}
         </CurrencyContext.Provider>
     );

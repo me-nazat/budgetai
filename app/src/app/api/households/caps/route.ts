@@ -8,16 +8,11 @@ import { HouseholdRepository } from '@/repositories/household.repository';
 export const GET = apiHandler(
   withAuth(async (request: NextRequest, { userId }) => {
     const households = await HouseholdRepository.findByUserId(userId);
-    const householdIdParam = request.nextUrl.searchParams.get('householdId');
-    const targetHh = householdIdParam
-      ? households.find((h) => h.id === parseInt(householdIdParam, 10))
-      : households[0];
-
-    if (!targetHh) {
+    if (households.length === 0) {
       return NextResponse.json({ caps: [] });
     }
 
-    const caps = await HouseholdRepository.findCategoryCaps(targetHh.id);
+    const caps = await HouseholdRepository.findCategoryCaps(households[0].id);
     return NextResponse.json({ caps });
   })
 );
