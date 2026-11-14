@@ -18,7 +18,7 @@ interface CommandItem {
     icon: string;
     keywords?: string[];
     path?: string;
-    action?: 'SCAN_RECEIPT' | 'QUICK_ADD' | 'TOGGLE_PRIVACY';
+    action?: 'SCAN_RECEIPT' | 'QUICK_ADD' | 'TOGGLE_PRIVACY' | 'SHOW_SHORTCUTS';
 }
 
 export default function CommandPalette() {
@@ -59,6 +59,14 @@ export default function CommandPalette() {
                 keywords: ['privacy', 'hide', 'mask', 'secret', 'obfuscate'],
                 action: 'TOGGLE_PRIVACY',
             },
+            {
+                id: 'action-keyboard-shortcuts',
+                name: 'Keyboard Shortcuts Cheat Sheet (?)',
+                category: 'Actions',
+                icon: 'keyboard',
+                keywords: ['shortcuts', 'hotkeys', 'cheat', 'help', 'keyboard', 'navigation'],
+                action: 'SHOW_SHORTCUTS',
+            },
         ];
 
         const pillarCmds: CommandItem[] = SEVEN_PILLARS.map(p => ({
@@ -98,13 +106,16 @@ export default function CommandPalette() {
         ];
         SEVEN_PILLARS.forEach(p => {
             p.subItems?.forEach(sub => {
+                const extraKeywords = sub.id === 'my-month'
+                    ? ['month', 'calendar', 'august', 'heatmap', 'daily', 'command center', 'cashflow']
+                    : [];
                 subCmds.push({
                     id: `sub-${sub.id}`,
                     name: `${sub.label} (${p.label})`,
                     category: 'Tools & Vault',
                     icon: sub.icon,
                     path: sub.href,
-                    keywords: [sub.id, sub.label.toLowerCase(), p.id],
+                    keywords: [sub.id, sub.label.toLowerCase(), p.id, ...extraKeywords],
                 });
             });
         });
@@ -184,6 +195,8 @@ export default function CommandPalette() {
             setIsQuickAddOpen(true);
         } else if (cmd.action === 'TOGGLE_PRIVACY') {
             togglePrivacy();
+        } else if (cmd.action === 'SHOW_SHORTCUTS') {
+            window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'));
         } else if (cmd.path) {
             router.push(cmd.path);
         }

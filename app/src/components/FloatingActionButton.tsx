@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * @fileoverview Minimalist Unobtrusive Floating Action Button (Batch 8 Part 4).
+ * @fileoverview Minimalist Unobtrusive Floating Action Button with Keycap Badge.
  * Safely positioned above mobile bottom bars and desktop margins, never obstructing
  * table pagination or modal bottom sheets.
  *
@@ -17,18 +17,26 @@ export default function FloatingActionButton() {
   };
 
   return (
-    <motion.button
-      type="button"
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      onClick={handleClick}
-      aria-label="Quick Add Transaction"
-      className="fixed bottom-24 right-5 lg:bottom-8 lg:right-8 z-40 w-13 h-13 rounded-full bg-gradient-to-br from-primary via-[#136DEC] to-blue-700 hover:brightness-110 text-white shadow-[0_10px_30px_rgba(19,109,236,0.45)] flex items-center justify-center transition-all border border-white/25 cursor-pointer group"
-    >
-      <span className="material-symbols-outlined text-2xl font-bold transition-transform group-hover:rotate-90">add</span>
-    </motion.button>
+    <div className="fixed bottom-24 right-5 lg:bottom-8 lg:right-8 z-40 group">
+      {/* Tooltip on hover (desktop) */}
+      <div className="hidden lg:flex pointer-events-none absolute right-full top-1/2 -translate-y-1/2 mr-3 opacity-0 group-hover:opacity-100 transition-opacity items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200/80 bg-white/95 text-xs font-bold text-slate-800 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/95 dark:text-white whitespace-nowrap">
+        <span>Quick Add</span>
+        <kbd className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10">C</kbd>
+      </div>
+
+      <motion.button
+        type="button"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        onClick={handleClick}
+        aria-label="Quick Add Transaction"
+        className="w-13 h-13 rounded-2xl bg-gradient-to-br from-primary via-[#136DEC] to-blue-700 hover:brightness-110 text-white shadow-[0_10px_30px_rgba(19,109,236,0.45)] flex items-center justify-center transition-all border border-white/25 cursor-pointer"
+      >
+        <span className="material-symbols-outlined text-2xl font-bold transition-transform group-hover:rotate-90 duration-300">add</span>
+      </motion.button>
+    </div>
   );
 }

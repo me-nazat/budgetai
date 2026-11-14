@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { resolveIcon, resolveColor, getCategoryIcon } from '@/lib/categoryUtils';
@@ -388,6 +389,15 @@ export default function BudgetPage() {
               <span className="material-symbols-outlined text-[20px]">chevron_right</span>
             </button>
           </div>
+
+          {/* Jump to Monthly Command Center */}
+          <Link
+            href="/my-month"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-bold bg-primary/10 border border-primary/20 text-primary dark:text-[#38bdf8] hover:bg-primary/20 transition-all shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+            <span>My Month</span>
+          </Link>
 
           {/* Quick Rebalance Button */}
           <button

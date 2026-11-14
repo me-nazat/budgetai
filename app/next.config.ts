@@ -98,7 +98,6 @@ const nextConfig: NextConfig = {
         return [
             { source: '/coach', destination: '/chat', permanent: true },
             { source: '/overview', destination: '/dashboard', permanent: true },
-            { source: '/my-month', destination: '/dashboard', permanent: true },
             { source: '/history', destination: '/transactions', permanent: true },
             { source: '/goals', destination: '/wealth-goals', permanent: true },
             { source: '/fire', destination: '/wealth-goals', permanent: true },

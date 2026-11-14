@@ -158,6 +158,18 @@ export default function Sidebar() {
                             <p className="text-gray-400 dark:text-gray-500 text-[11px] font-semibold mt-1 truncate uppercase tracking-wider">7-Pillar Finance</p>
                         </div>
                     </Link>
+
+                    {/* Quick Command Palette Trigger Bar */}
+                    <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+                        className="flex items-center justify-between w-full px-3 py-1.5 mt-3 rounded-xl bg-gray-100/70 dark:bg-white/5 border border-gray-200/50 dark:border-white/5 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/60 dark:hover:bg-white/10 transition-all cursor-pointer"
+                    >
+                        <span className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[15px] text-primary">search</span>
+                            <span className="font-medium">Quick search...</span>
+                        </span>
+                        <kbd className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 font-bold text-gray-600 dark:text-gray-300 shadow-2xs">⌘K</kbd>
+                    </button>
                 </div>
 
                 {/* 7 Primary Pillars Navigation */}
@@ -198,6 +210,14 @@ export default function Sidebar() {
                         </Link>
                         <PrivacyToggle />
                         <LanguageToggle />
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
+                            className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-gray-500 dark:text-gray-400"
+                            title="Keyboard Shortcuts (?)"
+                            aria-label="Keyboard Shortcuts"
+                        >
+                            <span className="material-symbols-outlined text-sm">keyboard</span>
+                        </button>
                         <button
                             onClick={toggleTheme}
                             className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-white/10 bg-white dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-white/5 transition-all"

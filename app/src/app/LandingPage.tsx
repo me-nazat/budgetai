@@ -151,12 +151,12 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
                         className="flex flex-col justify-center space-y-8"
                     >
                         {/* Badge */}
-                        <motion.div variants={fadeInUp} className="inline-flex items-center rounded-full border border-primary/20 dark:border-lp-cyan/20 bg-primary/5 dark:bg-lp-cyan/5 px-4 py-1.5 text-sm font-medium text-primary dark:text-lp-cyan w-fit backdrop-blur-sm">
-                            <span className="relative flex h-2 w-2 mr-3">
+                        <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 rounded-full border border-primary/25 dark:border-lp-cyan/25 bg-primary/10 dark:bg-lp-cyan/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-primary dark:text-lp-cyan w-fit backdrop-blur-md shadow-xs">
+                            <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary dark:bg-lp-cyan opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary dark:bg-lp-cyan" />
                             </span>
-                            Wealth Management Reimagined
+                            <span>Institutional 7-Pillar Finance & Monthly Command Center</span>
                         </motion.div>
 
                         {/* Headline */}
@@ -232,6 +232,7 @@ function HeroSection({ onNavigate }: { onNavigate: (p: string) => void }) {
 }
 
 function DashboardMockup() {
+    const [mockupTab, setMockupTab] = useState<'command' | 'month' | 'goals'>('command');
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
@@ -296,84 +297,208 @@ function DashboardMockup() {
                         `,
                     }}
                 />
-                {/* Top bar */}
-                <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 dark:border-white/5">
-                    <div className="h-3 w-3 rounded-full bg-red-400" />
-                    <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                    <div className="h-3 w-3 rounded-full bg-green-400" />
-                    <div className="ml-4 h-2.5 w-32 bg-gray-200 dark:bg-white/10 rounded-full" />
+                {/* Top bar with Interactive Tabs */}
+                <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-200 dark:border-white/5 bg-white/50 dark:bg-black/10">
+                    <div className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-full bg-red-400" />
+                        <div className="h-3 w-3 rounded-full bg-yellow-400" />
+                        <div className="h-3 w-3 rounded-full bg-green-400" />
+                    </div>
+                    {/* View Tabs */}
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-white/5 text-[11px] font-bold">
+                        <button
+                            type="button"
+                            onClick={() => setMockupTab('command')}
+                            className={`px-2.5 py-1 rounded-lg transition-all ${mockupTab === 'command' ? 'bg-white dark:bg-surface-dark text-primary shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            Command
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setMockupTab('month')}
+                            className={`px-2.5 py-1 rounded-lg transition-all ${mockupTab === 'month' ? 'bg-white dark:bg-surface-dark text-primary shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            My Month
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setMockupTab('goals')}
+                            className={`px-2.5 py-1 rounded-lg transition-all ${mockupTab === 'goals' ? 'bg-white dark:bg-surface-dark text-primary shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            Goals
+                        </button>
+                    </div>
                 </div>
 
-                {/* Content area */}
+                {/* Content area based on tab */}
                 <div className="p-6 space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center p-1 overflow-hidden">
-                                <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={36} height={36} className="object-contain rounded-lg" />
+                    {mockupTab === 'command' && (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center p-1 overflow-hidden">
+                                        <Image src="/wealth-ai-logo-v2.png" alt="Wealth AI" width={36} height={36} className="object-contain rounded-lg" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Wealth AI</p>
+                                        <p className="text-xs text-gray-400 dark:text-slate-500">Command Center</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-gray-400 dark:text-slate-500">Net Worth</p>
+                                    <p className="text-lg font-bold text-gray-900 dark:text-white">$1,240,500</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white">Wealth AI</p>
-                                <p className="text-xs text-gray-400 dark:text-slate-500">Dashboard</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-xs text-gray-400 dark:text-slate-500">Net Worth</p>
-                            <p className="text-lg font-bold text-gray-900 dark:text-white">$1,240,500</p>
-                        </div>
-                    </div>
 
-                    <div className="relative h-40 border border-gray-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#0A0E1B] p-4 overflow-hidden">
-                        <p className="text-xs text-gray-400 dark:text-slate-500 mb-2 font-medium uppercase tracking-wider">Portfolio Performance</p>
-                        <svg className="w-full h-24" viewBox="0 0 400 100" preserveAspectRatio="none">
-                            <defs>
-                                <linearGradient id="chart-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.3" />
-                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0" />
-                                </linearGradient>
-                                <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.4" />
-                                    <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="1" />
-                                </linearGradient>
-                            </defs>
-                            <path d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10 L400,100 L0,100 Z" fill="url(#chart-gradient)" />
-                            <motion.path 
-                                initial={{ pathLength: 0 }}
-                                animate={{ pathLength: 1 }}
-                                transition={{ duration: 1.5, ease: "easeInOut" }}
-                                d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10" 
-                                fill="none" stroke="url(#line-gradient)" strokeWidth="2.5" strokeLinecap="round" 
-                            />
-                            <circle cx="400" cy="10" r="4" className="fill-primary dark:fill-lp-cyan" />
-                            <circle cx="400" cy="10" r="8" className="fill-primary/20 dark:fill-lp-cyan/20">
-                                <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
-                                <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite" />
-                            </circle>
-                        </svg>
-                    </div>
+                            <div className="relative h-40 border border-gray-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#0A0E1B] p-4 overflow-hidden">
+                                <p className="text-xs text-gray-400 dark:text-slate-500 mb-2 font-medium uppercase tracking-wider">Portfolio Performance</p>
+                                <svg className="w-full h-24" viewBox="0 0 400 100" preserveAspectRatio="none">
+                                    <defs>
+                                        <linearGradient id="chart-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.3" />
+                                            <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0" />
+                                        </linearGradient>
+                                        <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="0.4" />
+                                            <stop offset="100%" className="[stop-color:var(--color-primary)] dark:[stop-color:#5b8ff9]" stopOpacity="1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <path d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10 L400,100 L0,100 Z" fill="url(#chart-gradient)" />
+                                    <motion.path 
+                                        initial={{ pathLength: 0 }}
+                                        animate={{ pathLength: 1 }}
+                                        transition={{ duration: 1.5, ease: "easeInOut" }}
+                                        d="M0,70 Q40,50 80,55 T160,40 T240,30 T320,20 T400,10" 
+                                        fill="none" stroke="url(#line-gradient)" strokeWidth="2.5" strokeLinecap="round" 
+                                    />
+                                    <circle cx="400" cy="10" r="4" className="fill-primary dark:fill-lp-cyan" />
+                                    <circle cx="400" cy="10" r="8" className="fill-primary/20 dark:fill-lp-cyan/20">
+                                        <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
+                                        <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite" />
+                                    </circle>
+                                </svg>
+                            </div>
 
-                    <div className="space-y-3">
-                        <div className="flex gap-3 items-start">
-                            <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
-                                <span className="material-symbols-outlined text-sm">smart_toy</span>
+                            <div className="space-y-3">
+                                <div className="flex gap-3 items-start">
+                                    <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
+                                        <span className="material-symbols-outlined text-sm">smart_toy</span>
+                                    </div>
+                                    <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
+                                        Good morning, Alex. Your net worth increased by <span className="text-primary dark:text-lp-cyan font-semibold">+2.4%</span> this week.
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 items-start justify-end">
+                                    <div className="bg-primary dark:bg-lp-cyan/20 rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white dark:text-lp-cyan max-w-[260px]">
+                                        That&apos;s great! Can I afford the trip to Italy in September?
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 items-start">
+                                    <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
+                                        <span className="material-symbols-outlined text-sm">smart_toy</span>
+                                    </div>
+                                    <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
+                                        Yes. Based on your current trajectory, you&apos;ll have <span className="font-semibold text-gray-900 dark:text-white">$4,200</span> in savings by then.
+                                    </div>
+                                </div>
                             </div>
-                            <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
-                                Good morning, Alex. Your net worth increased by <span className="text-primary dark:text-lp-cyan font-semibold">+2.4%</span> this week.
+                        </>
+                    )}
+
+                    {mockupTab === 'month' && (
+                        <div className="space-y-5 animate-in fade-in duration-300">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Monthly Command Center</p>
+                                    <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white">November 2026</h3>
+                                </div>
+                                <span className="px-3 py-1 text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full">
+                                    67% Saved
+                                </span>
+                            </div>
+
+                            {/* Mini KPIs */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Income</p>
+                                    <p className="text-base font-black text-emerald-500 tabular-nums">+$9,450</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Spent</p>
+                                    <p className="text-base font-black text-rose-500 tabular-nums">−$3,120</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Net Net</p>
+                                    <p className="text-base font-black text-primary tabular-nums">+$6,330</p>
+                                </div>
+                            </div>
+
+                            {/* Mini 7-day grid */}
+                            <div className="rounded-2xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/[0.02] p-3 space-y-2">
+                                <p className="text-xs font-bold text-gray-500">Live Calendar Matrix</p>
+                                <div className="grid grid-cols-7 gap-1.5 text-center">
+                                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                                        <div key={i} className="text-[10px] font-bold text-gray-400">{d}</div>
+                                    ))}
+                                    {[10, 11, 12, 13, 14, 15, 16].map((day, i) => (
+                                        <div key={day} className={`p-2 rounded-xl text-xs font-bold transition-all ${i === 4 ? 'bg-primary text-white shadow-sm' : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300'}`}>
+                                            <span>{day}</span>
+                                            <div className="flex justify-center gap-0.5 mt-1">
+                                                <span className="h-1 w-1 rounded-full bg-emerald-400" />
+                                                <span className="h-1 w-1 rounded-full bg-rose-400" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-3 items-start justify-end">
-                            <div className="bg-primary dark:bg-lp-cyan/20 rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white dark:text-lp-cyan max-w-[260px]">
-                                That&apos;s great! Can I afford the trip to Italy in September?
+                    )}
+
+                    {mockupTab === 'goals' && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Wealth & Goals</p>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Active Milestones</h3>
+                                </div>
+                                <span className="px-3 py-1 text-xs font-bold bg-primary/10 text-primary rounded-full">
+                                    3 Active
+                                </span>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="p-3.5 rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-white/5 space-y-2">
+                                    <div className="flex justify-between items-center text-xs font-bold">
+                                        <span className="text-gray-800 dark:text-white">FIRE Retirement Goal</span>
+                                        <span className="text-primary tabular-nums">82.7% ($1.24M / $1.5M)</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
+                                        <div className="h-full bg-primary rounded-full w-[82.7%]" />
+                                    </div>
+                                </div>
+
+                                <div className="p-3.5 rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-white/5 space-y-2">
+                                    <div className="flex justify-between items-center text-xs font-bold">
+                                        <span className="text-gray-800 dark:text-white">Emergency Liquid Reserves</span>
+                                        <span className="text-emerald-500 tabular-nums">100% ($60,000)</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
+                                        <div className="h-full bg-emerald-500 rounded-full w-full" />
+                                    </div>
+                                </div>
+
+                                <div className="p-3.5 rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-white/5 space-y-2">
+                                    <div className="flex justify-between items-center text-xs font-bold">
+                                        <span className="text-gray-800 dark:text-white">Automated Round-Up Savings</span>
+                                        <span className="text-amber-500 tabular-nums">+$142 this month</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
+                                        <div className="h-full bg-amber-500 rounded-full w-2/3" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-3 items-start">
-                            <div className="h-8 w-8 rounded-lg bg-primary/10 dark:bg-lp-cyan/10 flex items-center justify-center text-primary dark:text-lp-cyan flex-shrink-0">
-                                <span className="material-symbols-outlined text-sm">smart_toy</span>
-                            </div>
-                            <div className="bg-gray-100 dark:bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-[280px]">
-                                Yes. Based on your current trajectory, you&apos;ll have <span className="font-semibold text-gray-900 dark:text-white">$4,200</span> by August 20th.
-                            </div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </motion.div>
 
@@ -410,9 +535,20 @@ function DashboardMockup() {
             {/* Floating Card 3 (Tertiary depth) */}
             <motion.div 
                 style={{ rotateX: rotateXTertiary, rotateY: rotateYTertiary, transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
-                className="absolute -right-8 -bottom-8 lg:-right-16 lg:bottom-12 w-64 rounded-2xl bg-white/90 dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 shadow-2xl hidden md:block"
+                className="absolute -right-8 -bottom-8 lg:-right-16 lg:bottom-12 w-64 rounded-2xl bg-white/90 dark:bg-[#12182B]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-4 shadow-2xl hidden md:block"
             >
-                <p className="text-sm text-gray-500 dark:text-slate-400">Product Designer and Manager, Bangladesh</p>
+                <div className="flex items-center gap-2.5 mb-2">
+                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold text-xs">
+                        <span className="material-symbols-outlined text-base">verified</span>
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-gray-900 dark:text-white">Active Runway</p>
+                        <p className="text-[11px] text-emerald-500 font-bold">18.4 Months Safe</p>
+                    </div>
+                </div>
+                <div className="h-1.5 w-full bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full w-4/5" />
+                </div>
             </motion.div>
         </div>
     );

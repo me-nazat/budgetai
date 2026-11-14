@@ -526,6 +526,13 @@ export default function DashboardPage() {
                         </h2>
                     </div>
                     <div className="flex items-center gap-1.5">
+                        <Link
+                            href="/my-month"
+                            className="w-9 h-9 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+                            title="My Month Command Center"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+                        </Link>
                         <button
                             onClick={() => setIsQuickAddOpen(true)}
                             className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-md active:scale-95 transition-transform"
@@ -840,6 +847,14 @@ export default function DashboardPage() {
 
                         {/* Quick Actions */}
                         <div className="flex items-center gap-2">
+                            <Link
+                                href="/my-month"
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all shadow-sm active:scale-95"
+                                title="Open My Month Command Center"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                                <span>My Month</span>
+                            </Link>
                             <button
                                 onClick={() => setIsQuickAddOpen(true)}
                                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95"

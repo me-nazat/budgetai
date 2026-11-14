@@ -65,6 +65,7 @@ export const SEVEN_PILLARS: NavItem[] = [
     category: 'pillar',
     description: 'Rollover envelope budgeting, pacing gauges, and recurring billing',
     subItems: [
+      { id: 'my-month', href: '/my-month', label: 'My Month (Command Center)', icon: 'calendar_month' },
       { id: 'recurring', href: '/recurring-subscriptions', label: 'Recurring & Subs', icon: 'repeat' },
     ],
   },
@@ -150,6 +151,7 @@ export const NAV_TRANSLATION_MAP: Record<string, string> = {
   'household': 'collaborativeWealth',
   'wealth-goals': 'goalsNetWorth',
   'insights': 'intelligenceVault',
+  'my-month': 'myMonth',
   'tours': 'tourManager',
   'debts': 'debts',
   'investments': 'investments',

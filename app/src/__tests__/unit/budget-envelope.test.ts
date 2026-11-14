@@ -47,26 +47,30 @@ describe('Budget Envelope & Auto-Pacing Service', () => {
     });
 
     it('calculates pacing_fast status when daily burn significantly exceeds ideal burn', async () => {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
       vi.spyOn(BudgetRepository, 'findByMonth').mockResolvedValueOnce([
         {
           id: 2,
           userId: 1,
           category: 'Dining Out',
           monthlyLimit: 300,
-          month: 10,
-          year: 2026,
+          month: currentMonth,
+          year: currentYear,
           rolloverEnabled: 0,
           rolloverBalance: 0,
-          createdAt: '2026-10-01',
+          createdAt: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
         },
       ]);
 
-      // Suppose spending is 280 on day 10 (burn = 28/day vs ideal = 300/31 = 9.67/day)
+      // Suppose spending is 280 on current day (burn exceeds ideal daily burn by > 15%)
       vi.spyOn(TransactionRepository, 'getCategorySpending').mockResolvedValueOnce([
         { category: 'Dining Out', total: 280 },
       ]);
 
-      const results = await BudgetService.getByMonth(1, 10, 2026);
+      const results = await BudgetService.getByMonth(1, currentMonth, currentYear);
       const envelope = results[0];
 
       expect(envelope.pacingStatus).toBe('pacing_fast');
