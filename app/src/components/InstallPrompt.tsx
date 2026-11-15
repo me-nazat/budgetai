@@ -32,12 +32,12 @@ export default function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    // Register service worker
+    // Register service worker with fresh check
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/sw.js', { updateViaCache: 'none' })
         .then((reg) => {
-          console.log('[PWA] Service worker registered:', reg.scope);
+          reg.update();
         })
         .catch((err) => {
           console.warn('[PWA] Service worker registration failed:', err);

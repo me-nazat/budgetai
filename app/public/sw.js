@@ -1,5 +1,5 @@
 /**
- * Wealth AI — Service Worker (v3 Resilient)
+ * Wealth AI — Service Worker (v4 Self-Healing & Resilient Recovery)
  *
  * Provides:
  * - App shell caching for offline support
@@ -8,12 +8,12 @@
  * - Background sync placeholder
  *
  * Cache Strategy:
- * - Static assets: Cache-first
- * - API calls: Network-first, falling back to cache
- * - Navigation: Network-first with self-healing auto-reconnect fallback
+ * - Static assets: Stale-while-revalidate / cache-first (excluding /sw.js)
+ * - API calls: Network-first, bypassing sensitive auth endpoints
+ * - Navigation: Resilient network-first with automatic redirect follow, retry, and self-healing recovery
  */
 
-const CACHE_NAME = 'wealth-ai-v3-resilient';
+const CACHE_NAME = 'wealth-ai-v4-self-healing';
 const STATIC_ASSETS = [
   '/wealth-ai-logo-v2.png',
   '/manifest.json',
@@ -144,12 +144,12 @@ const OFFLINE_HTML = `<!DOCTYPE html>
       <span id="status-text">Reconnecting automatically...</span>
     </div>
     <h1>Connection Unavailable</h1>
-    <p>Wealth AI is waiting for a secure connection or for the latest deployment to complete.</p>
+    <p>Wealth AI is waiting for a secure connection or for network restoration.</p>
     <button class="btn-primary" onclick="window.location.reload()">
       Reconnect Now
     </button>
     <button class="btn-secondary" onclick="clearCacheAndReload()">
-      Clear Service Cache & Refresh
+      Reset Service Cache & Refresh
     </button>
   </div>
   <script>
@@ -157,11 +157,11 @@ const OFFLINE_HTML = `<!DOCTYPE html>
     let retries = 0;
     const interval = setInterval(function() {
       retries++;
-      fetch('/', { method: 'HEAD', cache: 'no-store' })
+      fetch('/manifest.json?t=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
         .then(function(res) {
           if (res.ok) {
             var st = document.getElementById('status-text');
-            if (st) st.textContent = 'Online! Reloading...';
+            if (st) st.textContent = 'Connection restored! Reloading...';
             clearInterval(interval);
             window.location.reload();
           }
@@ -181,7 +181,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
             });
           }
         }).then(function() {
-          window.location.reload();
+          window.location.href = window.location.origin + '/?reset=' + Date.now();
         }).catch(function() {
           window.location.reload();
         });
@@ -204,13 +204,21 @@ self.addEventListener('install', (event) => {
 // ─── Activate ───
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
+    (async () => {
+      // Purge all old caches (v1, v2, v3, etc.)
+      const keys = await caches.keys();
+      await Promise.all(
         keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
-    )
+      );
+      // Take control of all pages immediately
+      await self.clients.claim();
+      // Notify active client windows of successful activation
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clients) {
+        client.postMessage({ type: 'SW_ACTIVATED', version: CACHE_NAME });
+      }
+    })()
   );
-  self.clients.claim();
 });
 
 // ─── Fetch Handler ───
@@ -218,12 +226,64 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests and chrome-extension URLs
-  if (request.method !== 'GET' || url.protocol === 'chrome-extension:') return;
+  // Skip non-GET requests and non-http(s) protocols
+  if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // Bypass cache completely for auth and export endpoints
-  if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/export')) {
+  // CRITICAL: NEVER intercept or cache the service worker itself
+  if (url.pathname === '/sw.js') return;
+
+  // Bypass cache completely for auth, sessions, and export endpoints
+  if (
+    url.pathname.startsWith('/api/auth/') ||
+    url.pathname.startsWith('/api/export') ||
+    url.pathname.startsWith('/api/import')
+  ) {
     event.respondWith(fetch(request));
+    return;
+  }
+
+  // Navigation requests (HTML documents): Resilient network-first with redirect follow and auto-retry
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          // Attempt 1: Fetch with explicit follow mode for redirects (e.g. /dashboard -> /login)
+          const response = await fetch(request.url, {
+            method: 'GET',
+            headers: request.headers,
+            credentials: request.credentials || 'include',
+            redirect: 'follow',
+          });
+          return response;
+        } catch (firstErr) {
+          // Attempt 2: Retry after a brief delay in case of network latency/cold-start
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            const retryResponse = await fetch(request.url, {
+              method: 'GET',
+              headers: request.headers,
+              credentials: request.credentials || 'include',
+              redirect: 'follow',
+            });
+            return retryResponse;
+          } catch (retryErr) {
+            // Check cache for cached document if available
+            const cached = await caches.match(request);
+            if (cached) return cached;
+
+            // Return self-healing offline recovery page with no-cache headers
+            return new Response(OFFLINE_HTML, {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma': 'no-cache',
+              },
+            });
+          }
+        }
+      })()
+    );
     return;
   }
 
@@ -232,7 +292,6 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache successful GET API responses briefly
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
@@ -244,28 +303,41 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: Cache-first
+  // Static assets: Stale-while-revalidate / cache-first
   if (
     url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|woff2?|ttf|css|js)$/)
   ) {
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request))
-    );
-    return;
-  }
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse.ok) {
+              const clone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
+            return networkResponse;
+          })
+          .catch(() => cached);
 
-  // Navigation: Network-first
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(async () => {
-        const cached = await caches.match(request);
-        if (cached) return cached;
-        return new Response(OFFLINE_HTML, {
-          headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        });
+        return cached || fetchPromise;
       })
     );
     return;
+  }
+});
+
+// ─── Messages ───
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data.type === 'UNREGISTER') {
+    self.registration.unregister().then(() => {
+      self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((c) => c.navigate(c.url));
+      });
+    });
   }
 });
 

@@ -62,6 +62,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Wealth AI" />
         <link rel="apple-touch-icon" href="/wealth-ai-logo-v2.png" />
         <ThemeScript />
+        <ServiceWorkerScript />
       </head>
       <body className={`${geist.variable} ${outfit.variable} ${playfair.variable} ${fraunces.variable} font-[Geist,sans-serif] antialiased bg-bg-light dark:bg-bg-dark text-text-main`}>
         <SmoothScroll>{children}</SmoothScroll>
@@ -91,6 +92,47 @@ function ThemeScript() {
           }
         }
       } catch(e) {}
+    })();
+  `;
+  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+}
+
+function ServiceWorkerScript() {
+  const script = `
+    (function() {
+      if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+      if (window.location.search.indexOf('reset=') !== -1 || window.location.search.indexOf('clear-sw=1') !== -1) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          return Promise.all(regs.map(function(r) { return r.unregister(); }));
+        }).then(function() {
+          if ('caches' in window) {
+            caches.keys().then(function(keys) {
+              return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+            });
+          }
+        });
+      }
+
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+          .then(function(reg) {
+            reg.update();
+            reg.onupdatefound = function() {
+              var installing = reg.installing;
+              if (installing) {
+                installing.onstatechange = function() {
+                  if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                    installing.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                };
+              }
+            };
+          })
+          .catch(function(err) {
+            console.warn('[PWA] SW register error:', err);
+          });
+      });
     })();
   `;
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
